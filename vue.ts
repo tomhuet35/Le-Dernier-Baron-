@@ -44,6 +44,7 @@ export function vuePourJoueur(e: EtatPartie, joueurId: string): Vue {
     aChoisiAllie: joueurId in e.choixAlliance,
     monAllie: e.choixAlliance[joueurId] ?? null,
     alliances: e.alliances.map(([a, b]) => [a, b] as [string, string]),
+    choixAllies: e.evenement === 'alliance' && e.phase !== 'ALLIANCE' && e.annoncesRevelees ? { ...e.choixAlliance } : null,
     attente,
     bilans: structuredClone(e.bilans),
     journal: e.journal.slice(-30),
