@@ -150,7 +150,7 @@ export interface Vue {
   ouvreurId: string;
   tourId: string | null;
   main: VueCarte[];
-  familleDemandee: Famille | null;
+  familleDemandee: Famille | 'chat_noir' | null;
   pli: CartePosee[];
   dernierPli: PliTermine | null;
   vol: Vol | null;

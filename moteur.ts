@@ -127,7 +127,7 @@ function demarrerNuit(e: EtatPartie) {
   } else {
     noter(e, `Nuit ${n} : ${n} carte${n > 1 ? 's' : ''} chacun, pas d'événement. ${premierNom} ouvre la nuit.`);
   }
-  e.phase = e.evenement === 'trahison' ? 'TRAHISON' : 'ANNONCES';
+  e.phase = 'ANNONCES';
 }
 
 /** Joueurs dont la partie attend une action. */
@@ -183,9 +183,10 @@ function traiter(e: EtatPartie, a: Action): string | null {
       if (attenteDe(e).length === 0) {
         const nb = e.joueurs.length;
         for (const j of e.joueurs) e.mains[j.id] = e.mains[j.id].filter((c) => c !== e.choixTrahison[j.id]);
-        e.joueurs.forEach((j, i) => e.mains[e.joueurs[(i + 1) % nb].id].push(e.choixTrahison[j.id]));
-        noter(e, 'Trahison : chacun a passé une carte à son voisin.');
-        e.phase = 'ANNONCES';
+        // Chacun donne sa carte au joueur de droite, c'est-à-dire au joueur précédent dans l'ordre du tour.
+        e.joueurs.forEach((j, i) => e.mains[e.joueurs[(i - 1 + nb) % nb].id].push(e.choixTrahison[j.id]));
+        noter(e, 'Trahison : chacun a passé une carte au joueur de droite.');
+        commencerPlis(e);
       }
       return null;
     }
@@ -203,6 +204,7 @@ function traiter(e: EtatPartie, a: Action): string | null {
         const liste = e.joueurs.map((j) => `${j.nom} ${e.annonces[j.id]}`).join(', ');
         noter(e, `Annonces : ${liste} (total ${total} pour ${e.nuit} pli${e.nuit > 1 ? 's' : ''}).`);
         if (e.evenement === 'alliance') e.phase = 'ALLIANCE';
+        else if (e.evenement === 'trahison') e.phase = 'TRAHISON';
         else commencerPlis(e);
       }
       return null;

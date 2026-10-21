@@ -125,10 +125,16 @@ input {
 button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .pastille-valeur { font-weight: 700; font-variant-numeric: tabular-nums; }
 
-.tapis { padding: 10px; border-radius: 14px; background: radial-gradient(100% 120% at 50% 40%, #3b1a12 0%, #24120d 70%); border: 1px solid #4a2418; min-height: 172px; display: grid; gap: 8px; align-content: start; }
-.tapis-tete { text-align: center; font-size: 13px; color: var(--creme-doux); }
+.tapis { padding: 10px 10px 4px; border-radius: 18px; background: radial-gradient(90% 110% at 50% 45%, #1f4a33 0%, #143524 55%, #0d2418 100%); border: 3px solid #4a2c1a; box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.55), 0 6px 18px rgba(0, 0, 0, 0.5); display: grid; gap: 4px; align-content: start; overflow: hidden; }
+.tapis-tete { text-align: center; font-size: 13px; color: #d9cfb4; }
 .tapis-tete strong { color: var(--or-vif); }
-.tapis-cartes { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.pli-pile { --larg: clamp(80px, 24vw, 116px); display: flex; justify-content: center; align-items: flex-end; min-height: calc(var(--larg) * 1.5 + 40px); padding: 22px 0 10px; }
+.pli-carte { position: relative; transform: rotate(var(--r)); transform-origin: 50% 170%; animation: poser 0.35s ease-out; }
+.pli-carte + .pli-carte { margin-left: calc(var(--larg) * -0.55); }
+.pli-carte .carte-pli .carte-bouton { width: var(--larg); box-shadow: -4px 6px 14px rgba(0, 0, 0, 0.6); }
+.pli-carte.gagnante-pli { translate: 0 -12px; }
+.pli-nom { position: absolute; left: 4px; bottom: 6px; max-width: calc(var(--larg) * 0.47); padding: 1px 4px; border-radius: 4px; background: rgba(22, 16, 12, 0.88); border: 1px solid var(--filet); font-size: 10px; color: var(--creme); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.pli-vide { width: var(--larg); aspect-ratio: 2 / 3; border: 2px dashed #5a3324; border-radius: 9px; display: grid; place-items: center; text-align: center; padding: 8px; font-size: 12px; color: var(--creme-doux); }
 
 .carte { margin: 0; display: grid; justify-items: center; gap: 3px; flex: none; }
 .carte figcaption { font-size: 11px; color: var(--creme-doux); max-width: 76px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -141,8 +147,7 @@ button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .carte.jouable .carte-bouton { box-shadow: 0 0 0 2px var(--or), 0 6px 14px rgba(0, 0, 0, 0.6); }
 .carte.choisie .carte-bouton { transform: translateY(-12px); box-shadow: 0 0 0 3px var(--or-vif), 0 10px 20px rgba(0, 0, 0, 0.7); }
 .carte.gagnante .carte-bouton { box-shadow: 0 0 0 3px var(--or-vif), 0 0 22px rgba(231, 194, 122, 0.55); }
-.tapis-cartes .carte { animation: poser 0.25s ease-out; }
-@keyframes poser { from { opacity: 0; transform: translateY(14px) scale(0.9); } to { opacity: 1; transform: none; } }
+@keyframes poser { from { opacity: 0; transform: translateY(60px) rotate(0deg) scale(0.85); } to { opacity: 1; transform: rotate(var(--r)); } }
 
 .consigne { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--filet); background: var(--nuit-2); min-height: 52px; align-content: center; }
 .consigne.a-toi { border-color: var(--or); background: #2b1d12; }
@@ -196,9 +201,30 @@ button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 30; width: min(92vw, 420px); padding: 12px 14px; border-radius: 10px; background: #3a1510; border: 1px solid var(--rouge-vif); color: #ffe9de; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); }
 .bandeau-reseau { position: fixed; top: 0; left: 0; right: 0; z-index: 25; padding: calc(6px + env(safe-area-inset-top)) 12px 6px; text-align: center; font-size: 13px; background: var(--rouge); color: #fff3df; }
 
+/* Révélation de l'événement */
+.revelation { position: fixed; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; background: radial-gradient(70% 60% at 50% 45%, rgba(90, 30, 18, 0.92) 0%, rgba(8, 5, 3, 0.96) 70%); animation: apparaitre 0.4s ease-out, disparaitre 0.5s ease-in 4.5s forwards; }
+.revelation-titre { font-size: 12px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--or); }
+.revelation h2 { font-size: clamp(28px, 8vw, 40px); color: var(--or-vif); opacity: 0; animation: monter 0.5s ease-out 1.9s forwards; }
+.revelation p { max-width: 34ch; font-size: 16px; opacity: 0; animation: monter 0.5s ease-out 2.1s forwards; }
+.revelation .discret { opacity: 0; animation: monter 0.5s ease-out 2.4s forwards; }
+.tourbillon { perspective: 1200px; }
+.tourbillon-carte { position: relative; width: min(58vw, 250px); aspect-ratio: 2 / 3; transform-style: preserve-3d; animation: tourbillon 1.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.tourbillon-carte .face { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 14px; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 0 40px rgba(231, 194, 122, 0.45), 0 24px 60px rgba(0, 0, 0, 0.8); }
+.tourbillon-carte .verso { transform: rotateY(180deg); }
+@keyframes tourbillon {
+  0% { transform: scale(0.1) rotateZ(-540deg) rotateY(180deg); opacity: 0; }
+  20% { opacity: 1; }
+  70% { transform: scale(1.08) rotateZ(0deg) rotateY(1000deg); }
+  100% { transform: scale(1) rotateZ(0deg) rotateY(1080deg); }
+}
+@keyframes apparaitre { from { opacity: 0; } to { opacity: 1; } }
+@keyframes disparaitre { to { opacity: 0; visibility: hidden; } }
+@keyframes monter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
 @media (min-width: 640px) {
   .adversaires { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+  .revelation h2, .revelation p, .revelation .discret { opacity: 1; }
 }
