@@ -7,8 +7,8 @@
  *  3. Un Chat noir ne fixe jamais la famille demandée ................................ regles.ts, familleDemandee
  *  4. Le Croupier compte comme une carte de la famille demandée (0 ou 11) ............ regles.ts, resoudrePli
  *  5. Un pli sans carte pouvant gagner revient au joueur qui l'a ouvert .............. regles.ts, resoudrePli
- *  6. Avec le Juge, la valeur la plus haute gagne toutes familles confondues ......... regles.ts, resoudrePli
- *  7. Le butin est la carte numérotée de plus haute valeur du pli .................... regles.ts, resoudrePli
+ *  6. Avec le Juge, l'ordre est inversé : la plus petite valeur gagne ............... regles.ts, resoudrePli
+ *  7. Le butin est la carte de gang de plus haute valeur du pli (jamais un Chat noir)  regles.ts, resoudrePli
  *  8. Les vols sont facultatifs et le voleur choisit la carte prise .................. moteur.ts, VOLER
  *  9. La protection par l'Alibi est automatique et ne défausse pas l'Alibi ........... moteur.ts, resoudreVol
  * 10. La Descente de police bloque les vols mais pas les bonus ....................... DESCENTE_BLOQUE_BONUS

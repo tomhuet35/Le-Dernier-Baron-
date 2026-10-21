@@ -31,7 +31,7 @@ export function familleDemandee(pli: CartePosee[]): Famille | null {
   return null;
 }
 
-/** Cartes qu'un joueur peut poser : il doit suivre la famille demandée s'il en a, ou jouer une carte spéciale. */
+/** Cartes qu'un joueur peut poser : il doit suivre la famille demandée s'il en a, ou jouer un Chat noir ou une carte spéciale. */
 export function cartesJouables(main: string[], pli: CartePosee[]): string[] {
   const fam = familleDemandee(pli);
   if (!fam) return [...main];
@@ -40,7 +40,7 @@ export function cartesJouables(main: string[], pli: CartePosee[]): string[] {
     return c.type === 'gang' && c.famille === fam;
   };
   if (!main.some(deLaFamille)) return [...main];
-  return main.filter((id) => deLaFamille(id) || estSpeciale(carte(id)));
+  return main.filter((id) => deLaFamille(id) || estSpeciale(carte(id)) || carte(id).type === 'atout');
 }
 
 function valeurDe(p: CartePosee): number {
@@ -58,12 +58,12 @@ function rangDepartage(p: CartePosee, fam: Famille | null): number {
   return 0;
 }
 
-/** Index de la carte la plus forte (valeur, puis départage, puis première posée). */
-function meilleure(indices: number[], pli: CartePosee[], fam: Famille | null): number {
+/** Index de la carte la plus forte (valeur, puis départage, puis première posée). Avec inverse, la plus petite valeur l'emporte. */
+function meilleure(indices: number[], pli: CartePosee[], fam: Famille | null, inverse = false): number {
   let best = indices[0];
   for (const i of indices.slice(1)) {
-    const vi = valeurDe(pli[i]);
-    const vb = valeurDe(pli[best]);
+    const vi = inverse ? -valeurDe(pli[i]) : valeurDe(pli[i]);
+    const vb = inverse ? -valeurDe(pli[best]) : valeurDe(pli[best]);
     if (vi > vb || (vi === vb && rangDepartage(pli[i], fam) > rangDepartage(pli[best], fam))) best = i;
   }
   return best;
@@ -86,14 +86,16 @@ export function resoudrePli(pli: CartePosee[]): ResultatPli {
     cartes.map((c, i) => (test(c) ? i : -1)).filter((i) => i >= 0);
   const speciales = (s: string) => indices((c) => c.speciale === s);
 
-  const numerotees = indices(estNumerotee);
+  const gangs = indices((c) => c.type === 'gang');
   const avecValeur = indices((c) => estNumerotee(c) || c.speciale === 'croupier');
-  const butin = numerotees.length ? meilleure(numerotees, pli, fam) : null;
+  // Le butin est toujours la carte de gang de plus forte valeur (jamais un Chat noir).
+  const butin = gangs.length ? meilleure(gangs, pli, fam) : null;
 
   let gagnant: number;
   let regle: ResultatPli['regle'];
   if (speciales('juge').length && avecValeur.length) {
-    gagnant = meilleure(avecValeur, pli, fam);
+    // Avec le Juge, l'ordre est inversé : la plus petite valeur gagne.
+    gagnant = meilleure(avecValeur, pli, fam, true);
     regle = 'juge';
   } else {
     const baron = speciales('baron');
@@ -133,18 +135,20 @@ export function calculerScore(p: {
   allianceReussie: boolean;
 }): DetailScore {
   const reussie = p.plis === p.annonce;
-  const pointsAnnonce = reussie
-    ? p.annonce === 0
-      ? POINTS_ANNONCE_ZERO_PAR_NUIT * p.nuit
-      : POINTS_PAR_PLI_ANNONCE * p.annonce
-    : -PENALITE_PAR_ECART * Math.abs(p.plis - p.annonce);
+  const pointsAnnonce =
+    p.annonce === 0
+      ? (reussie ? 1 : -1) * POINTS_ANNONCE_ZERO_PAR_NUIT * p.nuit
+      : reussie
+        ? POINTS_PAR_PLI_ANNONCE * p.annonce
+        : -PENALITE_PAR_ECART * Math.abs(p.plis - p.annonce);
   const multiplicateur =
     p.evenement === 'casse_du_siecle'
       ? MULTIPLICATEUR_BUTIN_CASSE
       : p.evenement === 'descente_police'
         ? MULTIPLICATEUR_BUTIN_DESCENTE
         : 1;
-  const pointsButin = p.butin.reduce((s, v) => s + v, 0) * multiplicateur;
+  // Le butin ne compte que si l'annonce est réussie.
+  const pointsButin = reussie ? p.butin.reduce((s, v) => s + v, 0) * multiplicateur : 0;
   const bonusActifs = reussie && !(DESCENTE_BLOQUE_BONUS && p.evenement === 'descente_police');
   const bonus = bonusActifs
     ? BONUS_BARON_HOMME_DE_MAIN * p.bonusBaron + BONUS_BRAQUAGE * p.braquages + (p.allianceReussie ? BONUS_ALLIANCE : 0)

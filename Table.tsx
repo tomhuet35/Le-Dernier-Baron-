@@ -86,6 +86,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
               <div className="adv-tete">
                 <strong>{j.nom}</strong>
                 {j.id === salon.hoteId && <span className="badge or">Hôte</span>}
+                {j.id === v.premierId && ['TRAHISON', 'ANNONCES', 'ALLIANCE'].includes(v.phase) && <span className="badge or">Commence</span>}
                 {s?.robot && <span className="badge">Robot</span>}
                 {s && !s.connecte && !s.robot && <span className="badge rouge">Hors ligne</span>}
               </div>
@@ -130,8 +131,10 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
             <span>{v.ouvreurId === v.moi ? 'Tu ouvres le pli.' : `${nom(v.ouvreurId)} ouvre le pli.`}</span>
           ) : (
             <span>
-              {v.nuit} pli{v.nuit > 1 ? 's' : ''} cette nuit · {v.joueurs.reduce((s, j) => s + j.plis, 0)} joué
-              {v.joueurs.reduce((s, j) => s + j.plis, 0) > 1 ? 's' : ''}
+              {v.nuit} pli{v.nuit > 1 ? 's' : ''} cette nuit ·{' '}
+              {['TRAHISON', 'ANNONCES', 'ALLIANCE'].includes(v.phase)
+                ? `${v.premierId === v.moi ? 'tu ouvres' : `${nom(v.premierId)} ouvre`} le premier pli`
+                : `${v.joueurs.reduce((s, j) => s + j.plis, 0)} joué${v.joueurs.reduce((s, j) => s + j.plis, 0) > 1 ? 's' : ''}`}
             </span>
           )}
         </div>
@@ -156,6 +159,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
       <section className="moi">
         <div className="moi-ligne">
           <strong>{moi.nom}</strong>
+          {v.premierId === v.moi && ['TRAHISON', 'ANNONCES', 'ALLIANCE'].includes(v.phase) && <span className="badge or">Tu commences</span>}
           <span>{v.monAnnonce !== null ? `Annonce ${v.monAnnonce}` : 'Pas encore annoncé'}</span>
           <span>
             {moi.plis} pli{moi.plis > 1 ? 's' : ''}
@@ -253,11 +257,12 @@ function Consigne(props: {
         </>
       );
     case 'ANNONCES':
-      if (v.monAnnonce !== null) return <p>Ton annonce : {v.monAnnonce}. {attenteTexte}</p>;
+      const commence = v.premierId === v.moi ? 'Tu ouvres' : `${nom(v.premierId)} ouvre`;
+      if (v.monAnnonce !== null) return <p>Ton annonce : {v.monAnnonce}. {commence} le premier pli. {attenteTexte}</p>;
       return (
         <>
           <p>
-            <strong>Combien de plis vas-tu gagner ?</strong> Tu as {v.main.length} carte{v.main.length > 1 ? 's' : ''}.
+            <strong>Combien de plis vas-tu gagner ?</strong> Tu as {v.main.length} carte{v.main.length > 1 ? 's' : ''}. {commence} le premier pli.
           </p>
           <div className="choix-annonce">
             {Array.from({ length: v.nuit + 1 }, (_, n) => (
@@ -295,7 +300,7 @@ function Consigne(props: {
         return (
           <p>
             <strong>À toi de jouer.</strong>{' '}
-            {v.familleDemandee ? `Suis les ${NOM_FAMILLE[v.familleDemandee]} si tu peux, ou joue une carte spéciale.` : 'Touche une carte pour la choisir.'}
+            {v.familleDemandee ? `Suis les ${NOM_FAMILLE[v.familleDemandee]} si tu peux, ou joue un Chat noir ou une carte spéciale.` : 'Touche une carte pour la choisir.'}
           </p>
         );
       }

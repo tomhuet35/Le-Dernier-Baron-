@@ -39,13 +39,13 @@ const EFFET_SPECIALE: Record<string, string> = {
   pickpocket: 'Vole un butin dès qu’il est posé, même s’il perd le pli. S’il bat le Baron : Braquage, +40.',
   homme_de_main: 'Bat les cartes numérotées. S’il y en a plusieurs, le premier posé gagne.',
   alibi: 'Ne gagne jamais le pli. Tant que tu l’as en main, il te protège des vols (sauf pendant un Couvre-feu).',
-  juge: 'Ne gagne jamais. Les pouvoirs des cartes spéciales sont ignorés : la carte de plus forte valeur l’emporte, toutes familles confondues.',
+  juge: 'Ne gagne jamais. Quand il est posé, l’ordre est inversé : la plus petite valeur l’emporte, toutes familles confondues, et les pouvoirs des cartes spéciales sont ignorés.',
   croupier: 'Tu choisis sa valeur en le posant : 11 (bat un 10 de la famille demandée) ou 0 (perd contre toute carte numérotée).',
 };
 
 export function effetCarte(c: Carte): string {
-  if (c.type === 'atout') return 'Atout : bat toutes les cartes de gang. Le Chat noir le plus fort gagne.';
-  if (c.type === 'gang') return 'Carte de gang. Suis la famille demandée si tu peux. La plus forte carte de la famille demandée gagne, sauf atout ou carte spéciale.';
+  if (c.type === 'atout') return 'Atout : se joue à tout moment, même si une famille est demandée. Bat toutes les cartes de gang. Le Chat noir le plus fort gagne. Il n’est jamais pris comme butin.';
+  if (c.type === 'gang') return 'Carte de gang. Suis la famille demandée si tu peux, ou joue un Chat noir ou une carte spéciale. La plus forte carte de la famille demandée gagne, sauf atout ou carte spéciale.';
   return EFFET_SPECIALE[c.speciale ?? ''] ?? '';
 }
 
@@ -93,8 +93,8 @@ export const REGLES: { titre: string; texte: string[] }[] = [
   {
     titre: 'Jouer un pli',
     texte: [
-      'La première carte de gang posée fixe la famille demandée. Si tu en as, tu dois la suivre ou jouer une carte spéciale.',
-      'Les cartes spéciales se jouent à tout moment.',
+      'La première carte de gang posée fixe la famille demandée. Si tu en as, tu dois la suivre, ou jouer un Chat noir ou une carte spéciale.',
+      'Les Chats noirs et les cartes spéciales se jouent à tout moment.',
     ],
   },
   {
@@ -105,13 +105,14 @@ export const REGLES: { titre: string; texte: string[] }[] = [
       '3. Homme de main : le premier posé.',
       '4. Chat noir : le plus fort.',
       '5. Famille demandée (Croupier compris) : la plus forte.',
-      'Alibi et Juge ne gagnent jamais. Avec le Juge, la valeur la plus haute gagne, toutes familles confondues.',
+      'Alibi et Juge ne gagnent jamais. Quand le Juge est posé, l’ordre est inversé : la plus petite valeur gagne, toutes familles confondues.',
     ],
   },
   {
     titre: 'Butin et vols',
     texte: [
-      'Le gagnant garde la carte numérotée de plus forte valeur du pli. Elle vaut sa valeur en points, même si l’annonce est ratée.',
+      'Le gagnant garde la carte de gang (Billets, Lingots, Lames, Diamants) de plus forte valeur du pli. Les Chats noirs ne sont jamais du butin.',
+      'Le butin vaut sa valeur en points, seulement si l’annonce est réussie.',
       'Le Pickpocket vole dès qu’il est posé ; le Baron vole quand il gagne un pli.',
       'Un Alibi en main protège du vol, sauf pendant un Couvre-feu.',
     ],
@@ -119,8 +120,9 @@ export const REGLES: { titre: string; texte: string[] }[] = [
   {
     titre: 'Score',
     texte: [
-      'Annonce réussie : +10 par pli (annonce de 0 réussie : +10 × numéro de la nuit).',
-      'Annonce ratée : −10 par pli d’écart.',
+      'Annonce réussie : +10 par pli. Annonce ratée : −10 par pli d’écart.',
+      'Annonce de 0 : +10 × numéro de la nuit si elle est réussie, −10 × numéro de la nuit si tu gagnes un pli.',
+      'Butin : sa valeur, seulement si l’annonce est réussie.',
       'Bonus si l’annonce est réussie : Baron + Homme de main +20, Braquage +40, Alliance +20.',
     ],
   },

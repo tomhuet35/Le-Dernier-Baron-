@@ -26,18 +26,19 @@ describe('Gagnant du pli et butin', () => {
   const cas: [number, [string, string][], string, string | null][] = [
     [1, [['A', 'Lames 5'], ['B', 'Lames 9'], ['C', 'Billets 10']], 'B', 'billets-10'],
     [2, [['A', 'Billets 3'], ['B', 'Chat noir 2'], ['C', 'Billets 10']], 'B', 'billets-10'],
-    [3, [['A', 'Baron'], ['B', 'Chat noir 10'], ['C', 'Homme de main']], 'A', 'chat-noir-10'],
+    [3, [['A', 'Baron'], ['B', 'Chat noir 10'], ['C', 'Homme de main']], 'A', null],
     [4, [['A', 'Baron'], ['B', 'Pickpocket'], ['C', 'Lames 4']], 'B', 'lames-04'],
-    [5, [['A', 'Homme de main'], ['B', 'Homme de main'], ['C', 'Chat noir 9']], 'A', 'chat-noir-09'],
+    [5, [['A', 'Homme de main'], ['B', 'Homme de main'], ['C', 'Chat noir 9']], 'A', null],
     [6, [['A', 'Alibi'], ['B', 'Lingots 2'], ['C', 'Lingots 6'], ['D', 'Lames 10']], 'C', 'lames-10'],
     [7, [['A', 'Croupier (11)'], ['B', 'Diamants 10'], ['C', 'Diamants 4']], 'A', 'diamants-10'],
     [8, [['A', 'Croupier (0)'], ['B', 'Diamants 1'], ['C', 'Billets 9']], 'B', 'billets-09'],
-    [9, [['A', 'Juge'], ['B', 'Chat noir 3'], ['C', 'Lames 8'], ['D', 'Baron']], 'C', 'lames-08'],
-    [10, [['A', 'Juge'], ['B', 'Croupier (11)'], ['C', 'Chat noir 10']], 'B', 'chat-noir-10'],
+    [9, [['A', 'Juge'], ['B', 'Chat noir 3'], ['C', 'Lames 8'], ['D', 'Baron']], 'B', 'lames-08'],
+    [10, [['A', 'Juge'], ['B', 'Croupier (11)'], ['C', 'Chat noir 10']], 'C', null],
+    [15, [['A', 'Juge'], ['B', 'Lames 2'], ['C', 'Croupier (0)']], 'C', 'lames-02'],
     [11, [['A', 'Juge'], ['B', 'Baron'], ['C', 'Alibi']], 'B', null],
     [12, [['A', 'Alibi'], ['B', 'Alibi'], ['C', 'Juge']], 'A', null],
     [13, [['A', 'Pickpocket'], ['B', 'Alibi'], ['C', 'Alibi']], 'A', null],
-    [14, [['A', 'Juge'], ['B', 'Billets 7'], ['C', 'Chat noir 7'], ['D', 'Lames 7']], 'C', 'chat-noir-07'],
+    [14, [['A', 'Juge'], ['B', 'Billets 7'], ['C', 'Chat noir 7'], ['D', 'Lames 7']], 'C', 'billets-07'],
   ];
   for (const [n, cartes, gagnant, butin] of cas) {
     it(`cas ${n}`, () => {
@@ -56,8 +57,8 @@ describe('Gagnant du pli et butin', () => {
 
 describe('Cartes jouables', () => {
   const demande = pli(['A', 'Lames 7']);
-  it('doit suivre la famille ou jouer une spéciale', () => {
-    expect(cartesJouables(['lames-02', 'chat-noir-08', 'alibi-1', 'billets-05'], demande).sort()).toEqual(['alibi-1', 'lames-02']);
+  it('doit suivre la famille, ou jouer un Chat noir ou une spéciale', () => {
+    expect(cartesJouables(['lames-02', 'chat-noir-08', 'alibi-1', 'billets-05'], demande).sort()).toEqual(['alibi-1', 'chat-noir-08', 'lames-02']);
   });
   it('sans carte de la famille, tout est jouable', () => {
     expect(cartesJouables(['chat-noir-08', 'billets-05', 'baron'], demande)).toHaveLength(3);
@@ -74,11 +75,12 @@ describe("Score d'une nuit", () => {
   it('S1 à S7', () => {
     expect(total({ nuit: 3, annonce: 2, plis: 2, butin: [10, 4] })).toBe(34);
     expect(total({ nuit: 5, annonce: 0, plis: 0 })).toBe(50);
-    expect(total({ annonce: 3, plis: 1, butin: [6] })).toBe(-14);
+    expect(total({ annonce: 3, plis: 1, butin: [6] })).toBe(-20);
+    expect(total({ nuit: 5, annonce: 0, plis: 2 })).toBe(-50);
     expect(total({ annonce: 1, plis: 1, butin: [9], evenement: 'casse_du_siecle' })).toBe(28);
     expect(total({ annonce: 1, plis: 1, butin: [9], evenement: 'descente_police' })).toBe(10);
     expect(total({ annonce: 1, plis: 1, butin: [4], braquages: 1 })).toBe(54);
-    expect(total({ annonce: 2, plis: 1, butin: [4], braquages: 1 })).toBe(-6);
+    expect(total({ annonce: 2, plis: 1, butin: [4], braquages: 1 })).toBe(-10);
   });
   it('S8 et S9 : alliance', () => {
     const alliances: [string, string][] = [['A', 'B']];
