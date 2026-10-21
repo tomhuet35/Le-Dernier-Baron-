@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
 import type { VueSalon } from '../../shared/types';
 import { socket } from './socket';
@@ -115,6 +115,7 @@ export function App() {
   return (
     <>
       {ecran}
+      {salon && <Chat salon={salon} appel={appel} />}
       {!connecte && <div className="bandeau-reseau">Connexion perdue. Reconnexion en cours…</div>}
       {message && (
         <div className="toast" role="status" onClick={() => setMessage(null)}>
@@ -241,5 +242,66 @@ function Lobby({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitt
         Quitter le salon
       </button>
     </main>
+  );
+}
+
+/** Discussion entre les joueurs du salon : bouton flottant avec le nombre de messages non lus. */
+function Chat({ salon, appel }: { salon: VueSalon; appel: Appel }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [texte, setTexte] = useState('');
+  const [vu, setVu] = useState(0);
+  const fin = useRef<HTMLDivElement | null>(null);
+  const messages = salon.messages ?? [];
+  const dernier = messages.length ? messages[messages.length - 1].n : 0;
+  const nonLus = ouvert ? 0 : messages.filter((m) => m.n > vu && m.auteurId !== salon.moi).length;
+  useEffect(() => {
+    if (ouvert) {
+      setVu(dernier);
+      fin.current?.scrollIntoView({ block: 'end' });
+    }
+  }, [ouvert, dernier]);
+  const envoyer = async () => {
+    if (!texte.trim()) return;
+    const r = await appel('chat', { texte });
+    if (r.ok) setTexte('');
+  };
+  return (
+    <>
+      <button type="button" className="chat-bouton" onClick={() => setOuvert(!ouvert)} aria-label={ouvert ? 'Fermer la discussion' : 'Ouvrir la discussion'}>
+        💬{nonLus > 0 && <span className="chat-pastille">{nonLus}</span>}
+      </button>
+      {ouvert && (
+        <div className="chat-panneau" role="dialog" aria-label="Discussion">
+          <div className="chat-tete">
+            <strong>Discussion</strong>
+            <button type="button" className="fermer" onClick={() => setOuvert(false)} aria-label="Fermer">
+              ×
+            </button>
+          </div>
+          <div className="chat-messages">
+            {messages.length === 0 && <p className="discret">Pas encore de message. Dis bonjour à la table !</p>}
+            {messages.map((m) => (
+              <p key={m.n} className={m.auteurId === salon.moi ? 'moi' : ''}>
+                <span className="chat-auteur">{m.auteurId === salon.moi ? 'Toi' : m.nom}</span>
+                {m.texte}
+              </p>
+            ))}
+            <div ref={fin} />
+          </div>
+          <form
+            className="chat-saisie"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void envoyer();
+            }}
+          >
+            <input id="chat-texte" value={texte} maxLength={200} placeholder="Écris un message…" autoComplete="off" onChange={(e) => setTexte(e.target.value)} />
+            <button type="submit" className="principal" disabled={!texte.trim()}>
+              Envoyer
+            </button>
+          </form>
+        </div>
+      )}
+    </>
   );
 }

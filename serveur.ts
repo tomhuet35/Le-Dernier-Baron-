@@ -9,7 +9,7 @@ import { Server, type Socket } from 'socket.io';
 import { DELAI_FIN_DE_PLI_MS, DELAI_ROBOT_MS, MAX_JOUEURS, MIN_JOUEURS } from '../shared/config';
 import { appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
 import { actionRobot } from '../shared/robot';
-import type { Action, EtatPartie, VueSalon } from '../shared/types';
+import type { Action, EtatPartie, MessageChat, VueSalon } from '../shared/types';
 import { vuePourJoueur } from '../shared/vue';
 
 interface JoueurSalon {
@@ -26,6 +26,8 @@ interface Salon {
   hoteId: string;
   joueurs: JoueurSalon[];
   partie: EtatPartie | null;
+  messages: MessageChat[];
+  compteurMessages: number;
   modeTest: boolean;
   derniereActivite: number;
   minuterie: ReturnType<typeof setTimeout> | null;
@@ -87,6 +89,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       modeTest: salon.modeTest,
       joueurs: salon.joueurs.map((j) => ({ id: j.id, nom: j.nom, connecte: j.robotDeTest || j.socketId !== null, robot: j.robot })),
       partie: salon.partie ? vuePourJoueur(salon.partie, joueurId) : null,
+      messages: salon.messages,
     };
   }
 
@@ -191,6 +194,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         modeTest: !!data?.modeTest,
         derniereActivite: Date.now(),
         minuterie: null,
+        messages: [],
+        compteurMessages: 0,
       };
       salons.set(salon.code, salon);
       attacher(socket, salon, joueur);
@@ -313,6 +318,23 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (type === 'FORCER_SUITE' && c.salon.hoteId !== c.joueur.id) return repondre(rappel, { ok: false, erreur: "Seul l'hôte peut passer à la suite." });
       const action = { ...data, joueurId: c.joueur.id } as Action;
       repondre(rappel, appliquer(c.salon, action));
+    });
+
+    const dernierMessage = new Map<string, number>();
+    socket.on('chat', (data: { texte?: string } = {}, rappel?: Rappel) => {
+      const c = contexte();
+      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' });
+      const texte = typeof data?.texte === 'string' ? data.texte.replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+      if (!texte) return repondre(rappel, { ok: false, erreur: 'Message vide.' });
+      const maintenant = Date.now();
+      if (maintenant - (dernierMessage.get(c.joueur.id) ?? 0) < 700) return repondre(rappel, { ok: false, erreur: 'Doucement, un message à la fois.' });
+      dernierMessage.set(c.joueur.id, maintenant);
+      const { salon } = c;
+      salon.compteurMessages += 1;
+      salon.messages.push({ n: salon.compteurMessages, auteurId: c.joueur.id, nom: c.joueur.nom, texte, heure: maintenant });
+      if (salon.messages.length > 80) salon.messages.splice(0, salon.messages.length - 80);
+      diffuser(salon);
+      repondre(rappel, { ok: true });
     });
 
     socket.on('rejouer', (_data: unknown, rappel?: Rappel) => {
