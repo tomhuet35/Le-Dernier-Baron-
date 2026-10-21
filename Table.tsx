@@ -1,0 +1,504 @@
+import { useEffect, useMemo, useState } from 'react';
+import { CARTE } from '../../shared/cartes';
+import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
+import type { Appel } from './App';
+import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, REGLES, infoCarte, trierMain } from './textes';
+import { Butin, CarteImg, Fenetre, Pastille, Zoom } from './ui';
+
+type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
+
+export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitter: () => void }) {
+  const v = salon.partie as Vue;
+  const moi = v.joueurs.find((j) => j.id === v.moi) as VueJoueur;
+  const estHote = salon.hoteId === v.moi;
+  const [selection, setSelection] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<string | null>(null);
+  const [fenetre, setFenetre] = useState<'scores' | 'regles' | 'quitter' | null>(null);
+  const [journalOuvert, setJournalOuvert] = useState(false);
+  const [envoi, setEnvoi] = useState(false);
+
+  useEffect(() => setSelection(null), [v.phase, v.nuit, v.main.length, v.tourId]);
+
+  const nom = (id: string | null | undefined) => v.joueurs.find((j) => j.id === id)?.nom ?? '?';
+  const infosSalon = (id: string) => salon.joueurs.find((j) => j.id === id);
+  const agir = async (action: ActionSansJoueur) => {
+    if (envoi) return;
+    setEnvoi(true);
+    await appel('action', action);
+    setEnvoi(false);
+    setSelection(null);
+  };
+
+  const main = useMemo(() => trierMain(v.main), [v.main]);
+  const siege = v.joueurs.findIndex((j) => j.id === v.moi);
+  const autres = [...v.joueurs.slice(siege + 1), ...v.joueurs.slice(0, siege)];
+  const suivant = v.joueurs[(siege + 1) % v.joueurs.length];
+  const attendus = v.attente.filter((id) => id !== v.moi).map(nom);
+  const attenteTexte = attendus.length ? `En attente de ${attendus.join(', ')}.` : '';
+  const monTour = v.tourId === v.moi;
+  const pliAffiche =
+    v.pli.length > 0 ? null : v.dernierPli && (v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && v.vol?.source === 'baron')) ? v.dernierPli : null;
+
+  const toucherCarte = (id: string, jouable: boolean) => {
+    if (v.phase === 'TRAHISON' && !v.aChoisiTrahison) return setSelection(id);
+    if (v.phase === 'PLI' && monTour && jouable) return setSelection(selection === id ? null : id);
+    setZoom(id);
+  };
+
+  return (
+    <div className="table">
+      <header className="barre">
+        <div className="nuit">
+          <span className="etiquette">Nuit</span>
+          <strong>
+            {v.nuit}/{v.nbNuits}
+          </strong>
+        </div>
+        {v.evenement && v.evenementId ? (
+          <button type="button" className="evenement" onClick={() => setZoom(v.evenementId)}>
+            <img src={infoCarte(v.evenementId).image} alt="" />
+            <span>
+              <strong>{NOM_EVENEMENT[v.evenement]}</strong>
+              <small>{EFFET_EVENEMENT[v.evenement]}</small>
+            </span>
+          </button>
+        ) : (
+          <div className="evenement vide-evenement">{v.nuit === 1 || v.nuit === v.nbNuits ? 'Pas d’événement cette nuit' : ''}</div>
+        )}
+        <div className="barre-boutons">
+          <button type="button" className="petit" onClick={() => setFenetre('scores')}>
+            Scores
+          </button>
+          <button type="button" className="petit" onClick={() => setFenetre('regles')}>
+            Règles
+          </button>
+          <button type="button" className="petit discret-bouton" onClick={() => setFenetre('quitter')} aria-label="Quitter">
+            ⋯
+          </button>
+        </div>
+      </header>
+
+      <section className="adversaires" aria-label="Autres joueurs">
+        {autres.map((j) => {
+          const s = infosSalon(j.id);
+          return (
+            <article key={j.id} className={`adversaire ${j.attendu ? 'attendu' : ''} ${v.tourId === j.id ? 'son-tour' : ''}`}>
+              <div className="adv-tete">
+                <strong>{j.nom}</strong>
+                {j.id === salon.hoteId && <span className="badge or">Hôte</span>}
+                {s?.robot && <span className="badge">Robot</span>}
+                {s && !s.connecte && !s.robot && <span className="badge rouge">Hors ligne</span>}
+              </div>
+              <div className="adv-ligne">
+                <span>{j.annonce !== null ? `Annonce ${j.annonce}` : j.aAnnonce ? 'A annoncé' : 'Annonce…'}</span>
+                <span>
+                  {j.plis} pli{j.plis > 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="adv-ligne discret">
+                <span>
+                  {j.nbCartes} carte{j.nbCartes > 1 ? 's' : ''}
+                </span>
+                <span>{j.score} pts</span>
+              </div>
+              <Butin ids={j.butin} />
+              {estHote && s && !s.connecte && (
+                <button type="button" className="petit" onClick={() => appel('remplacer', { joueurId: j.id, actif: !s.robot })}>
+                  {s.robot ? 'Rendre la main' : 'Faire jouer l’ordinateur'}
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="tapis" aria-label="Pli en cours">
+        <div className="tapis-tete">
+          {pliAffiche ? (
+            <span>
+              <strong>{nom(pliAffiche.gagnantId)}</strong> remporte le pli{pliAffiche.braquage ? ' : Braquage !' : ''}
+            </span>
+          ) : v.pli.length > 0 ? (
+            v.familleDemandee ? (
+              <span>
+                Famille demandée : <strong>{NOM_FAMILLE[v.familleDemandee]}</strong>
+              </span>
+            ) : (
+              <span>Pas encore de famille demandée</span>
+            )
+          ) : v.phase === 'PLI' ? (
+            <span>{v.ouvreurId === v.moi ? 'Tu ouvres le pli.' : `${nom(v.ouvreurId)} ouvre le pli.`}</span>
+          ) : (
+            <span>
+              {v.nuit} pli{v.nuit > 1 ? 's' : ''} cette nuit · {v.joueurs.reduce((s, j) => s + j.plis, 0)} joué
+              {v.joueurs.reduce((s, j) => s + j.plis, 0) > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <div className="tapis-cartes">
+          {(pliAffiche ? pliAffiche.cartes : v.pli).map((p) => (
+            <CarteImg
+              key={p.carteId}
+              id={p.carteId}
+              taille="pli"
+              etat={pliAffiche && p.joueurId === pliAffiche.gagnantId ? 'gagnante' : undefined}
+              legende={`${p.joueurId === v.moi ? 'Toi' : nom(p.joueurId)}${p.valeurCroupier !== undefined ? ` · ${p.valeurCroupier}` : ''}`}
+              onZoom={setZoom}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className={`consigne ${v.attente.includes(v.moi) ? 'a-toi' : ''}`} aria-live="polite">
+        <Consigne v={v} selection={selection} agir={agir} nom={nom} suivantNom={suivant.nom} attenteTexte={attenteTexte} envoi={envoi} />
+      </section>
+
+      <section className="moi">
+        <div className="moi-ligne">
+          <strong>{moi.nom}</strong>
+          <span>{v.monAnnonce !== null ? `Annonce ${v.monAnnonce}` : 'Pas encore annoncé'}</span>
+          <span>
+            {moi.plis} pli{moi.plis > 1 ? 's' : ''}
+          </span>
+          <span>{moi.score} pts</span>
+        </div>
+        <Butin ids={moi.butin} />
+        <div className="main" aria-label="Ta main">
+          {main.map((c) => (
+            <CarteImg
+              key={c.id}
+              id={c.id}
+              etat={selection === c.id ? 'choisie' : v.phase === 'PLI' && monTour ? (c.jouable ? 'jouable' : 'grisee') : undefined}
+              onToucher={() => toucherCarte(c.id, c.jouable)}
+              onZoom={setZoom}
+            />
+          ))}
+          {main.length === 0 && <p className="discret">Plus de carte en main.</p>}
+        </div>
+      </section>
+
+      <section className="journal">
+        <button type="button" className="lien-discret" onClick={() => setJournalOuvert(!journalOuvert)} aria-expanded={journalOuvert}>
+          {journalOuvert ? 'Masquer le journal' : 'Journal de la partie'}
+        </button>
+        <ol>
+          {(journalOuvert ? v.journal.slice().reverse() : v.journal.slice(-3).reverse()).map((e) => (
+            <li key={e.n}>{e.texte}</li>
+          ))}
+        </ol>
+      </section>
+
+      {v.phase === 'FIN_DE_NUIT' && <RecapNuit v={v} nom={nom} estHote={estHote} agir={agir} />}
+      {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} estHote={estHote} appel={appel} quitter={quitter} nom={nom} />}
+      {fenetre === 'scores' && (
+        <Fenetre titre="Scores" onFermer={() => setFenetre(null)} large>
+          <TableauScores v={v} />
+        </Fenetre>
+      )}
+      {fenetre === 'regles' && (
+        <Fenetre titre="Règles" onFermer={() => setFenetre(null)} large>
+          {REGLES.map((r) => (
+            <section key={r.titre} className="regle">
+              <h3>{r.titre}</h3>
+              {r.texte.map((t) => (
+                <p key={t}>{t}</p>
+              ))}
+            </section>
+          ))}
+          <p className="discret">Astuce : un appui long sur une carte l’affiche en grand avec son effet.</p>
+        </Fenetre>
+      )}
+      {fenetre === 'quitter' && (
+        <Fenetre titre="Quitter la partie ?" onFermer={() => setFenetre(null)}>
+          <p>Tu pourras revenir avec le lien du salon tant que la partie existe. Sans toi, la partie t’attendra.</p>
+          <div className="rangee">
+            <button type="button" onClick={() => setFenetre(null)}>
+              Rester
+            </button>
+            <button type="button" className="danger" onClick={quitter}>
+              Quitter
+            </button>
+          </div>
+        </Fenetre>
+      )}
+      {zoom && <Zoom id={zoom} onFermer={() => setZoom(null)} />}
+    </div>
+  );
+}
+
+function Consigne(props: {
+  v: Vue;
+  selection: string | null;
+  agir: (a: ActionSansJoueur) => void;
+  nom: (id: string | null | undefined) => string;
+  suivantNom: string;
+  attenteTexte: string;
+  envoi: boolean;
+}) {
+  const { v, selection, agir, nom, attenteTexte, envoi } = props;
+  const nomSel = selection ? CARTE[selection]?.nom : '';
+  switch (v.phase) {
+    case 'TRAHISON':
+      if (v.aChoisiTrahison) return <p>Carte choisie. {attenteTexte}</p>;
+      return (
+        <>
+          <p>
+            <strong>Trahison :</strong> choisis une carte de ta main à passer à {props.suivantNom}.
+          </p>
+          {selection && (
+            <button type="button" className="principal" disabled={envoi} onClick={() => agir({ type: 'TRAHISON', carteId: selection })}>
+              Passer {nomSel}
+            </button>
+          )}
+        </>
+      );
+    case 'ANNONCES':
+      if (v.monAnnonce !== null) return <p>Ton annonce : {v.monAnnonce}. {attenteTexte}</p>;
+      return (
+        <>
+          <p>
+            <strong>Combien de plis vas-tu gagner ?</strong> Tu as {v.main.length} carte{v.main.length > 1 ? 's' : ''}.
+          </p>
+          <div className="choix-annonce">
+            {Array.from({ length: v.nuit + 1 }, (_, n) => (
+              <button key={n} type="button" disabled={envoi} onClick={() => agir({ type: 'ANNONCE', valeur: n })}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </>
+      );
+    case 'ALLIANCE':
+      if (v.aChoisiAllie) return <p>Ton choix : {v.monAllie ? nom(v.monAllie) : 'personne'}. {attenteTexte}</p>;
+      return (
+        <>
+          <p>
+            <strong>Alliance :</strong> choisis en secret un allié. Si vous vous choisissez tous les deux et réussissez votre annonce : +20 chacun.
+          </p>
+          <div className="rangee">
+            {v.joueurs
+              .filter((j) => j.id !== v.moi)
+              .map((j) => (
+                <button key={j.id} type="button" disabled={envoi} onClick={() => agir({ type: 'ALLIANCE', allieId: j.id })}>
+                  {j.nom} (annonce {j.annonce})
+                </button>
+              ))}
+            <button type="button" className="secondaire" disabled={envoi} onClick={() => agir({ type: 'ALLIANCE', allieId: null })}>
+              Personne
+            </button>
+          </div>
+        </>
+      );
+    case 'PLI': {
+      if (v.tourId !== v.moi) return <p>Au tour de {nom(v.tourId)}.</p>;
+      if (!selection) {
+        return (
+          <p>
+            <strong>À toi de jouer.</strong>{' '}
+            {v.familleDemandee ? `Suis les ${NOM_FAMILLE[v.familleDemandee]} si tu peux, ou joue une carte spéciale.` : 'Touche une carte pour la choisir.'}
+          </p>
+        );
+      }
+      if (CARTE[selection].speciale === 'croupier') {
+        return (
+          <>
+            <p>
+              <strong>Croupier :</strong> choisis sa valeur.
+            </p>
+            <div className="rangee">
+              <button type="button" className="principal" disabled={envoi} onClick={() => agir({ type: 'JOUER', carteId: selection, valeurCroupier: 11 })}>
+                Jouer à 11
+              </button>
+              <button type="button" className="principal" disabled={envoi} onClick={() => agir({ type: 'JOUER', carteId: selection, valeurCroupier: 0 })}>
+                Jouer à 0
+              </button>
+            </div>
+          </>
+        );
+      }
+      return (
+        <button type="button" className="principal large" disabled={envoi} onClick={() => agir({ type: 'JOUER', carteId: selection })}>
+          Jouer {nomSel}
+        </button>
+      );
+    }
+    case 'VOL': {
+      const source = v.vol?.source === 'baron' ? 'Baron' : 'Pickpocket';
+      if (v.vol?.voleurId !== v.moi) return <p>{nom(v.vol?.voleurId)} choisit un butin à voler ({source})…</p>;
+      const cibles = v.joueurs.filter((j) => j.id !== v.moi);
+      return (
+        <>
+          <p>
+            <strong>{source} :</strong> touche le butin que tu veux voler. Un adversaire qui garde un Alibi en main est protégé
+            {v.evenement === 'couvre_feu' ? ', sauf pendant ce Couvre-feu.' : '.'}
+          </p>
+          <div className="cibles">
+            {cibles.map((j) => (
+              <div key={j.id} className="cible">
+                <span>{j.nom}</span>
+                {j.butin.length ? (
+                  j.butin.map((id) => <Pastille key={id} id={id} onClick={() => agir({ type: 'VOLER', cibleId: j.id, carteId: id })} />)
+                ) : (
+                  <span className="vide">Aucun butin</span>
+                )}
+              </div>
+            ))}
+          </div>
+          <button type="button" className="secondaire" disabled={envoi} onClick={() => agir({ type: 'VOLER', cibleId: null })}>
+            Ne pas voler
+          </button>
+        </>
+      );
+    }
+    case 'FIN_DE_PLI':
+      return <p>Fin du pli. Le pli suivant commence dans un instant…</p>;
+    default:
+      return <p>{attenteTexte}</p>;
+  }
+}
+
+function RecapNuit({ v, nom, estHote, agir }: { v: Vue; nom: (id: string) => string; estHote: boolean; agir: (a: ActionSansJoueur) => void }) {
+  const bilan = v.bilans[v.bilans.length - 1];
+  const totaux = Object.fromEntries(v.joueurs.map((j) => [j.id, j.score]));
+  const signe = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  return (
+    <Fenetre titre={`Fin de la nuit ${bilan.nuit}`} large>
+      {bilan.evenement && <p className="discret">Événement : {NOM_EVENEMENT[bilan.evenement]}</p>}
+      <div className="defile">
+        <table className="tableau">
+          <thead>
+            <tr>
+              <th>Joueur</th>
+              <th title="Plis gagnés / plis annoncés">Plis</th>
+              <th>Annonce</th>
+              <th>Butin</th>
+              <th>Bonus</th>
+              <th>Nuit</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bilan.scores.map((s) => (
+              <tr key={s.joueurId} className={s.joueurId === v.moi ? 'ma-ligne' : ''}>
+                <td className="nom-court">{nom(s.joueurId)}</td>
+                <td className={s.reussie ? 'reussi' : 'rate'}>
+                  {s.plis}/{s.annonce}
+                </td>
+                <td>{signe(s.pointsAnnonce)}</td>
+                <td>{signe(s.pointsButin)}</td>
+                <td>{signe(s.bonus)}</td>
+                <td>
+                  <strong>{signe(s.total)}</strong>
+                </td>
+                <td>{totaux[s.joueurId]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {v.pret ? (
+        <p className="attente">{v.attente.length ? `En attente de ${v.attente.map(nom).join(', ')}.` : ''}</p>
+      ) : (
+        <button type="button" className="principal large" onClick={() => agir({ type: 'CONTINUER' })}>
+          {bilan.nuit === v.nbNuits ? 'Voir le classement' : `Passer à la nuit ${bilan.nuit + 1}`}
+        </button>
+      )}
+      {estHote && v.pret && v.attente.length > 0 && (
+        <button type="button" className="lien-discret" onClick={() => agir({ type: 'FORCER_SUITE' })}>
+          Continuer sans attendre
+        </button>
+      )}
+    </Fenetre>
+  );
+}
+
+function FinDePartie({ v, estHote, appel, quitter, nom }: { v: Vue; estHote: boolean; appel: Appel; quitter: () => void; nom: (id: string) => string }) {
+  const classement = [...v.joueurs].sort((a, b) => b.score - a.score);
+  const max = classement[0].score;
+  const barons = classement.filter((j) => j.score === max);
+  const [voirScores, setVoirScores] = useState(false);
+  return (
+    <Fenetre titre="Fin de la partie" large>
+      <div className="couronne" aria-hidden="true">
+        ♛
+      </div>
+      <p className="dernier-baron">
+        {barons.map((j) => j.nom).join(' et ')} {barons.length > 1 ? 'deviennent' : 'devient'}
+        <span>le Dernier Baron</span>
+      </p>
+      <ol className="classement">
+        {classement.map((j) => {
+          const rang = classement.findIndex((x) => x.score === j.score) + 1;
+          return (
+            <li key={j.id} className={j.id === v.moi ? 'ma-ligne' : ''}>
+              <span className="rang">{rang}</span>
+              <span>{nom(j.id)}</span>
+              <strong>{j.score} pts</strong>
+            </li>
+          );
+        })}
+      </ol>
+      {voirScores ? <TableauScores v={v} /> : (
+        <button type="button" className="lien-discret" onClick={() => setVoirScores(true)}>
+          Voir le détail des nuits
+        </button>
+      )}
+      <div className="rangee">
+        {estHote ? (
+          <button type="button" className="principal" onClick={() => appel('rejouer')}>
+            Rejouer
+          </button>
+        ) : (
+          <p className="attente">L'hôte peut relancer une partie.</p>
+        )}
+        <button type="button" onClick={quitter}>
+          Quitter
+        </button>
+      </div>
+    </Fenetre>
+  );
+}
+
+function TableauScores({ v }: { v: Vue }) {
+  if (!v.bilans.length) return <p>Les scores apparaîtront à la fin de la première nuit.</p>;
+  return (
+    <div className="defile">
+      <table className="tableau">
+        <thead>
+          <tr>
+            <th>Nuit</th>
+            {v.joueurs.map((j) => (
+              <th key={j.id}>{j.nom}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {v.bilans.map((b) => (
+            <tr key={b.nuit}>
+              <td>
+                {b.nuit}
+                {b.evenement && <small className="discret"> · {NOM_EVENEMENT[b.evenement]}</small>}
+              </td>
+              {v.joueurs.map((j) => {
+                const s = b.scores.find((x) => x.joueurId === j.id);
+                return (
+                  <td key={j.id} className={s?.reussie ? 'reussi' : 'rate'} title={s ? `Annonce ${s.annonce}, ${s.plis} pli(s)` : ''}>
+                    {s ? (s.total > 0 ? `+${s.total}` : s.total) : ''}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>Total</th>
+            {v.joueurs.map((j) => (
+              <th key={j.id}>{j.score}</th>
+            ))}
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
