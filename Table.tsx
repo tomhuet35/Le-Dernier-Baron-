@@ -5,7 +5,7 @@ import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, REGLES, infoCarte, trierMain } from './textes';
-import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeMusique, Pastille, Zoom, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, Zoom, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -134,8 +134,8 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
             <span className="libelle">Règles</span>
           </button>
           <Chat salon={salon} appel={appel} enLigne />
-          <button type="button" className="petit icone" onClick={() => setFenetre('menu')} aria-label="Menu">
-            ⋯
+          <button type="button" className="bouton-icone bouton-icone-seule" onClick={() => setFenetre('menu')} aria-label="Menu">
+            <IconeImage nom="menu" repli="⋯" />
           </button>
         </div>
       </header>

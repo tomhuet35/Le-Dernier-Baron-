@@ -276,6 +276,8 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 /* Boutons à icône dorée (Scores, Règles, Discussion) */
 .bouton-icone, .chat-bouton.en-ligne { position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; height: 44px; min-height: 0; padding: 0 10px 0 0; border: none; border-radius: 12px; background: none; font-size: 14px; color: var(--creme); filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55)); transition: transform 0.15s; }
 .bouton-icone img, .chat-bouton.en-ligne img { width: 44px; height: 44px; flex: none; }
+.bouton-icone-seule { padding: 0; }
+.bouton-icone .icone-repli { width: 44px; height: 44px; font-size: 22px; color: var(--or-vif); border: 1px solid var(--filet); border-radius: 12px; background: rgba(33, 23, 17, 0.9); }
 .bouton-icone:hover:not(:disabled), .chat-bouton.en-ligne:hover { transform: translateY(-1px); }
 .bouton-icone:active, .chat-bouton.en-ligne:active { transform: scale(0.95); }
 .chat-bouton.en-ligne { right: auto; bottom: auto; z-index: auto; width: auto; }
