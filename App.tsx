@@ -372,7 +372,7 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
               {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
             </button>
             <button type="button" className="menu-entree" onClick={() => setFenetre('regles')}>
-              <IconeImage nom="regles" repli="📜" className="menu-icone" />
+              <IconeImage nom="regles-rond" repli="📜" className="menu-icone" />
               <span>Règles</span>
             </button>
             <button type="button" className="menu-entree" onClick={basculerMusique} aria-pressed={musiqueActive}>

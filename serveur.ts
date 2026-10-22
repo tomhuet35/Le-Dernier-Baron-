@@ -116,7 +116,15 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     const ici = dirname(fileURLToPath(import.meta.url));
     const dossier = [join(ici, 'client'), join(ici, '../dist/client')].find((d) => existsSync(join(d, 'index.html')));
     if (dossier) {
-      app.use(express.static(dossier, { maxAge: '1h' }));
+      // Fichiers du code (nom unique à chaque version) : gardés un an. Le reste (page, images, musique) est revérifié
+      // à chaque visite : une image remplacée sur GitHub s'affiche dès le rechargement de la page.
+      app.use(
+        express.static(dossier, {
+          setHeaders: (res, chemin) => {
+            res.setHeader('Cache-Control', /[\\/]assets[\\/]/.test(chemin) ? 'public, max-age=31536000, immutable' : 'no-cache');
+          },
+        }),
+      );
       app.use((_req, res) => res.sendFile(join(dossier, 'index.html')));
     }
   }

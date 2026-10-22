@@ -314,9 +314,9 @@ export function BoutonMusique() {
   );
 }
 
-/** Icône de la musique : la note dorée, barrée quand le son est coupé. */
+/** Icône du son : le haut-parleur doré, barré d'une croix quand le son est coupé. */
 export function IconeMusique({ active }: { active: boolean }) {
-  return <img className="icone-musique" src={active ? '/cartes/musique-on.webp' : '/cartes/musique-off.webp'} alt="" draggable={false} />;
+  return <img className="icone-musique" src={active ? '/cartes/son-actif.webp' : '/cartes/son-coupe.webp'} alt="" draggable={false} />;
 }
 
 /**
