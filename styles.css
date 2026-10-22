@@ -124,7 +124,7 @@ button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .pli-carte .carte-pli .carte-bouton { width: var(--larg); box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.55), 0 8px 16px rgba(0, 0, 0, 0.5); }
 .pli-carte.gagnante-pli { translate: 0 -12px; }
 .pli-nom { position: absolute; top: 2px; line-height: 1.15; left: 50%; transform: translateX(-50%); max-width: calc(var(--larg) - 20px); padding: 0 3px; border-radius: 4px; background: rgba(22, 16, 12, 0.88); border: 1px solid var(--filet); font-size: 9.5px; color: var(--creme); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.pli-vide { width: var(--larg); aspect-ratio: 2 / 3; border: 2px dashed #5a3324; border-radius: 9px; display: grid; place-items: center; text-align: center; padding: 8px; font-size: 12px; color: var(--creme-doux); }
+.pli-vide { width: var(--larg); aspect-ratio: 2 / 3; border: 2px dashed rgba(60, 16, 2, 0.6); border-radius: 9px; display: grid; place-items: center; text-align: center; padding: 8px; font-size: 12px; color: #ffe6c7; background: rgba(60, 16, 2, 0.18); }
 
 .carte { margin: 0; display: grid; justify-items: center; gap: 3px; flex: none; }
 .carte figcaption { font-size: 11px; color: var(--creme-doux); max-width: 76px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -320,14 +320,15 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 @keyframes battre { 50% { scale: 1.06; } }
 
 /* Centre de la table : tapis, anneau, pli et journal */
-.centre { display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 14px 9% 12px; border-radius: 20px; background: #12301f url('/cartes/tapis.webp') center / 100% 100% no-repeat; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
-.centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(10, 18, 12, 0.78); border: 1px solid rgba(210, 168, 90, 0.45); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
+/* Tapis orange : le cadre en bois garde son épaisseur (découpage en 9 parties), seule la feutrine s'adapte à la place disponible. */
+.centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-orange-portrait.webp') 83 fill / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
+.centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(36, 12, 3, 0.82); border: 1px solid rgba(231, 194, 122, 0.55); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
 .centre-tete strong { color: var(--or-vif); }
 .centre-table { --larg: clamp(60px, 17vw, 104px); position: relative; display: grid; place-items: center; width: 100%; min-height: calc(var(--larg) * 1.9); }
-.anneau { position: absolute; top: 50%; left: 50%; width: min(118%, calc(var(--larg) * 2.3)); aspect-ratio: 1; translate: -50% -50%; color: rgba(231, 194, 122, 0.5); pointer-events: none; filter: drop-shadow(0 0 6px rgba(231, 194, 122, 0.35)); }
+.anneau { position: absolute; top: 50%; left: 50%; width: min(118%, calc(var(--larg) * 2.3)); aspect-ratio: 1; translate: -50% -50%; color: rgba(255, 233, 196, 0.6); pointer-events: none; filter: drop-shadow(0 1px 3px rgba(60, 14, 0, 0.6)); }
 .anneau.tourne { animation: tourner 10s linear infinite; }
 @keyframes tourner { to { rotate: 360deg; } }
-.centre-journal { list-style: none; margin: 0; padding: 4px 8px; width: 100%; display: grid; gap: 2px; border-radius: 8px; background: rgba(10, 14, 10, 0.66); font-size: 11px; line-height: 1.3; text-align: center; color: var(--creme); }
+.centre-journal { list-style: none; margin: 0; padding: 4px 8px; width: 100%; display: grid; gap: 2px; border-radius: 8px; background: rgba(36, 12, 3, 0.66); font-size: 11px; line-height: 1.3; text-align: center; color: var(--creme); }
 .centre-journal li { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .centre-journal:empty { display: none; }
 .journal-complet { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
@@ -355,6 +356,7 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .eventail-carte + .eventail-carte { margin-left: calc(var(--lc) * var(--chev)); }
 .eventail .carte-main .carte-bouton { width: var(--lc); box-shadow: -3px 4px 10px rgba(0, 0, 0, 0.6); }
 .eventail-carte.levee { translate: 0 -6px; }
+.eventail:not(:has(.eventail-carte)) { min-height: 0; padding: 6px 0; }
 @media (hover: hover) {
   .eventail-carte:hover { translate: 0 -10px; }
 }
@@ -383,9 +385,9 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .siege .avatar { --taille: 58px; }
   .siege-dos { height: 36px; margin-bottom: -14px; }
   .siege-dos img { width: 24px; margin: 0 -8px; }
-  .centre { padding: 18px 13% 14px; border-radius: 26px; max-width: 760px; width: 100%; justify-self: center; }
+  .centre { --cadre: 32px; padding: 4px 8% 6px; border-image-source: url('/cartes/tapis-orange.webp'); border-image-slice: 110 fill; max-width: 760px; width: 100%; justify-self: center; }
   .centre-tete { font-size: 14px; }
-  .centre-table { --larg: clamp(76px, 10vh, 112px); }
+  .centre-table { --larg: clamp(72px, 9.4vh, 112px); }
   .centre-journal { font-size: 12.5px; }
   .ma-zone { max-width: 980px; width: 100%; align-self: center; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; align-items: center; }
   .ma-zone .moi-bandeau { grid-row: 1; grid-column: 1; }
@@ -400,12 +402,12 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .ma-zone .consigne { grid-row: 1; grid-column: 3; }
 }
 /* Écran peu haut (Safari avec ses barres, petits téléphones) : tout se resserre pour éviter de défiler. */
-@media (max-height: 780px) {
+@media (max-height: 780px), (max-height: 860px) and (max-width: 899px) {
   .plateau { gap: 5px; }
   .siege-dos { height: 18px; margin-bottom: -8px; }
   .siege-dos img { width: 14px; margin: 0 -5px; }
   .siege .avatar { --taille: 40px; }
-  .centre { gap: 4px; padding-top: 10px; padding-bottom: 8px; }
+  .centre { --cadre: 15px; gap: 4px; padding-top: 2px; padding-bottom: 4px; }
   .centre-table { --larg: clamp(54px, 7.4vh, 96px); min-height: calc(var(--larg) * 1.7); }
   .centre-journal li { -webkit-line-clamp: 1; }
   .ma-zone { gap: 4px; padding-top: 6px; }
