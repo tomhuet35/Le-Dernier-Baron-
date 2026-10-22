@@ -216,7 +216,6 @@ export function App() {
     <>
       {ecran}
       {salon && !salon.partie && <Chat salon={salon} appel={appel} />}
-      {!salon?.partie && <BoutonMusique flottant />}
       {!connecte && <div className="bandeau-reseau">Connexion perdue. Reconnexion en cours…</div>}
       {message && (
         <div className="toast" role="status" onClick={() => setMessage(null)}>
@@ -289,6 +288,7 @@ function Accueil({ appel, compte, enLigne }: { appel: Appel; compte: EtatCompte;
         </button>
       </form>
       <BoutonRegles />
+      <BoutonMusique />
     </main>
   );
 }
@@ -444,6 +444,7 @@ function Lobby({ salon, appel, quitter, compte }: { salon: VueSalon; appel: Appe
       <button type="button" className="lien-discret" onClick={quitter}>
         Quitter {salon.publique ? 'la file d’attente' : 'le salon'}
       </button>
+      <BoutonMusique />
       {fiche && <FicheJoueur joueurId={fiche} appel={appel} onFermer={() => setFiche(null)} />}
     </main>
   );

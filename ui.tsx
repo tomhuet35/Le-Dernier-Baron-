@@ -297,18 +297,19 @@ export function useMusique(): [boolean, () => void] {
   return [active, musique.basculer];
 }
 
-export function BoutonMusique({ flottant }: { flottant?: boolean }) {
+/** Bouton musique en bas de page (accueil et salon) : l'icône et l'état écrit à côté. */
+export function BoutonMusique() {
   const [active, basculer] = useMusique();
   return (
     <button
       type="button"
-      className={flottant ? 'bouton-musique' : 'petit icone bouton-musique-barre'}
+      className="bouton-musique"
       onClick={basculer}
       aria-pressed={active}
       aria-label={active ? 'Couper la musique' : 'Remettre la musique'}
-      title={active ? 'Couper la musique' : 'Remettre la musique'}
     >
       <IconeMusique active={active} />
+      <span>{active ? 'Musique activée' : 'Musique coupée'}</span>
     </button>
   );
 }

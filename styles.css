@@ -543,8 +543,9 @@ select { font: inherit; width: 100%; min-height: 42px; padding: 8px 10px; color:
 .fiche-bot { display: grid; gap: 10px; }
 .fiche-bot p { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--nuit-3); border: 1px solid var(--filet); }
 .fiche-bot strong { color: var(--or-vif); }
-.bouton-musique { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 15; width: 50px; height: 50px; min-height: 0; padding: 0; border: none; border-radius: 12px; background: none; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); transition: transform 0.15s; }
-.bouton-musique:hover:not(:disabled) { transform: scale(1.06); }
+.bouton-musique { display: inline-flex; align-items: center; gap: 10px; align-self: center; justify-self: center; min-height: 0; padding: 4px 14px 4px 4px; border: none; border-radius: 14px; background: none; color: var(--creme-doux); font-size: 14px; transition: transform 0.15s; }
+.bouton-musique .icone-musique { width: 48px; height: 48px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); }
+.bouton-musique:hover:not(:disabled) { transform: scale(1.04); color: var(--creme); }
 .bouton-musique:active { transform: scale(0.94); }
 .icone-musique { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .bouton-menu-musique { display: flex; align-items: center; justify-content: center; gap: 10px; }
