@@ -6,7 +6,7 @@ import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
-import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, Zoom, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -93,6 +93,16 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
   const pliAffiche =
     v.pli.length > 0 ? null : v.dernierPli && (v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && v.vol?.source === 'baron')) ? v.dernierPli : null;
   const plisJoues = v.joueurs.reduce((s, j) => s + j.plis, 0);
+
+  // Son de carte : chaque fois qu'une nouvelle carte arrive sur le tapis (la mienne ou celle d'un autre joueur).
+  const cartesSurTapis = (pliAffiche ? pliAffiche.cartes : v.pli).map((p) => p.carteId).join('|');
+  const tapisPrecedent = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const avant = tapisPrecedent.current;
+    const maintenant = cartesSurTapis ? cartesSurTapis.split('|') : [];
+    tapisPrecedent.current = new Set(maintenant);
+    if (avant && maintenant.some((id) => !avant.has(id))) jouerEffet('carte');
+  }, [cartesSurTapis]);
 
   const toucherCarte = (id: string, jouable: boolean) => {
     if (v.phase === 'TRAHISON' && !v.aChoisiTrahison) return setSelection(id);
