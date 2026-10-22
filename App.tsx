@@ -18,7 +18,7 @@ import { socket } from './socket';
 import { Table } from './Table';
 import { FenetreRegles } from './Regles';
 import { AVATARS } from './textes';
-import { BoutonMusique, Chat, Fenetre, IconeImage, IconeMusique, useMusique } from './ui';
+import { BoutonMusique, Chat, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
 
 type Reponse = {
   ok: boolean;
@@ -67,6 +67,8 @@ function ecrire(cle: string, valeur: string | null) {
   }
 }
 const parametres = new URLSearchParams(location.search);
+/** Code du salon présent dans l'adresse (lien d'invitation), relu à chaque fois : il disparaît quand on quitte une partie. */
+const salonDansAdresse = () => new URLSearchParams(location.search).get('salon');
 
 export function App() {
   const [salon, setSalon] = useState<VueSalon | null>(null);
@@ -282,6 +284,18 @@ export function App() {
   const amis: EtatAmis = useMemo(() => ({ liste: listeAmis, recharger: rechargerAmis, inviter: inviterAmi }), [listeAmis, rechargerAmis, inviterAmi]);
   const enPartie = !!salon?.partie && salon.partie.phase !== 'FIN_DE_PARTIE';
 
+  // Son de lancement : quand on passe du salon (ou d'une fin de partie) à une nouvelle partie,
+  // jamais quand on revient dans une partie déjà en cours après avoir rechargé la page.
+  const etatPrecedent = useRef<string>('aucun');
+  const partie = salon?.partie ?? null;
+  const etatActuel = !salon ? 'aucun' : !partie ? 'salon' : partie.phase;
+  useEffect(() => {
+    const avant = etatPrecedent.current;
+    etatPrecedent.current = etatActuel;
+    const nouvellePartie = (avant === 'salon' || avant === 'FIN_DE_PARTIE') && etatActuel !== 'salon' && etatActuel !== 'aucun' && etatActuel !== 'FIN_DE_PARTIE';
+    if (nouvellePartie) jouerEffet('lancement');
+  }, [etatActuel]);
+
   const compte: EtatCompte = useMemo(
     () => ({
       actif: !!module,
@@ -342,7 +356,7 @@ export function App() {
 }
 
 function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; amis: EtatAmis }) {
-  const [vue, setVue] = useState<'menu' | 'jouer'>(parametres.get('salon') ? 'jouer' : 'menu');
+  const [vue, setVue] = useState<'menu' | 'jouer'>(salonDansAdresse() ? 'jouer' : 'menu');
   const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'regles' | 'connexion' | 'inscription' | null>(null);
   const [intro, setIntro] = useState<string | undefined>(undefined);
   const [musiqueActive, basculerMusique] = useMusique();
@@ -416,7 +430,14 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
         <img src="/cartes/logo.webp" alt="Le Dernier Baron" width={900} height={450} />
       </h1>
       <p className="accroche">Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.</p>
-      <button type="button" className="bouton-jouer" onClick={() => setVue('jouer')}>
+      <button
+        type="button"
+        className="bouton-jouer"
+        onClick={() => {
+          jouerEffet('jouer');
+          setVue('jouer');
+        }}
+      >
         Jouer
       </button>
       <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={lire(CLE_NOM) ?? ''} />
@@ -437,9 +458,9 @@ function PageJouer({ appel, compte, enLigne, retour }: { appel: Appel; compte: E
     setNom((n) => (!n.trim() || n === nomPropose.current ? propose : n));
     nomPropose.current = propose;
   }, [nomCompte]);
-  const [code, setCode] = useState((parametres.get('salon') ?? '').toUpperCase());
+  const [code, setCode] = useState((salonDansAdresse() ?? '').toUpperCase());
   const [occupe, setOccupe] = useState(false);
-  const invite = !!parametres.get('salon');
+  const invite = !!salonDansAdresse();
   const valider = async (evenement: 'creer' | 'rejoindre' | 'jouer_public') => {
     ecrire(CLE_NOM, nom.trim());
     setOccupe(true);

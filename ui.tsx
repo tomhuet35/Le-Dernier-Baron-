@@ -210,25 +210,81 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
   );
 }
 
-/* ---------- Musique d'ambiance ---------- */
+/* ---------- Musique d'ambiance et effets sonores ---------- */
 const CLE_MUSIQUE = 'ldb-musique';
 const VOLUME_MUSIQUE = 0.3;
+/** Pendant un effet important (lancement de partie), la musique baisse puis revient. */
+const VOLUME_MUSIQUE_BAISSE = 0.08;
+
+export type EffetSonore = 'jouer' | 'lancement';
+const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean }> = {
+  jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
+  lancement: { fichier: '/cartes/son-lancement.mp3', volume: 0.55, baisserMusique: true },
+};
 
 /**
- * Musique jouée en boucle dans tout le jeu. Les navigateurs (Safari surtout) interdisent le son avant un premier geste :
- * elle démarre donc au premier toucher, puis se coupe quand l'onglet passe en arrière-plan.
+ * Musique jouée en boucle dans tout le jeu, et effets sonores. Les navigateurs (Safari surtout) interdisent le son
+ * avant un premier geste : tout se débloque au premier toucher. Le bouton Son coupe la musique et les effets.
  */
 const musique = (() => {
   let active = true;
   try {
     active = localStorage.getItem(CLE_MUSIQUE) !== 'off';
   } catch {
-    /* préférence indisponible : musique activée */
+    /* préférence indisponible : son activé */
   }
   let audio: HTMLAudioElement | null = null;
   let contexte: AudioContext | null = null;
+  let gainMusique: GainNode | null = null;
   const abonnes = new Set<() => void>();
   const prevenir = () => abonnes.forEach((f) => f());
+
+  // Les effets sont téléchargés tout de suite (quelques Ko) puis décodés quand le son est débloqué.
+  const donnees = new Map<EffetSonore, Promise<ArrayBuffer | null>>();
+  const tampons = new Map<EffetSonore, Promise<AudioBuffer | null>>();
+  const telecharger = (nom: EffetSonore) => {
+    if (!donnees.has(nom)) {
+      donnees.set(
+        nom,
+        fetch(EFFETS[nom].fichier)
+          .then((r) => (r.ok ? r.arrayBuffer() : null))
+          .catch(() => null),
+      );
+    }
+    return donnees.get(nom)!;
+  };
+  if (typeof window !== 'undefined') (Object.keys(EFFETS) as EffetSonore[]).forEach(telecharger);
+
+  const ctx = (): AudioContext | null => {
+    if (contexte) return contexte;
+    try {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      contexte = AC ? new AC() : null;
+    } catch {
+      contexte = null;
+    }
+    return contexte;
+  };
+  const decoder = (nom: EffetSonore): Promise<AudioBuffer | null> => {
+    const c = ctx();
+    if (!c) return Promise.resolve(null);
+    if (!tampons.has(nom)) {
+      tampons.set(
+        nom,
+        telecharger(nom).then(
+          (brut) =>
+            brut
+              ? new Promise<AudioBuffer | null>((ok) => {
+                  // Forme « rappel » : la seule comprise par les anciennes versions de Safari.
+                  c.decodeAudioData(brut.slice(0), ok, () => ok(null));
+                })
+              : null,
+        ),
+      );
+    }
+    return tampons.get(nom)!;
+  };
+
   const element = () => {
     if (!audio) {
       audio = new Audio('/cartes/musique.mp3');
@@ -240,37 +296,81 @@ const musique = (() => {
   };
   /** Sur iPhone et iPad, le volume d'un élément audio est imposé : on passe par Web Audio pour le baisser. */
   const brancherVolume = (a: HTMLAudioElement) => {
-    if (contexte) return;
+    if (gainMusique) return;
+    const c = ctx();
+    if (!c) return;
     try {
-      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AC) return;
-      contexte = new AC();
-      const gain = contexte.createGain();
-      gain.gain.value = VOLUME_MUSIQUE;
-      contexte.createMediaElementSource(a).connect(gain).connect(contexte.destination);
+      gainMusique = c.createGain();
+      gainMusique.gain.value = VOLUME_MUSIQUE;
+      c.createMediaElementSource(a).connect(gainMusique).connect(c.destination);
       a.volume = 1;
     } catch {
+      gainMusique = null;
       a.volume = VOLUME_MUSIQUE;
     }
   };
-  const jouer = () => {
-    if (!active || document.hidden) return;
+  /** Au moindre geste : débloque le son, prépare les effets et lance la musique si elle est activée. */
+  const debloquer = () => {
+    if (document.hidden) return;
+    const c = ctx();
+    if (c?.state === 'suspended') void c.resume().catch(() => undefined);
+    (Object.keys(EFFETS) as EffetSonore[]).forEach((n) => void decoder(n));
+    if (!active) return;
     const a = element();
-    if (!a.paused && contexte?.state !== 'suspended') return;
+    if (!a.paused) return;
     brancherVolume(a);
-    void contexte?.resume().catch(() => undefined);
     void a.play().catch(() => undefined);
   };
   if (typeof document !== 'undefined') {
-    document.addEventListener('pointerdown', jouer, true);
-    document.addEventListener('keydown', jouer, true);
+    for (const evt of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(evt, debloquer, true);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) audio?.pause();
-      else jouer();
+      else debloquer();
     });
   }
+
+  const baisserMusique = (duree: number) => {
+    const c = contexte;
+    if (gainMusique && c) {
+      const g = gainMusique.gain;
+      const t = c.currentTime;
+      g.cancelScheduledValues(t);
+      g.setTargetAtTime(VOLUME_MUSIQUE_BAISSE, t, 0.08);
+      g.setTargetAtTime(VOLUME_MUSIQUE, t + Math.max(0.3, duree - 0.4), 0.35);
+    } else if (audio) {
+      const a = audio;
+      a.volume = VOLUME_MUSIQUE_BAISSE;
+      window.setTimeout(() => (a.volume = VOLUME_MUSIQUE), duree * 1000);
+    }
+  };
+
+  const effet = async (nom: EffetSonore) => {
+    if (!active || document.hidden) return;
+    const reglage = EFFETS[nom];
+    const c = ctx();
+    if (c) {
+      if (c.state === 'suspended') await c.resume().catch(() => undefined);
+      const tampon = await decoder(nom);
+      if (tampon && c.state === 'running') {
+        const source = c.createBufferSource();
+        const gain = c.createGain();
+        gain.gain.value = reglage.volume;
+        source.buffer = tampon;
+        source.connect(gain).connect(c.destination);
+        source.start();
+        if (reglage.baisserMusique) baisserMusique(tampon.duration);
+        return;
+      }
+    }
+    // Navigateur sans Web Audio : simple lecture du fichier.
+    const a = new Audio(reglage.fichier);
+    a.volume = reglage.volume;
+    void a.play().catch(() => undefined);
+  };
+
   return {
     active: () => active,
+    effet,
     basculer: () => {
       active = !active;
       try {
@@ -278,7 +378,7 @@ const musique = (() => {
       } catch {
         /* rien */
       }
-      if (active) jouer();
+      if (active) debloquer();
       else audio?.pause();
       prevenir();
     },
@@ -290,6 +390,11 @@ const musique = (() => {
     },
   };
 })();
+
+/** Joue un effet sonore (rien si le son est coupé). */
+export function jouerEffet(nom: EffetSonore) {
+  void musique.effet(nom);
+}
 
 export function useMusique(): [boolean, () => void] {
   const [active, setActive] = useState(musique.active());
