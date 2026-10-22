@@ -242,7 +242,9 @@ function Accueil({ appel, compte }: { appel: Appel; compte: EtatCompte }) {
   };
   return (
     <main className="accueil">
-      <img className="accueil-boite" src="/boite.webp" alt="Boîte du jeu Le Dernier Baron" />
+      <h1 className="accueil-logo">
+        <img src="/cartes/logo.webp" alt="Le Dernier Baron" width={900} height={450} />
+      </h1>
       <p className="accroche">Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.</p>
       <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={nom} />
       <form className="accueil-form" onSubmit={(e) => e.preventDefault()}>

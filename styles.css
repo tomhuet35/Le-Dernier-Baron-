@@ -78,7 +78,8 @@ input {
 
 /* Accueil */
 .accueil { display: flex; flex-direction: column; align-items: center; gap: 18px; padding-top: 8px; }
-.accueil-boite { width: min(62vw, 260px); border-radius: 6px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6); }
+.accueil-logo { margin: 4px 0 0; line-height: 0; }
+.accueil-logo img { width: min(90vw, 440px); height: auto; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.65)); }
 .accroche { font-family: var(--titre); color: var(--or); text-align: center; font-size: 17px; text-wrap: balance; }
 .accueil-form { width: min(100%, 380px); display: flex; flex-direction: column; gap: 10px; }
 .accueil-form label { font-size: 13px; color: var(--creme-doux); }
@@ -124,7 +125,7 @@ button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .pli-carte .carte-pli .carte-bouton { width: var(--larg); box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.55), 0 8px 16px rgba(0, 0, 0, 0.5); }
 .pli-carte.gagnante-pli { translate: 0 -12px; }
 .pli-nom { position: absolute; top: 2px; line-height: 1.15; left: 50%; transform: translateX(-50%); max-width: calc(var(--larg) - 20px); padding: 0 3px; border-radius: 4px; background: rgba(22, 16, 12, 0.88); border: 1px solid var(--filet); font-size: 9.5px; color: var(--creme); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.pli-vide { width: var(--larg); aspect-ratio: 2 / 3; border: 2px dashed rgba(60, 16, 2, 0.6); border-radius: 9px; display: grid; place-items: center; text-align: center; padding: 8px; font-size: 12px; color: #ffe6c7; background: rgba(60, 16, 2, 0.18); }
+.pli-vide { width: var(--larg); aspect-ratio: 2 / 3; border: 2px dashed transparent; border-radius: 9px; display: grid; place-items: center; text-align: center; padding: 8px; font-size: 12px; color: transparent; }
 
 .carte { margin: 0; display: grid; justify-items: center; gap: 3px; flex: none; }
 .carte figcaption { font-size: 11px; color: var(--creme-doux); max-width: 76px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -321,7 +322,7 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 
 /* Centre de la table : tapis, anneau, pli et journal */
 /* Tapis orange : le cadre en bois garde son épaisseur (découpage en 9 parties), seule la feutrine s'adapte à la place disponible. */
-.centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-orange-portrait.webp') 83 fill / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
+.centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-rouge-portrait.webp') 83 / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); background: url('/cartes/logo-tapis.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.24) 100%), url('/cartes/feutre-rouge.webp') center / calc(var(--cadre) * 5.82) auto repeat, #4a0306; background-clip: padding-box; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
 .centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(36, 12, 3, 0.82); border: 1px solid rgba(231, 194, 122, 0.55); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
 .centre-tete strong { color: var(--or-vif); }
 .centre-table { --larg: clamp(60px, 17vw, 104px); position: relative; display: grid; place-items: center; width: 100%; min-height: calc(var(--larg) * 1.9); }
@@ -385,7 +386,7 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .siege .avatar { --taille: 58px; }
   .siege-dos { height: 36px; margin-bottom: -14px; }
   .siege-dos img { width: 24px; margin: 0 -8px; }
-  .centre { --cadre: 32px; padding: 4px 8% 6px; border-image-source: url('/cartes/tapis-orange.webp'); border-image-slice: 110 fill; max-width: 760px; width: 100%; justify-self: center; }
+  .centre { --cadre: 32px; padding: 4px 8% 6px; border-image-source: url('/cartes/tapis-rouge.webp'); border-image-slice: 110; max-width: 760px; width: 100%; justify-self: center; }
   .centre-tete { font-size: 14px; }
   .centre-table { --larg: clamp(72px, 9.4vh, 112px); }
   .centre-journal { font-size: 12.5px; }
