@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CARTE } from '../../shared/cartes';
 import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
+import { BadgeNiveau, BarreXp, detailXp } from './Profil';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, REGLES, infoCarte, trierMain } from './textes';
 import { Avatar, Butin, CarteImg, Chat, Fenetre, Pastille, Zoom, useMinuteur } from './ui';
 
@@ -62,6 +63,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
   }, [v.nuit, v.evenementId, v.phase]);
 
   const nom = (id: string | null | undefined) => v.joueurs.find((j) => j.id === id)?.nom ?? '?';
+  const monCompte = salon.joueurs.find((j) => j.id === v.moi)?.compte ?? null;
   const avatarDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.avatar ?? 1;
   const agir = async (action: ActionSansJoueur) => {
     if (envoi) return;
@@ -216,6 +218,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
           <div className="moi-texte">
             <div className="moi-nom">
               <strong>{moi.nom}</strong>
+              {monCompte && <BadgeNiveau niveau={monCompte.niveau} titre={monCompte.titre} />}
               {aMoi && <span className="votre-tour">Votre tour</span>}
               {v.premierId === v.moi && PHASES_DEBUT.includes(v.phase) && <span className="badge or">Tu commences</span>}
             </div>
@@ -254,7 +257,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
       </section>
 
       {v.phase === 'FIN_DE_NUIT' && <RecapNuit v={v} nom={nom} estHote={estHote} agir={agir} secondes={secondes} />}
-      {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} estHote={estHote} appel={appel} quitter={quitter} nom={nom} />}
+      {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} salon={salon} estHote={estHote} appel={appel} quitter={quitter} nom={nom} />}
       {fenetre === 'scores' && (
         <Fenetre titre="Scores" onFermer={() => setFenetre(null)} large>
           <TableauScores v={v} />
@@ -584,11 +587,15 @@ function RecapNuit({ v, nom, estHote, agir, secondes }: { v: Vue; nom: (id: stri
   );
 }
 
-function FinDePartie({ v, estHote, appel, quitter, nom }: { v: Vue; estHote: boolean; appel: Appel; quitter: () => void; nom: (id: string) => string }) {
+function FinDePartie(props: { v: Vue; salon: VueSalon; estHote: boolean; appel: Appel; quitter: () => void; nom: (id: string) => string }) {
+  const { v, salon, estHote, appel, quitter, nom } = props;
   const classement = [...v.joueurs].sort((a, b) => b.score - a.score);
   const max = classement[0].score;
   const barons = classement.filter((j) => j.score === max);
   const [voirScores, setVoirScores] = useState(false);
+  const enr = salon.enregistrement;
+  const compteDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.compte ?? null;
+  const monBilan = enr?.bilans[v.moi];
   return (
     <Fenetre titre="Fin de la partie" large>
       <div className="couronne" aria-hidden="true">
@@ -601,15 +608,49 @@ function FinDePartie({ v, estHote, appel, quitter, nom }: { v: Vue; estHote: boo
       <ol className="classement">
         {classement.map((j) => {
           const rang = classement.findIndex((x) => x.score === j.score) + 1;
+          const bilan = enr?.bilans[j.id];
+          const compte = compteDe(j.id);
+          const niveau = bilan?.niveau ?? compte?.niveau;
           return (
             <li key={j.id} className={j.id === v.moi ? 'ma-ligne' : ''}>
               <span className="rang">{rang}</span>
-              <span>{nom(j.id)}</span>
+              <span className="fin-joueur">
+                <span className="fin-nom">
+                  {nom(j.id)}
+                  {niveau !== undefined && <BadgeNiveau niveau={niveau} titre={bilan?.titre ?? compte?.titre} />}
+                </span>
+                {bilan && (
+                  <small className="fin-compte">
+                    🏆 {bilan.victoires} victoire{bilan.victoires > 1 ? 's' : ''} au total · +{bilan.xpGagne} XP
+                    {bilan.niveau > bilan.niveauAvant && <strong className="niveau-up"> · Niveau {bilan.niveau} !</strong>}
+                  </small>
+                )}
+                {!bilan && compte && enr?.etat !== 'en_cours' && (
+                  <small className="fin-compte">
+                    🏆 {compte.victoires} victoire{compte.victoires > 1 ? 's' : ''} au total
+                  </small>
+                )}
+              </span>
               <strong>{j.score} pts</strong>
             </li>
           );
         })}
       </ol>
+      {monBilan && (
+        <div className={`mon-bilan ${monBilan.niveau > monBilan.niveauAvant ? 'monte' : ''}`}>
+          <strong>
+            {monBilan.niveau > monBilan.niveauAvant ? `Niveau ${monBilan.niveau} : ${monBilan.titre} !` : `+${monBilan.xpGagne} XP`}
+          </strong>
+          <small>{detailXp(monBilan)}</small>
+          <BarreXp xp={monBilan.xp} />
+        </div>
+      )}
+      {enr?.etat === 'en_cours' && <p className="discret">Enregistrement des victoires…</p>}
+      {enr?.etat === 'test' && <p className="discret">Partie de test avec des robots : elle ne compte pas dans les victoires.</p>}
+      {enr?.etat === 'erreur' && <p className="discret">Certaines victoires n’ont pas pu être enregistrées.</p>}
+      {salon.comptesActifs && !compteDe(v.moi) && enr?.etat !== 'test' && (
+        <p className="discret">Crée un compte depuis l’accueil pour garder tes victoires et monter de niveau.</p>
+      )}
       {voirScores ? <TableauScores v={v} /> : (
         <button type="button" className="lien-discret" onClick={() => setVoirScores(true)}>
           Voir le détail des nuits

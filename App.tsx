@@ -1,13 +1,23 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
-import type { VueSalon } from '../../shared/types';
+import type { ProfilCompte, VueSalon } from '../../shared/types';
+import type { ConfigComptes, Utilisateur } from './connexion';
+import { BadgeNiveau, CarteCompte, type EtatCompte, type ModuleConnexion } from './Profil';
 import { socket } from './socket';
 import { Table } from './Table';
 import { AVATARS, REGLES } from './textes';
 import { Chat, Fenetre } from './ui';
 
-type Reponse = { ok: boolean; erreur?: string; code?: string; jeton?: string; joueurId?: string };
+type Reponse = { ok: boolean; erreur?: string; code?: string; jeton?: string; joueurId?: string; profil?: ProfilCompte | null };
 export type Appel = (evenement: string, data?: unknown) => Promise<Reponse>;
+
+/** Envoi au serveur sans message d'erreur à l'écran (pour les échanges automatiques du compte). */
+function demander(evenement: string, data?: unknown): Promise<Reponse> {
+  return new Promise((ok) => {
+    if (!socket.connected) return ok({ ok: false });
+    socket.timeout(8000).emit(evenement, data ?? {}, (err: unknown, r: Reponse) => ok(err ? { ok: false, erreur: 'Le serveur ne répond pas.' } : r));
+  });
+}
 
 const CLE_SESSION = 'ldb-session';
 const CLE_NOM = 'ldb-nom';
@@ -108,11 +118,93 @@ export function App() {
     oublier();
   };
 
+  // ----- Compte joueur (Firebase), seulement si le serveur l'a configuré -----
+  const [module, setModule] = useState<ModuleConnexion | null>(null);
+  const [pret, setPret] = useState(false);
+  const [utilisateur, setUtilisateur] = useState<Utilisateur | null>(null);
+  const [profil, setProfil] = useState<ProfilCompte | null>(null);
+  const [chargement, setChargement] = useState(false);
+  const moduleRef = useRef<ModuleConnexion | null>(null);
+  const utilisateurRef = useRef<Utilisateur | null>(null);
+
+  /** Présente le compte connecté au serveur (à chaque connexion du téléphone ou changement de compte). */
+  const identifier = useCallback(async () => {
+    const m = moduleRef.current;
+    if (!m || !socket.connected) return;
+    if (!utilisateurRef.current) {
+      setProfil(null);
+      await demander('identifier', { jeton: '' });
+      return;
+    }
+    setChargement(true);
+    const jeton = await m.jeton().catch(() => null);
+    const r = jeton ? await demander('identifier', { jeton }) : { ok: false, erreur: 'Session expirée : reconnecte-toi à ton compte.' };
+    setChargement(false);
+    if (r.ok) setProfil(r.profil ?? null);
+    else if (r.erreur && r.erreur !== 'Patiente une seconde.') setMessage(r.erreur);
+  }, []);
+
+  const rafraichir = useCallback(async () => {
+    if (!utilisateurRef.current) return;
+    const r = await demander('profil');
+    if (r.ok && r.profil) setProfil(r.profil);
+    else if (!r.ok) void identifier();
+  }, [identifier]);
+
+  useEffect(() => {
+    let arreter: (() => void) | null = null;
+    let annule = false;
+    fetch('/api/config')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(async (config: ConfigComptes | null) => {
+        if (!config?.firebase || annule) return;
+        const m = await import('./connexion');
+        if (annule) return;
+        m.demarrer(config);
+        moduleRef.current = m;
+        setModule(m);
+        arreter = m.suivre((u) => {
+          utilisateurRef.current = u;
+          setUtilisateur(u);
+          setPret(true);
+          void identifier();
+        });
+      })
+      .catch(() => undefined);
+    socket.on('connect', identifier);
+    return () => {
+      annule = true;
+      arreter?.();
+      socket.off('connect', identifier);
+    };
+  }, [identifier]);
+
+  // Retour à l'accueil ou victoires enregistrées : le profil est remis à jour.
+  const etatEnregistrement = salon?.enregistrement?.etat;
+  const dansUnSalon = !!salon;
+  useEffect(() => {
+    if (etatEnregistrement === 'fait' || !dansUnSalon) void rafraichir();
+  }, [etatEnregistrement, dansUnSalon, rafraichir]);
+
+  const compte: EtatCompte = useMemo(
+    () => ({
+      actif: !!module,
+      pret,
+      module,
+      utilisateur,
+      profil,
+      chargement,
+      rafraichir: () => void rafraichir(),
+      apresInscription: () => window.setTimeout(() => void identifier(), 900),
+    }),
+    [module, pret, utilisateur, profil, chargement, rafraichir, identifier],
+  );
+
   let ecran;
   if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} />;
-  else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} />;
+  else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} />;
   else if (reprise) ecran = <div className="chargement">Connexion à la partie…</div>;
-  else ecran = <Accueil appel={appel} />;
+  else ecran = <Accueil appel={appel} compte={compte} />;
 
   return (
     <>
@@ -128,8 +220,17 @@ export function App() {
   );
 }
 
-function Accueil({ appel }: { appel: Appel }) {
+function Accueil({ appel, compte }: { appel: Appel; compte: EtatCompte }) {
   const [nom, setNom] = useState(lire(CLE_NOM) ?? '');
+  // Avec un compte, le pseudo est proposé automatiquement (sans écraser un pseudo tapé à la main).
+  const nomCompte = compte.profil?.nom;
+  const nomPropose = useRef<string | null>(null);
+  useEffect(() => {
+    if (!nomCompte) return;
+    const propose = nomCompte.slice(0, 16);
+    setNom((n) => (!n.trim() || n === nomPropose.current ? propose : n));
+    nomPropose.current = propose;
+  }, [nomCompte]);
   const [code, setCode] = useState((parametres.get('salon') ?? '').toUpperCase());
   const [occupe, setOccupe] = useState(false);
   const invite = !!parametres.get('salon');
@@ -143,6 +244,7 @@ function Accueil({ appel }: { appel: Appel }) {
     <main className="accueil">
       <img className="accueil-boite" src="/boite.webp" alt="Boîte du jeu Le Dernier Baron" />
       <p className="accroche">Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.</p>
+      <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={nom} />
       <form className="accueil-form" onSubmit={(e) => e.preventDefault()}>
         <label htmlFor="pseudo">Ton pseudo</label>
         <input id="pseudo" value={nom} maxLength={16} autoComplete="nickname" placeholder="Ex. Lucas" onChange={(e) => setNom(e.target.value)} />
@@ -171,7 +273,7 @@ function Accueil({ appel }: { appel: Appel }) {
   );
 }
 
-function Lobby({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitter: () => void }) {
+function Lobby({ salon, appel, quitter, compte }: { salon: VueSalon; appel: Appel; quitter: () => void; compte: EtatCompte }) {
   const estHote = salon.hoteId === salon.moi;
   const lien = `${location.origin}/?salon=${salon.code}`;
   const [copie, setCopie] = useState(false);
@@ -235,6 +337,7 @@ function Lobby({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitt
                 {j.id === salon.moi && ' (toi)'}
               </span>
               <span className="badges">
+                {j.compte && <BadgeNiveau niveau={j.compte.niveau} titre={j.compte.titre} />}
                 {j.id === salon.hoteId && <span className="badge or">Hôte</span>}
                 {j.robot && <span className="badge">Robot</span>}
                 {!j.connecte && <span className="badge rouge">Hors ligne</span>}
@@ -249,6 +352,7 @@ function Lobby({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitt
         </ol>
         <p className="discret">Les places sont jouées dans cet ordre : chacun joue après celui du dessus.</p>
       </section>
+      <CarteCompte compte={compte} appel={appel} contexte="salon" pseudo={salon.joueurs.find((j) => j.id === salon.moi)?.nom ?? ''} />
       {estHote ? (
         <section className="lobby-actions">
           <button type="button" className="principal" disabled={n < MIN_JOUEURS || n > MAX_JOUEURS} onClick={() => appel('lancer')}>

@@ -8,8 +8,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "prebuild": "node organiser.mjs",
     "dev": "concurrently -k -n serveur,client \"tsx watch server/index.ts\" \"vite\"",
+    "prebuild": "node organiser.mjs",
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/server.js --packages=external",
     "start": "node dist/server.js",
     "test": "vitest run",
@@ -19,6 +19,8 @@
     "@vitejs/plugin-react": "^4.7.0",
     "esbuild": "^0.24.2",
     "express": "^4.22.3",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^13.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "socket.io": "^4.8.4",

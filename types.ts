@@ -174,6 +174,57 @@ export interface JoueurSalonVue {
   connecte: boolean;
   robot: boolean;
   avatar: number;
+  /** Niveau et victoires du joueur s'il est connecté à son compte (visible de tout le salon). */
+  compte: CompteJoueurVue | null;
+}
+
+export interface CompteJoueurVue {
+  niveau: number;
+  titre: string;
+  victoires: number;
+}
+
+/** Ce que la partie terminée a rapporté au compte d'un joueur. */
+export interface BilanCompte {
+  victoire: boolean;
+  nuitsGagnees: number; // pendant cette partie
+  xpGagne: number;
+  niveauAvant: number;
+  niveau: number;
+  titre: string;
+  xp: number; // totaux du compte après la partie
+  victoires: number;
+  parties: number;
+}
+
+export interface EnregistrementVue {
+  /** test : partie avec des robots de test, jamais comptée. */
+  etat: 'en_cours' | 'fait' | 'erreur' | 'test';
+  bilans: Record<string, BilanCompte>; // par joueurId
+}
+
+export interface EntreeHistorique {
+  date: number;
+  rang: number;
+  nbJoueurs: number;
+  score: number;
+  victoire: boolean;
+  nuitsGagnees: number;
+  xp: number;
+  adversaires: string[];
+}
+
+/** Profil complet, envoyé seulement à son propriétaire. */
+export interface ProfilCompte {
+  nom: string;
+  email: string | null;
+  parties: number;
+  victoires: number;
+  nuitsGagnees: number;
+  annoncesReussies: number;
+  meilleurScore: number | null;
+  xp: number;
+  historique: EntreeHistorique[];
 }
 
 export interface VueSalon {
@@ -187,6 +238,10 @@ export interface VueSalon {
   /** Millisecondes restantes pour agir (joueurs attendus), ou null s'il n'y a pas de minuteur. */
   tempsRestant: number | null;
   dureeTour: number;
+  /** Les comptes joueurs sont configurés sur le serveur. */
+  comptesActifs: boolean;
+  /** Enregistrement des victoires de la partie terminée (null tant que la partie n'est pas finie). */
+  enregistrement: EnregistrementVue | null;
 }
 
 export interface MessageChat {

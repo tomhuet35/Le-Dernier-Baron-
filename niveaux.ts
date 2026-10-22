@@ -1,0 +1,101 @@
+import type { BilanNuit } from './types';
+
+/**
+ * Expérience gagnée à chaque partie terminée (hors parties de test).
+ * Les victoires comptent le plus : une victoire de partie vaut 100, chaque nuit gagnée 20.
+ */
+export const XP_PARTIE = 10;
+export const XP_VICTOIRE = 100;
+export const XP_NUIT = 20;
+
+/** Titres du niveau 1 au niveau 10 ; au-delà, on reste Baron (avec le numéro du niveau). */
+export const TITRES = [
+  'Petite frappe',
+  'Guetteur',
+  'Pickpocket',
+  'Homme de main',
+  'Croupier',
+  'Contrebandier',
+  'Lieutenant',
+  'Bras droit',
+  'Parrain',
+  'Baron',
+];
+
+/** XP totale pour atteindre le niveau n : 100 pour le niveau 2, puis 50 de plus à chaque palier (250, 450, 700…). */
+export function xpPourNiveau(n: number): number {
+  const k = Math.max(0, Math.floor(n) - 1);
+  return 100 * k + 25 * k * (k - 1);
+}
+
+export function niveauDepuisXp(xp: number): number {
+  let n = 1;
+  while (xpPourNiveau(n + 1) <= xp) n++;
+  return n;
+}
+
+export function titreNiveau(n: number): string {
+  return TITRES[Math.min(Math.max(1, n), TITRES.length) - 1];
+}
+
+export interface Progression {
+  niveau: number;
+  titre: string;
+  /** XP gagnée depuis le début du niveau actuel. */
+  xpDansNiveau: number;
+  /** XP nécessaire pour passer du niveau actuel au suivant. */
+  xpPalier: number;
+  /** Avancement vers le niveau suivant, de 0 à 1. */
+  fraction: number;
+}
+
+export function progression(xp: number): Progression {
+  const niveau = niveauDepuisXp(xp);
+  const debut = xpPourNiveau(niveau);
+  const xpPalier = xpPourNiveau(niveau + 1) - debut;
+  const xpDansNiveau = xp - debut;
+  return { niveau, titre: titreNiveau(niveau), xpDansNiveau, xpPalier, fraction: Math.min(1, xpDansNiveau / xpPalier) };
+}
+
+export interface ResultatJoueur {
+  joueurId: string;
+  /** 1 pour le ou les vainqueurs (égalité partagée), puis 2, 3… en sautant les places des ex æquo. */
+  rang: number;
+  score: number;
+  victoire: boolean;
+  nuitsGagnees: number;
+  annoncesReussies: number;
+  xp: number;
+}
+
+/**
+ * Résultats d'une partie terminée.
+ * - Victoire de partie : meilleur score final (les ex æquo deviennent tous le Dernier Baron).
+ * - Victoire de nuit : meilleur total de la nuit, à condition d'être positif (ex æquo compris).
+ */
+export function resultatsPartie(joueurs: { id: string; score: number }[], bilans: BilanNuit[]): ResultatJoueur[] {
+  const nuits: Record<string, number> = Object.fromEntries(joueurs.map((j) => [j.id, 0]));
+  const reussies: Record<string, number> = Object.fromEntries(joueurs.map((j) => [j.id, 0]));
+  for (const b of bilans) {
+    const meilleur = Math.max(...b.scores.map((s) => s.total));
+    for (const s of b.scores) {
+      if (meilleur > 0 && s.total === meilleur && s.joueurId in nuits) nuits[s.joueurId] += 1;
+      if (s.reussie && s.joueurId in reussies) reussies[s.joueurId] += 1;
+    }
+  }
+  const scores = joueurs.map((j) => j.score);
+  return joueurs.map((j) => {
+    const rang = 1 + scores.filter((s) => s > j.score).length;
+    const victoire = rang === 1;
+    const nuitsGagnees = nuits[j.id];
+    return {
+      joueurId: j.id,
+      rang,
+      score: j.score,
+      victoire,
+      nuitsGagnees,
+      annoncesReussies: reussies[j.id],
+      xp: XP_PARTIE + (victoire ? XP_VICTOIRE : 0) + XP_NUIT * nuitsGagnees,
+    };
+  });
+}

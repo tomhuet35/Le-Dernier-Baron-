@@ -8,9 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { Server, type Socket } from 'socket.io';
 import { DELAI_FIN_DE_PLI_MS, DELAI_ROBOT_MS, DUREE_TOUR_MS, MAX_JOUEURS, MIN_JOUEURS, NB_AVATARS } from '../shared/config';
 import { ajouterAuJournal, appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
+import { niveauDepuisXp, resultatsPartie, titreNiveau } from '../shared/niveaux';
 import { actionRobot } from '../shared/robot';
-import type { Action, EtatPartie, MessageChat, VueSalon } from '../shared/types';
+import type { Action, BilanCompte, CompteJoueurVue, EnregistrementVue, EtatPartie, MessageChat, VueSalon } from '../shared/types';
 import { vuePourJoueur } from '../shared/vue';
+import { profilDe, type Identite, type ServiceComptes, type StatsCompte } from './comptes';
 
 interface JoueurSalon {
   id: string;
@@ -20,6 +22,9 @@ interface JoueurSalon {
   robot: boolean; // robot de test, ou joueur parti remplacé par l'ordinateur
   robotDeTest: boolean;
   avatar: number;
+  /** Compte Firebase du joueur (null pour un invité). */
+  uid: string | null;
+  compte: CompteJoueurVue | null;
 }
 
 interface Salon {
@@ -34,6 +39,7 @@ interface Salon {
   minuterie: ReturnType<typeof setTimeout> | null;
   echeance: { cle: string; fin: number } | null;
   minuterieTour: ReturnType<typeof setTimeout> | null;
+  enregistrement: EnregistrementVue | null;
 }
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
@@ -45,6 +51,8 @@ export interface OptionsServeur {
   delaiRobot?: number;
   dureeTour?: number;
   servirClient?: boolean;
+  /** Comptes joueurs (Firebase) ; sans eux, tout le monde joue en invité. */
+  comptes?: ServiceComptes | null;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -53,6 +61,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const delaiFinDePli = options.delaiFinDePli ?? DELAI_FIN_DE_PLI_MS;
   const delaiRobot = options.delaiRobot ?? DELAI_ROBOT_MS;
   const dureeTour = options.dureeTour ?? DUREE_TOUR_MS;
+  const comptes = options.comptes ?? null;
   const app = express();
   const http = createServer(app);
   const io = new Server(http, { cors: { origin: '*' } });
@@ -60,7 +69,12 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const socketsVersJoueur = new Map<string, { code: string; joueurId: string }>();
 
   app.get('/sante', (_req, res) => {
-    res.json({ ok: true, salons: salons.size });
+    res.json({ ok: true, salons: salons.size, comptes: !!comptes });
+  });
+  // Configuration publique de Firebase pour l'écran de connexion (null : comptes désactivés).
+  app.get('/api/config', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ firebase: comptes?.configWeb ?? null, emulateurAuth: comptes?.emulateurAuth ?? null });
   });
   if (options.servirClient !== false) {
     const ici = dirname(fileURLToPath(import.meta.url));
@@ -95,11 +109,20 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       moi: joueurId,
       hoteId: salon.hoteId,
       modeTest: salon.modeTest,
-      joueurs: salon.joueurs.map((j) => ({ id: j.id, nom: j.nom, connecte: j.robotDeTest || j.socketId !== null, robot: j.robot, avatar: j.avatar })),
+      joueurs: salon.joueurs.map((j) => ({
+        id: j.id,
+        nom: j.nom,
+        connecte: j.robotDeTest || j.socketId !== null,
+        robot: j.robot,
+        avatar: j.avatar,
+        compte: j.compte,
+      })),
       partie: salon.partie ? vuePourJoueur(salon.partie, joueurId) : null,
       messages: salon.messages,
       tempsRestant: salon.echeance ? Math.max(0, salon.echeance.fin - Date.now()) : null,
       dureeTour,
+      comptesActifs: !!comptes,
+      enregistrement: salon.enregistrement,
     };
   }
 
@@ -114,8 +137,66 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     if (!r.ok) return { ok: false, erreur: r.erreur };
     salon.partie = r.etat;
     planifier(salon);
+    if (salon.partie.phase === 'FIN_DE_PARTIE' && !salon.enregistrement) enregistrerPartie(salon);
     diffuser(salon);
     return { ok: true };
+  }
+
+  const resumeCompte = (stats: StatsCompte | null): CompteJoueurVue => {
+    const niveau = niveauDepuisXp(stats?.xp ?? 0);
+    return { niveau, titre: titreNiveau(niveau), victoires: stats?.victoires ?? 0 };
+  };
+
+  /** Range les victoires, nuits gagnées et l'expérience de chaque joueur connecté à son compte. */
+  function enregistrerPartie(salon: Salon) {
+    const p = salon.partie;
+    if (!comptes || !p) return;
+    if (salon.modeTest) {
+      salon.enregistrement = { etat: 'test', bilans: {} };
+      return;
+    }
+    const avecCompte = salon.joueurs.filter((j) => j.uid && !j.robotDeTest);
+    const bilans: Record<string, BilanCompte> = {};
+    salon.enregistrement = { etat: avecCompte.length ? 'en_cours' : 'fait', bilans };
+    if (!avecCompte.length) return;
+    const resultats = resultatsPartie(
+      p.joueurs.map((j) => ({ id: j.id, score: p.scores[j.id] ?? 0 })),
+      p.bilans,
+    );
+    const date = Date.now();
+    void Promise.all(
+      avecCompte.map(async (j) => {
+        const r = resultats.find((x) => x.joueurId === j.id);
+        if (!r || !j.uid) return true;
+        try {
+          const adversaires = p.joueurs.filter((x) => x.id !== j.id).map((x) => x.nom);
+          const stats = await comptes.enregistrer(j.uid, j.nom, r, { date, nbJoueurs: p.joueurs.length, adversaires });
+          const niveau = niveauDepuisXp(stats.xp);
+          bilans[j.id] = {
+            victoire: r.victoire,
+            nuitsGagnees: r.nuitsGagnees,
+            xpGagne: r.xp,
+            niveauAvant: niveauDepuisXp(stats.xp - r.xp),
+            niveau,
+            titre: titreNiveau(niveau),
+            xp: stats.xp,
+            victoires: stats.victoires,
+            parties: stats.parties,
+          };
+          j.compte = resumeCompte(stats);
+          return true;
+        } catch (e) {
+          console.error(`Victoires non enregistrées pour ${j.nom} :`, e);
+          return false;
+        }
+      }),
+    )
+      .then((reussites) => {
+        if (salon.partie !== p) return; // une nouvelle partie a déjà commencé
+        salon.enregistrement = { etat: reussites.every(Boolean) ? 'fait' : 'erreur', bilans };
+        diffuser(salon);
+      })
+      .catch((e) => console.error('Enregistrement de la partie impossible :', e));
   }
 
   /** Identifie le tour en cours : le minuteur repart à zéro quand il change. */
@@ -170,6 +251,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   }
 
   function lancerPartie(salon: Salon) {
+    salon.enregistrement = null;
     salon.partie = creerPartie(
       salon.joueurs.map((j) => ({ id: j.id, nom: j.nom })),
       randomInt(1, 2 ** 31),
@@ -224,10 +306,24 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       return c;
     };
 
+    // Compte connecté sur ce téléphone (vérifié par Firebase), rattaché aux places que le joueur occupe.
+    let identite: Identite | null = null;
+    let resume: CompteJoueurVue | null = null;
+    let derniereIdentification = 0;
+    /** Rattache le compte à la place du joueur, sauf si ce compte occupe déjà une autre place du salon. */
+    const lierCompte = (salon: Salon, joueur: JoueurSalon) => {
+      if (!identite || joueur.uid === identite.uid) return;
+      const uid = identite.uid;
+      if (salon.joueurs.some((j) => j.id !== joueur.id && j.uid === uid)) return;
+      if (salon.partie && joueur.uid) return; // partie en cours : la place garde son compte
+      joueur.uid = uid;
+      joueur.compte = resume;
+    };
+
     socket.on('creer', (data: { nom?: string; modeTest?: boolean } = {}, rappel?: Rappel) => {
       const nom = nettoyerNom(data?.nom);
       if (!nom) return repondre(rappel, { ok: false, erreur: 'Choisis un pseudo.' });
-      const joueur: JoueurSalon = { id: nouvelId(), nom, jeton: nouvelId() + nouvelId(), socketId: null, robot: false, robotDeTest: false, avatar: 1 };
+      const joueur: JoueurSalon = { id: nouvelId(), nom, jeton: nouvelId() + nouvelId(), socketId: null, robot: false, robotDeTest: false, avatar: 1, uid: null, compte: null };
       const salon: Salon = {
         code: nouveauCode(),
         hoteId: joueur.id,
@@ -240,8 +336,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         minuterieTour: null,
         messages: [],
         compteurMessages: 0,
+        enregistrement: null,
       };
       salons.set(salon.code, salon);
+      lierCompte(salon, joueur);
       attacher(socket, salon, joueur);
       repondre(rappel, { ok: true, code: salon.code, jeton: joueur.jeton, joueurId: joueur.id });
       diffuser(salon);
@@ -250,12 +348,26 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     socket.on('rejoindre', (data: { code?: string; nom?: string } = {}, rappel?: Rappel) => {
       const salon = salons.get(String(data?.code ?? '').trim().toUpperCase());
       if (!salon) return repondre(rappel, { ok: false, erreur: 'Aucune partie avec ce code.' });
+      // Un joueur connecté à son compte retrouve sa place, même depuis un autre téléphone ou en cours de partie.
+      const sienne = identite ? salon.joueurs.find((j) => j.uid === identite?.uid) : undefined;
+      if (sienne) return reprendrePlace(salon, sienne, rappel);
       if (salon.partie) return repondre(rappel, { ok: false, erreur: 'La partie a déjà commencé.' });
       if (salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: `Le salon est complet (${MAX_JOUEURS} joueurs).` });
       const nom = nettoyerNom(data?.nom);
       if (!nom) return repondre(rappel, { ok: false, erreur: 'Choisis un pseudo.' });
-      const joueur: JoueurSalon = { id: nouvelId(), nom: nomUnique(salon, nom), jeton: nouvelId() + nouvelId(), socketId: null, robot: false, robotDeTest: false, avatar: avatarLibre(salon) };
+      const joueur: JoueurSalon = {
+        id: nouvelId(),
+        nom: nomUnique(salon, nom),
+        jeton: nouvelId() + nouvelId(),
+        socketId: null,
+        robot: false,
+        robotDeTest: false,
+        avatar: avatarLibre(salon),
+        uid: null,
+        compte: null,
+      };
       salon.joueurs.push(joueur);
+      lierCompte(salon, joueur);
       attacher(socket, salon, joueur);
       repondre(rappel, { ok: true, code: salon.code, jeton: joueur.jeton, joueurId: joueur.id });
       diffuser(salon);
@@ -265,6 +377,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const salon = salons.get(String(data?.code ?? '').toUpperCase());
       const joueur = salon?.joueurs.find((j) => j.jeton === data?.jeton);
       if (!salon || !joueur) return repondre(rappel, { ok: false, erreur: 'Cette partie n’existe plus.' });
+      reprendrePlace(salon, joueur, rappel);
+    });
+
+    function reprendrePlace(salon: Salon, joueur: JoueurSalon, rappel: unknown) {
       if (joueur.socketId && joueur.socketId !== socket.id) {
         io.sockets.sockets.get(joueur.socketId)?.disconnect(true);
         socketsVersJoueur.delete(joueur.socketId);
@@ -274,6 +390,81 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       repondre(rappel, { ok: true, code: salon.code, jeton: joueur.jeton, joueurId: joueur.id });
       planifier(salon);
       diffuser(salon);
+    }
+
+    socket.on('identifier', async (data: { jeton?: string } = {}, rappel?: Rappel) => {
+      if (!comptes) return repondre(rappel, { ok: false, erreur: 'Les comptes ne sont pas activés sur ce serveur.' });
+      const jeton = typeof data?.jeton === 'string' ? data.jeton : '';
+      if (!jeton) {
+        // Déconnexion du compte : la place d'un salon pas encore lancé redevient « invité ».
+        identite = null;
+        resume = null;
+        const c = contexte();
+        if (c && !c.salon.partie && c.joueur.uid) {
+          c.joueur.uid = null;
+          c.joueur.compte = null;
+          diffuser(c.salon);
+        }
+        return repondre(rappel, { ok: true, profil: null });
+      }
+      const maintenant = Date.now();
+      if (maintenant - derniereIdentification < 800) return repondre(rappel, { ok: false, erreur: 'Patiente une seconde.' });
+      derniereIdentification = maintenant;
+      const id = await comptes.verifier(jeton).catch(() => null);
+      if (!id) return repondre(rappel, { ok: false, erreur: 'Session expirée : reconnecte-toi à ton compte.' });
+      let stats: StatsCompte | null;
+      try {
+        stats = await comptes.lire(id.uid);
+      } catch (e) {
+        console.error('Lecture du compte impossible :', e);
+        return repondre(rappel, { ok: false, erreur: 'Ton profil est indisponible pour le moment. Tu peux jouer en invité.' });
+      }
+      identite = id;
+      resume = resumeCompte(stats);
+      const c = contexte();
+      if (c) {
+        lierCompte(c.salon, c.joueur);
+        diffuser(c.salon);
+      }
+      repondre(rappel, { ok: true, profil: profilDe(id, stats) });
+    });
+
+    socket.on('profil', async (_data: unknown, rappel?: Rappel) => {
+      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: 'Connecte-toi à ton compte.' });
+      const id = identite;
+      try {
+        const stats = await comptes.lire(id.uid);
+        resume = resumeCompte(stats);
+        repondre(rappel, { ok: true, profil: profilDe(id, stats) });
+      } catch (e) {
+        console.error('Lecture du compte impossible :', e);
+        repondre(rappel, { ok: false, erreur: 'Ton profil est indisponible pour le moment.' });
+      }
+    });
+
+    socket.on('supprimer_compte', async (_data: unknown, rappel?: Rappel) => {
+      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: 'Connecte-toi à ton compte.' });
+      const uid = identite.uid;
+      try {
+        await comptes.supprimer(uid);
+      } catch (e) {
+        console.error('Suppression du compte impossible :', e);
+        return repondre(rappel, { ok: false, erreur: 'La suppression a échoué, réessaie plus tard.' });
+      }
+      identite = null;
+      resume = null;
+      for (const salon of salons.values()) {
+        let change = false;
+        for (const j of salon.joueurs) {
+          if (j.uid === uid) {
+            j.uid = null;
+            j.compte = null;
+            change = true;
+          }
+        }
+        if (change) diffuser(salon);
+      }
+      repondre(rappel, { ok: true });
     });
 
     socket.on('quitter', (_data: unknown, rappel?: Rappel) => {
@@ -321,7 +512,17 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (!salon.modeTest) return repondre(rappel, { ok: false, erreur: 'Les robots ne sont disponibles qu’en mode test.' });
       if (salon.partie || salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: 'Impossible d’ajouter un robot.' });
       const numero = salon.joueurs.filter((j) => j.robotDeTest).length + 1;
-      salon.joueurs.push({ id: nouvelId(), nom: `Robot ${numero}`, jeton: nouvelId(), socketId: null, robot: true, robotDeTest: true, avatar: avatarLibre(salon) });
+      salon.joueurs.push({
+        id: nouvelId(),
+        nom: `Robot ${numero}`,
+        jeton: nouvelId(),
+        socketId: null,
+        robot: true,
+        robotDeTest: true,
+        avatar: avatarLibre(salon),
+        uid: null,
+        compte: null,
+      });
       diffuser(salon);
       repondre(rappel, { ok: true });
     });

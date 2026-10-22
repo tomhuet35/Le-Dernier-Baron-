@@ -414,6 +414,63 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .avatar.grand { --taille: 48px; }
   .eventail { --lc: clamp(60px, 9.6vh, 104px); padding-top: 14px; padding-bottom: 4px; }
 }
+/* ---------- Comptes joueurs : niveau, expérience, profil ---------- */
+.medaille { display: inline-flex; align-items: baseline; gap: 2px; flex: none; padding: 0 7px; border-radius: 99px; background: linear-gradient(180deg, var(--or-vif), var(--or)); color: #2a1608; font-size: 12px; font-weight: 800; line-height: 1.6; white-space: nowrap; font-variant-numeric: tabular-nums; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3); }
+.medaille small { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.medaille.grand { flex-direction: column; align-items: center; justify-content: center; gap: 0; width: 54px; height: 54px; padding: 0; border-radius: 50%; border: 2px solid #f5dfa8; font-family: var(--titre); font-size: 24px; font-weight: 400; line-height: 1; box-shadow: 0 0 16px rgba(231, 194, 122, 0.45); }
+.medaille.grand small { font-family: var(--texte); font-size: 9px; }
+.barre-xp { display: grid; gap: 3px; min-width: 0; }
+.barre-xp-fond { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.barre-xp-fond span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--or), var(--or-vif)); transition: width 0.6s ease-out; }
+.barre-xp small { font-size: 11.5px; color: var(--creme-doux); font-variant-numeric: tabular-nums; }
+.barre-xp.compact .barre-xp-fond { height: 6px; }
+.carte-compte { width: min(100%, 380px); display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: rgba(33, 23, 17, 0.9); border: 1px solid var(--filet); }
+.carte-compte p { display: grid; gap: 2px; font-size: 14px; }
+.carte-compte p strong { color: var(--or-vif); }
+.carte-compte.connecte { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; border-color: rgba(210, 168, 90, 0.5); }
+.carte-compte-texte { display: grid; gap: 2px; min-width: 0; }
+.carte-compte-texte strong { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lobby .carte-compte { width: 100%; }
+.onglets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 10px; background: var(--nuit); }
+.onglets button { min-height: 38px; border-color: transparent; background: none; font-size: 14px; }
+.onglets button.actif { background: var(--nuit-3); border-color: var(--or); color: var(--or-vif); }
+.form-compte { display: grid; gap: 8px; }
+.form-compte label { font-size: 13px; color: var(--creme-doux); }
+.message-erreur, .message-info { padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+.message-erreur { color: #f6b2a8; background: rgba(142, 28, 20, 0.28); border: 1px solid var(--rouge-vif); }
+.message-info { color: #cfe8c3; background: rgba(127, 179, 106, 0.15); border: 1px solid rgba(127, 179, 106, 0.6); }
+.profil-tete { display: flex; gap: 14px; align-items: center; }
+.profil-tete > div { display: grid; gap: 1px; min-width: 0; }
+.profil-tete strong { font-size: 20px; overflow: hidden; text-overflow: ellipsis; }
+.titre-niveau { font-family: var(--titre); color: var(--or-vif); font-size: 17px; }
+.stats-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.stat { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; border-radius: 10px; background: var(--nuit-3); border: 1px solid var(--filet); text-align: center; }
+.stat strong { font-family: var(--titre); font-weight: 400; font-size: 24px; color: var(--or-vif); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11.5px; color: var(--creme-doux); line-height: 1.2; }
+.gains-xp summary { cursor: pointer; color: var(--or); font-size: 14px; }
+.gains-xp ul { margin: 6px 0 4px; padding-left: 18px; font-size: 14px; }
+.profil-sous-titre { color: var(--or); font-size: 18px; }
+.historique { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.historique li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--filet); }
+.historique li.gagnee { border-color: var(--or); background: rgba(210, 168, 90, 0.08); }
+.h-rang { font-family: var(--titre); font-size: 18px; color: var(--or); text-align: center; }
+.h-texte { display: grid; min-width: 0; }
+.h-texte strong { font-size: 14px; }
+.h-texte small { font-size: 12px; color: var(--creme-doux); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.h-xp { font-size: 13px; font-weight: 700; color: var(--or-vif); white-space: nowrap; }
+.profil-actions { justify-content: space-between; }
+.confirmation { display: grid; gap: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--rouge-vif); background: rgba(142, 28, 20, 0.2); }
+.fin-joueur { display: grid; gap: 1px; min-width: 0; }
+.fin-nom { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fin-compte { font-size: 12px; color: var(--creme-doux); }
+.niveau-up { color: var(--or-vif); }
+.mon-bilan { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--or); background: rgba(210, 168, 90, 0.08); }
+.mon-bilan strong { font-family: var(--titre); font-weight: 400; font-size: 20px; color: var(--or-vif); }
+.mon-bilan small { font-size: 12.5px; color: var(--creme-doux); }
+.mon-bilan.monte { animation: briller 1.6s ease-in-out 3; }
+@keyframes briller { 50% { box-shadow: 0 0 26px rgba(231, 194, 122, 0.6); } }
+.moi-nom .medaille { font-size: 11px; }
+
 @media (prefers-reduced-motion: reduce) {
   .particules { display: none; }
 }
