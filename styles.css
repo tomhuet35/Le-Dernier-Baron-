@@ -322,7 +322,7 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 
 /* Centre de la table : tapis, anneau, pli et journal */
 /* Tapis orange : le cadre en bois garde son épaisseur (découpage en 9 parties), seule la feutrine s'adapte à la place disponible. */
-.centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-rouge-portrait.webp') 83 / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); background: url('/cartes/logo-tapis.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.24) 100%), url('/cartes/feutre-rouge.webp') center / calc(var(--cadre) * 5.82) auto repeat, #4a0306; background-clip: padding-box; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
+.centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-baron-portrait.webp') 83 / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); background: url('/cartes/logo-tapis-baron.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.24) 100%), url('/cartes/feutre-baron.webp') center / calc(var(--cadre) * 6.18) auto repeat, #420104; background-clip: padding-box; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
 .centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(36, 12, 3, 0.82); border: 1px solid rgba(231, 194, 122, 0.55); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
 .centre-tete strong { color: var(--or-vif); }
 .centre-table { --larg: clamp(60px, 17vw, 104px); position: relative; display: grid; place-items: center; width: 100%; min-height: calc(var(--larg) * 1.9); }
@@ -386,7 +386,7 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .siege .avatar { --taille: 58px; }
   .siege-dos { height: 36px; margin-bottom: -14px; }
   .siege-dos img { width: 24px; margin: 0 -8px; }
-  .centre { --cadre: 32px; padding: 4px 8% 6px; border-image-source: url('/cartes/tapis-rouge.webp'); border-image-slice: 110; max-width: 760px; width: 100%; justify-self: center; }
+  .centre { --cadre: 32px; padding: 4px 8% 6px; border-image-source: url('/cartes/tapis-baron.webp'); border-image-slice: 110; max-width: 760px; width: 100%; justify-self: center; }
   .centre-tete { font-size: 14px; }
   .centre-table { --larg: clamp(72px, 9.4vh, 112px); }
   .centre-journal { font-size: 12.5px; }
