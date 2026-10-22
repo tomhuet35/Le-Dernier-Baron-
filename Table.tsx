@@ -5,7 +5,7 @@ import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, REGLES, infoCarte, trierMain } from './textes';
-import { Avatar, Butin, CarteImg, Chat, Fenetre, Pastille, Zoom, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeMusique, Pastille, Zoom, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -125,11 +125,13 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
           <div className="evenement vide-evenement">{v.nuit === 1 || v.nuit === v.nbNuits ? 'Pas d’événement cette nuit' : ''}</div>
         )}
         <div className="barre-boutons">
-          <button type="button" className="petit icone" onClick={() => setFenetre('scores')} aria-label="Scores">
-            🏆<span className="libelle"> Scores</span>
+          <button type="button" className="bouton-icone" onClick={() => setFenetre('scores')} aria-label="Scores">
+            <img src="/cartes/icone-scores.webp" alt="" draggable={false} />
+            <span className="libelle">Scores</span>
           </button>
-          <button type="button" className="petit icone" onClick={() => setFenetre('regles')} aria-label="Règles">
-            📜<span className="libelle"> Règles</span>
+          <button type="button" className="bouton-icone" onClick={() => setFenetre('regles')} aria-label="Règles">
+            <img src="/cartes/icone-regles.webp" alt="" draggable={false} />
+            <span className="libelle">Règles</span>
           </button>
           <Chat salon={salon} appel={appel} enLigne />
           <button type="button" className="petit icone" onClick={() => setFenetre('menu')} aria-label="Menu">
@@ -285,8 +287,9 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
           <button type="button" className="large" onClick={() => setFenetre('journal')}>
             Journal de la partie
           </button>
-          <button type="button" className="large" onClick={basculerMusique} aria-pressed={musiqueActive}>
-            {musiqueActive ? '🔊 Musique : activée' : '🔇 Musique : coupée'}
+          <button type="button" className="large bouton-menu-musique" onClick={basculerMusique} aria-pressed={musiqueActive}>
+            <IconeMusique active={musiqueActive} />
+            {musiqueActive ? 'Musique : activée' : 'Musique : coupée'}
           </button>
           <button type="button" className="large danger" onClick={() => setFenetre('quitter')}>
             Quitter la partie

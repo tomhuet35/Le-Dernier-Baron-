@@ -455,7 +455,8 @@ function BoutonRegles() {
   return (
     <>
       <button type="button" className="bouton-regles" onClick={() => setOuvert(true)}>
-        📜 Règles du jeu
+        <img className="icone-bouton" src="/cartes/icone-regles.webp" alt="" draggable={false} />
+        Règles du jeu
       </button>
       {ouvert && (
         <Fenetre titre="Règles du jeu" onFermer={() => setOuvert(false)} large>

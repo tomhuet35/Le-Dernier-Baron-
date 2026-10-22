@@ -214,10 +214,12 @@ button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .choix-allie.allie { color: var(--or-vif); }
 .choix-allie.allie strong { color: var(--or-vif); }
 
-.bouton-regles { width: min(100%, 380px); justify-self: center; align-self: center; background: transparent; border-color: var(--or); color: var(--or-vif); }
+.bouton-regles { width: min(100%, 380px); justify-self: center; align-self: center; display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: transparent; border-color: var(--or); color: var(--or-vif); }
+.icone-bouton { width: 34px; height: 34px; margin: -6px 0; }
 
 /* Discussion */
-.chat-bouton { position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 15; width: 54px; height: 54px; border-radius: 50%; padding: 0; font-size: 24px; background: var(--rouge); border-color: var(--or); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6); }
+.chat-bouton { position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 15; width: 60px; height: 60px; min-height: 0; padding: 0; border: none; border-radius: 14px; background: none; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.65)); }
+.chat-bouton img, .bouton-icone img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .chat-pastille { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--or-vif); color: var(--nuit); font-size: 12px; font-weight: 700; line-height: 22px; }
 .chat-panneau { position: fixed; z-index: 16; right: max(10px, env(safe-area-inset-right)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 64px); width: min(calc(100vw - 20px), 380px); height: min(60dvh, 460px); display: grid; grid-template-rows: auto 1fr auto; background: var(--nuit-2); border: 1px solid var(--or); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); overflow: hidden; }
 .chat-tete { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--filet); }
@@ -266,13 +268,18 @@ body::before {
 /* ---------- Plateau ---------- */
 #racine:has(.plateau) { max-width: 1180px; }
 .plateau { display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - max(26px, env(safe-area-inset-top) + env(safe-area-inset-bottom) + 16px)); }
-.plateau .barre { padding: 6px; border-radius: 14px; background: rgba(18, 12, 9, 0.74); border: 1px solid rgba(210, 168, 90, 0.28); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.plateau .barre { position: relative; z-index: 18; padding: 6px; border-radius: 14px; background: rgba(18, 12, 9, 0.74); border: 1px solid rgba(210, 168, 90, 0.28); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .plateau .nuit { padding: 4px 7px; }
 .plateau .evenement { min-height: 44px; background: rgba(33, 23, 17, 0.9); }
 .barre-boutons { align-items: center; }
 button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 16px; line-height: 1; background: rgba(33, 23, 17, 0.9); }
-.chat-bouton.en-ligne { position: relative; right: auto; bottom: auto; z-index: auto; width: 38px; height: 38px; font-size: 17px; background: rgba(33, 23, 17, 0.9); border-color: var(--filet); box-shadow: none; }
-.chat-bouton.en-ligne .chat-pastille { top: -6px; right: -6px; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 4px; }
+/* Boutons à icône dorée (Scores, Règles, Discussion) */
+.bouton-icone, .chat-bouton.en-ligne { position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; height: 44px; min-height: 0; padding: 0 10px 0 0; border: none; border-radius: 12px; background: none; font-size: 14px; color: var(--creme); filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55)); transition: transform 0.15s; }
+.bouton-icone img, .chat-bouton.en-ligne img { width: 44px; height: 44px; flex: none; }
+.bouton-icone:hover:not(:disabled), .chat-bouton.en-ligne:hover { transform: translateY(-1px); }
+.bouton-icone:active, .chat-bouton.en-ligne:active { transform: scale(0.95); }
+.chat-bouton.en-ligne { right: auto; bottom: auto; z-index: auto; width: auto; }
+.chat-bouton.en-ligne .chat-pastille { top: -6px; left: 30px; right: auto; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 4px; }
 .chat-panneau.haut { top: calc(max(10px, env(safe-area-inset-top)) + 60px); bottom: auto; }
 @media (max-width: 479px) {
   .libelle { display: none; }
@@ -280,7 +287,9 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .plateau .evenement strong { font-size: 13px; line-height: 1.15; }
   .plateau .barre { gap: 6px; padding: 5px; }
   .barre-boutons { gap: 3px; }
-  button.icone, .chat-bouton.en-ligne { min-width: 36px; width: 36px; min-height: 36px; height: 36px; padding: 0; }
+  button.icone { min-width: 36px; width: 36px; min-height: 36px; height: 36px; padding: 0; }
+  .bouton-icone, .chat-bouton.en-ligne { height: 40px; padding: 0; }
+  .bouton-icone img, .chat-bouton.en-ligne img { width: 40px; height: 40px; }
 }
 
 /* Adversaires autour de la table */
@@ -534,7 +543,12 @@ select { font: inherit; width: 100%; min-height: 42px; padding: 8px 10px; color:
 .fiche-bot { display: grid; gap: 10px; }
 .fiche-bot p { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--nuit-3); border: 1px solid var(--filet); }
 .fiche-bot strong { color: var(--or-vif); }
-.bouton-musique { position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); z-index: 15; width: 42px; height: 42px; min-height: 0; padding: 0; border-radius: 50%; font-size: 18px; background: rgba(33, 23, 17, 0.85); border-color: var(--filet); }
+.bouton-musique { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 15; width: 50px; height: 50px; min-height: 0; padding: 0; border: none; border-radius: 12px; background: none; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); transition: transform 0.15s; }
+.bouton-musique:hover:not(:disabled) { transform: scale(1.06); }
+.bouton-musique:active { transform: scale(0.94); }
+.icone-musique { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.bouton-menu-musique { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.bouton-menu-musique .icone-musique { width: 34px; height: 34px; }
 
 @media (prefers-reduced-motion: reduce) {
   .particules { display: none; }

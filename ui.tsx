@@ -170,7 +170,9 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
         onClick={() => setOuvert(!ouvert)}
         aria-label={ouvert ? 'Fermer la discussion' : 'Ouvrir la discussion'}
       >
-        💬{nonLus > 0 && <span className="chat-pastille">{nonLus}</span>}
+        <img src="/cartes/icone-chat.webp" alt="" draggable={false} />
+        {enLigne && <span className="libelle">Discussion</span>}
+        {nonLus > 0 && <span className="chat-pastille">{nonLus}</span>}
       </button>
       {ouvert && (
         <div className={`chat-panneau ${enLigne ? 'haut' : ''}`} role="dialog" aria-label="Discussion">
@@ -300,13 +302,18 @@ export function BoutonMusique({ flottant }: { flottant?: boolean }) {
   return (
     <button
       type="button"
-      className={flottant ? 'bouton-musique' : 'petit icone'}
+      className={flottant ? 'bouton-musique' : 'petit icone bouton-musique-barre'}
       onClick={basculer}
       aria-pressed={active}
       aria-label={active ? 'Couper la musique' : 'Remettre la musique'}
       title={active ? 'Couper la musique' : 'Remettre la musique'}
     >
-      {active ? '🔊' : '🔇'}
+      <IconeMusique active={active} />
     </button>
   );
+}
+
+/** Icône de la musique : la note dorée, barrée quand le son est coupé. */
+export function IconeMusique({ active }: { active: boolean }) {
+  return <img className="icone-musique" src={active ? '/cartes/musique-on.webp' : '/cartes/musique-off.webp'} alt="" draggable={false} />;
 }
