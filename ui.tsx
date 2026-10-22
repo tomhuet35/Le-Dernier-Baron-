@@ -318,3 +318,19 @@ export function BoutonMusique() {
 export function IconeMusique({ active }: { active: boolean }) {
   return <img className="icone-musique" src={active ? '/cartes/musique-on.webp' : '/cartes/musique-off.webp'} alt="" draggable={false} />;
 }
+
+/**
+ * Icône dessinée (fichier /cartes/icone-<nom>.webp) ; tant que l'image n'existe pas, un symbole de remplacement s'affiche.
+ * Il suffit donc d'ajouter l'image pour qu'elle apparaisse, sans toucher au code.
+ */
+export function IconeImage({ nom, repli, className }: { nom: string; repli: string; className?: string }) {
+  const [echec, setEchec] = useState(false);
+  if (echec) {
+    return (
+      <span className={`icone-repli ${className ?? ''}`} aria-hidden="true">
+        {repli}
+      </span>
+    );
+  }
+  return <img className={className} src={`/cartes/icone-${nom}.webp`} alt="" draggable={false} onError={() => setEchec(true)} />;
+}

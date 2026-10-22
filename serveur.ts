@@ -27,12 +27,16 @@ import type {
   EnregistrementVue,
   EtatPartie,
   MessageChat,
+  AmiVue,
+  Invitation,
+  ListeAmis,
   ProfilBot,
   ProfilPublic,
+  StatutAmi,
   VueSalon,
 } from '../shared/types';
 import { vuePourJoueur } from '../shared/vue';
-import { profilDe, type Identite, type ServiceComptes, type StatsCompte } from './comptes';
+import { profilDe, relationEntre, type Identite, type ResultatDemande, type ServiceComptes, type StatsCompte } from './comptes';
 
 interface JoueurSalon {
   id: string;
@@ -95,6 +99,9 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const io = new Server(http, { cors: { origin: '*' } });
   const salons = new Map<string, Salon>();
   const socketsVersJoueur = new Map<string, { code: string; joueurId: string }>();
+  // Amis : téléphones connectés par compte, et amis de chaque compte en ligne (pour prévenir de leur présence).
+  const socketsParUid = new Map<string, Set<string>>();
+  const amisParUid = new Map<string, Set<string>>();
   let ferme = false;
 
   app.get('/sante', (_req, res) => {
@@ -264,6 +271,63 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     return { ok: true };
   }
 
+  function statutDe(uid: string): StatutAmi {
+    if (!socketsParUid.get(uid)?.size) return 'hors_ligne';
+    for (const s of salons.values()) {
+      if (s.partie && s.partie.phase !== 'FIN_DE_PARTIE' && s.joueurs.some((j) => j.uid === uid && j.socketId)) return 'en_partie';
+    }
+    return 'en_ligne';
+  }
+
+  /** Demande aux téléphones de ces comptes de recharger leur liste d'amis. */
+  function prevenirAmis(uids: Iterable<string>) {
+    for (const uid of uids) for (const sid of socketsParUid.get(uid) ?? []) io.to(sid).emit('amis_maj');
+  }
+
+  function memoriserAmis(stats: Record<string, StatsCompte>) {
+    for (const [uid, st] of Object.entries(stats)) if (socketsParUid.has(uid)) amisParUid.set(uid, new Set(st.amis));
+  }
+
+  async function listeAmis(uid: string, salon?: Salon): Promise<ListeAmis | null> {
+    if (!comptes) return null;
+    const moi = await comptes.lire(uid);
+    if (!moi) return null;
+    const tous = [...new Set([...moi.amis, ...moi.demandesRecues, ...moi.demandesEnvoyees])];
+    const lus = await comptes.lirePlusieurs(tous);
+    const vue = (u: string): AmiVue | null => {
+      const st = lus[u];
+      if (!st?.codeAmi) return null;
+      const niveau = niveauDepuisXp(st.xp);
+      return {
+        code: st.codeAmi,
+        nom: st.nom || 'Joueur',
+        avatar: st.avatar,
+        niveau,
+        titre: titreNiveau(niveau),
+        victoires: st.victoires,
+        statut: statutDe(u),
+        avecMoi: !!salon?.joueurs.some((j) => j.uid === u),
+      };
+    };
+    const rang: Record<StatutAmi, number> = { en_ligne: 0, en_partie: 1, hors_ligne: 2 };
+    const liste = (uids: string[]) => uids.map(vue).filter((x): x is AmiVue => !!x);
+    return {
+      monCode: moi.codeAmi ?? '',
+      amis: liste(moi.amis).sort((a, b) => rang[a.statut] - rang[b.statut] || a.nom.localeCompare(b.nom)),
+      recues: liste(moi.demandesRecues),
+      envoyees: liste(moi.demandesEnvoyees),
+    };
+  }
+
+  const MESSAGE_DEMANDE: Record<ResultatDemande, string> = {
+    envoyee: 'Demande d’ami envoyée.',
+    amis: 'Vous êtes maintenant amis !',
+    deja_amis: 'Vous êtes déjà amis.',
+    deja_envoyee: 'Demande déjà envoyée : elle attend sa réponse.',
+    soi_meme: 'C’est ton propre code !',
+    limite: 'Trop d’amis ou de demandes en attente.',
+  };
+
   const resumeCompte = (stats: StatsCompte | null): CompteJoueurVue => {
     const niveau = niveauDepuisXp(stats?.xp ?? 0);
     return { niveau, titre: titreNiveau(niveau), victoires: stats?.victoires ?? 0 };
@@ -296,7 +360,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         if (!r || !j.uid) return true;
         try {
           const adversaires = p.joueurs.filter((x) => x.id !== j.id).map((x) => x.nom);
-          const stats = await comptes.enregistrer(j.uid, j.nom, r, { date, nbJoueurs: p.joueurs.length, adversaires });
+          const stats = await comptes.enregistrer(j.uid, j.nom, r, { date, nbJoueurs: p.joueurs.length, adversaires }, j.avatar);
           const niveau = niveauDepuisXp(stats.xp);
           bilans[j.id] = {
             victoire: r.victoire,
@@ -549,6 +613,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const jeton = typeof data?.jeton === 'string' ? data.jeton : '';
       if (!jeton) {
         // Déconnexion du compte : la place d'un salon pas encore lancé redevient « invité ».
+        oublierPresence();
         identite = null;
         resume = null;
         const c = contexte();
@@ -566,13 +631,15 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (!id) return repondre(rappel, { ok: false, erreur: 'Session expirée : reconnecte-toi à ton compte.' });
       let stats: StatsCompte | null;
       try {
-        stats = await comptes.lire(id.uid);
+        stats = await comptes.preparer(id.uid, id.nom, id.email ? id.email.split('@')[0] : '');
       } catch (e) {
         console.error('Lecture du compte impossible :', e);
         return repondre(rappel, { ok: false, erreur: 'Ton profil est indisponible pour le moment. Tu peux jouer en invité.' });
       }
+      if (identite && identite.uid !== id.uid) oublierPresence();
       identite = id;
       resume = resumeCompte(stats);
+      noterPresence(id.uid, stats);
       const c = contexte();
       if (c) {
         lierCompte(c.salon, c.joueur);
@@ -603,8 +670,11 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         console.error('Suppression du compte impossible :', e);
         return repondre(rappel, { ok: false, erreur: 'La suppression a échoué, réessaie plus tard.' });
       }
+      const amisAvant = amisParUid.get(uid) ?? new Set<string>();
+      oublierPresence();
       identite = null;
       resume = null;
+      prevenirAmis(amisAvant);
       for (const salon of salons.values()) {
         let change = false;
         for (const j of salon.joueurs) {
@@ -695,8 +765,11 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       else {
         try {
           const stats = await comptes.lire(j.uid);
+          let relation: Extract<ProfilPublic, { type: 'compte' }>['relation'] = null;
+          if (identite) relation = identite.uid === j.uid ? 'moi' : relationEntre(await comptes.lire(identite.uid), j.uid);
           profil = {
             type: 'compte',
+            relation,
             nom: j.nom,
             avatar: j.avatar,
             xp: stats?.xp ?? 0,
@@ -790,8 +863,140 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     });
 
     socket.on('disconnect', () => {
+      oublierPresence();
       detacher(socket.id);
       diffuserEnLigne();
+    });
+
+    // ---------- Amis ----------
+    function noterPresence(uid: string, stats: StatsCompte) {
+      let set = socketsParUid.get(uid);
+      const premier = !set?.size;
+      if (!set) socketsParUid.set(uid, (set = new Set()));
+      set.add(socket.id);
+      amisParUid.set(uid, new Set(stats.amis));
+      if (premier) prevenirAmis(stats.amis);
+    }
+    function oublierPresence() {
+      if (!identite) return;
+      const uid = identite.uid;
+      const set = socketsParUid.get(uid);
+      if (!set?.delete(socket.id) || set.size) return;
+      socketsParUid.delete(uid);
+      const amis = amisParUid.get(uid) ?? new Set<string>();
+      amisParUid.delete(uid);
+      prevenirAmis(amis);
+    }
+    const avecCompte = (rappel: unknown) => {
+      if (!comptes || !identite) {
+        repondre(rappel, { ok: false, erreur: 'Connecte-toi à ton compte pour gérer tes amis.' });
+        return null;
+      }
+      return { comptes, uid: identite.uid };
+    };
+    const codeValide = (code: unknown) => (typeof code === 'string' ? code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) : '');
+    async function uidDuCode(code: unknown, rappel: unknown): Promise<string | null> {
+      const c = codeValide(code);
+      const uid = c && comptes ? await comptes.chercherCode(c).catch(() => null) : null;
+      if (!uid) repondre(rappel, { ok: false, erreur: 'Aucun joueur avec ce code ami.' });
+      return uid;
+    }
+    let derniereDemande = 0;
+    async function demander(vers: string, rappel: unknown) {
+      const a = avecCompte(rappel);
+      if (!a) return;
+      if (vers === a.uid) return repondre(rappel, { ok: false, erreur: MESSAGE_DEMANDE.soi_meme });
+      const maintenant = Date.now();
+      if (maintenant - derniereDemande < 300) return repondre(rappel, { ok: false, erreur: 'Patiente une seconde.' });
+      derniereDemande = maintenant;
+      try {
+        const { resultat, stats } = await a.comptes.demanderAmi(a.uid, vers);
+        memoriserAmis(stats);
+        if (resultat === 'envoyee' || resultat === 'amis') prevenirAmis([a.uid, vers]);
+        const ok = resultat === 'envoyee' || resultat === 'amis' || resultat === 'deja_amis' || resultat === 'deja_envoyee';
+        repondre(rappel, ok ? { ok: true, resultat, message: MESSAGE_DEMANDE[resultat] } : { ok: false, erreur: MESSAGE_DEMANDE[resultat] });
+      } catch (e) {
+        console.error('Demande d’ami impossible :', e);
+        repondre(rappel, { ok: false, erreur: 'La demande n’a pas pu être envoyée, réessaie.' });
+      }
+    }
+
+    socket.on('amis', async (_data: unknown, rappel?: Rappel) => {
+      const a = avecCompte(rappel);
+      if (!a) return;
+      try {
+        repondre(rappel, { ok: true, liste: await listeAmis(a.uid, contexte()?.salon) });
+      } catch (e) {
+        console.error('Liste d’amis indisponible :', e);
+        repondre(rappel, { ok: false, erreur: 'Liste d’amis indisponible pour le moment.' });
+      }
+    });
+
+    socket.on('ajouter_ami', async (data: { code?: string } = {}, rappel?: Rappel) => {
+      if (!avecCompte(rappel)) return;
+      const vers = await uidDuCode(data?.code, rappel);
+      if (vers) await demander(vers, rappel);
+    });
+
+    socket.on('ajouter_ami_joueur', async (data: { joueurId?: string } = {}, rappel?: Rappel) => {
+      if (!avecCompte(rappel)) return;
+      const j = contexte()?.salon.joueurs.find((x) => x.id === data?.joueurId);
+      if (!j?.uid) return repondre(rappel, { ok: false, erreur: 'Ce joueur n’a pas de compte.' });
+      await demander(j.uid, rappel);
+    });
+
+    socket.on('repondre_ami', async (data: { code?: string; accepter?: boolean } = {}, rappel?: Rappel) => {
+      const a = avecCompte(rappel);
+      if (!a) return;
+      const autre = await uidDuCode(data?.code, rappel);
+      if (!autre) return;
+      try {
+        memoriserAmis(await a.comptes.repondreAmi(a.uid, autre, !!data?.accepter));
+        prevenirAmis([a.uid, autre]);
+        repondre(rappel, { ok: true, message: data?.accepter ? 'Vous êtes maintenant amis !' : 'Demande refusée.' });
+      } catch (e) {
+        console.error('Réponse impossible :', e);
+        repondre(rappel, { ok: false, erreur: 'Réessaie dans un instant.' });
+      }
+    });
+
+    socket.on('retirer_ami', async (data: { code?: string } = {}, rappel?: Rappel) => {
+      const a = avecCompte(rappel);
+      if (!a) return;
+      const autre = await uidDuCode(data?.code, rappel);
+      if (!autre) return;
+      try {
+        memoriserAmis(await a.comptes.retirerLien(a.uid, autre));
+        prevenirAmis([a.uid, autre]);
+        repondre(rappel, { ok: true });
+      } catch (e) {
+        console.error('Retrait impossible :', e);
+        repondre(rappel, { ok: false, erreur: 'Réessaie dans un instant.' });
+      }
+    });
+
+    /** Invite un ami en ligne à rejoindre sa partie privée. */
+    const dernieresInvitations = new Map<string, number>();
+    socket.on('inviter', async (data: { code?: string } = {}, rappel?: Rappel) => {
+      const a = avecCompte(rappel);
+      if (!a) return;
+      const c = contexte();
+      if (!c || c.salon.publique || c.salon.partie) return repondre(rappel, { ok: false, erreur: 'Crée d’abord une partie privée pour inviter tes amis.' });
+      const ami = await uidDuCode(data?.code, rappel);
+      if (!ami) return;
+      if (!(amisParUid.get(a.uid)?.has(ami) ?? (await a.comptes.lire(a.uid))?.amis.includes(ami))) {
+        return repondre(rappel, { ok: false, erreur: 'Ce joueur n’est pas dans tes amis.' });
+      }
+      if (c.salon.joueurs.some((j) => j.uid === ami)) return repondre(rappel, { ok: false, erreur: 'Cet ami est déjà dans ta partie.' });
+      if (c.salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: 'La partie est complète.' });
+      const sockets = socketsParUid.get(ami);
+      if (!sockets?.size) return repondre(rappel, { ok: false, erreur: 'Cet ami n’est pas en ligne : envoie-lui le lien du salon.' });
+      const maintenant = Date.now();
+      if (maintenant - (dernieresInvitations.get(ami) ?? 0) < 5000) return repondre(rappel, { ok: false, erreur: 'Invitation déjà envoyée, patiente un peu.' });
+      dernieresInvitations.set(ami, maintenant);
+      const invitation: Invitation = { id: nouvelId(), de: c.joueur.nom, code: c.salon.code, heure: maintenant };
+      for (const sid of sockets) io.to(sid).emit('invitation', invitation);
+      repondre(rappel, { ok: true, message: 'Invitation envoyée !' });
     });
   });
 

@@ -1,17 +1,44 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
-import type { ProfilCompte, ProfilPublic, VueSalon } from '../../shared/types';
+import type { Invitation, ListeAmis, ProfilCompte, ProfilPublic, VueSalon } from '../../shared/types';
 import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
-import { BadgeNiveau, CarteCompte, FicheJoueur, type EtatCompte, type ModuleConnexion } from './Profil';
+import {
+  BadgeNiveau,
+  CarteCompte,
+  FenetreAmis,
+  FenetreConnexion,
+  FenetreProfil,
+  FicheJoueur,
+  SectionInviterAmis,
+  type EtatCompte,
+  type ModuleConnexion,
+} from './Profil';
 import { socket } from './socket';
 import { Table } from './Table';
 import { AVATARS, REGLES } from './textes';
-import { BoutonMusique, Chat, Fenetre } from './ui';
+import { BoutonMusique, Chat, Fenetre, IconeImage, IconeMusique, useMusique } from './ui';
 
-type Reponse = { ok: boolean; erreur?: string; code?: string; jeton?: string; joueurId?: string; profil?: ProfilCompte | ProfilPublic | null };
+type Reponse = {
+  ok: boolean;
+  erreur?: string;
+  message?: string;
+  resultat?: string;
+  code?: string;
+  jeton?: string;
+  joueurId?: string;
+  profil?: ProfilCompte | ProfilPublic | null;
+  liste?: ListeAmis | null;
+};
 export type Appel = (evenement: string, data?: unknown) => Promise<Reponse>;
 export type EnLigne = { joueurs: number; enAttente: number };
+
+/** Ce dont les écrans ont besoin pour les amis. */
+export interface EtatAmis {
+  liste: ListeAmis | null;
+  recharger: () => void;
+  inviter: (code: string) => void;
+}
 
 /** Envoi au serveur sans message d'erreur à l'écran (pour les échanges automatiques du compte). */
 function demander(evenement: string, data?: unknown): Promise<Reponse> {
@@ -44,6 +71,7 @@ export function App() {
   const [salon, setSalon] = useState<VueSalon | null>(null);
   const [connecte, setConnecte] = useState(socket.connected);
   const [message, setMessage] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [reprise, setReprise] = useState(!!lire(CLE_SESSION));
   const [enLigne, setEnLigne] = useState<EnLigne | null>(null);
 
@@ -95,6 +123,11 @@ export function App() {
     const t = window.setTimeout(() => setMessage(null), 3500);
     return () => window.clearTimeout(t);
   }, [message]);
+  useEffect(() => {
+    if (!info) return;
+    const t = window.setTimeout(() => setInfo(null), 3000);
+    return () => window.clearTimeout(t);
+  }, [info]);
 
   const appel: Appel = useCallback(
     (evenement, data) =>
@@ -109,6 +142,7 @@ export function App() {
             return ok({ ok: false });
           }
           if (!r.ok && r.erreur) setMessage(r.erreur);
+          if (r.ok && r.message) setInfo(r.message);
           if (r.ok && r.code && r.jeton) {
             ecrire(CLE_SESSION, JSON.stringify({ code: r.code, jeton: r.jeton }));
             history.replaceState(null, '', `/?salon=${r.code}${parametres.has('test') ? '&test=1' : ''}`);
@@ -192,6 +226,61 @@ export function App() {
     if (etatEnregistrement === 'fait' || !dansUnSalon) void rafraichir();
   }, [etatEnregistrement, dansUnSalon, rafraichir]);
 
+  // ----- Amis et invitations -----
+  const [listeAmis, setListeAmis] = useState<ListeAmis | null>(null);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const connectePourAmis = !!profil;
+  const chargerAmis = useCallback(async () => {
+    if (!utilisateurRef.current) return setListeAmis(null);
+    const r = await demander('amis');
+    if (r.ok && r.liste) setListeAmis(r.liste);
+  }, []);
+  useEffect(() => {
+    if (connectePourAmis) void chargerAmis();
+    else setListeAmis(null);
+  }, [connectePourAmis, chargerAmis]);
+  useEffect(() => {
+    const surMaj = () => void chargerAmis();
+    const surInvitation = (inv: Invitation) => setInvitations((l) => [...l.filter((x) => x.code !== inv.code), inv]);
+    socket.on('amis_maj', surMaj);
+    socket.on('invitation', surInvitation);
+    return () => {
+      socket.off('amis_maj', surMaj);
+      socket.off('invitation', surInvitation);
+    };
+  }, [chargerAmis]);
+  // Une invitation expire au bout de 2 minutes.
+  useEffect(() => {
+    if (!invitations.length) return;
+    const t = window.setInterval(() => setInvitations((l) => l.filter((x) => Date.now() - x.heure < 120_000)), 5000);
+    return () => window.clearInterval(t);
+  }, [invitations.length]);
+
+  const pseudo = () => (lire(CLE_NOM) || profil?.nom || 'Joueur').slice(0, 16);
+  const salonRef = useRef<VueSalon | null>(null);
+  salonRef.current = salon;
+  const inviter = useCallback(
+    async (code: string) => {
+      const s = salonRef.current;
+      // Pas encore de partie privée : on en ouvre une, puis on invite.
+      if (!s || s.publique || s.partie) {
+        const r = await appel('creer', { nom: (lire(CLE_NOM) || profil?.nom || 'Joueur').slice(0, 16) });
+        if (!r.ok) return;
+      }
+      await appel('inviter', { code });
+    },
+    [appel, profil?.nom],
+  );
+  const rejoindreInvitation = async (inv: Invitation) => {
+    setInvitations((l) => l.filter((x) => x.id !== inv.id));
+    await appel('rejoindre', { code: inv.code, nom: pseudo() });
+  };
+  // Fonctions stables : sinon chaque nouvelle liste relancerait un chargement, sans fin.
+  const rechargerAmis = useCallback(() => void chargerAmis(), [chargerAmis]);
+  const inviterAmi = useCallback((c: string) => void inviter(c), [inviter]);
+  const amis: EtatAmis = useMemo(() => ({ liste: listeAmis, recharger: rechargerAmis, inviter: inviterAmi }), [listeAmis, rechargerAmis, inviterAmi]);
+  const enPartie = !!salon?.partie && salon.partie.phase !== 'FIN_DE_PARTIE';
+
   const compte: EtatCompte = useMemo(
     () => ({
       actif: !!module,
@@ -208,25 +297,135 @@ export function App() {
 
   let ecran;
   if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} />;
-  else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} />;
+  else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} amis={amis} />;
   else if (reprise) ecran = <div className="chargement">Connexion à la partie…</div>;
-  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} />;
+  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} />;
 
   return (
     <>
       {ecran}
       {salon && !salon.partie && <Chat salon={salon} appel={appel} />}
       {!connecte && <div className="bandeau-reseau">Connexion perdue. Reconnexion en cours…</div>}
+      {!enPartie && invitations.length > 0 && (
+        <div className="invitations" role="status">
+          {invitations.map((inv) => (
+            <div key={inv.id} className="invitation">
+              <IconeImage nom="invitation" repli="✉️" className="invitation-icone" />
+              <p>
+                <strong>{inv.de}</strong> t’invite à sa partie privée.
+              </p>
+              <div className="rangee">
+                <button type="button" className="petit principal" onClick={() => void rejoindreInvitation(inv)}>
+                  Rejoindre
+                </button>
+                <button type="button" className="petit" onClick={() => setInvitations((l) => l.filter((x) => x.id !== inv.id))}>
+                  Plus tard
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {message && (
         <div className="toast" role="status" onClick={() => setMessage(null)}>
           {message}
+        </div>
+      )}
+      {info && !message && (
+        <div className="toast info" role="status" onClick={() => setInfo(null)}>
+          {info}
         </div>
       )}
     </>
   );
 }
 
-function Accueil({ appel, compte, enLigne }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null }) {
+function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; amis: EtatAmis }) {
+  const [vue, setVue] = useState<'menu' | 'jouer'>(parametres.get('salon') ? 'jouer' : 'menu');
+  const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'regles' | 'connexion' | 'inscription' | null>(null);
+  const [intro, setIntro] = useState<string | undefined>(undefined);
+  const [musiqueActive, basculerMusique] = useMusique();
+  const demandes = amis.liste?.recues.length ?? 0;
+  const fermer = () => {
+    setFenetre(null);
+    setIntro(undefined);
+  };
+  /** Profil et Amis demandent un compte : sinon on propose de se connecter. */
+  const ouvrirAvecCompte = (cible: 'profil' | 'amis', texte: string) => {
+    if (compte.utilisateur && compte.profil) return setFenetre(cible);
+    if (!compte.actif) return setFenetre(null);
+    setIntro(texte);
+    setFenetre('connexion');
+  };
+  const fenetres = (
+    <>
+      {fenetre === 'menu' && (
+        <Fenetre titre="Menu" onFermer={fermer}>
+          <div className="menu-liste">
+            <button type="button" className="menu-entree" onClick={() => ouvrirAvecCompte('profil', 'Connecte-toi pour voir ton profil, tes victoires et ton niveau.')}>
+              <IconeImage nom="profil" repli="👤" className="menu-icone" />
+              <span>Profil</span>
+            </button>
+            <button type="button" className="menu-entree" onClick={() => ouvrirAvecCompte('amis', 'Crée un compte (gratuit) pour ajouter tes amis et les inviter à jouer.')}>
+              <IconeImage nom="amis" repli="👥" className="menu-icone" />
+              <span>Amis</span>
+              {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
+            </button>
+            <button type="button" className="menu-entree" onClick={() => setFenetre('regles')}>
+              <IconeImage nom="regles" repli="📜" className="menu-icone" />
+              <span>Règles</span>
+            </button>
+            <button type="button" className="menu-entree" onClick={basculerMusique} aria-pressed={musiqueActive}>
+              <IconeMusique active={musiqueActive} />
+              <span>{musiqueActive ? 'Son activé' : 'Son coupé'}</span>
+            </button>
+          </div>
+          {!compte.actif && <p className="discret">Les comptes joueurs ne sont pas activés sur ce serveur.</p>}
+        </Fenetre>
+      )}
+      {fenetre === 'profil' && <FenetreProfil compte={compte} appel={appel} onFermer={fermer} />}
+      {fenetre === 'amis' && <FenetreAmis liste={amis.liste} appel={appel} recharger={amis.recharger} inviter={amis.inviter} onFermer={fermer} />}
+      {fenetre === 'regles' && <FenetreRegles onFermer={fermer} />}
+      {(fenetre === 'connexion' || fenetre === 'inscription') && compte.module && (
+        <FenetreConnexion
+          module={compte.module}
+          modeInitial={intro ? 'inscription' : fenetre}
+          pseudoInitial={lire(CLE_NOM) ?? ''}
+          onFermer={fermer}
+          onInscrit={compte.apresInscription}
+          intro={intro}
+        />
+      )}
+    </>
+  );
+  if (vue === 'jouer') return <PageJouer appel={appel} compte={compte} enLigne={enLigne} retour={() => setVue('menu')} />;
+  return (
+    <main className="accueil menu-principal">
+      <div className="menu-haut">
+        <p className="en-ligne-info">
+          <span className="point en-ligne" aria-hidden="true" />
+          {enLigne ? `${enLigne.joueurs} en ligne` : '…'}
+        </p>
+        <button type="button" className="bouton-menu" onClick={() => setFenetre('menu')} aria-label="Menu : profil, amis, règles et son">
+          <IconeImage nom="menu" repli="⋯" className="bouton-menu-icone" />
+          {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
+        </button>
+      </div>
+      <h1 className="accueil-logo">
+        <img src="/cartes/logo.webp" alt="Le Dernier Baron" width={900} height={450} />
+      </h1>
+      <p className="accroche">Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.</p>
+      <button type="button" className="bouton-jouer" onClick={() => setVue('jouer')}>
+        Jouer
+      </button>
+      <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={lire(CLE_NOM) ?? ''} />
+      {fenetres}
+    </main>
+  );
+}
+
+/** Page « Jouer » : partie en ligne, partie privée ou code d'un salon. */
+function PageJouer({ appel, compte, enLigne, retour }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; retour: () => void }) {
   const [nom, setNom] = useState(lire(CLE_NOM) ?? '');
   // Avec un compte, le pseudo est proposé automatiquement (sans écraser un pseudo tapé à la main).
   const nomCompte = compte.profil?.nom;
@@ -247,12 +446,14 @@ function Accueil({ appel, compte, enLigne }: { appel: Appel; compte: EtatCompte;
     setOccupe(false);
   };
   return (
-    <main className="accueil">
-      <h1 className="accueil-logo">
-        <img src="/cartes/logo.webp" alt="Le Dernier Baron" width={900} height={450} />
-      </h1>
-      <p className="accroche">Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.</p>
-      <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={nom} />
+    <main className="accueil page-jouer">
+      <div className="menu-haut">
+        <button type="button" className="bouton-retour" onClick={retour}>
+          ← Menu
+        </button>
+        <h1 className="titre-page">Jouer</h1>
+        <span className="menu-haut-vide" />
+      </div>
       <form className="accueil-form" onSubmit={(e) => e.preventDefault()}>
         <label htmlFor="pseudo">Ton pseudo</label>
         <input id="pseudo" value={nom} maxLength={16} autoComplete="nickname" placeholder="Ex. Lucas" onChange={(e) => setNom(e.target.value)} />
@@ -270,6 +471,7 @@ function Accueil({ appel, compte, enLigne }: { appel: Appel; compte: EtatCompte;
             <button type="button" disabled={!nom.trim() || occupe} onClick={() => valider('creer')}>
               🔒 Créer une partie privée
             </button>
+            <p className="discret centre-texte">Pour jouer entre amis : invite-les depuis le salon ou partage-leur le code.</p>
           </>
         )}
         <div className="separateur">{invite ? 'Tu es invité dans le salon' : 'ou rejoindre une partie privée'}</div>
@@ -287,8 +489,6 @@ function Accueil({ appel, compte, enLigne }: { appel: Appel; compte: EtatCompte;
           Rejoindre
         </button>
       </form>
-      <BoutonRegles />
-      <BoutonMusique />
     </main>
   );
 }
@@ -306,7 +506,14 @@ function useSecondesAvant(ms: number | null): number | null {
   return fin === null ? null : Math.max(0, Math.ceil((fin - Date.now()) / 1000));
 }
 
-function Lobby({ salon, appel, quitter, compte }: { salon: VueSalon; appel: Appel; quitter: () => void; compte: EtatCompte }) {
+function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel: Appel; quitter: () => void; compte: EtatCompte; amis: EtatAmis }) {
+  const [fenetreAmis, setFenetreAmis] = useState(false);
+  // Quand quelqu'un arrive ou part, la liste « Inviter des amis » se met à jour.
+  const { recharger } = amis;
+  const nbJoueurs = salon.joueurs.length;
+  useEffect(() => {
+    if (compte.profil) recharger();
+  }, [nbJoueurs, recharger, compte.profil]);
   const estHote = salon.hoteId === salon.moi && !salon.publique;
   const lien = `${location.origin}/?salon=${salon.code}`;
   const [copie, setCopie] = useState(false);
@@ -402,6 +609,7 @@ function Lobby({ salon, appel, quitter, compte }: { salon: VueSalon; appel: Appe
         </ol>
         <p className="discret">Touche un joueur pour voir son profil. Les places sont jouées dans cet ordre.</p>
       </section>
+      {!salon.publique && compte.profil && <SectionInviterAmis liste={amis.liste} inviter={amis.inviter} ouvrirAmis={() => setFenetreAmis(true)} />}
       <CarteCompte compte={compte} appel={appel} contexte="salon" pseudo={salon.joueurs.find((j) => j.id === salon.moi)?.nom ?? ''} />
       {estHote ? (
         <section className="lobby-actions">
@@ -446,11 +654,12 @@ function Lobby({ salon, appel, quitter, compte }: { salon: VueSalon; appel: Appe
       </button>
       <BoutonMusique />
       {fiche && <FicheJoueur joueurId={fiche} appel={appel} onFermer={() => setFiche(null)} />}
+      {fenetreAmis && <FenetreAmis liste={amis.liste} appel={appel} recharger={amis.recharger} inviter={amis.inviter} onFermer={() => setFenetreAmis(false)} />}
     </main>
   );
 }
 
-/** Bouton « Règles du jeu » de l'accueil et du salon. */
+/** Bouton « Règles du jeu » du salon. */
 function BoutonRegles() {
   const [ouvert, setOuvert] = useState(false);
   return (
@@ -459,21 +668,25 @@ function BoutonRegles() {
         <img className="icone-bouton" src="/cartes/icone-regles.webp" alt="" draggable={false} />
         Règles du jeu
       </button>
-      {ouvert && (
-        <Fenetre titre="Règles du jeu" onFermer={() => setOuvert(false)} large>
-          {REGLES.map((r) => (
-            <section key={r.titre} className="regle">
-              <h3>{r.titre}</h3>
-              {r.texte.map((t) => (
-                <p key={t}>{t}</p>
-              ))}
-            </section>
-          ))}
-          <button type="button" className="principal large" onClick={() => setOuvert(false)}>
-            J'ai compris
-          </button>
-        </Fenetre>
-      )}
+      {ouvert && <FenetreRegles onFermer={() => setOuvert(false)} />}
     </>
+  );
+}
+
+function FenetreRegles({ onFermer }: { onFermer: () => void }) {
+  return (
+    <Fenetre titre="Règles du jeu" onFermer={onFermer} large>
+      {REGLES.map((r) => (
+        <section key={r.titre} className="regle">
+          <h3>{r.titre}</h3>
+          {r.texte.map((t) => (
+            <p key={t}>{t}</p>
+          ))}
+        </section>
+      ))}
+      <button type="button" className="principal large" onClick={onFermer}>
+        J'ai compris
+      </button>
+    </Fenetre>
   );
 }

@@ -1,10 +1,11 @@
+import type React from 'react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { progression, XP_NUIT, XP_PARTIE, XP_VICTOIRE, xpPourNiveau } from '../../shared/niveaux';
 import { DESCRIPTION_NIVEAU_BOT, DESCRIPTION_STYLE_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT } from '../../shared/robot';
-import type { BilanCompte, ProfilCompte, ProfilPublic } from '../../shared/types';
+import type { AmiVue, BilanCompte, ListeAmis, ProfilCompte, ProfilPublic, StatutAmi } from '../../shared/types';
 import type { Appel } from './App';
 import type { Utilisateur } from './connexion';
-import { Fenetre } from './ui';
+import { Fenetre, IconeImage } from './ui';
 
 export type ModuleConnexion = typeof import('./connexion');
 
@@ -128,12 +129,14 @@ export function CarteCompte({ compte, appel, contexte, pseudo }: { compte: EtatC
   );
 }
 
-function FenetreConnexion(props: {
+export function FenetreConnexion(props: {
   module: ModuleConnexion;
   modeInitial: 'connexion' | 'inscription';
   pseudoInitial: string;
   onFermer: () => void;
   onInscrit: () => void;
+  /** Phrase d'explication en haut de la fenêtre (ex. « Crée un compte pour ajouter des amis »). */
+  intro?: string;
 }) {
   const { module } = props;
   const [mode, setMode] = useState<'connexion' | 'inscription' | 'oubli'>(props.modeInitial);
@@ -184,6 +187,7 @@ function FenetreConnexion(props: {
   const titres = { connexion: 'Connexion', inscription: 'Créer un compte', oubli: 'Mot de passe oublié' };
   return (
     <Fenetre titre={titres[mode]} onFermer={props.onFermer}>
+      {props.intro && <p className="intro-compte">{props.intro}</p>}
       {mode !== 'oubli' && (
         <div className="onglets" role="tablist">
           <button type="button" role="tab" aria-selected={mode === 'connexion'} className={mode === 'connexion' ? 'actif' : ''} onClick={() => changer('connexion')}>
@@ -263,7 +267,7 @@ function FenetreConnexion(props: {
   );
 }
 
-function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte; appel: Appel; onFermer: () => void }) {
+export function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte; appel: Appel; onFermer: () => void }) {
   const [confirmer, setConfirmer] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const { rafraichir } = compte;
@@ -415,6 +419,15 @@ export function FicheJoueur({ joueurId, appel, onFermer }: { joueurId: string; a
           </p>
         </div>
       )}
+      {profil?.type === 'compte' && profil.relation && profil.relation !== 'moi' && (
+        <BoutonAmiJoueur
+          relation={profil.relation}
+          onAjouter={async () => {
+            const r = await appel('ajouter_ami_joueur', { joueurId });
+            if (r.ok && r.resultat) setProfil({ ...profil, relation: r.resultat === 'amis' || r.resultat === 'deja_amis' ? 'ami' : 'demande_envoyee' });
+          }}
+        />
+      )}
       {profil?.type === 'compte' && (
         <>
           <BarreXp xp={profil.xp} />
@@ -457,5 +470,223 @@ export function FicheJoueur({ joueurId, appel, onFermer }: { joueurId: string; a
         </>
       )}
     </Fenetre>
+  );
+}
+
+function BoutonAmiJoueur({ relation, onAjouter }: { relation: 'ami' | 'demande_envoyee' | 'demande_recue' | 'aucune'; onAjouter: () => void }) {
+  if (relation === 'ami') return <p className="relation-ami">✓ Vous êtes amis</p>;
+  if (relation === 'demande_envoyee') return <p className="relation-ami discret">Demande d’ami envoyée</p>;
+  return (
+    <button type="button" className="principal large bouton-ajout-ami" onClick={onAjouter}>
+      <IconeImage nom="amis" repli="👥" className="icone-bouton" />
+      {relation === 'demande_recue' ? 'Accepter sa demande d’ami' : 'Ajouter en ami'}
+    </button>
+  );
+}
+
+const TEXTE_STATUT: Record<StatutAmi, string> = { en_ligne: 'En ligne', en_partie: 'En partie', hors_ligne: 'Hors ligne' };
+
+function LigneAmi({ ami, children }: { ami: AmiVue; children?: React.ReactNode }) {
+  return (
+    <li className={`ligne-ami statut-${ami.statut}`}>
+      <span className="ligne-ami-avatar">
+        <img src={`/cartes/avatar-${ami.avatar}.webp`} alt="" />
+        <span className={`point ${ami.statut === 'hors_ligne' ? 'hors-ligne' : 'en-ligne'}`} />
+      </span>
+      <span className="ligne-ami-texte">
+        <strong>
+          {ami.nom} <BadgeNiveau niveau={ami.niveau} titre={ami.titre} />
+        </strong>
+        <small>
+          {TEXTE_STATUT[ami.statut]} · 🏆 {pluriel(ami.victoires, 'victoire')}
+        </small>
+      </span>
+      <span className="ligne-ami-actions">{children}</span>
+    </li>
+  );
+}
+
+/** Liste d'amis : code ami à partager, ajout par code, demandes reçues et envoyées, invitations. */
+export function FenetreAmis(props: {
+  liste: ListeAmis | null;
+  appel: Appel;
+  recharger: () => void;
+  inviter: (code: string) => void;
+  onFermer: () => void;
+}) {
+  const { liste, appel, recharger, inviter } = props;
+  const [code, setCode] = useState('');
+  const [copie, setCopie] = useState(false);
+  const [aRetirer, setARetirer] = useState<string | null>(null);
+  useEffect(() => {
+    recharger();
+    const t = window.setInterval(recharger, 20_000);
+    return () => window.clearInterval(t);
+  }, [recharger]);
+  const agir = async (evenement: string, data: unknown) => {
+    await appel(evenement, data);
+    recharger();
+  };
+  const ajouter = async (e: FormEvent) => {
+    e.preventDefault();
+    if (code.trim().length < 6) return;
+    const r = await appel('ajouter_ami', { code });
+    if (r.ok) setCode('');
+    recharger();
+  };
+  const partager = async () => {
+    if (!liste) return;
+    const texte = `Ajoute-moi en ami sur Le Dernier Baron : mon code est ${liste.monCode} (${location.origin})`;
+    try {
+      if (navigator.share) await navigator.share({ title: 'Le Dernier Baron', text: texte });
+      else {
+        await navigator.clipboard.writeText(liste.monCode);
+        setCopie(true);
+      }
+    } catch {
+      /* partage annulé */
+    }
+  };
+  return (
+    <Fenetre titre="Amis" onFermer={props.onFermer} large>
+      {!liste ? (
+        <p className="discret">Chargement…</p>
+      ) : (
+        <>
+          <section className="mon-code">
+            <span className="etiquette">Ton code ami</span>
+            <strong>{liste.monCode}</strong>
+            <button type="button" className="petit" onClick={partager}>
+              {copie ? 'Code copié' : 'Partager mon code'}
+            </button>
+          </section>
+          <form className="ajout-ami" onSubmit={ajouter}>
+            <label htmlFor="code-ami">Ajouter un ami avec son code</label>
+            <div className="ajout-ami-ligne">
+              <input
+                id="code-ami"
+                value={code}
+                maxLength={10}
+                autoCapitalize="characters"
+                autoComplete="off"
+                placeholder="Ex. K7M2QX"
+                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              />
+              <button type="submit" className="principal" disabled={code.length < 6}>
+                Ajouter
+              </button>
+            </div>
+            <small className="discret">Tu peux aussi toucher l’avatar d’un joueur pendant une partie pour l’ajouter.</small>
+          </form>
+          {liste.recues.length > 0 && (
+            <section>
+              <h3 className="profil-sous-titre">Demandes reçues ({liste.recues.length})</h3>
+              <ul className="liste-amis">
+                {liste.recues.map((a) => (
+                  <LigneAmi key={a.code} ami={a}>
+                    <button type="button" className="petit principal" onClick={() => agir('repondre_ami', { code: a.code, accepter: true })}>
+                      Accepter
+                    </button>
+                    <button type="button" className="petit" onClick={() => agir('repondre_ami', { code: a.code, accepter: false })}>
+                      Refuser
+                    </button>
+                  </LigneAmi>
+                ))}
+              </ul>
+            </section>
+          )}
+          <section>
+            <h3 className="profil-sous-titre">Mes amis ({liste.amis.length})</h3>
+            {liste.amis.length === 0 ? (
+              <p className="discret">Pas encore d’amis : partage ton code ou ajoute celui d’un ami.</p>
+            ) : (
+              <ul className="liste-amis">
+                {liste.amis.map((a) => (
+                  <LigneAmi key={a.code} ami={a}>
+                    {aRetirer === a.code ? (
+                      <>
+                        <button type="button" className="petit danger" onClick={() => agir('retirer_ami', { code: a.code })}>
+                          Retirer
+                        </button>
+                        <button type="button" className="petit" onClick={() => setARetirer(null)}>
+                          Garder
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="petit principal bouton-inviter"
+                          disabled={a.statut !== 'en_ligne'}
+                          title={a.statut === 'en_ligne' ? 'Inviter dans ta partie privée' : TEXTE_STATUT[a.statut]}
+                          onClick={() => inviter(a.code)}
+                        >
+                          <IconeImage nom="invitation" repli="✉️" className="icone-mini" />
+                          Inviter
+                        </button>
+                        <button type="button" className="petit fermer-ami" aria-label={`Retirer ${a.nom} de mes amis`} onClick={() => setARetirer(a.code)}>
+                          ×
+                        </button>
+                      </>
+                    )}
+                  </LigneAmi>
+                ))}
+              </ul>
+            )}
+          </section>
+          {liste.envoyees.length > 0 && (
+            <section>
+              <h3 className="profil-sous-titre">Demandes envoyées</h3>
+              <ul className="liste-amis">
+                {liste.envoyees.map((a) => (
+                  <LigneAmi key={a.code} ami={a}>
+                    <button type="button" className="petit" onClick={() => agir('retirer_ami', { code: a.code })}>
+                      Annuler
+                    </button>
+                  </LigneAmi>
+                ))}
+              </ul>
+            </section>
+          )}
+          <p className="discret">« Inviter » ouvre une partie privée si tu n’en as pas encore, puis envoie l’invitation à ton ami en ligne.</p>
+        </>
+      )}
+    </Fenetre>
+  );
+}
+
+/** Dans le salon d'une partie privée : inviter ses amis en ligne. */
+export function SectionInviterAmis({ liste, inviter, ouvrirAmis }: { liste: ListeAmis | null; inviter: (code: string) => void; ouvrirAmis: () => void }) {
+  if (!liste) return null;
+  const enLigne = liste.amis.filter((a) => a.statut === 'en_ligne' && !a.avecMoi);
+  return (
+    <section className="inviter-amis">
+      <h2>
+        <IconeImage nom="invitation" repli="✉️" className="icone-titre" />
+        Inviter des amis
+      </h2>
+      {enLigne.length ? (
+        <ul className="liste-amis">
+          {enLigne.map((a) => (
+            <LigneAmi key={a.code} ami={a}>
+              <button type="button" className="petit principal" onClick={() => inviter(a.code)}>
+                Inviter
+              </button>
+            </LigneAmi>
+          ))}
+        </ul>
+      ) : (
+        <p className="discret">
+          {!liste.amis.length
+            ? 'Ajoute des amis pour les inviter ici.'
+            : liste.amis.some((a) => a.avecMoi && a.statut !== 'hors_ligne')
+              ? 'Tes amis en ligne sont déjà à ta table.'
+              : 'Aucun ami en ligne pour le moment : partage le lien du salon.'}
+        </p>
+      )}
+      <button type="button" className="lien-discret" onClick={ouvrirAmis}>
+        Gérer mes amis
+      </button>
+    </section>
   );
 }

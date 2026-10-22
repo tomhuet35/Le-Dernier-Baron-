@@ -240,7 +240,39 @@ export type ProfilPublic =
       annoncesReussies: number;
       meilleurScore: number | null;
       historique: EntreeHistorique[];
+      /** Lien avec le joueur qui regarde la fiche (null s'il n'est pas connecté à un compte). */
+      relation: 'moi' | 'ami' | 'demande_envoyee' | 'demande_recue' | 'aucune' | null;
     };
+
+export type StatutAmi = 'en_ligne' | 'en_partie' | 'hors_ligne';
+
+/** Un ami (ou une demande) tel qu'il apparaît dans la liste : jamais d'adresse e-mail. */
+export interface AmiVue {
+  code: string;
+  nom: string;
+  avatar: number;
+  niveau: number;
+  titre: string;
+  victoires: number;
+  statut: StatutAmi;
+  /** Déjà assis à la même table que moi. */
+  avecMoi: boolean;
+}
+
+export interface ListeAmis {
+  monCode: string;
+  amis: AmiVue[];
+  recues: AmiVue[];
+  envoyees: AmiVue[];
+}
+
+/** Invitation d'un ami à rejoindre sa partie privée. */
+export interface Invitation {
+  id: string;
+  de: string;
+  code: string;
+  heure: number;
+}
 
 /** Profil complet, envoyé seulement à son propriétaire. */
 export interface ProfilCompte {

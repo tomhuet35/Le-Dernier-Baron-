@@ -16,7 +16,7 @@ import {
 import { demarrerServeur } from '../server/serveur';
 import { niveauDepuisXp, progression, resultatsPartie, titreNiveau, xpPourNiveau, XP_NUIT, XP_PARTIE, XP_VICTOIRE } from '../shared/niveaux';
 import { actionRobot } from '../shared/robot';
-import type { BilanNuit, ScoreNuit, VueSalon } from '../shared/types';
+import type { BilanNuit, Invitation, ListeAmis, ScoreNuit, VueSalon } from '../shared/types';
 
 const score = (joueurId: string, total: number, reussie = total > 0): ScoreNuit => ({
   joueurId,
@@ -125,6 +125,8 @@ const firebaseConfig = {
 const identites = {
   'jeton-alice': { uid: 'uid-alice', nom: 'Alice', email: 'alice@gmail.com' },
   'jeton-bruno': { uid: 'uid-bruno', nom: 'Bruno', email: 'bruno@exemple.fr' },
+  'jeton-carla': { uid: 'uid-carla', nom: 'Carla', email: 'carla@gmail.com' },
+  'jeton-dan': { uid: 'uid-dan', nom: null, email: 'dan.martin@gmail.com' },
 };
 const stockage = stockageMemoire();
 const authentification = authentificationTest(identites);
@@ -297,5 +299,86 @@ describe('Comptes de bout en bout', () => {
     expect(authentification.supprimes).toContain('uid-alice');
     expect((await emettre(a, 'profil')).ok).toBe(false);
     a.close();
+  });
+
+  it('amis : code ami, demande, acceptation, présence, invitation et retrait', async () => {
+    const [c, d] = [connecter(), connecter()];
+    const idC = await emettre(c, 'identifier', { jeton: 'jeton-carla' });
+    expect(idC.ok).toBe(true);
+    await emettre(d, 'identifier', { jeton: 'jeton-dan' });
+    const listeC: ListeAmis = (await emettre(c, 'amis')).liste;
+    const listeD: ListeAmis = (await emettre(d, 'amis')).liste;
+    expect(listeC.monCode).toMatch(/^[A-Z2-9]{6}$/);
+    expect(listeD.monCode).not.toBe(listeC.monCode);
+    expect(listeC.amis).toEqual([]);
+
+    // Sans compte : impossible.
+    const invite = connecter();
+    expect((await emettre(invite, 'amis')).ok).toBe(false);
+    invite.close();
+
+    // Carla ajoute Dan par son code (en minuscules, avec des espaces : toléré).
+    expect((await emettre(c, 'ajouter_ami', { code: 'ZZZZZZ' })).ok).toBe(false);
+    expect((await emettre(c, 'ajouter_ami', { code: listeC.monCode })).erreur).toMatch(/propre code/);
+    const majD = new Promise<void>((ok) => d.once('amis_maj', () => ok()));
+    expect((await emettre(c, 'ajouter_ami', { code: ` ${listeD.monCode.toLowerCase()} ` })).resultat).toBe('envoyee');
+    await majD;
+    const dApres: ListeAmis = (await emettre(d, 'amis')).liste;
+    expect(dApres.recues.map((x) => x.nom)).toEqual(['Carla']);
+    expect(JSON.stringify(dApres)).not.toContain('@');
+    expect((await emettre(c, 'amis')).liste.envoyees.map((x: { nom: string }) => x.nom)).toEqual(['dan.martin']);
+
+    // Dan accepte : les deux sont amis et se voient en ligne.
+    expect((await emettre(d, 'repondre_ami', { code: listeC.monCode, accepter: true })).ok).toBe(true);
+    const cAmis: ListeAmis = (await emettre(c, 'amis')).liste;
+    expect(cAmis.amis).toMatchObject([{ nom: 'dan.martin', statut: 'en_ligne' }]);
+    expect(cAmis.envoyees).toEqual([]);
+
+    // Invitation : il faut une partie privée.
+    expect((await emettre(c, 'inviter', { code: listeD.monCode })).ok).toBe(false);
+    const cree = await emettre(c, 'creer', { nom: 'Carla' });
+    const recue = new Promise<Invitation>((ok) => d.once('invitation', ok));
+    expect((await emettre(c, 'inviter', { code: listeD.monCode })).ok).toBe(true);
+    const inv = await recue;
+    expect(inv).toMatchObject({ de: 'Carla', code: cree.code });
+    expect((await emettre(c, 'inviter', { code: listeD.monCode })).ok).toBe(false); // trop rapproché
+    const rejoint = await emettre(d, 'rejoindre', { code: inv.code, nom: 'Dan' });
+    expect(rejoint.ok).toBe(true);
+    // Fiche de Dan vue par Carla dans le salon : « ami ».
+    expect((await emettre(c, 'profil_joueur', { joueurId: rejoint.joueurId })).profil.relation).toBe('ami');
+    expect((await emettre(c, 'inviter', { code: listeD.monCode })).erreur).toMatch(/déjà dans ta partie/);
+
+    // Dan se déconnecte : Carla est prévenue et le voit hors ligne.
+    const horsLigne = new Promise<void>((ok) => c.once('amis_maj', () => ok()));
+    d.close();
+    await horsLigne;
+    expect((await emettre(c, 'amis')).liste.amis[0].statut).toBe('hors_ligne');
+
+    // Retrait : plus aucun lien des deux côtés.
+    expect((await emettre(c, 'retirer_ami', { code: listeD.monCode })).ok).toBe(true);
+    expect(stockage.donnees.get('uid-dan')!.amis).toEqual([]);
+    expect(stockage.donnees.get('uid-carla')!.amis).toEqual([]);
+    c.close();
+  });
+
+  it('demandes croisées, ajout depuis la table et suppression de compte', async () => {
+    const [c, b] = [connecter(), connecter()];
+    await emettre(c, 'identifier', { jeton: 'jeton-carla' });
+    await emettre(b, 'identifier', { jeton: 'jeton-bruno' });
+    const cree = await emettre(c, 'creer', { nom: 'Carla' });
+    const rb = await emettre(b, 'rejoindre', { code: cree.code, nom: 'Bruno' });
+    expect((await emettre(c, 'profil_joueur', { joueurId: rb.joueurId })).profil.relation).toBe('aucune');
+    expect((await emettre(c, 'profil_joueur', { joueurId: cree.joueurId })).profil.relation).toBe('moi');
+    // Carla demande depuis la fiche, Bruno demande aussi : ils deviennent amis directement.
+    expect((await emettre(c, 'ajouter_ami_joueur', { joueurId: rb.joueurId })).resultat).toBe('envoyee');
+    expect((await emettre(b, 'profil_joueur', { joueurId: cree.joueurId })).profil.relation).toBe('demande_recue');
+    expect((await emettre(b, 'ajouter_ami_joueur', { joueurId: cree.joueurId })).resultat).toBe('amis');
+    expect(stockage.donnees.get('uid-bruno')!.amis).toContain('uid-carla');
+    // Bruno supprime son compte : il disparaît de la liste de Carla.
+    expect((await emettre(b, 'supprimer_compte')).ok).toBe(true);
+    expect(stockage.donnees.get('uid-carla')!.amis).not.toContain('uid-bruno');
+    expect((await emettre(c, 'amis')).liste.amis).toEqual([]);
+    c.close();
+    b.close();
   });
 });

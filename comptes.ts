@@ -5,6 +5,7 @@
  * - variable d'environnement FIREBASE_CONFIG : la configuration web copiée depuis la console Firebase ;
  * - fichier secret firebase-admin.json : la clé du compte de service (Paramètres du projet > Comptes de service).
  */
+import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ResultatJoueur } from '../shared/niveaux';
@@ -35,6 +36,13 @@ export interface StatsCompte {
   historique: EntreeHistorique[];
   creeLe: number;
   majLe: number;
+  /** Code à partager pour être ajouté en ami (6 caractères). */
+  codeAmi: string | null;
+  /** Dernier personnage joué (affiché dans la liste d'amis). */
+  avatar: number;
+  amis: string[];
+  demandesRecues: string[];
+  demandesEnvoyees: string[];
 }
 
 export interface ContexteResultat {
@@ -53,7 +61,19 @@ export interface Stockage {
   /** Lit puis réécrit le compte d'un seul bloc (transaction). */
   modifier(uid: string, changement: (avant: StatsCompte | null) => StatsCompte): Promise<StatsCompte>;
   supprimer(uid: string): Promise<void>;
+  /** Plusieurs comptes d'un coup (liste d'amis). */
+  lirePlusieurs(uids: string[]): Promise<Record<string, StatsCompte | null>>;
+  /** Modifie plusieurs comptes ensemble (transaction) : deux joueurs qui deviennent amis. */
+  modifierPlusieurs(
+    uids: string[],
+    changement: (avant: Record<string, StatsCompte | null>) => Record<string, StatsCompte>,
+  ): Promise<Record<string, StatsCompte>>;
+  /** Compte qui porte ce code ami. */
+  chercherCode(code: string): Promise<string | null>;
 }
+
+export type RelationAmi = 'ami' | 'demande_envoyee' | 'demande_recue' | 'aucune';
+export type ResultatDemande = 'envoyee' | 'amis' | 'deja_amis' | 'deja_envoyee' | 'soi_meme' | 'limite';
 
 export interface ServiceComptes {
   configWeb: ConfigWeb;
@@ -61,9 +81,61 @@ export interface ServiceComptes {
   emulateurAuth: string | null;
   verifier(jeton: string): Promise<Identite | null>;
   lire(uid: string): Promise<StatsCompte | null>;
-  enregistrer(uid: string, nom: string, resultat: ResultatJoueur, contexte: ContexteResultat): Promise<StatsCompte>;
+  enregistrer(uid: string, nom: string, resultat: ResultatJoueur, contexte: ContexteResultat, avatar?: number): Promise<StatsCompte>;
   supprimer(uid: string): Promise<void>;
+  /** Crée le compte au premier passage et lui attribue un code ami. */
+  /** nom : pseudo du compte (null s'il n'en a pas) ; repli : nom utilisé à défaut (début de l'e-mail). */
+  preparer(uid: string, nom: string | null, repli?: string): Promise<StatsCompte>;
+  lirePlusieurs(uids: string[]): Promise<Record<string, StatsCompte | null>>;
+  chercherCode(code: string): Promise<string | null>;
+  demanderAmi(de: string, vers: string): Promise<{ resultat: ResultatDemande; stats: Record<string, StatsCompte> }>;
+  /** Accepte (ou refuse) une demande reçue. */
+  repondreAmi(uid: string, autre: string, accepter: boolean): Promise<Record<string, StatsCompte>>;
+  /** Retire un ami, annule ou refuse une demande : supprime tout lien entre les deux comptes. */
+  retirerLien(uid: string, autre: string): Promise<Record<string, StatsCompte>>;
 }
+
+export const MAX_AMIS = 100;
+export const MAX_DEMANDES = 50;
+const ALPHABET_CODE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/** Code ami tiré du compte (toujours le même), plus long en cas de doublon. */
+export function codeAmiPour(uid: string, longueur = 6): string {
+  const h = createHash('sha256').update(`ldb:${uid}`).digest();
+  return Array.from({ length: longueur }, (_, i) => ALPHABET_CODE[h[i] % ALPHABET_CODE.length]).join('');
+}
+
+export function relationEntre(moi: StatsCompte | null, autre: string): RelationAmi {
+  if (!moi) return 'aucune';
+  if (moi.amis.includes(autre)) return 'ami';
+  if (moi.demandesEnvoyees.includes(autre)) return 'demande_envoyee';
+  if (moi.demandesRecues.includes(autre)) return 'demande_recue';
+  return 'aucune';
+}
+
+export function statsVides(nom: string, date: number): StatsCompte {
+  return {
+    nom,
+    parties: 0,
+    victoires: 0,
+    nuitsGagnees: 0,
+    annoncesReussies: 0,
+    meilleurScore: null,
+    xp: 0,
+    historique: [],
+    creeLe: date,
+    majLe: date,
+    codeAmi: null,
+    avatar: 1,
+    amis: [],
+    demandesRecues: [],
+    demandesEnvoyees: [],
+  };
+}
+
+const sans = (liste: string[], uid: string) => liste.filter((x) => x !== uid);
+const avec = (liste: string[], uid: string) => (liste.includes(uid) ? liste : [...liste, uid]);
+const textes = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string'))] : []);
 
 export const TAILLE_HISTORIQUE = 20;
 
@@ -98,23 +170,17 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
     historique,
     creeLe: nombre(d.creeLe),
     majLe: nombre(d.majLe),
+    codeAmi: typeof d.codeAmi === 'string' ? d.codeAmi : null,
+    avatar: nombre(d.avatar, 1),
+    amis: textes(d.amis),
+    demandesRecues: textes(d.demandesRecues),
+    demandesEnvoyees: textes(d.demandesEnvoyees),
   };
 }
 
 /** Ajoute une partie terminée aux statistiques d'un compte. */
-export function appliquerResultat(avant: StatsCompte | null, nom: string, r: ResultatJoueur, c: ContexteResultat): StatsCompte {
-  const base: StatsCompte = avant ?? {
-    nom,
-    parties: 0,
-    victoires: 0,
-    nuitsGagnees: 0,
-    annoncesReussies: 0,
-    meilleurScore: null,
-    xp: 0,
-    historique: [],
-    creeLe: c.date,
-    majLe: c.date,
-  };
+export function appliquerResultat(avant: StatsCompte | null, nom: string, r: ResultatJoueur, c: ContexteResultat, avatar?: number): StatsCompte {
+  const base: StatsCompte = avant ?? statsVides(nom, c.date);
   const entree: EntreeHistorique = {
     date: c.date,
     rang: r.rang,
@@ -127,7 +193,8 @@ export function appliquerResultat(avant: StatsCompte | null, nom: string, r: Res
   };
   return {
     ...base,
-    nom: nom || base.nom,
+    // Le nom du compte (pseudo choisi à l'inscription) reste stable ; à défaut, le pseudo de la partie.
+    nom: base.nom || nom,
     parties: base.parties + 1,
     victoires: base.victoires + (r.victoire ? 1 : 0),
     nuitsGagnees: base.nuitsGagnees + r.nuitsGagnees,
@@ -136,6 +203,7 @@ export function appliquerResultat(avant: StatsCompte | null, nom: string, r: Res
     xp: base.xp + r.xp,
     historique: [entree, ...base.historique].slice(0, TAILLE_HISTORIQUE),
     majLe: c.date,
+    avatar: avatar ?? base.avatar,
   };
 }
 
@@ -167,11 +235,96 @@ export function creerServiceComptes(parties: {
     emulateurAuth: parties.emulateurAuth ?? null,
     verifier: (jeton) => authentification.verifier(jeton),
     lire: (uid) => stockage.lire(uid),
-    enregistrer: (uid, nom, resultat, contexte) => stockage.modifier(uid, (avant) => appliquerResultat(avant, nom, resultat, contexte)),
+    enregistrer: (uid, nom, resultat, contexte, avatar) => stockage.modifier(uid, (avant) => appliquerResultat(avant, nom, resultat, contexte, avatar)),
     supprimer: async (uid) => {
+      // Retire d'abord le joueur des listes de ses amis et des demandes en cours.
+      const stats = await stockage.lire(uid);
+      const lies = stats ? [...new Set([...stats.amis, ...stats.demandesRecues, ...stats.demandesEnvoyees])] : [];
+      for (const autre of lies) {
+        await stockage
+          .modifierPlusieurs([autre], (avant) => {
+            const a = avant[autre];
+            if (!a) return {};
+            return { [autre]: { ...a, amis: sans(a.amis, uid), demandesRecues: sans(a.demandesRecues, uid), demandesEnvoyees: sans(a.demandesEnvoyees, uid) } };
+          })
+          .catch(() => undefined);
+      }
       await stockage.supprimer(uid);
       await authentification.supprimerUtilisateur(uid);
     },
+    preparer: async (uid, nom, repli = '') => {
+      const actuel = await stockage.lire(uid);
+      if (actuel?.codeAmi && (nom ? actuel.nom === nom : actuel.nom)) return actuel;
+      let code = actuel?.codeAmi ?? null;
+      if (!code) {
+        for (let longueur = 6; longueur <= 10 && !code; longueur++) {
+          const candidat = codeAmiPour(uid, longueur);
+          const proprietaire = await stockage.chercherCode(candidat);
+          if (!proprietaire || proprietaire === uid) code = candidat;
+        }
+      }
+      return stockage.modifier(uid, (avant) => {
+        const base = avant ?? statsVides('', Date.now());
+        return { ...base, nom: nom || base.nom || repli || 'Joueur', codeAmi: base.codeAmi ?? code };
+      });
+    },
+    lirePlusieurs: (uids) => stockage.lirePlusieurs(uids),
+    chercherCode: (code) => stockage.chercherCode(code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')),
+    demanderAmi: async (de, vers) => {
+      if (de === vers) return { resultat: 'soi_meme', stats: {} };
+      let resultat: ResultatDemande = 'envoyee';
+      const stats = await stockage.modifierPlusieurs([de, vers], (avant) => {
+        const a = avant[de] ?? statsVides('', Date.now());
+        const b = avant[vers] ?? statsVides('', Date.now());
+        if (a.amis.includes(vers)) {
+          resultat = 'deja_amis';
+          return { [de]: a, [vers]: b };
+        }
+        if (a.demandesRecues.includes(vers)) {
+          // L'autre avait déjà demandé : on devient amis tout de suite.
+          resultat = 'amis';
+          return {
+            [de]: { ...a, amis: avec(a.amis, vers), demandesRecues: sans(a.demandesRecues, vers), demandesEnvoyees: sans(a.demandesEnvoyees, vers) },
+            [vers]: { ...b, amis: avec(b.amis, de), demandesEnvoyees: sans(b.demandesEnvoyees, de), demandesRecues: sans(b.demandesRecues, de) },
+          };
+        }
+        if (a.demandesEnvoyees.includes(vers)) {
+          resultat = 'deja_envoyee';
+          return { [de]: a, [vers]: b };
+        }
+        if (a.amis.length >= MAX_AMIS || a.demandesEnvoyees.length >= MAX_DEMANDES || b.demandesRecues.length >= MAX_DEMANDES) {
+          resultat = 'limite';
+          return { [de]: a, [vers]: b };
+        }
+        return {
+          [de]: { ...a, demandesEnvoyees: avec(a.demandesEnvoyees, vers) },
+          [vers]: { ...b, demandesRecues: avec(b.demandesRecues, de) },
+        };
+      });
+      return { resultat, stats };
+    },
+    repondreAmi: (uid, autre, accepter) =>
+      stockage.modifierPlusieurs([uid, autre], (avant) => {
+        const a = avant[uid] ?? statsVides('', Date.now());
+        const b = avant[autre] ?? statsVides('', Date.now());
+        if (!a.demandesRecues.includes(autre)) return { [uid]: a, [autre]: b };
+        const amisA = accepter && a.amis.length < MAX_AMIS;
+        return {
+          [uid]: { ...a, demandesRecues: sans(a.demandesRecues, autre), amis: amisA ? avec(a.amis, autre) : a.amis },
+          [autre]: { ...b, demandesEnvoyees: sans(b.demandesEnvoyees, uid), amis: amisA ? avec(b.amis, uid) : b.amis },
+        };
+      }),
+    retirerLien: (uid, autre) =>
+      stockage.modifierPlusieurs([uid, autre], (avant) => {
+        const nettoyer = (s: StatsCompte | null, x: string) =>
+          s ? { ...s, amis: sans(s.amis, x), demandesRecues: sans(s.demandesRecues, x), demandesEnvoyees: sans(s.demandesEnvoyees, x) } : null;
+        const res: Record<string, StatsCompte> = {};
+        const a = nettoyer(avant[uid], autre);
+        const b = nettoyer(avant[autre], uid);
+        if (a) res[uid] = a;
+        if (b) res[autre] = b;
+        return res;
+      }),
   };
 }
 
@@ -188,6 +341,13 @@ export function stockageMemoire(): Stockage & { donnees: Map<string, StatsCompte
     supprimer: async (uid) => {
       donnees.delete(uid);
     },
+    lirePlusieurs: async (uids) => Object.fromEntries(uids.map((u) => [u, structuredClone(donnees.get(u) ?? null)])),
+    modifierPlusieurs: async (uids, changement) => {
+      const apres = changement(Object.fromEntries(uids.map((u) => [u, structuredClone(donnees.get(u) ?? null)])));
+      for (const [u, s] of Object.entries(apres)) donnees.set(u, structuredClone(s));
+      return apres;
+    },
+    chercherCode: async (code) => [...donnees.entries()].find(([, s]) => s.codeAmi === code)?.[0] ?? null,
   };
 }
 
@@ -336,6 +496,24 @@ export async function comptesDepuisEnvironnement(env: NodeJS.ProcessEnv = proces
           }),
         supprimer: async (uid) => {
           await doc(uid).delete();
+        },
+        lirePlusieurs: async (uids) => {
+          if (!uids.length) return {};
+          const snaps = await db.getAll(...uids.map(doc));
+          return Object.fromEntries(snaps.map((s, i) => [uids[i], s.exists ? normaliserStats(s.data()) : null]));
+        },
+        modifierPlusieurs: (uids, changement) =>
+          db.runTransaction(async (t) => {
+            const uniques = [...new Set(uids)];
+            const snaps = await t.getAll(...uniques.map(doc));
+            const avant = Object.fromEntries(snaps.map((s, i) => [uniques[i], s.exists ? normaliserStats(s.data()) : null]));
+            const apres = changement(avant);
+            for (const [u, s] of Object.entries(apres)) t.set(doc(u), s);
+            return apres;
+          }),
+        chercherCode: async (code) => {
+          const r = await db.collection('comptes').where('codeAmi', '==', code).limit(1).get();
+          return r.empty ? null : r.docs[0].id;
         },
       };
     }
