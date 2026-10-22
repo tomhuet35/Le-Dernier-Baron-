@@ -43,6 +43,12 @@ export const DUREE_TOUR_MS = 30_000;
 /** Nombre d'avatars disponibles (un par joueur, 6 joueurs au maximum). */
 export const NB_AVATARS = 6;
 
+/** Parties publiques : attente d'autres joueurs avant le lancement, puis les places libres sont prises par des bots. */
+export const ATTENTE_PARTIE_PUBLIQUE_MS = 30_000;
+export const TAILLE_PARTIE_PUBLIQUE = 6;
+/** Une partie ne compte dans les victoires qu'avec au moins 2 joueurs humains (pas de victoires faciles contre l'ordinateur). */
+export const HUMAINS_MIN_POUR_COMPTER = 2;
+
 /** Durées côté serveur (millisecondes). */
 export const DELAI_FIN_DE_PLI_MS = 2400;
 export const DELAI_ROBOT_MS = 900;

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { progression, XP_NUIT, XP_PARTIE, XP_VICTOIRE, xpPourNiveau } from '../../shared/niveaux';
-import type { BilanCompte, ProfilCompte } from '../../shared/types';
+import { DESCRIPTION_NIVEAU_BOT, DESCRIPTION_STYLE_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT } from '../../shared/robot';
+import type { BilanCompte, ProfilCompte, ProfilPublic } from '../../shared/types';
 import type { Appel } from './App';
 import type { Utilisateur } from './connexion';
 import { Fenetre } from './ui';
@@ -365,6 +366,95 @@ function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte; appel:
             </button>
           </div>
         </div>
+      )}
+    </Fenetre>
+  );
+}
+
+/** Fiche d'un joueur de la table : on l'ouvre en touchant son avatar. */
+export function FicheJoueur({ joueurId, appel, onFermer }: { joueurId: string; appel: Appel; onFermer: () => void }) {
+  const [profil, setProfil] = useState<ProfilPublic | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  useEffect(() => {
+    let annule = false;
+    void appel('profil_joueur', { joueurId }).then((r) => {
+      if (annule) return;
+      if (r.ok && r.profil) setProfil(r.profil as ProfilPublic);
+      else setErreur(r.erreur ?? 'Profil indisponible.');
+    });
+    return () => {
+      annule = true;
+    };
+  }, [appel, joueurId]);
+  return (
+    <Fenetre titre={profil?.nom ?? 'Profil'} onFermer={onFermer} large={profil?.type === 'compte'}>
+      {!profil && !erreur && <p className="discret">Chargement…</p>}
+      {erreur && <p className="discret">{erreur}</p>}
+      {profil && (
+        <div className="fiche-tete">
+          <img className="fiche-avatar" src={`/cartes/avatar-${profil.avatar}.webp`} alt="" />
+          <div>
+            <strong>{profil.nom}</strong>
+            {profil.type === 'compte' && <span className="titre-niveau">{progression(profil.xp).titre}</span>}
+            {profil.type === 'bot' && <span className="discret">🤖 Joueur ordinateur</span>}
+            {profil.type === 'invite' && <span className="discret">Joue en invité</span>}
+          </div>
+          {profil.type === 'compte' && <BadgeNiveau niveau={progression(profil.xp).niveau} titre={progression(profil.xp).titre} grand />}
+        </div>
+      )}
+      {profil?.type === 'invite' && <p>Ce joueur n’a pas de compte : ses victoires ne sont pas enregistrées.</p>}
+      {profil?.type === 'bot' && (
+        <div className="fiche-bot">
+          <p>
+            <strong>Niveau : {NOM_NIVEAU_BOT[profil.niveau]}</strong>
+            <span>{DESCRIPTION_NIVEAU_BOT[profil.niveau]}</span>
+          </p>
+          <p>
+            <strong>Style : {NOM_STYLE_BOT[profil.style]}</strong>
+            <span>{DESCRIPTION_STYLE_BOT[profil.style]}</span>
+          </p>
+        </div>
+      )}
+      {profil?.type === 'compte' && (
+        <>
+          <BarreXp xp={profil.xp} />
+          <div className="stats-grille">
+            {(
+              [
+                [profil.victoires, profil.victoires > 1 ? 'Victoires' : 'Victoire'],
+                [profil.parties, profil.parties > 1 ? 'Parties' : 'Partie'],
+                [profil.parties ? `${Math.round((100 * profil.victoires) / profil.parties)} %` : '–', 'Taux de victoire'],
+                [profil.nuitsGagnees, profil.nuitsGagnees > 1 ? 'Nuits gagnées' : 'Nuit gagnée'],
+                [profil.annoncesReussies, profil.annoncesReussies > 1 ? 'Annonces réussies' : 'Annonce réussie'],
+                [profil.meilleurScore ?? '–', 'Meilleur score'],
+              ] as [string | number, string][]
+            ).map(([valeur, libelle]) => (
+              <div key={libelle} className="stat">
+                <strong>{valeur}</strong>
+                <span>{libelle}</span>
+              </div>
+            ))}
+          </div>
+          {profil.historique.length > 0 && (
+            <>
+              <h3 className="profil-sous-titre">Dernières parties</h3>
+              <ol className="historique">
+                {profil.historique.map((e) => (
+                  <li key={`${e.date}-${e.score}`} className={e.victoire ? 'gagnee' : ''}>
+                    <span className="h-rang">{e.victoire ? '♛' : rangTexte(e.rang)}</span>
+                    <span className="h-texte">
+                      <strong>
+                        {e.victoire ? 'Victoire' : `${rangTexte(e.rang)} sur ${e.nbJoueurs}`} · {e.score} pts
+                      </strong>
+                      <small>{new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</small>
+                    </span>
+                    <span className="h-xp">+{e.xp} XP</span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </>
       )}
     </Fenetre>
   );

@@ -168,11 +168,21 @@ export interface Vue {
   pret: boolean;
 }
 
+export type NiveauBot = 'debutant' | 'confirme' | 'expert';
+export type StyleBot = 'equilibre' | 'prudent' | 'audacieux' | 'voleur';
+export interface ProfilBot {
+  niveau: NiveauBot;
+  style: StyleBot;
+}
+
 export interface JoueurSalonVue {
   id: string;
   nom: string;
   connecte: boolean;
+  /** La place est jouée par l'ordinateur (bot, ou joueur absent remplacé). */
   robot: boolean;
+  /** Joueur ordinateur (bot) : son niveau et son style ; null pour un humain. */
+  bot: ProfilBot | null;
   avatar: number;
   /** Niveau et victoires du joueur s'il est connecté à son compte (visible de tout le salon). */
   compte: CompteJoueurVue | null;
@@ -199,7 +209,8 @@ export interface BilanCompte {
 
 export interface EnregistrementVue {
   /** test : partie avec des robots de test, jamais comptée. */
-  etat: 'en_cours' | 'fait' | 'erreur' | 'test';
+  /** test : partie avec des robots de test ; solo : moins de 2 joueurs humains. Ces parties ne comptent pas. */
+  etat: 'en_cours' | 'fait' | 'erreur' | 'test' | 'solo';
   bilans: Record<string, BilanCompte>; // par joueurId
 }
 
@@ -213,6 +224,23 @@ export interface EntreeHistorique {
   xp: number;
   adversaires: string[];
 }
+
+/** Fiche d'un joueur de la table, visible par tous (jamais d'adresse e-mail). */
+export type ProfilPublic =
+  | { type: 'bot'; nom: string; avatar: number; niveau: NiveauBot; style: StyleBot }
+  | { type: 'invite'; nom: string; avatar: number }
+  | {
+      type: 'compte';
+      nom: string;
+      avatar: number;
+      xp: number;
+      parties: number;
+      victoires: number;
+      nuitsGagnees: number;
+      annoncesReussies: number;
+      meilleurScore: number | null;
+      historique: EntreeHistorique[];
+    };
 
 /** Profil complet, envoyé seulement à son propriétaire. */
 export interface ProfilCompte {
@@ -238,6 +266,10 @@ export interface VueSalon {
   /** Millisecondes restantes pour agir (joueurs attendus), ou null s'il n'y a pas de minuteur. */
   tempsRestant: number | null;
   dureeTour: number;
+  /** Partie publique (joueurs du monde entier, lancement automatique) ou privée (avec un code). */
+  publique: boolean;
+  /** Partie publique en attente : millisecondes avant le lancement automatique. */
+  departDans: number | null;
   /** Les comptes joueurs sont configurés sur le serveur. */
   comptesActifs: boolean;
   /** Enregistrement des victoires de la partie terminée (null tant que la partie n'est pas finie). */

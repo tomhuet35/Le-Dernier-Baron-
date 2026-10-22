@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
-import { actionRobot } from '../shared/robot';
+import { actionRobot, NIVEAUX_BOT, STYLES_BOT, type ProfilBot } from '../shared/robot';
 import { suivant } from '../shared/rng';
 import { vuePourJoueur } from '../shared/vue';
 import type { EtatPartie } from '../shared/types';
@@ -41,7 +41,10 @@ describe('Parties simulées', () => {
           continue;
         }
         const qui = attenteDe(e)[0];
-        const action = actionRobot(vuePourJoueur(e, qui), alea);
+        // Chaque place a son propre niveau et style de bot : tous doivent jouer des coups autorisés.
+        const i = Number(qui.slice(1));
+        const profil: ProfilBot = { niveau: NIVEAUX_BOT[(g + i) % 3], style: STYLES_BOT[(g + 2 * i) % 4] };
+        const action = actionRobot(vuePourJoueur(e, qui), alea, profil);
         expect(action).not.toBeNull();
         const r = appliquerAction(e, action!);
         if (!r.ok) throw new Error(`${r.erreur} (${JSON.stringify(action)})`);
@@ -54,6 +57,34 @@ describe('Parties simulées', () => {
       }
       expect(e.bilans.every((b) => b.scores.reduce((s, x) => s + x.plis, 0) === b.nuit)).toBe(true);
     }
+  });
+
+  it('les bots experts marquent nettement plus que les débutants', () => {
+    const expert: ProfilBot = { niveau: 'expert', style: 'equilibre' };
+    const debutant: ProfilBot = { niveau: 'debutant', style: 'equilibre' };
+    let sommeExpert = 0;
+    let sommeDebutant = 0;
+    for (let g = 0; g < 60; g++) {
+      const profils = [0, 1, 2, 3].map((i) => ((i + g) % 2 === 0 ? expert : debutant));
+      const joueurs = profils.map((_, i) => ({ id: `j${i}`, nom: `J${i}` }));
+      let graine = 7000 + g;
+      const alea = () => {
+        const [x, s] = suivant(graine);
+        graine = s;
+        return x;
+      };
+      let e = creerPartie(joueurs, 300 + g);
+      while (e.phase !== 'FIN_DE_PARTIE') {
+        const qui = e.phase === 'FIN_DE_PLI' ? null : attenteDe(e)[0];
+        const r = qui
+          ? appliquerAction(e, actionRobot(vuePourJoueur(e, qui), alea, profils[Number(qui.slice(1))])!)
+          : appliquerAction(e, { type: 'SUITE' });
+        if (!r.ok) throw new Error(r.erreur);
+        e = r.etat;
+      }
+      profils.forEach((p, i) => (p === expert ? (sommeExpert += e.scores[`j${i}`]) : (sommeDebutant += e.scores[`j${i}`])));
+    }
+    expect(sommeExpert / 120).toBeGreaterThan(sommeDebutant / 120 + 10);
   });
 
   it('refuse les coups interdits', () => {

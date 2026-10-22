@@ -17,5 +17,5 @@ const ranger = (fichier, dossier) => {
   deplaces++;
 };
 for (const [dossier, fichiers] of Object.entries(dossiers)) for (const f of fichiers) ranger(f, dossier);
-for (const f of readdirSync('.')) if (f.endsWith('.webp')) ranger(f, 'client/public/cartes');
+for (const f of readdirSync('.')) if (f.endsWith('.webp') || f.endsWith('.mp3')) ranger(f, 'client/public/cartes');
 console.log(deplaces ? `${deplaces} fichiers rangés dans leurs dossiers.` : 'Fichiers déjà rangés.');

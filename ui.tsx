@@ -207,3 +207,106 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
     </>
   );
 }
+
+/* ---------- Musique d'ambiance ---------- */
+const CLE_MUSIQUE = 'ldb-musique';
+const VOLUME_MUSIQUE = 0.3;
+
+/**
+ * Musique jouée en boucle dans tout le jeu. Les navigateurs (Safari surtout) interdisent le son avant un premier geste :
+ * elle démarre donc au premier toucher, puis se coupe quand l'onglet passe en arrière-plan.
+ */
+const musique = (() => {
+  let active = true;
+  try {
+    active = localStorage.getItem(CLE_MUSIQUE) !== 'off';
+  } catch {
+    /* préférence indisponible : musique activée */
+  }
+  let audio: HTMLAudioElement | null = null;
+  let contexte: AudioContext | null = null;
+  const abonnes = new Set<() => void>();
+  const prevenir = () => abonnes.forEach((f) => f());
+  const element = () => {
+    if (!audio) {
+      audio = new Audio('/cartes/musique.mp3');
+      audio.loop = true;
+      audio.preload = 'auto';
+      audio.volume = VOLUME_MUSIQUE;
+    }
+    return audio;
+  };
+  /** Sur iPhone et iPad, le volume d'un élément audio est imposé : on passe par Web Audio pour le baisser. */
+  const brancherVolume = (a: HTMLAudioElement) => {
+    if (contexte) return;
+    try {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return;
+      contexte = new AC();
+      const gain = contexte.createGain();
+      gain.gain.value = VOLUME_MUSIQUE;
+      contexte.createMediaElementSource(a).connect(gain).connect(contexte.destination);
+      a.volume = 1;
+    } catch {
+      a.volume = VOLUME_MUSIQUE;
+    }
+  };
+  const jouer = () => {
+    if (!active || document.hidden) return;
+    const a = element();
+    if (!a.paused && contexte?.state !== 'suspended') return;
+    brancherVolume(a);
+    void contexte?.resume().catch(() => undefined);
+    void a.play().catch(() => undefined);
+  };
+  if (typeof document !== 'undefined') {
+    document.addEventListener('pointerdown', jouer, true);
+    document.addEventListener('keydown', jouer, true);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) audio?.pause();
+      else jouer();
+    });
+  }
+  return {
+    active: () => active,
+    basculer: () => {
+      active = !active;
+      try {
+        localStorage.setItem(CLE_MUSIQUE, active ? 'on' : 'off');
+      } catch {
+        /* rien */
+      }
+      if (active) jouer();
+      else audio?.pause();
+      prevenir();
+    },
+    abonner: (f: () => void) => {
+      abonnes.add(f);
+      return () => {
+        abonnes.delete(f);
+      };
+    },
+  };
+})();
+
+export function useMusique(): [boolean, () => void] {
+  const [active, setActive] = useState(musique.active());
+  useEffect(() => musique.abonner(() => setActive(musique.active())), []);
+  return [active, musique.basculer];
+}
+
+export function BoutonMusique({ flottant }: { flottant?: boolean }) {
+  const [active, basculer] = useMusique();
+  return (
+    <button
+      type="button"
+      className={flottant ? 'bouton-musique' : 'petit icone'}
+      onClick={basculer}
+      aria-pressed={active}
+      aria-label={active ? 'Couper la musique' : 'Remettre la musique'}
+      title={active ? 'Couper la musique' : 'Remettre la musique'}
+    >
+      {active ? '🔊' : '🔇'}
+    </button>
+  );
+}

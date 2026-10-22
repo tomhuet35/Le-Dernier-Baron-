@@ -228,8 +228,8 @@ describe('Comptes de bout en bout', () => {
     const a = connecter();
     await emettre(a, 'identifier', { jeton: 'jeton-alice' });
     const cree = await emettre(a, 'creer', { nom: 'Alice', modeTest: true });
-    await emettre(a, 'ajouter_robot');
-    await emettre(a, 'ajouter_robot');
+    await emettre(a, 'ajouter_bot');
+    await emettre(a, 'ajouter_bot');
     const fin = jouerJusquALaFin([a]);
     await emettre(a, 'lancer');
     const [vue] = await fin;
@@ -239,12 +239,44 @@ describe('Comptes de bout en bout', () => {
     a.close();
   });
 
+  it('compte une partie privée à 2 humains et 1 bot, mais pas une partie seul contre l’ordinateur', async () => {
+    const [a, b] = [connecter(), connecter()];
+    await emettre(a, 'identifier', { jeton: 'jeton-bruno' });
+    const avant = stockage.donnees.get('uid-bruno')!.parties;
+    const cree = await emettre(a, 'creer', { nom: 'Bruno' });
+    await emettre(b, 'rejoindre', { code: cree.code, nom: 'Chloé' });
+    await emettre(a, 'ajouter_bot', { niveau: 'debutant' });
+    const fin = jouerJusquALaFin([a, b]);
+    await emettre(a, 'lancer');
+    const [vue] = await fin;
+    expect(vue.enregistrement?.etat).toBe('fait');
+    expect(stockage.donnees.get('uid-bruno')!.parties).toBe(avant + 1);
+    // Fiche publique de Bruno vue par Chloé : statistiques, jamais l'e-mail.
+    const fiche = await emettre(b, 'profil_joueur', { joueurId: cree.joueurId });
+    expect(fiche.profil).toMatchObject({ type: 'compte', nom: 'Bruno', parties: avant + 1 });
+    expect(JSON.stringify(fiche)).not.toContain('@');
+    a.close();
+    b.close();
+
+    const seul = connecter();
+    await emettre(seul, 'identifier', { jeton: 'jeton-bruno' });
+    await emettre(seul, 'creer', { nom: 'Bruno' });
+    await emettre(seul, 'ajouter_bot');
+    await emettre(seul, 'ajouter_bot');
+    const finSeul = jouerJusquALaFin([seul]);
+    await emettre(seul, 'lancer');
+    const [vueSeul] = await finSeul;
+    expect(vueSeul.enregistrement).toEqual({ etat: 'solo', bilans: {} });
+    expect(stockage.donnees.get('uid-bruno')!.parties).toBe(avant + 1);
+    seul.close();
+  });
+
   it('retrouve sa place depuis un autre téléphone grâce à son compte, même en pleine partie', async () => {
     const a = connecter();
     await emettre(a, 'identifier', { jeton: 'jeton-bruno' });
     const cree = await emettre(a, 'creer', { nom: 'Bruno', modeTest: true });
-    await emettre(a, 'ajouter_robot');
-    await emettre(a, 'ajouter_robot');
+    await emettre(a, 'ajouter_bot');
+    await emettre(a, 'ajouter_bot');
     await emettre(a, 'lancer');
     const autre = connecter();
     // Sans compte : la partie a commencé, impossible d'entrer.

@@ -3,9 +3,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CARTE } from '../../shared/cartes';
 import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
-import { BadgeNiveau, BarreXp, detailXp } from './Profil';
+import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, REGLES, infoCarte, trierMain } from './textes';
-import { Avatar, Butin, CarteImg, Chat, Fenetre, Pastille, Zoom, useMinuteur } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Fenetre, Pastille, Zoom, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -40,11 +40,13 @@ function Particules() {
 export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitter: () => void }) {
   const v = salon.partie as Vue;
   const moi = v.joueurs.find((j) => j.id === v.moi) as VueJoueur;
-  const estHote = salon.hoteId === v.moi;
+  const estHote = salon.hoteId === v.moi && !salon.publique;
   const [selection, setSelection] = useState<string | null>(null);
   const [zoom, setZoom] = useState<string | null>(null);
   const [fenetre, setFenetre] = useState<'scores' | 'regles' | 'menu' | 'journal' | 'quitter' | null>(null);
   const [envoi, setEnvoi] = useState(false);
+  const [fiche, setFiche] = useState<string | null>(null);
+  const [musiqueActive, basculerMusique] = useMusique();
   const fraction = useMinuteur(salon.tempsRestant, salon.dureeTour);
 
   useEffect(() => setSelection(null), [v.phase, v.nuit, v.main.length, v.tourId]);
@@ -97,7 +99,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
     setZoom(id);
   };
   const siegeDe = (j: VueJoueur) => (
-    <Siege key={j.id} j={j} v={v} salon={salon} estHote={estHote} appel={appel} nom={nom} fraction={fraction} avatar={avatarDe(j.id)} />
+    <Siege key={j.id} j={j} v={v} salon={salon} estHote={estHote} appel={appel} nom={nom} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} />
   );
   const chevauchement = main.length > 6 ? -0.56 : -0.42;
 
@@ -214,7 +216,9 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
           <Consigne v={v} selection={selection} agir={agir} nom={nom} droiteNom={voisinDroite.nom} attenteTexte={attenteTexte} envoi={envoi} />
         </div>
         <div className="moi-bandeau">
-          <Avatar n={avatarDe(v.moi)} grand fraction={aMoi ? fraction : null} />
+          <button type="button" className="bouton-avatar" onClick={() => setFiche(v.moi)} aria-label="Voir mon profil">
+            <Avatar n={avatarDe(v.moi)} grand fraction={aMoi ? fraction : null} />
+          </button>
           <div className="moi-texte">
             <div className="moi-nom">
               <strong>{moi.nom}</strong>
@@ -281,6 +285,9 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
           <button type="button" className="large" onClick={() => setFenetre('journal')}>
             Journal de la partie
           </button>
+          <button type="button" className="large" onClick={basculerMusique} aria-pressed={musiqueActive}>
+            {musiqueActive ? '🔊 Musique : activée' : '🔇 Musique : coupée'}
+          </button>
           <button type="button" className="large danger" onClick={() => setFenetre('quitter')}>
             Quitter la partie
           </button>
@@ -312,6 +319,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
         </Fenetre>
       )}
       {zoom && <Zoom id={zoom} onFermer={() => setZoom(null)} />}
+      {fiche && <FicheJoueur joueurId={fiche} appel={appel} onFermer={() => setFiche(null)} />}
       {revelation && v.evenement && (
         <div className="revelation" role="dialog" aria-label={`Événement : ${NOM_EVENEMENT[v.evenement]}`} onClick={() => setRevelation(null)}>
           <span className="revelation-titre">Événement de la nuit {v.nuit}</span>
@@ -340,8 +348,9 @@ function Siege(props: {
   nom: (id: string | null | undefined) => string;
   fraction: number | null;
   avatar: number;
+  onProfil: (id: string) => void;
 }) {
-  const { j, v, salon, estHote, appel, nom, fraction, avatar } = props;
+  const { j, v, salon, estHote, appel, nom, fraction, avatar, onProfil } = props;
   const s = salon.joueurs.find((x) => x.id === j.id);
   const nb = Math.min(j.nbCartes, 8);
   const minute = j.attendu && v.phase !== 'FIN_DE_NUIT' && v.phase !== 'FIN_DE_PARTIE';
@@ -352,12 +361,12 @@ function Siege(props: {
           <img key={i} src="/dos.webp" alt="" style={{ '--r': `${(i - (nb - 1) / 2) * 8}deg` } as React.CSSProperties} />
         ))}
       </div>
-      <div className="siege-avatar">
+      <button type="button" className="siege-avatar" onClick={() => onProfil(j.id)} aria-label={`Voir le profil de ${j.nom}`}>
         <Avatar n={avatar} fraction={minute ? fraction : null} />
         <span className="siege-nb" title="Cartes en main">
           {j.nbCartes}
         </span>
-      </div>
+      </button>
       <div className="siege-nom">
         <span className={`point ${s?.connecte || s?.robot ? 'en-ligne' : 'hors-ligne'}`} title={s?.connecte ? 'En ligne' : 'Hors ligne'} />
         {j.id === salon.hoteId && (
@@ -647,8 +656,9 @@ function FinDePartie(props: { v: Vue; salon: VueSalon; estHote: boolean; appel: 
       )}
       {enr?.etat === 'en_cours' && <p className="discret">Enregistrement des victoires…</p>}
       {enr?.etat === 'test' && <p className="discret">Partie de test avec des robots : elle ne compte pas dans les victoires.</p>}
+      {enr?.etat === 'solo' && <p className="discret">Partie contre l’ordinateur : elle ne compte dans les victoires qu’avec au moins 2 joueurs humains.</p>}
       {enr?.etat === 'erreur' && <p className="discret">Certaines victoires n’ont pas pu être enregistrées.</p>}
-      {salon.comptesActifs && !compteDe(v.moi) && enr?.etat !== 'test' && (
+      {salon.comptesActifs && !compteDe(v.moi) && enr?.etat !== 'test' && enr?.etat !== 'solo' && (
         <p className="discret">Crée un compte depuis l’accueil pour garder tes victoires et monter de niveau.</p>
       )}
       {voirScores ? <TableauScores v={v} /> : (
@@ -657,7 +667,11 @@ function FinDePartie(props: { v: Vue; salon: VueSalon; estHote: boolean; appel: 
         </button>
       )}
       <div className="rangee">
-        {estHote ? (
+        {salon.publique ? (
+          <button type="button" className="principal" onClick={() => appel('jouer_public', { nom: nom(v.moi) })}>
+            🌍 Nouvelle partie en ligne
+          </button>
+        ) : estHote ? (
           <button type="button" className="principal" onClick={() => appel('rejouer')}>
             Rejouer
           </button>
