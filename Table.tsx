@@ -4,7 +4,8 @@ import { CARTE } from '../../shared/cartes';
 import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
-import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, REGLES, infoCarte, trierMain } from './textes';
+import { ReglesIllustrees } from './Regles';
+import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
 import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, Zoom, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
@@ -270,16 +271,8 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
         </Fenetre>
       )}
       {fenetre === 'regles' && (
-        <Fenetre titre="Règles" onFermer={() => setFenetre(null)} large>
-          {REGLES.map((r) => (
-            <section key={r.titre} className="regle">
-              <h3>{r.titre}</h3>
-              {r.texte.map((t) => (
-                <p key={t}>{t}</p>
-              ))}
-            </section>
-          ))}
-          <p className="discret">Astuce : un appui long sur une carte l’affiche en grand avec son effet. Chaque joueur a 30 secondes pour agir.</p>
+        <Fenetre titre="Règles du jeu" onFermer={() => setFenetre(null)} large>
+          <ReglesIllustrees ongletInitial="plis" />
         </Fenetre>
       )}
       {fenetre === 'menu' && (

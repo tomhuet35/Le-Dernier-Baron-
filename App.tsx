@@ -16,7 +16,8 @@ import {
 } from './Profil';
 import { socket } from './socket';
 import { Table } from './Table';
-import { AVATARS, REGLES } from './textes';
+import { FenetreRegles } from './Regles';
+import { AVATARS } from './textes';
 import { BoutonMusique, Chat, Fenetre, IconeImage, IconeMusique, useMusique } from './ui';
 
 type Reponse = {
@@ -670,23 +671,5 @@ function BoutonRegles() {
       </button>
       {ouvert && <FenetreRegles onFermer={() => setOuvert(false)} />}
     </>
-  );
-}
-
-function FenetreRegles({ onFermer }: { onFermer: () => void }) {
-  return (
-    <Fenetre titre="Règles du jeu" onFermer={onFermer} large>
-      {REGLES.map((r) => (
-        <section key={r.titre} className="regle">
-          <h3>{r.titre}</h3>
-          {r.texte.map((t) => (
-            <p key={t}>{t}</p>
-          ))}
-        </section>
-      ))}
-      <button type="button" className="principal large" onClick={onFermer}>
-        J'ai compris
-      </button>
-    </Fenetre>
   );
 }
