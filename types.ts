@@ -160,6 +160,8 @@ export interface Vue {
   aChoisiAllie: boolean;
   monAllie: string | null;
   alliances: [string, string][];
+  /** Qui a choisi qui pendant l'Alliance : révélé à tous une fois que chacun a choisi. */
+  choixAllies: Record<string, string | null> | null;
   attente: string[];
   bilans: BilanNuit[];
   journal: EntreeJournal[];
@@ -171,6 +173,7 @@ export interface JoueurSalonVue {
   nom: string;
   connecte: boolean;
   robot: boolean;
+  avatar: number;
 }
 
 export interface VueSalon {
@@ -180,4 +183,16 @@ export interface VueSalon {
   modeTest: boolean;
   joueurs: JoueurSalonVue[];
   partie: Vue | null;
+  messages: MessageChat[];
+  /** Millisecondes restantes pour agir (joueurs attendus), ou null s'il n'y a pas de minuteur. */
+  tempsRestant: number | null;
+  dureeTour: number;
+}
+
+export interface MessageChat {
+  n: number;
+  auteurId: string;
+  nom: string;
+  texte: string;
+  heure: number;
 }

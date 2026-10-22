@@ -63,8 +63,12 @@ describe('Cartes jouables', () => {
   it('sans carte de la famille, tout est jouable', () => {
     expect(cartesJouables(['chat-noir-08', 'billets-05', 'baron'], demande)).toHaveLength(3);
   });
-  it('un Chat noir ne fixe pas la famille', () => {
-    expect(cartesJouables(['lames-02', 'chat-noir-01'], pli(['A', 'Chat noir 4']))).toHaveLength(2);
+  it('un Chat noir en tête impose le Chat noir', () => {
+    expect(cartesJouables(['lames-02', 'chat-noir-01', 'juge'], pli(['A', 'Chat noir 4'])).sort()).toEqual(['chat-noir-01', 'juge']);
+    expect(cartesJouables(['lames-02', 'billets-03'], pli(['A', 'Chat noir 4']))).toHaveLength(2);
+  });
+  it('après un Alibi, le Chat noir posé fixe la famille', () => {
+    expect(cartesJouables(['lames-02', 'chat-noir-01'], pli(['A', 'Alibi'], ['B', 'Chat noir 4']))).toEqual(['chat-noir-01']);
   });
 });
 
@@ -133,7 +137,7 @@ describe('Vols et Trahison', () => {
     expect(e.phase).toBe('PLI');
     expect(e.tour).toBe(1);
   });
-  it('Trahison : chacun passe une carte au joueur suivant', () => {
+  it('Trahison : après les annonces, chacun passe une carte au joueur de droite', () => {
     let e = creerPartie(joueurs, 3);
     Object.assign(e, { phase: 'TRAHISON', choixTrahison: {} });
     e.mains = { A: ['lames-01', 'lames-02'], B: ['billets-01', 'billets-02'], C: ['diamants-01', 'diamants-02'] };
@@ -142,9 +146,9 @@ describe('Vols et Trahison', () => {
       if (!r.ok) throw new Error(r.erreur);
       e = r.etat;
     }
-    expect(e.mains.A).toContain('diamants-01');
-    expect(e.mains.B).toContain('lames-01');
-    expect(e.mains.C).toContain('billets-01');
-    expect(e.phase).toBe('ANNONCES');
+    expect(e.mains.A).toContain('billets-01');
+    expect(e.mains.B).toContain('diamants-01');
+    expect(e.mains.C).toContain('lames-01');
+    expect(e.phase).toBe('PLI');
   });
 });

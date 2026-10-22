@@ -81,4 +81,20 @@ describe('Serveur de bout en bout', () => {
     expect(v.partie?.main.length).toBeGreaterThan(0);
     b.close();
   });
+
+  it("l'ordinateur joue à la place d'un joueur qui ne fait rien pendant le temps imparti", async () => {
+    const rapide = await demarrerServeur({ port: 0, delaiFinDePli: 5, delaiRobot: 5, dureeTour: 30, servirClient: false });
+    const a = io(`http://localhost:${rapide.port}`, { transports: ['websocket'], forceNew: true });
+    const fin = new Promise<VueSalon>((ok) => a.on('salon', (v: VueSalon) => v.partie?.phase === 'FIN_DE_PARTIE' && ok(v)));
+    await emettre(a, 'creer', { nom: 'Absent', modeTest: true });
+    await emettre(a, 'ajouter_robot');
+    await emettre(a, 'ajouter_robot');
+    expect((await emettre(a, 'avatar', { avatar: 2 })).ok).toBe(false); // déjà pris par un robot
+    await emettre(a, 'lancer');
+    const v = await fin;
+    expect(v.partie?.bilans).toHaveLength(8);
+    expect(v.joueurs.map((j) => j.avatar).sort()).toEqual([1, 2, 3]);
+    a.close();
+    await rapide.fermer();
+  });
 });

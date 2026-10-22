@@ -4,7 +4,7 @@
  * Les arbitrages tranchent les cas que la règle papier ne précise pas (section 8 du cahier des charges) :
  *  1. Le paquet de 62 cartes est remélangé à chaque nuit ............................ moteur.ts, demarrerNuit
  *  2. Premier joueur tiré au hasard à la nuit 1, puis passe au joueur suivant ........ moteur.ts
- *  3. Un Chat noir ne fixe jamais la famille demandée ................................ regles.ts, familleDemandee
+ *  3. La première carte numérotée fixe la famille (un Chat noir en tête : Chat noir demandé) regles.ts
  *  4. Le Croupier compte comme une carte de la famille demandée (0 ou 11) ............ regles.ts, resoudrePli
  *  5. Un pli sans carte pouvant gagner revient au joueur qui l'a ouvert .............. regles.ts, resoudrePli
  *  6. Avec le Juge, l'ordre est inversé : la plus petite valeur gagne ............... regles.ts, resoudrePli
@@ -37,6 +37,11 @@ export const MULTIPLICATEUR_BUTIN_DESCENTE = 0;
 export const DESCENTE_BLOQUE_BONUS = false;
 
 export const TAILLE_JOURNAL = 60;
+
+/** Temps maximum pour agir ; passé ce délai, l'ordinateur joue à la place du joueur. */
+export const DUREE_TOUR_MS = 30_000;
+/** Nombre d'avatars disponibles (un par joueur, 6 joueurs au maximum). */
+export const NB_AVATARS = 6;
 
 /** Durées côté serveur (millisecondes). */
 export const DELAI_FIN_DE_PLI_MS = 2400;

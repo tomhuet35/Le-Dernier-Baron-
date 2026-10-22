@@ -27,7 +27,7 @@ export const NOM_EVENEMENT: Record<TypeEvenement, string> = {
 
 export const EFFET_EVENEMENT: Record<TypeEvenement, string> = {
   descente_police: 'Aucun vol cette nuit, et le butin vaut 0 point.',
-  trahison: 'Avant les annonces, chacun passe en secret une carte de sa main au joueur suivant.',
+  trahison: 'Après les annonces, chacun passe en secret une carte de sa main au joueur de droite.',
   casse_du_siecle: 'Le butin vaut le double cette nuit.',
   couvre_feu: 'Les Alibis ne protègent plus des vols.',
   alliance:
@@ -44,7 +44,7 @@ const EFFET_SPECIALE: Record<string, string> = {
 };
 
 export function effetCarte(c: Carte): string {
-  if (c.type === 'atout') return 'Atout : se joue à tout moment, même si une famille est demandée. Bat toutes les cartes de gang. Le Chat noir le plus fort gagne. Il n’est jamais pris comme butin.';
+  if (c.type === 'atout') return 'Atout : se joue à tout moment sur une famille de gang. Posé en premier, il impose le Chat noir. Bat toutes les cartes de gang. Le Chat noir le plus fort gagne. Il n’est jamais pris comme butin.';
   if (c.type === 'gang') return 'Carte de gang. Suis la famille demandée si tu peux, ou joue un Chat noir ou une carte spéciale. La plus forte carte de la famille demandée gagne, sauf atout ou carte spéciale.';
   return EFFET_SPECIALE[c.speciale ?? ''] ?? '';
 }
@@ -93,7 +93,8 @@ export const REGLES: { titre: string; texte: string[] }[] = [
   {
     titre: 'Jouer un pli',
     texte: [
-      'La première carte de gang posée fixe la famille demandée. Si tu en as, tu dois la suivre, ou jouer un Chat noir ou une carte spéciale.',
+      'La première carte numérotée posée fixe la famille demandée. Si tu en as, tu dois la suivre, ou jouer un Chat noir ou une carte spéciale.',
+      'Si un Chat noir ouvre le pli, c’est le Chat noir qui est demandé : tu dois en fournir un si tu peux (ou jouer une carte spéciale).',
       'Les Chats noirs et les cartes spéciales se jouent à tout moment.',
     ],
   },
@@ -131,3 +132,6 @@ export const REGLES: { titre: string; texte: string[] }[] = [
     texte: (Object.keys(EFFET_EVENEMENT) as TypeEvenement[]).map((k) => `${NOM_EVENEMENT[k]} : ${EFFET_EVENEMENT[k]}`),
   },
 ];
+
+/** Les 6 personnages que les joueurs peuvent incarner (images cartes/avatar-1.webp à avatar-6.webp). */
+export const AVATARS = ['Le Parrain', 'La Chanteuse', 'Le Détective', 'Le Croupier', 'La Contrebandière', 'Le Boxeur'];

@@ -6,8 +6,8 @@ import type { AddressInfo } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server, type Socket } from 'socket.io';
-import { DELAI_FIN_DE_PLI_MS, DELAI_ROBOT_MS, MAX_JOUEURS, MIN_JOUEURS } from '../shared/config';
-import { appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
+import { DELAI_FIN_DE_PLI_MS, DELAI_ROBOT_MS, DUREE_TOUR_MS, MAX_JOUEURS, MIN_JOUEURS, NB_AVATARS } from '../shared/config';
+import { ajouterAuJournal, appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
 import { actionRobot } from '../shared/robot';
 import type { Action, EtatPartie, MessageChat, VueSalon } from '../shared/types';
 import { vuePourJoueur } from '../shared/vue';
@@ -19,6 +19,7 @@ interface JoueurSalon {
   socketId: string | null;
   robot: boolean; // robot de test, ou joueur parti remplacé par l'ordinateur
   robotDeTest: boolean;
+  avatar: number;
 }
 
 interface Salon {
@@ -31,6 +32,8 @@ interface Salon {
   modeTest: boolean;
   derniereActivite: number;
   minuterie: ReturnType<typeof setTimeout> | null;
+  echeance: { cle: string; fin: number } | null;
+  minuterieTour: ReturnType<typeof setTimeout> | null;
 }
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
@@ -40,6 +43,7 @@ export interface OptionsServeur {
   port?: number;
   delaiFinDePli?: number;
   delaiRobot?: number;
+  dureeTour?: number;
   servirClient?: boolean;
 }
 
@@ -48,6 +52,7 @@ const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 export function demarrerServeur(options: OptionsServeur = {}) {
   const delaiFinDePli = options.delaiFinDePli ?? DELAI_FIN_DE_PLI_MS;
   const delaiRobot = options.delaiRobot ?? DELAI_ROBOT_MS;
+  const dureeTour = options.dureeTour ?? DUREE_TOUR_MS;
   const app = express();
   const http = createServer(app);
   const io = new Server(http, { cors: { origin: '*' } });
@@ -81,15 +86,20 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     return candidat;
   };
 
+  const avatarLibre = (salon: Salon) =>
+    Array.from({ length: NB_AVATARS }, (_, i) => i + 1).find((n) => !salon.joueurs.some((j) => j.avatar === n)) ?? 1;
+
   function vueSalon(salon: Salon, joueurId: string): VueSalon {
     return {
       code: salon.code,
       moi: joueurId,
       hoteId: salon.hoteId,
       modeTest: salon.modeTest,
-      joueurs: salon.joueurs.map((j) => ({ id: j.id, nom: j.nom, connecte: j.robotDeTest || j.socketId !== null, robot: j.robot })),
+      joueurs: salon.joueurs.map((j) => ({ id: j.id, nom: j.nom, connecte: j.robotDeTest || j.socketId !== null, robot: j.robot, avatar: j.avatar })),
       partie: salon.partie ? vuePourJoueur(salon.partie, joueurId) : null,
       messages: salon.messages,
+      tempsRestant: salon.echeance ? Math.max(0, salon.echeance.fin - Date.now()) : null,
+      dureeTour,
     };
   }
 
@@ -103,13 +113,45 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     const r = appliquerAction(salon.partie, action);
     if (!r.ok) return { ok: false, erreur: r.erreur };
     salon.partie = r.etat;
-    diffuser(salon);
     planifier(salon);
+    diffuser(salon);
     return { ok: true };
   }
 
-  /** Fait avancer la partie toute seule : fin de pli après une pause, coups des robots. */
+  /** Identifie le tour en cours : le minuteur repart à zéro quand il change. */
+  const PHASES_MINUTEES = ['TRAHISON', 'ANNONCES', 'ALLIANCE', 'PLI', 'VOL', 'FIN_DE_NUIT'];
+  function cleTour(p: EtatPartie): string | null {
+    if (!PHASES_MINUTEES.includes(p.phase)) return null;
+    return [p.nuit, p.phase, p.nbPlisJoues, p.pli.length, p.tour, p.vol?.voleurId ?? ''].join('|');
+  }
+
+  /** Temps écoulé : l'ordinateur agit pour chaque joueur encore attendu. */
+  function tempsEcoule(salon: Salon, cle: string) {
+    const depart = salon.partie;
+    if (!depart || cleTour(depart) !== cle) return;
+    for (const id of attenteDe(depart)) {
+      const p = salon.partie;
+      if (!p || cleTour(p) !== cle || !attenteDe(p).includes(id)) continue;
+      const action = actionRobot(vuePourJoueur(p, id));
+      if (!action) continue;
+      if (p.phase !== 'FIN_DE_NUIT') {
+        const nom = salon.joueurs.find((j) => j.id === id)?.nom ?? '?';
+        salon.partie = ajouterAuJournal(p, `Temps écoulé pour ${nom} : l'ordinateur joue à sa place.`);
+      }
+      appliquer(salon, action);
+    }
+  }
+
+  /** Fait avancer la partie toute seule : fin de pli après une pause, coups des robots, minuteur de 30 secondes. */
   function planifier(salon: Salon) {
+    const pTour = salon.partie;
+    const cle = pTour ? cleTour(pTour) : null;
+    if (cle !== (salon.echeance?.cle ?? null)) {
+      if (salon.minuterieTour) clearTimeout(salon.minuterieTour);
+      salon.minuterieTour = null;
+      salon.echeance = cle ? { cle, fin: Date.now() + dureeTour } : null;
+      if (cle) salon.minuterieTour = setTimeout(() => tempsEcoule(salon, cle), dureeTour);
+    }
     if (salon.minuterie) clearTimeout(salon.minuterie);
     salon.minuterie = null;
     const p = salon.partie;
@@ -132,8 +174,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       salon.joueurs.map((j) => ({ id: j.id, nom: j.nom })),
       randomInt(1, 2 ** 31),
     );
-    diffuser(salon);
     planifier(salon);
+    diffuser(salon);
   }
 
   function attacher(socket: Socket, salon: Salon, joueur: JoueurSalon) {
@@ -185,7 +227,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     socket.on('creer', (data: { nom?: string; modeTest?: boolean } = {}, rappel?: Rappel) => {
       const nom = nettoyerNom(data?.nom);
       if (!nom) return repondre(rappel, { ok: false, erreur: 'Choisis un pseudo.' });
-      const joueur: JoueurSalon = { id: nouvelId(), nom, jeton: nouvelId() + nouvelId(), socketId: null, robot: false, robotDeTest: false };
+      const joueur: JoueurSalon = { id: nouvelId(), nom, jeton: nouvelId() + nouvelId(), socketId: null, robot: false, robotDeTest: false, avatar: 1 };
       const salon: Salon = {
         code: nouveauCode(),
         hoteId: joueur.id,
@@ -194,6 +236,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         modeTest: !!data?.modeTest,
         derniereActivite: Date.now(),
         minuterie: null,
+        echeance: null,
+        minuterieTour: null,
         messages: [],
         compteurMessages: 0,
       };
@@ -210,7 +254,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: `Le salon est complet (${MAX_JOUEURS} joueurs).` });
       const nom = nettoyerNom(data?.nom);
       if (!nom) return repondre(rappel, { ok: false, erreur: 'Choisis un pseudo.' });
-      const joueur: JoueurSalon = { id: nouvelId(), nom: nomUnique(salon, nom), jeton: nouvelId() + nouvelId(), socketId: null, robot: false, robotDeTest: false };
+      const joueur: JoueurSalon = { id: nouvelId(), nom: nomUnique(salon, nom), jeton: nouvelId() + nouvelId(), socketId: null, robot: false, robotDeTest: false, avatar: avatarLibre(salon) };
       salon.joueurs.push(joueur);
       attacher(socket, salon, joueur);
       repondre(rappel, { ok: true, code: salon.code, jeton: joueur.jeton, joueurId: joueur.id });
@@ -228,8 +272,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       attacher(socket, salon, joueur);
       if (!joueur.robotDeTest) joueur.robot = false;
       repondre(rappel, { ok: true, code: salon.code, jeton: joueur.jeton, joueurId: joueur.id });
-      diffuser(salon);
       planifier(salon);
+      diffuser(salon);
     });
 
     socket.on('quitter', (_data: unknown, rappel?: Rappel) => {
@@ -277,7 +321,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (!salon.modeTest) return repondre(rappel, { ok: false, erreur: 'Les robots ne sont disponibles qu’en mode test.' });
       if (salon.partie || salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: 'Impossible d’ajouter un robot.' });
       const numero = salon.joueurs.filter((j) => j.robotDeTest).length + 1;
-      salon.joueurs.push({ id: nouvelId(), nom: `Robot ${numero}`, jeton: nouvelId(), socketId: null, robot: true, robotDeTest: true });
+      salon.joueurs.push({ id: nouvelId(), nom: `Robot ${numero}`, jeton: nouvelId(), socketId: null, robot: true, robotDeTest: true, avatar: avatarLibre(salon) });
       diffuser(salon);
       repondre(rappel, { ok: true });
     });
@@ -305,8 +349,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         return repondre(rappel, { ok: false, erreur: 'Seul un joueur déconnecté peut être remplacé.' });
       }
       cible.robot = !!data?.actif;
-      diffuser(c.salon);
       planifier(c.salon);
+      diffuser(c.salon);
       repondre(rappel, { ok: true });
     });
 
@@ -318,6 +362,17 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (type === 'FORCER_SUITE' && c.salon.hoteId !== c.joueur.id) return repondre(rappel, { ok: false, erreur: "Seul l'hôte peut passer à la suite." });
       const action = { ...data, joueurId: c.joueur.id } as Action;
       repondre(rappel, appliquer(c.salon, action));
+    });
+
+    socket.on('avatar', (data: { avatar?: number } = {}, rappel?: Rappel) => {
+      const c = contexte();
+      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' });
+      const n = Number(data?.avatar);
+      if (!Number.isInteger(n) || n < 1 || n > NB_AVATARS) return repondre(rappel, { ok: false, erreur: 'Personnage inconnu.' });
+      if (c.salon.joueurs.some((j) => j.id !== c.joueur.id && j.avatar === n)) return repondre(rappel, { ok: false, erreur: 'Ce personnage est déjà pris.' });
+      c.joueur.avatar = n;
+      diffuser(c.salon);
+      repondre(rappel, { ok: true });
     });
 
     const dernierMessage = new Map<string, number>();
@@ -354,6 +409,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     for (const [code, s] of salons) {
       if (s.derniereActivite < limite && !s.joueurs.some((j) => j.socketId)) {
         if (s.minuterie) clearTimeout(s.minuterie);
+        if (s.minuterieTour) clearTimeout(s.minuterieTour);
         salons.delete(code);
       }
     }
@@ -367,7 +423,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         fermer: () =>
           new Promise<void>((fin) => {
             clearInterval(menage);
-            for (const s of salons.values()) if (s.minuterie) clearTimeout(s.minuterie);
+            for (const s of salons.values()) {
+              if (s.minuterie) clearTimeout(s.minuterie);
+              if (s.minuterieTour) clearTimeout(s.minuterieTour);
+            }
             io.close();
             http.close(() => fin());
           }),

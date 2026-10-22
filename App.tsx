@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
 import type { VueSalon } from '../../shared/types';
 import { socket } from './socket';
 import { Table } from './Table';
+import { AVATARS, REGLES } from './textes';
+import { Chat, Fenetre } from './ui';
 
 type Reponse = { ok: boolean; erreur?: string; code?: string; jeton?: string; joueurId?: string };
 export type Appel = (evenement: string, data?: unknown) => Promise<Reponse>;
@@ -115,7 +117,7 @@ export function App() {
   return (
     <>
       {ecran}
-      {salon && <Chat salon={salon} appel={appel} />}
+      {salon && !salon.partie && <Chat salon={salon} appel={appel} />}
       {!connecte && <div className="bandeau-reseau">Connexion perdue. Reconnexion en cours…</div>}
       {message && (
         <div className="toast" role="status" onClick={() => setMessage(null)}>
@@ -164,6 +166,7 @@ function Accueil({ appel }: { appel: Appel }) {
           Rejoindre
         </button>
       </form>
+      <BoutonRegles />
     </main>
   );
 }
@@ -195,6 +198,30 @@ function Lobby({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitt
           {copie ? 'Lien copié' : 'Partager le lien'}
         </button>
       </section>
+      <section className="lobby-avatars">
+        <h2>Ton personnage</h2>
+        <div className="avatars-grille">
+          {AVATARS.map((nomPerso, i) => {
+            const n = i + 1;
+            const pris = salon.joueurs.find((j) => j.avatar === n);
+            const lemien = pris?.id === salon.moi;
+            return (
+              <button
+                key={n}
+                type="button"
+                className={`avatar-choix ${lemien ? 'choisi' : ''}`}
+                disabled={!!pris && !lemien}
+                aria-pressed={lemien}
+                onClick={() => appel('avatar', { avatar: n })}
+              >
+                <img src={`/cartes/avatar-${n}.webp`} alt="" />
+                <span>{nomPerso}</span>
+                {pris && !lemien && <small>{pris.nom}</small>}
+              </button>
+            );
+          })}
+        </div>
+      </section>
       <section className="lobby-joueurs">
         <h2>
           Joueurs ({n}/{MAX_JOUEURS})
@@ -202,7 +229,8 @@ function Lobby({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitt
         <ol>
           {salon.joueurs.map((j) => (
             <li key={j.id}>
-              <span>
+              <span className="lobby-nom">
+                <img className="mini-avatar" src={`/cartes/avatar-${j.avatar}.webp`} alt="" />
                 {j.nom}
                 {j.id === salon.moi && ' (toi)'}
               </span>
@@ -238,6 +266,7 @@ function Lobby({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitt
       ) : (
         <p className="attente">En attente du lancement par l'hôte…</p>
       )}
+      <BoutonRegles />
       <button type="button" className="lien-discret" onClick={quitter}>
         Quitter le salon
       </button>
@@ -245,62 +274,28 @@ function Lobby({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitt
   );
 }
 
-/** Discussion entre les joueurs du salon : bouton flottant avec le nombre de messages non lus. */
-function Chat({ salon, appel }: { salon: VueSalon; appel: Appel }) {
+/** Bouton « Règles du jeu » de l'accueil et du salon. */
+function BoutonRegles() {
   const [ouvert, setOuvert] = useState(false);
-  const [texte, setTexte] = useState('');
-  const [vu, setVu] = useState(0);
-  const fin = useRef<HTMLDivElement | null>(null);
-  const messages = salon.messages ?? [];
-  const dernier = messages.length ? messages[messages.length - 1].n : 0;
-  const nonLus = ouvert ? 0 : messages.filter((m) => m.n > vu && m.auteurId !== salon.moi).length;
-  useEffect(() => {
-    if (ouvert) {
-      setVu(dernier);
-      fin.current?.scrollIntoView({ block: 'end' });
-    }
-  }, [ouvert, dernier]);
-  const envoyer = async () => {
-    if (!texte.trim()) return;
-    const r = await appel('chat', { texte });
-    if (r.ok) setTexte('');
-  };
   return (
     <>
-      <button type="button" className="chat-bouton" onClick={() => setOuvert(!ouvert)} aria-label={ouvert ? 'Fermer la discussion' : 'Ouvrir la discussion'}>
-        💬{nonLus > 0 && <span className="chat-pastille">{nonLus}</span>}
+      <button type="button" className="bouton-regles" onClick={() => setOuvert(true)}>
+        📜 Règles du jeu
       </button>
       {ouvert && (
-        <div className="chat-panneau" role="dialog" aria-label="Discussion">
-          <div className="chat-tete">
-            <strong>Discussion</strong>
-            <button type="button" className="fermer" onClick={() => setOuvert(false)} aria-label="Fermer">
-              ×
-            </button>
-          </div>
-          <div className="chat-messages">
-            {messages.length === 0 && <p className="discret">Pas encore de message. Dis bonjour à la table !</p>}
-            {messages.map((m) => (
-              <p key={m.n} className={m.auteurId === salon.moi ? 'moi' : ''}>
-                <span className="chat-auteur">{m.auteurId === salon.moi ? 'Toi' : m.nom}</span>
-                {m.texte}
-              </p>
-            ))}
-            <div ref={fin} />
-          </div>
-          <form
-            className="chat-saisie"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void envoyer();
-            }}
-          >
-            <input id="chat-texte" value={texte} maxLength={200} placeholder="Écris un message…" autoComplete="off" onChange={(e) => setTexte(e.target.value)} />
-            <button type="submit" className="principal" disabled={!texte.trim()}>
-              Envoyer
-            </button>
-          </form>
-        </div>
+        <Fenetre titre="Règles du jeu" onFermer={() => setOuvert(false)} large>
+          {REGLES.map((r) => (
+            <section key={r.titre} className="regle">
+              <h3>{r.titre}</h3>
+              {r.texte.map((t) => (
+                <p key={t}>{t}</p>
+              ))}
+            </section>
+          ))}
+          <button type="button" className="principal large" onClick={() => setOuvert(false)}>
+            J'ai compris
+          </button>
+        </Fenetre>
       )}
     </>
   );

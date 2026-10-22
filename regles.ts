@@ -22,23 +22,26 @@ export const estSpeciale = (c: Carte) => c.type === 'speciale';
 /** Carte numérotée = carte de gang ou Chat noir. */
 export const estNumerotee = (c: Carte) => c.type === 'gang' || c.type === 'atout';
 
-/** La famille demandée est fixée par la première carte de gang posée (arbitrage 3 : jamais par un Chat noir). */
-export function familleDemandee(pli: CartePosee[]): Famille | null {
+export type FamilleDemandee = Famille | 'chat_noir';
+
+/** La famille demandée est fixée par la première carte numérotée posée : une carte de gang, ou un Chat noir (Chat noir demandé). */
+export function familleDemandee(pli: CartePosee[]): FamilleDemandee | null {
   for (const p of pli) {
     const c = carte(p.carteId);
-    if (c.type === 'gang') return c.famille as Famille;
+    if (estNumerotee(c)) return c.famille as FamilleDemandee;
   }
   return null;
 }
 
-/** Cartes qu'un joueur peut poser : il doit suivre la famille demandée s'il en a, ou jouer un Chat noir ou une carte spéciale. */
+/**
+ * Cartes qu'un joueur peut poser. S'il a la famille demandée, il doit la suivre ou jouer une carte spéciale ;
+ * un Chat noir se joue aussi à tout moment sur une famille de gang. Si c'est le Chat noir qui est demandé,
+ * il doit fournir un Chat noir (ou une carte spéciale).
+ */
 export function cartesJouables(main: string[], pli: CartePosee[]): string[] {
   const fam = familleDemandee(pli);
   if (!fam) return [...main];
-  const deLaFamille = (id: string) => {
-    const c = carte(id);
-    return c.type === 'gang' && c.famille === fam;
-  };
+  const deLaFamille = (id: string) => estNumerotee(carte(id)) && carte(id).famille === fam;
   if (!main.some(deLaFamille)) return [...main];
   return main.filter((id) => deLaFamille(id) || estSpeciale(carte(id)) || carte(id).type === 'atout');
 }
@@ -51,7 +54,7 @@ function valeurDe(p: CartePosee): number {
 }
 
 /** Départage à valeur égale : Chat noir, puis famille demandée (Croupier compris), puis autre famille. */
-function rangDepartage(p: CartePosee, fam: Famille | null): number {
+function rangDepartage(p: CartePosee, fam: FamilleDemandee | null): number {
   const c = carte(p.carteId);
   if (c.type === 'atout') return 2;
   if (c.speciale === 'croupier' || (c.type === 'gang' && c.famille === fam)) return 1;
@@ -59,7 +62,7 @@ function rangDepartage(p: CartePosee, fam: Famille | null): number {
 }
 
 /** Index de la carte la plus forte (valeur, puis départage, puis première posée). Avec inverse, la plus petite valeur l'emporte. */
-function meilleure(indices: number[], pli: CartePosee[], fam: Famille | null, inverse = false): number {
+function meilleure(indices: number[], pli: CartePosee[], fam: FamilleDemandee | null, inverse = false): number {
   let best = indices[0];
   for (const i of indices.slice(1)) {
     const vi = inverse ? -valeurDe(pli[i]) : valeurDe(pli[i]);

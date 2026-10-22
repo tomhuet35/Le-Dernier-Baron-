@@ -130,6 +130,13 @@ function demarrerNuit(e: EtatPartie) {
   e.phase = 'ANNONCES';
 }
 
+/** Ajoute une ligne au journal (utilisé par le serveur, par exemple quand le temps est écoulé). */
+export function ajouterAuJournal(etat: EtatPartie, texte: string): EtatPartie {
+  const e = structuredClone(etat);
+  noter(e, texte);
+  return e;
+}
+
 /** Joueurs dont la partie attend une action. */
 export function attenteDe(e: EtatPartie): string[] {
   const ids = e.joueurs.map((j) => j.id);
@@ -222,6 +229,12 @@ function traiter(e: EtatPartie, a: Action): string | null {
             if (e.choixAlliance[ids[i]] === ids[k] && e.choixAlliance[ids[k]] === ids[i]) e.alliances.push([ids[i], ids[k]]);
           }
         }
+        noter(
+          e,
+          `Choix des alliés : ${e.joueurs
+            .map((j) => `${j.nom} → ${e.choixAlliance[j.id] ? nom(e, e.choixAlliance[j.id] as string) : 'personne'}`)
+            .join(', ')}.`,
+        );
         noter(
           e,
           e.alliances.length

@@ -1,11 +1,40 @@
-import { useEffect, useMemo, useState } from 'react';
+import type React from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CARTE } from '../../shared/cartes';
 import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, REGLES, infoCarte, trierMain } from './textes';
-import { Butin, CarteImg, Fenetre, Pastille, Zoom } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Fenetre, Pastille, Zoom, useMinuteur } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
+
+const PHASES_DEBUT = ['TRAHISON', 'ANNONCES', 'ALLIANCE'];
+
+/** Places des adversaires autour de la table, dans l'ordre du jeu en partant de la gauche du joueur. */
+const PLACES: Record<number, string[]> = {
+  1: ['haut'],
+  2: ['haut-gauche', 'haut-droite'],
+  3: ['gauche', 'haut', 'droite'],
+  4: ['gauche', 'haut-gauche', 'haut-droite', 'droite'],
+  5: ['gauche', 'haut-gauche', 'haut', 'haut-droite', 'droite'],
+};
+
+/** Particules dorées qui montent doucement derrière la table. */
+const PARTICULES = Array.from({ length: 18 }, (_, i) => ({
+  x: (i * 53) % 100,
+  taille: 3 + (i % 4) * 2,
+  duree: 10 + (i % 7) * 2,
+  delai: -(i * 1.9),
+}));
+function Particules() {
+  return (
+    <div className="particules" aria-hidden="true">
+      {PARTICULES.map((p, i) => (
+        <span key={i} style={{ left: `${p.x}%`, width: p.taille, height: p.taille, animationDuration: `${p.duree}s`, animationDelay: `${p.delai}s` }} />
+      ))}
+    </div>
+  );
+}
 
 export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitter: () => void }) {
   const v = salon.partie as Vue;
@@ -13,14 +42,27 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
   const estHote = salon.hoteId === v.moi;
   const [selection, setSelection] = useState<string | null>(null);
   const [zoom, setZoom] = useState<string | null>(null);
-  const [fenetre, setFenetre] = useState<'scores' | 'regles' | 'quitter' | null>(null);
-  const [journalOuvert, setJournalOuvert] = useState(false);
+  const [fenetre, setFenetre] = useState<'scores' | 'regles' | 'menu' | 'journal' | 'quitter' | null>(null);
   const [envoi, setEnvoi] = useState(false);
+  const fraction = useMinuteur(salon.tempsRestant, salon.dureeTour);
 
   useEffect(() => setSelection(null), [v.phase, v.nuit, v.main.length, v.tourId]);
 
+  // Révélation de l'événement : la carte tourbillonne au centre de l'écran pendant 5 secondes.
+  const [revelation, setRevelation] = useState<string | null>(null);
+  const dejaVu = useRef<string | null>(null);
+  useEffect(() => {
+    if (!v.evenementId || v.phase !== 'ANNONCES') return;
+    const cle = `${v.nuit}-${v.evenementId}`;
+    if (dejaVu.current === cle) return;
+    dejaVu.current = cle;
+    setRevelation(v.evenementId);
+    const t = window.setTimeout(() => setRevelation(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [v.nuit, v.evenementId, v.phase]);
+
   const nom = (id: string | null | undefined) => v.joueurs.find((j) => j.id === id)?.nom ?? '?';
-  const infosSalon = (id: string) => salon.joueurs.find((j) => j.id === id);
+  const avatarDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.avatar ?? 1;
   const agir = async (action: ActionSansJoueur) => {
     if (envoi) return;
     setEnvoi(true);
@@ -32,21 +74,34 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
   const main = useMemo(() => trierMain(v.main), [v.main]);
   const siege = v.joueurs.findIndex((j) => j.id === v.moi);
   const autres = [...v.joueurs.slice(siege + 1), ...v.joueurs.slice(0, siege)];
-  const suivant = v.joueurs[(siege + 1) % v.joueurs.length];
+  const voisinDroite = v.joueurs[(siege - 1 + v.joueurs.length) % v.joueurs.length];
+  const places = PLACES[autres.length] ?? [];
+  const parPlace: Record<string, VueJoueur> = Object.fromEntries(autres.map((j, i) => [places[i], j]));
+  const haut = ['haut-gauche', 'haut', 'haut-droite'].filter((p) => parPlace[p]).map((p) => parPlace[p]);
+  const gauche = parPlace.gauche;
+  const droite = parPlace.droite;
   const attendus = v.attente.filter((id) => id !== v.moi).map(nom);
   const attenteTexte = attendus.length ? `En attente de ${attendus.join(', ')}.` : '';
   const monTour = v.tourId === v.moi;
+  const aMoi = v.attente.includes(v.moi) && v.phase !== 'FIN_DE_NUIT' && v.phase !== 'FIN_DE_PARTIE';
+  const secondes = fraction === null ? null : Math.ceil((fraction * salon.dureeTour) / 1000);
   const pliAffiche =
     v.pli.length > 0 ? null : v.dernierPli && (v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && v.vol?.source === 'baron')) ? v.dernierPli : null;
+  const plisJoues = v.joueurs.reduce((s, j) => s + j.plis, 0);
 
   const toucherCarte = (id: string, jouable: boolean) => {
     if (v.phase === 'TRAHISON' && !v.aChoisiTrahison) return setSelection(id);
     if (v.phase === 'PLI' && monTour && jouable) return setSelection(selection === id ? null : id);
     setZoom(id);
   };
+  const siegeDe = (j: VueJoueur) => (
+    <Siege key={j.id} j={j} v={v} salon={salon} estHote={estHote} appel={appel} nom={nom} fraction={fraction} avatar={avatarDe(j.id)} />
+  );
+  const chevauchement = main.length > 6 ? -0.56 : -0.42;
 
   return (
-    <div className="table">
+    <div className="plateau">
+      <Particules />
       <header className="barre">
         <div className="nuit">
           <span className="etiquette">Nuit</span>
@@ -66,133 +121,139 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
           <div className="evenement vide-evenement">{v.nuit === 1 || v.nuit === v.nbNuits ? 'Pas d’événement cette nuit' : ''}</div>
         )}
         <div className="barre-boutons">
-          <button type="button" className="petit" onClick={() => setFenetre('scores')}>
-            Scores
+          <button type="button" className="petit icone" onClick={() => setFenetre('scores')} aria-label="Scores">
+            🏆<span className="libelle"> Scores</span>
           </button>
-          <button type="button" className="petit" onClick={() => setFenetre('regles')}>
-            Règles
+          <button type="button" className="petit icone" onClick={() => setFenetre('regles')} aria-label="Règles">
+            📜<span className="libelle"> Règles</span>
           </button>
-          <button type="button" className="petit discret-bouton" onClick={() => setFenetre('quitter')} aria-label="Quitter">
+          <Chat salon={salon} appel={appel} enLigne />
+          <button type="button" className="petit icone" onClick={() => setFenetre('menu')} aria-label="Menu">
             ⋯
           </button>
         </div>
       </header>
 
-      <section className="adversaires" aria-label="Autres joueurs">
-        {autres.map((j) => {
-          const s = infosSalon(j.id);
-          return (
-            <article key={j.id} className={`adversaire ${j.attendu ? 'attendu' : ''} ${v.tourId === j.id ? 'son-tour' : ''}`}>
-              <div className="adv-tete">
-                <strong>{j.nom}</strong>
-                {j.id === salon.hoteId && <span className="badge or">Hôte</span>}
-                {j.id === v.premierId && ['TRAHISON', 'ANNONCES', 'ALLIANCE'].includes(v.phase) && <span className="badge or">Commence</span>}
-                {s?.robot && <span className="badge">Robot</span>}
-                {s && !s.connecte && !s.robot && <span className="badge rouge">Hors ligne</span>}
-              </div>
-              <div className="adv-ligne">
-                <span>{j.annonce !== null ? `Annonce ${j.annonce}` : j.aAnnonce ? 'A annoncé' : 'Annonce…'}</span>
-                <span>
-                  {j.plis} pli{j.plis > 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="adv-ligne discret">
-                <span>
-                  {j.nbCartes} carte{j.nbCartes > 1 ? 's' : ''}
-                </span>
-                <span>{j.score} pts</span>
-              </div>
-              <Butin ids={j.butin} />
-              {estHote && s && !s.connecte && (
-                <button type="button" className="petit" onClick={() => appel('remplacer', { joueurId: j.id, actif: !s.robot })}>
-                  {s.robot ? 'Rendre la main' : 'Faire jouer l’ordinateur'}
-                </button>
-              )}
-            </article>
-          );
-        })}
-      </section>
+      {haut.length > 0 && <div className="rangee-haut">{haut.map(siegeDe)}</div>}
 
-      <section className="tapis" aria-label="Pli en cours">
-        <div className="tapis-tete">
-          {pliAffiche ? (
-            <span>
-              <strong>{nom(pliAffiche.gagnantId)}</strong> remporte le pli{pliAffiche.braquage ? ' : Braquage !' : ''}
-            </span>
-          ) : v.pli.length > 0 ? (
-            v.familleDemandee ? (
+      <div className={`milieu ${gauche || droite ? '' : 'sans-cotes'}`}>
+        {(gauche || droite) && <div className="cote">{gauche && siegeDe(gauche)}</div>}
+        <section className="centre" aria-label="Pli en cours">
+          <div className="centre-tete">
+            {pliAffiche ? (
               <span>
-                Famille demandée : <strong>{NOM_FAMILLE[v.familleDemandee]}</strong>
+                <strong>{pliAffiche.gagnantId === v.moi ? 'Tu remportes' : `${nom(pliAffiche.gagnantId)} remporte`}</strong> le pli
+                {pliAffiche.braquage ? ' : Braquage !' : ''}
+              </span>
+            ) : v.pli.length > 0 ? (
+              v.familleDemandee ? (
+                <span>
+                  Demandé : <strong>{NOM_FAMILLE[v.familleDemandee]}</strong>
+                </span>
+              ) : (
+                <span>Pas encore de famille demandée</span>
+              )
+            ) : v.phase === 'PLI' ? (
+              <span>{v.ouvreurId === v.moi ? 'Tu ouvres le pli' : `${nom(v.ouvreurId)} ouvre le pli`}</span>
+            ) : PHASES_DEBUT.includes(v.phase) ? (
+              <span>
+                {v.nuit} pli{v.nuit > 1 ? 's' : ''} · {v.premierId === v.moi ? 'tu commences' : `${nom(v.premierId)} commence`}
               </span>
             ) : (
-              <span>Pas encore de famille demandée</span>
-            )
-          ) : v.phase === 'PLI' ? (
-            <span>{v.ouvreurId === v.moi ? 'Tu ouvres le pli.' : `${nom(v.ouvreurId)} ouvre le pli.`}</span>
-          ) : (
-            <span>
-              {v.nuit} pli{v.nuit > 1 ? 's' : ''} cette nuit ·{' '}
-              {['TRAHISON', 'ANNONCES', 'ALLIANCE'].includes(v.phase)
-                ? `${v.premierId === v.moi ? 'tu ouvres' : `${nom(v.premierId)} ouvre`} le premier pli`
-                : `${v.joueurs.reduce((s, j) => s + j.plis, 0)} joué${v.joueurs.reduce((s, j) => s + j.plis, 0) > 1 ? 's' : ''}`}
-            </span>
-          )}
-        </div>
-        <div className="tapis-cartes">
-          {(pliAffiche ? pliAffiche.cartes : v.pli).map((p) => (
-            <CarteImg
-              key={p.carteId}
-              id={p.carteId}
-              taille="pli"
-              etat={pliAffiche && p.joueurId === pliAffiche.gagnantId ? 'gagnante' : undefined}
-              legende={`${p.joueurId === v.moi ? 'Toi' : nom(p.joueurId)}${p.valeurCroupier !== undefined ? ` · ${p.valeurCroupier}` : ''}`}
-              onZoom={setZoom}
-            />
-          ))}
-        </div>
-      </section>
+              <span>
+                Pli {Math.min(plisJoues + 1, v.nuit)}/{v.nuit}
+              </span>
+            )}
+          </div>
+          <div className="centre-table">
+            <svg className={`anneau ${v.phase === 'PLI' ? 'tourne' : ''}`} viewBox="0 0 200 200" aria-hidden="true">
+              <defs>
+                <marker id="pointe" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+                </marker>
+              </defs>
+              <path d="M143 25.5 A86 86 0 0 1 174.5 143" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" markerEnd="url(#pointe)" />
+              <path d="M57 174.5 A86 86 0 0 1 25.5 57" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" markerEnd="url(#pointe)" />
+            </svg>
+            <div className="pli-pile">
+              {(pliAffiche ? pliAffiche.cartes : v.pli).map((p, i) => {
+                // Pile verticale : chaque carte se pose un peu plus bas, légèrement de travers, comme sur une vraie table.
+                const style = { '--r': `${(i % 2 ? 1 : -1) * (1.5 + (i % 3))}deg`, '--x': `${((i * 37) % 13) - 6}px`, zIndex: i + 1 } as React.CSSProperties;
+                const gagnante = !!pliAffiche && p.joueurId === pliAffiche.gagnantId;
+                return (
+                  <div key={p.carteId} className={`pli-carte ${gagnante ? 'gagnante-pli' : ''}`} style={style}>
+                    <CarteImg id={p.carteId} taille="pli" etat={gagnante ? 'gagnante' : undefined} onZoom={setZoom} />
+                    <span className="pli-nom" title={p.joueurId === v.moi ? 'Toi' : nom(p.joueurId)}>
+                      {p.joueurId === v.moi ? 'Toi' : nom(p.joueurId)}
+                      {p.valeurCroupier !== undefined ? ` · ${p.valeurCroupier}` : ''}
+                    </span>
+                  </div>
+                );
+              })}
+              {!pliAffiche && v.pli.length === 0 && <div className="pli-vide">Le pli est vide</div>}
+            </div>
+          </div>
+          <ol className="centre-journal" aria-label="Dernières actions">
+            {v.journal
+              .slice(-2)
+              .reverse()
+              .map((e, i) => (
+                <li key={e.n} style={{ opacity: 1 - i * 0.35 }}>
+                  {e.texte}
+                </li>
+              ))}
+          </ol>
+        </section>
+        {(gauche || droite) && <div className="cote">{droite && siegeDe(droite)}</div>}
+      </div>
 
-      <section className={`consigne ${v.attente.includes(v.moi) ? 'a-toi' : ''}`} aria-live="polite">
-        <Consigne v={v} selection={selection} agir={agir} nom={nom} suivantNom={suivant.nom} attenteTexte={attenteTexte} envoi={envoi} />
-      </section>
-
-      <section className="moi">
-        <div className="moi-ligne">
-          <strong>{moi.nom}</strong>
-          {v.premierId === v.moi && ['TRAHISON', 'ANNONCES', 'ALLIANCE'].includes(v.phase) && <span className="badge or">Tu commences</span>}
-          <span>{v.monAnnonce !== null ? `Annonce ${v.monAnnonce}` : 'Pas encore annoncé'}</span>
-          <span>
-            {moi.plis} pli{moi.plis > 1 ? 's' : ''}
-          </span>
-          <span>{moi.score} pts</span>
+      <section className={`ma-zone ${aMoi ? 'a-moi' : ''}`} aria-label="Ta place">
+        <div className={`consigne ${aMoi ? 'a-toi' : ''}`} aria-live="polite">
+          <Consigne v={v} selection={selection} agir={agir} nom={nom} droiteNom={voisinDroite.nom} attenteTexte={attenteTexte} envoi={envoi} />
         </div>
-        <Butin ids={moi.butin} />
-        <div className="main" aria-label="Ta main">
-          {main.map((c) => (
-            <CarteImg
-              key={c.id}
-              id={c.id}
-              etat={selection === c.id ? 'choisie' : v.phase === 'PLI' && monTour ? (c.jouable ? 'jouable' : 'grisee') : undefined}
-              onToucher={() => toucherCarte(c.id, c.jouable)}
-              onZoom={setZoom}
-            />
-          ))}
+        <div className="moi-bandeau">
+          <Avatar n={avatarDe(v.moi)} grand fraction={aMoi ? fraction : null} />
+          <div className="moi-texte">
+            <div className="moi-nom">
+              <strong>{moi.nom}</strong>
+              {aMoi && <span className="votre-tour">Votre tour</span>}
+              {v.premierId === v.moi && PHASES_DEBUT.includes(v.phase) && <span className="badge or">Tu commences</span>}
+            </div>
+            {aMoi && fraction !== null && (
+              <div className={`minuteur ${fraction < 0.25 ? 'urgent' : ''}`}>
+                <div className="minuteur-barre" role="progressbar" aria-label="Temps restant" aria-valuemin={0} aria-valuemax={30} aria-valuenow={secondes ?? 0}>
+                  <span style={{ width: `${fraction * 100}%` }} />
+                </div>
+                <small>{secondes} s</small>
+              </div>
+            )}
+            <div className="moi-stats">
+              {v.monAnnonce !== null ? `Annonce ${v.monAnnonce}` : 'Pas encore annoncé'} · {moi.plis} pli{moi.plis > 1 ? 's' : ''} · {moi.score} pts
+            </div>
+            {v.choixAllies && <ChoixAllie v={v} id={v.moi} nom={nom} />}
+            <Butin ids={moi.butin} />
+          </div>
+        </div>
+        <div className="eventail" style={{ '--chev': chevauchement } as React.CSSProperties} aria-label="Ta main">
+          {main.map((c, i) => {
+            const d = i - (main.length - 1) / 2;
+            const style = { '--r': `${d * 4}deg`, '--y': `${d * d * 2.2}px`, zIndex: i + 1 } as React.CSSProperties;
+            return (
+              <div key={c.id} className={`eventail-carte ${selection === c.id ? 'levee' : ''}`} style={style}>
+                <CarteImg
+                  id={c.id}
+                  etat={selection === c.id ? 'choisie' : v.phase === 'PLI' && monTour ? (c.jouable ? 'jouable' : 'grisee') : undefined}
+                  onToucher={() => toucherCarte(c.id, c.jouable)}
+                  onZoom={setZoom}
+                />
+              </div>
+            );
+          })}
           {main.length === 0 && <p className="discret">Plus de carte en main.</p>}
         </div>
       </section>
 
-      <section className="journal">
-        <button type="button" className="lien-discret" onClick={() => setJournalOuvert(!journalOuvert)} aria-expanded={journalOuvert}>
-          {journalOuvert ? 'Masquer le journal' : 'Journal de la partie'}
-        </button>
-        <ol>
-          {(journalOuvert ? v.journal.slice().reverse() : v.journal.slice(-3).reverse()).map((e) => (
-            <li key={e.n}>{e.texte}</li>
-          ))}
-        </ol>
-      </section>
-
-      {v.phase === 'FIN_DE_NUIT' && <RecapNuit v={v} nom={nom} estHote={estHote} agir={agir} />}
+      {v.phase === 'FIN_DE_NUIT' && <RecapNuit v={v} nom={nom} estHote={estHote} agir={agir} secondes={secondes} />}
       {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} estHote={estHote} appel={appel} quitter={quitter} nom={nom} />}
       {fenetre === 'scores' && (
         <Fenetre titre="Scores" onFermer={() => setFenetre(null)} large>
@@ -209,12 +270,34 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
               ))}
             </section>
           ))}
-          <p className="discret">Astuce : un appui long sur une carte l’affiche en grand avec son effet.</p>
+          <p className="discret">Astuce : un appui long sur une carte l’affiche en grand avec son effet. Chaque joueur a 30 secondes pour agir.</p>
+        </Fenetre>
+      )}
+      {fenetre === 'menu' && (
+        <Fenetre titre="Menu" onFermer={() => setFenetre(null)}>
+          <button type="button" className="large" onClick={() => setFenetre('journal')}>
+            Journal de la partie
+          </button>
+          <button type="button" className="large danger" onClick={() => setFenetre('quitter')}>
+            Quitter la partie
+          </button>
+        </Fenetre>
+      )}
+      {fenetre === 'journal' && (
+        <Fenetre titre="Journal de la partie" onFermer={() => setFenetre(null)} large>
+          <ol className="journal-complet">
+            {v.journal
+              .slice()
+              .reverse()
+              .map((e) => (
+                <li key={e.n}>{e.texte}</li>
+              ))}
+          </ol>
         </Fenetre>
       )}
       {fenetre === 'quitter' && (
         <Fenetre titre="Quitter la partie ?" onFermer={() => setFenetre(null)}>
-          <p>Tu pourras revenir avec le lien du salon tant que la partie existe. Sans toi, la partie t’attendra.</p>
+          <p>Tu pourras revenir avec le lien du salon tant que la partie existe. En ton absence, l’ordinateur jouera pour toi au bout de 30 secondes.</p>
           <div className="rangee">
             <button type="button" onClick={() => setFenetre(null)}>
               Rester
@@ -226,7 +309,84 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
         </Fenetre>
       )}
       {zoom && <Zoom id={zoom} onFermer={() => setZoom(null)} />}
+      {revelation && v.evenement && (
+        <div className="revelation" role="dialog" aria-label={`Événement : ${NOM_EVENEMENT[v.evenement]}`} onClick={() => setRevelation(null)}>
+          <span className="revelation-titre">Événement de la nuit {v.nuit}</span>
+          <div className="tourbillon">
+            <div className="tourbillon-carte">
+              <img className="face recto" src={infoCarte(revelation).image} alt={NOM_EVENEMENT[v.evenement]} />
+              <img className="face verso" src="/dos.webp" alt="" />
+            </div>
+          </div>
+          <h2>{NOM_EVENEMENT[v.evenement]}</h2>
+          <p>{EFFET_EVENEMENT[v.evenement]}</p>
+          <span className="discret">Touche pour fermer</span>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Un adversaire autour de la table : son personnage, ses cartes retournées, son annonce et son butin. */
+function Siege(props: {
+  j: VueJoueur;
+  v: Vue;
+  salon: VueSalon;
+  estHote: boolean;
+  appel: Appel;
+  nom: (id: string | null | undefined) => string;
+  fraction: number | null;
+  avatar: number;
+}) {
+  const { j, v, salon, estHote, appel, nom, fraction, avatar } = props;
+  const s = salon.joueurs.find((x) => x.id === j.id);
+  const nb = Math.min(j.nbCartes, 8);
+  const minute = j.attendu && v.phase !== 'FIN_DE_NUIT' && v.phase !== 'FIN_DE_PARTIE';
+  return (
+    <article className={`siege ${minute ? 'attendu' : ''} ${v.tourId === j.id ? 'son-tour' : ''}`}>
+      <div className="siege-dos" aria-hidden="true">
+        {Array.from({ length: nb }, (_, i) => (
+          <img key={i} src="/dos.webp" alt="" style={{ '--r': `${(i - (nb - 1) / 2) * 8}deg` } as React.CSSProperties} />
+        ))}
+      </div>
+      <div className="siege-avatar">
+        <Avatar n={avatar} fraction={minute ? fraction : null} />
+        <span className="siege-nb" title="Cartes en main">
+          {j.nbCartes}
+        </span>
+      </div>
+      <div className="siege-nom">
+        <span className={`point ${s?.connecte || s?.robot ? 'en-ligne' : 'hors-ligne'}`} title={s?.connecte ? 'En ligne' : 'Hors ligne'} />
+        {j.id === salon.hoteId && (
+          <span className="couronne-hote" title="Hôte">
+            ♛
+          </span>
+        )}
+        <span className="siege-nom-texte">{j.nom}</span>
+        {s?.robot && (
+          <span title="Joué par l’ordinateur" aria-label="Joué par l’ordinateur">
+            🤖
+          </span>
+        )}
+      </div>
+      <div className="siege-infos">{j.annonce !== null ? `Annonce ${j.annonce}` : j.aAnnonce ? 'A annoncé' : 'Annonce…'}</div>
+      <div className="siege-infos discret">
+        {j.plis} pli{j.plis > 1 ? 's' : ''} · {j.score} pts
+      </div>
+      {((j.id === v.premierId && PHASES_DEBUT.includes(v.phase)) || (s && !s.connecte && !s.robot)) && (
+        <div className="badges">
+          {j.id === v.premierId && PHASES_DEBUT.includes(v.phase) && <span className="badge or">Commence</span>}
+          {s && !s.connecte && !s.robot && <span className="badge rouge">Hors ligne</span>}
+        </div>
+      )}
+      {v.choixAllies && <ChoixAllie v={v} id={j.id} nom={nom} />}
+      {j.butin.length > 0 && <Butin ids={j.butin} />}
+      {estHote && s && !s.connecte && (
+        <button type="button" className="petit" onClick={() => appel('remplacer', { joueurId: j.id, actif: !s.robot })}>
+          {s.robot ? 'Rendre la main' : 'Faire jouer l’ordinateur'}
+        </button>
+      )}
+    </article>
   );
 }
 
@@ -235,7 +395,7 @@ function Consigne(props: {
   selection: string | null;
   agir: (a: ActionSansJoueur) => void;
   nom: (id: string | null | undefined) => string;
-  suivantNom: string;
+  droiteNom: string;
   attenteTexte: string;
   envoi: boolean;
 }) {
@@ -247,7 +407,7 @@ function Consigne(props: {
       return (
         <>
           <p>
-            <strong>Trahison :</strong> choisis une carte de ta main à passer à {props.suivantNom}.
+            <strong>Trahison :</strong> choisis une carte de ta main à passer à {props.droiteNom}, ton voisin de droite.
           </p>
           {selection && (
             <button type="button" className="principal" disabled={envoi} onClick={() => agir({ type: 'TRAHISON', carteId: selection })}>
@@ -263,6 +423,7 @@ function Consigne(props: {
         <>
           <p>
             <strong>Combien de plis vas-tu gagner ?</strong> Tu as {v.main.length} carte{v.main.length > 1 ? 's' : ''}. {commence} le premier pli.
+            {v.evenement === 'trahison' && ' Trahison : après les annonces, chacun passera une carte à son voisin de droite.'}
           </p>
           <div className="choix-annonce">
             {Array.from({ length: v.nuit + 1 }, (_, n) => (
@@ -280,15 +441,16 @@ function Consigne(props: {
           <p>
             <strong>Alliance :</strong> choisis en secret un allié. Si vous vous choisissez tous les deux et réussissez votre annonce : +20 chacun.
           </p>
-          <div className="rangee">
+          <div className="choix-joueurs">
             {v.joueurs
               .filter((j) => j.id !== v.moi)
               .map((j) => (
-                <button key={j.id} type="button" disabled={envoi} onClick={() => agir({ type: 'ALLIANCE', allieId: j.id })}>
-                  {j.nom} (annonce {j.annonce})
+                <button key={j.id} type="button" className="petit" disabled={envoi} onClick={() => agir({ type: 'ALLIANCE', allieId: j.id })}>
+                  <span>{j.nom}</span>
+                  <small>annonce {j.annonce}</small>
                 </button>
               ))}
-            <button type="button" className="secondaire" disabled={envoi} onClick={() => agir({ type: 'ALLIANCE', allieId: null })}>
+            <button type="button" className="petit secondaire" disabled={envoi} onClick={() => agir({ type: 'ALLIANCE', allieId: null })}>
               Personne
             </button>
           </div>
@@ -300,7 +462,11 @@ function Consigne(props: {
         return (
           <p>
             <strong>À toi de jouer.</strong>{' '}
-            {v.familleDemandee ? `Suis les ${NOM_FAMILLE[v.familleDemandee]} si tu peux, ou joue un Chat noir ou une carte spéciale.` : 'Touche une carte pour la choisir.'}
+            {v.familleDemandee === 'chat_noir'
+              ? 'Chat noir demandé : fournis un Chat noir si tu peux, ou joue une carte spéciale.'
+              : v.familleDemandee
+                ? `Suis les ${NOM_FAMILLE[v.familleDemandee]} si tu peux, ou joue un Chat noir ou une carte spéciale.`
+                : 'Touche une carte pour la choisir.'}
           </p>
         );
       }
@@ -330,7 +496,8 @@ function Consigne(props: {
     case 'VOL': {
       const source = v.vol?.source === 'baron' ? 'Baron' : 'Pickpocket';
       if (v.vol?.voleurId !== v.moi) return <p>{nom(v.vol?.voleurId)} choisit un butin à voler ({source})…</p>;
-      const cibles = v.joueurs.filter((j) => j.id !== v.moi);
+      const cibles = v.joueurs.filter((j) => j.id !== v.moi && j.butin.length > 0);
+      const sansButin = v.joueurs.filter((j) => j.id !== v.moi && j.butin.length === 0).map((j) => j.nom);
       return (
         <>
           <p>
@@ -341,13 +508,12 @@ function Consigne(props: {
             {cibles.map((j) => (
               <div key={j.id} className="cible">
                 <span>{j.nom}</span>
-                {j.butin.length ? (
-                  j.butin.map((id) => <Pastille key={id} id={id} onClick={() => agir({ type: 'VOLER', cibleId: j.id, carteId: id })} />)
-                ) : (
-                  <span className="vide">Aucun butin</span>
-                )}
+                {j.butin.map((id) => (
+                  <Pastille key={id} id={id} onClick={() => agir({ type: 'VOLER', cibleId: j.id, carteId: id })} />
+                ))}
               </div>
             ))}
+            {sansButin.length > 0 && <span className="vide">Sans butin : {sansButin.join(', ')}</span>}
           </div>
           <button type="button" className="secondaire" disabled={envoi} onClick={() => agir({ type: 'VOLER', cibleId: null })}>
             Ne pas voler
@@ -362,7 +528,7 @@ function Consigne(props: {
   }
 }
 
-function RecapNuit({ v, nom, estHote, agir }: { v: Vue; nom: (id: string) => string; estHote: boolean; agir: (a: ActionSansJoueur) => void }) {
+function RecapNuit({ v, nom, estHote, agir, secondes }: { v: Vue; nom: (id: string) => string; estHote: boolean; agir: (a: ActionSansJoueur) => void; secondes: number | null }) {
   const bilan = v.bilans[v.bilans.length - 1];
   const totaux = Object.fromEntries(v.joueurs.map((j) => [j.id, j.score]));
   const signe = (n: number) => (n > 0 ? `+${n}` : `${n}`);
@@ -408,6 +574,7 @@ function RecapNuit({ v, nom, estHote, agir }: { v: Vue; nom: (id: string) => str
           {bilan.nuit === v.nbNuits ? 'Voir le classement' : `Passer à la nuit ${bilan.nuit + 1}`}
         </button>
       )}
+      {secondes !== null && <p className="discret">Suite automatique dans {secondes} s.</p>}
       {estHote && v.pret && v.attente.length > 0 && (
         <button type="button" className="lien-discret" onClick={() => agir({ type: 'FORCER_SUITE' })}>
           Continuer sans attendre
@@ -504,6 +671,18 @@ function TableauScores({ v }: { v: Vue }) {
           </tr>
         </tfoot>
       </table>
+    </div>
+  );
+}
+
+/** Après l'Alliance, montre à tous qui a choisi qui, et les alliances formées. */
+function ChoixAllie({ v, id, nom }: { v: Vue; id: string; nom: (id: string | null | undefined) => string }) {
+  const choix = v.choixAllies?.[id] ?? null;
+  const allie = v.alliances.some(([a, b]) => (a === id || b === id) && (a === choix || b === choix));
+  return (
+    <div className={`choix-allie ${allie ? 'allie' : ''}`}>
+      {allie ? '🤝 Allié avec ' : 'A choisi '}
+      <strong>{choix ? (choix === v.moi ? 'toi' : nom(choix)) : 'personne'}</strong>
     </div>
   );
 }
