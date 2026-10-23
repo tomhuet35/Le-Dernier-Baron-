@@ -481,19 +481,16 @@ function PageJouer({ appel, compte, enLigne, retour }: { appel: Appel; compte: E
         <input id="pseudo" value={nom} maxLength={16} autoComplete="nickname" placeholder="Ex. Lucas" onChange={(e) => setNom(e.target.value)} />
         {!invite && (
           <>
-            <button type="button" className="principal bouton-en-ligne" disabled={!nom.trim() || occupe} onClick={() => valider('jouer_public')}>
-              🌍 Jouer en ligne
+            <button type="button" className="bouton-plaque" disabled={!nom.trim() || occupe} onClick={() => valider('jouer_public')}>
+              <span>Jouer en ligne</span>
+              <small>
+                <span className="point en-ligne" aria-hidden="true" />
+                {enLigne ? `${enLigne.joueurs} joueur${enLigne.joueurs > 1 ? 's' : ''} en ligne` : 'Connexion…'}
+              </small>
             </button>
-            <p className="en-ligne-info">
-              <span className="point en-ligne" aria-hidden="true" />
-              {enLigne ? `${enLigne.joueurs} joueur${enLigne.joueurs > 1 ? 's' : ''} en ligne` : 'Connexion…'}
-              {enLigne && enLigne.enAttente > 0 ? ` · ${enLigne.enAttente} en attente d’une partie` : ''}
-            </p>
-            <p className="discret centre-texte">Joue avec des inconnus du monde entier. Les places libres sont prises par l’ordinateur.</p>
-            <button type="button" disabled={!nom.trim() || occupe} onClick={() => valider('creer')}>
-              🔒 Créer une partie privée
+            <button type="button" className="bouton-plaque sombre" disabled={!nom.trim() || occupe} onClick={() => valider('creer')}>
+              <span>Partie privée</span>
             </button>
-            <p className="discret centre-texte">Pour jouer entre amis : invite-les depuis le salon ou partage-leur le code.</p>
           </>
         )}
         <div className="separateur">{invite ? 'Tu es invité dans le salon' : 'ou rejoindre une partie privée'}</div>
@@ -507,8 +504,8 @@ function PageJouer({ appel, compte, enLigne, retour }: { appel: Appel; compte: E
           className="code-saisie"
           onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
         />
-        <button type="button" className={invite ? 'principal' : ''} disabled={!nom.trim() || code.length !== 4 || occupe} onClick={() => valider('rejoindre')}>
-          Rejoindre
+        <button type="button" className={`bouton-plaque petite ${invite ? '' : 'sombre'}`} disabled={!nom.trim() || code.length !== 4 || occupe} onClick={() => valider('rejoindre')}>
+          <span>Rejoindre</span>
         </button>
       </form>
     </main>

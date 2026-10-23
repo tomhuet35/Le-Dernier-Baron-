@@ -683,6 +683,30 @@ select { font: inherit; width: 100%; min-height: 42px; padding: 8px 10px; color:
   .regles-perso .regle-carte img { width: 72px; }
 }
 
+/* ---------- Page Jouer : boutons en plaques dorées ---------- */
+.page-jouer .accueil-form { gap: 12px; }
+.page-jouer .bouton-plaque { margin: 4px 0; }
+.page-jouer .bouton-plaque + .bouton-plaque { margin-top: 10px; }
+.page-jouer input + .bouton-plaque { margin-top: 14px; }
+.bouton-plaque {
+  position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; width: 100%; min-height: 76px; padding: 10px 44px;
+  font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 28px); letter-spacing: 0.12em; text-transform: uppercase; line-height: 1.15;
+  color: #fff1d0; text-shadow: 0 2px 0 #4a0f08, 0 0 14px rgba(231, 194, 122, 0.35);
+  border: 2px solid var(--or-vif); border-radius: 14px;
+  background: radial-gradient(120% 160% at 50% 0%, #c0352a 0%, #8e1c14 55%, #5a0e09 100%);
+  box-shadow: 0 0 0 3px rgba(22, 16, 12, 0.9), 0 0 0 5px var(--or), 0 10px 24px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s, filter 0.15s;
+}
+.bouton-plaque::before, .bouton-plaque::after { content: '◆'; position: absolute; top: 50%; translate: 0 -50%; font-size: 12px; color: var(--or-vif); text-shadow: none; }
+.bouton-plaque::before { left: 16px; }
+.bouton-plaque::after { right: 16px; }
+.bouton-plaque:hover:not(:disabled) { border-color: #f5dfa8; filter: brightness(1.08); }
+.bouton-plaque:active:not(:disabled) { transform: scale(0.98); }
+.bouton-plaque small { display: inline-flex; align-items: center; gap: 6px; font-family: var(--texte); font-size: 12.5px; letter-spacing: 0.02em; text-transform: none; text-shadow: none; color: #f3dcb0; }
+.bouton-plaque.sombre { color: var(--or-vif); text-shadow: 0 2px 0 #000; background: radial-gradient(120% 160% at 50% 0%, #3a2618 0%, #24170f 60%, #160e09 100%); }
+.bouton-plaque.petite { min-height: 58px; font-size: clamp(18px, 5vw, 22px); }
+.page-jouer .separateur { margin-top: 14px; }
+
 @media (prefers-reduced-motion: reduce) {
   .particules { display: none; }
 }
