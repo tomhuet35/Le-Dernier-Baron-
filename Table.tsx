@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CARTE } from '../../shared/cartes';
+import { TAPIS_PAR_DEFAUT, tapisGagnes, type IdTapis } from '../../shared/niveaux';
 import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
@@ -38,7 +39,8 @@ function Particules() {
   );
 }
 
-export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel; quitter: () => void }) {
+export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => void; tapis?: IdTapis; poserTapis?: (id: IdTapis) => Promise<boolean> }) {
+  const { salon, appel, quitter, tapis = TAPIS_PAR_DEFAUT, poserTapis } = props;
   const v = salon.partie as Vue;
   const moi = v.joueurs.find((j) => j.id === v.moi) as VueJoueur;
   const estHote = salon.hoteId === v.moi && !salon.publique;
@@ -155,7 +157,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
 
       <div className={`milieu ${gauche || droite ? '' : 'sans-cotes'}`}>
         {(gauche || droite) && <div className="cote">{gauche && siegeDe(gauche)}</div>}
-        <section className="centre" aria-label="Pli en cours">
+        <section className={`centre tapis-${tapis}`} aria-label="Pli en cours">
           <div className="centre-tete">
             {pliAffiche ? (
               <span>
@@ -274,7 +276,7 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
       </section>
 
       {v.phase === 'FIN_DE_NUIT' && <RecapNuit v={v} nom={nom} estHote={estHote} agir={agir} secondes={secondes} />}
-      {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} salon={salon} estHote={estHote} appel={appel} quitter={quitter} nom={nom} />}
+      {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} salon={salon} estHote={estHote} appel={appel} quitter={quitter} nom={nom} tapis={tapis} poserTapis={poserTapis} />}
       {fenetre === 'scores' && (
         <Fenetre titre="Scores" onFermer={() => setFenetre(null)} large>
           <TableauScores v={v} />
@@ -602,8 +604,17 @@ function RecapNuit({ v, nom, estHote, agir, secondes }: { v: Vue; nom: (id: stri
   );
 }
 
-function FinDePartie(props: { v: Vue; salon: VueSalon; estHote: boolean; appel: Appel; quitter: () => void; nom: (id: string) => string }) {
-  const { v, salon, estHote, appel, quitter, nom } = props;
+function FinDePartie(props: {
+  v: Vue;
+  salon: VueSalon;
+  estHote: boolean;
+  appel: Appel;
+  quitter: () => void;
+  nom: (id: string) => string;
+  tapis: IdTapis;
+  poserTapis?: (id: IdTapis) => Promise<boolean>;
+}) {
+  const { v, salon, estHote, appel, quitter, nom, tapis, poserTapis } = props;
   const classement = [...v.joueurs].sort((a, b) => b.score - a.score);
   const max = classement[0].score;
   const barons = classement.filter((j) => j.score === max);
@@ -661,6 +672,23 @@ function FinDePartie(props: { v: Vue; salon: VueSalon; estHote: boolean; appel: 
           </strong>
           <small>{detailXp(monBilan)}</small>
           <BarreXp xp={monBilan.xp} />
+          {tapisGagnes(monBilan.niveauAvant, monBilan.niveau).map((t) => (
+            <div key={t.id} className="tapis-debloque">
+              <img src={`/cartes/miniature-tapis-${t.id}.webp`} alt="" />
+              <span>
+                <strong>Nouveau tapis débloqué : {t.nom}</strong>
+                {tapis === t.id ? (
+                  <small>Il est posé sur ta table.</small>
+                ) : poserTapis ? (
+                  <button type="button" className="petit" onClick={() => void poserTapis(t.id)}>
+                    Poser ce tapis
+                  </button>
+                ) : (
+                  <small>Choisis-le dans ton profil.</small>
+                )}
+              </span>
+            </div>
+          ))}
         </div>
       )}
       {enr?.etat === 'en_cours' && <p className="discret">Enregistrement des victoires…</p>}

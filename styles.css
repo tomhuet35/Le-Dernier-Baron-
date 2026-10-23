@@ -334,6 +334,16 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 /* Centre de la table : tapis, anneau, pli et journal */
 /* Tapis orange : le cadre en bois garde son épaisseur (découpage en 9 parties), seule la feutrine s'adapte à la place disponible. */
 .centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-baron-portrait.webp') 83 / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); background: url('/cartes/logo-tapis-baron.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.24) 100%), url('/cartes/feutre-baron.webp') center / calc(var(--cadre) * 6.18) auto repeat, #420104; background-clip: padding-box; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
+/* Tapis débloqués avec les niveaux : le cadre détouré (bois, or, jetons) est posé sur la feutrine, qui passe dessous jusqu'au bois. */
+.centre.tapis-jetons {
+  border-image: url('/cartes/cadre-jetons.webp') 240 230 300 240 / calc(var(--cadre) * 2.18) calc(var(--cadre) * 2.09) calc(var(--cadre) * 2.73) calc(var(--cadre) * 2.18) stretch;
+  background: url('/cartes/logo-tapis-jetons.webp') center / contain no-repeat, url('/cartes/plis-jetons.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-jetons.webp') center / calc(var(--cadre) * 2.91) auto repeat, #440606;
+}
+.centre.tapis-or {
+  border-image: url('/cartes/cadre-or.webp') 265 262 350 262 / calc(var(--cadre) * 2.41) calc(var(--cadre) * 2.38) calc(var(--cadre) * 3.18) calc(var(--cadre) * 2.38) stretch;
+  background: url('/cartes/logo-tapis-or.webp') center / contain no-repeat, url('/cartes/plis-or.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-or.webp') center / calc(var(--cadre) * 2.91) auto repeat, #410304;
+}
+.centre.tapis-jetons, .centre.tapis-or { background-origin: padding-box, padding-box, border-box, padding-box; }
 .centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(36, 12, 3, 0.82); border: 1px solid rgba(231, 194, 122, 0.55); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
 .centre-tete strong { color: var(--or-vif); }
 .centre-table { --larg: clamp(60px, 17vw, 104px); position: relative; display: grid; place-items: center; width: 100%; min-height: calc(var(--larg) * 1.9); }
@@ -505,6 +515,17 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .gains-xp summary { cursor: pointer; color: var(--or); font-size: 14px; }
 .gains-xp ul { margin: 6px 0 4px; padding-left: 18px; font-size: 14px; }
 .profil-sous-titre { color: var(--or); font-size: 18px; }
+.tapis-choix { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tapis-option { display: grid; justify-items: center; gap: 3px; min-height: 0; padding: 6px 6px 7px; border-radius: 10px; background: var(--nuit-3); border: 1px solid var(--filet); text-align: center; color: var(--creme); }
+.tapis-option.pose { border-color: var(--or-vif); box-shadow: 0 0 0 1px var(--or-vif), 0 0 14px rgba(231, 194, 122, 0.3); }
+.tapis-option:disabled { opacity: 1; cursor: default; }
+.tapis-image { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; }
+.tapis-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tapis-option.verrouille .tapis-image img { filter: grayscale(0.85) brightness(0.45); }
+.tapis-cadenas { position: absolute; inset: 0; display: grid; place-items: center; font-size: 20px; }
+.tapis-nom { font-size: 12.5px; font-weight: 600; line-height: 1.2; }
+.tapis-option small { font-size: 11px; color: var(--creme-doux); }
+.tapis-option.pose small { color: var(--or-vif); }
 .historique { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .historique li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--filet); }
 .historique li.gagnee { border-color: var(--or); background: rgba(210, 168, 90, 0.08); }
@@ -523,6 +544,10 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .mon-bilan strong { font-family: var(--titre); font-weight: 400; font-size: 20px; color: var(--or-vif); }
 .mon-bilan small { font-size: 12.5px; color: var(--creme-doux); }
 .mon-bilan.monte { animation: briller 1.6s ease-in-out 3; }
+.tapis-debloque { display: flex; align-items: center; gap: 10px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--filet); }
+.tapis-debloque img { width: 92px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; box-shadow: 0 0 0 1px var(--or), 0 0 16px rgba(231, 194, 122, 0.35); }
+.tapis-debloque span { display: grid; justify-items: start; gap: 4px; }
+.mon-bilan .tapis-debloque strong { font-family: var(--texte); font-size: 14px; font-weight: 700; }
 @keyframes briller { 50% { box-shadow: 0 0 26px rgba(231, 194, 122, 0.6); } }
 .moi-nom .medaille { font-size: 11px; }
 

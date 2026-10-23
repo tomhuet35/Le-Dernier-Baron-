@@ -1,3 +1,5 @@
+import type { IdTapis } from './niveaux';
+
 export type Famille = 'billets' | 'lingots' | 'lames' | 'diamants';
 export type Speciale = 'baron' | 'pickpocket' | 'homme_de_main' | 'alibi' | 'juge' | 'croupier';
 export type TypeEvenement = 'descente_police' | 'trahison' | 'casse_du_siecle' | 'couvre_feu' | 'alliance';
@@ -285,6 +287,8 @@ export interface ProfilCompte {
   meilleurScore: number | null;
   xp: number;
   historique: EntreeHistorique[];
+  /** Tapis de jeu posé sur la table (toujours un tapis débloqué). */
+  tapis: IdTapis;
 }
 
 export interface VueSalon {

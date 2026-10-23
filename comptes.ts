@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ResultatJoueur } from '../shared/niveaux';
+import { estTapis, niveauDepuisXp, tapisActif, tapisDebloque, TAPIS_PAR_DEFAUT, type IdTapis, type ResultatJoueur } from '../shared/niveaux';
 import type { EntreeHistorique, ProfilCompte } from '../shared/types';
 
 export interface ConfigWeb {
@@ -40,6 +40,8 @@ export interface StatsCompte {
   codeAmi: string | null;
   /** Dernier personnage joué (affiché dans la liste d'amis). */
   avatar: number;
+  /** Tapis de jeu choisi (récompense de niveau). */
+  tapis: IdTapis;
   amis: string[];
   demandesRecues: string[];
   demandesEnvoyees: string[];
@@ -93,6 +95,8 @@ export interface ServiceComptes {
   repondreAmi(uid: string, autre: string, accepter: boolean): Promise<Record<string, StatsCompte>>;
   /** Retire un ami, annule ou refuse une demande : supprime tout lien entre les deux comptes. */
   retirerLien(uid: string, autre: string): Promise<Record<string, StatsCompte>>;
+  /** Pose un tapis de jeu ; refusé (null) si le niveau du compte ne l'a pas encore débloqué. */
+  choisirTapis(uid: string, tapis: IdTapis): Promise<StatsCompte | null>;
 }
 
 export const MAX_AMIS = 100;
@@ -127,6 +131,7 @@ export function statsVides(nom: string, date: number): StatsCompte {
     majLe: date,
     codeAmi: null,
     avatar: 1,
+    tapis: TAPIS_PAR_DEFAUT,
     amis: [],
     demandesRecues: [],
     demandesEnvoyees: [],
@@ -172,6 +177,7 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
     majLe: nombre(d.majLe),
     codeAmi: typeof d.codeAmi === 'string' ? d.codeAmi : null,
     avatar: nombre(d.avatar, 1),
+    tapis: estTapis(d.tapis) ? d.tapis : TAPIS_PAR_DEFAUT,
     amis: textes(d.amis),
     demandesRecues: textes(d.demandesRecues),
     demandesEnvoyees: textes(d.demandesEnvoyees),
@@ -220,6 +226,7 @@ export function profilDe(identite: Identite, stats: StatsCompte | null): ProfilC
     meilleurScore: stats?.meilleurScore ?? null,
     xp: stats?.xp ?? 0,
     historique: stats?.historique ?? [],
+    tapis: tapisActif(stats?.tapis, stats?.xp ?? 0),
   };
 }
 
@@ -325,6 +332,14 @@ export function creerServiceComptes(parties: {
         if (b) res[autre] = b;
         return res;
       }),
+    choisirTapis: async (uid, tapis) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel || !tapisDebloque(tapis, niveauDepuisXp(actuel.xp))) return null;
+      return stockage.modifier(uid, (avant) => {
+        const base = avant ?? actuel;
+        return tapisDebloque(tapis, niveauDepuisXp(base.xp)) ? { ...base, tapis } : base;
+      });
+    },
   };
 }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
+import { tapisActif, type IdTapis } from '../../shared/niveaux';
 import type { Invitation, ListeAmis, ProfilCompte, ProfilPublic, VueSalon } from '../../shared/types';
 import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
@@ -296,6 +297,16 @@ export function App() {
     if (nouvellePartie) jouerEffet('lancement');
   }, [etatActuel]);
 
+  // Récompense de niveau : le joueur pose un tapis débloqué (le serveur vérifie le niveau).
+  const poserTapis = useCallback(
+    async (tapis: IdTapis) => {
+      const r = await appel('tapis', { tapis });
+      if (r.ok && r.profil) setProfil(r.profil as ProfilCompte);
+      return r.ok;
+    },
+    [appel],
+  );
+
   const compte: EtatCompte = useMemo(
     () => ({
       actif: !!module,
@@ -306,12 +317,13 @@ export function App() {
       chargement,
       rafraichir: () => void rafraichir(),
       apresInscription: () => window.setTimeout(() => void identifier(), 900),
+      majProfil: setProfil,
     }),
     [module, pret, utilisateur, profil, chargement, rafraichir, identifier],
   );
 
   let ecran;
-  if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} />;
+  if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} tapis={tapisActif(profil?.tapis, profil?.xp ?? 0)} poserTapis={poserTapis} />;
   else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} amis={amis} />;
   else if (reprise) ecran = <div className="chargement">Connexion à la partie…</div>;
   else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} />;

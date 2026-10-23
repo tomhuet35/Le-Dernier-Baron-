@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useState, type FormEvent } from 'react';
-import { progression, XP_NUIT, XP_PARTIE, XP_VICTOIRE, xpPourNiveau } from '../../shared/niveaux';
+import { niveauDepuisXp, progression, TAPIS, XP_NUIT, XP_PARTIE, XP_VICTOIRE, xpPourNiveau, type IdTapis } from '../../shared/niveaux';
 import { DESCRIPTION_NIVEAU_BOT, DESCRIPTION_STYLE_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT } from '../../shared/robot';
 import type { AmiVue, BilanCompte, ListeAmis, ProfilCompte, ProfilPublic, StatutAmi } from '../../shared/types';
 import type { Appel } from './App';
@@ -23,6 +23,8 @@ export interface EtatCompte {
   rafraichir: () => void;
   /** À appeler juste après une inscription, pour que le serveur prenne le pseudo. */
   apresInscription: () => void;
+  /** Profil renvoyé par le serveur après un changement (tapis…). */
+  majProfil: (p: ProfilCompte) => void;
 }
 
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
@@ -267,6 +269,54 @@ export function FenetreConnexion(props: {
   );
 }
 
+/** Tapis de jeu : récompenses de niveau, choisies depuis le profil. */
+function ChoixTapis({ compte, appel }: { compte: EtatCompte; appel: Appel }) {
+  const [occupe, setOccupe] = useState(false);
+  const p = compte.profil;
+  if (!p) return null;
+  const niveau = niveauDepuisXp(p.xp);
+  const choisir = async (id: IdTapis) => {
+    if (id === p.tapis || occupe) return;
+    setOccupe(true);
+    const r = await appel('tapis', { tapis: id });
+    setOccupe(false);
+    if (r.ok && r.profil) compte.majProfil(r.profil as ProfilCompte);
+  };
+  return (
+    <>
+      <h3 className="profil-sous-titre">Tapis de jeu</h3>
+      <div className="tapis-choix" role="radiogroup" aria-label="Tapis de jeu">
+        {TAPIS.map((t) => {
+          const ouvert = niveau >= t.niveau;
+          const pose = p.tapis === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="radio"
+              aria-checked={pose}
+              disabled={!ouvert}
+              className={`tapis-option ${pose ? 'pose' : ''} ${ouvert ? '' : 'verrouille'}`}
+              onClick={() => void choisir(t.id)}
+            >
+              <span className="tapis-image">
+                <img src={`/cartes/miniature-tapis-${t.id}.webp`} alt="" />
+                {!ouvert && (
+                  <span className="tapis-cadenas" aria-hidden="true">
+                    🔒
+                  </span>
+                )}
+              </span>
+              <span className="tapis-nom">{t.nom}</span>
+              <small>{ouvert ? (pose ? '✓ Sur ta table' : 'Choisir') : `Niveau ${t.niveau}`}</small>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 export function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte; appel: Appel; onFermer: () => void }) {
   const [confirmer, setConfirmer] = useState(false);
   const [occupe, setOccupe] = useState(false);
@@ -318,6 +368,7 @@ export function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte;
           </div>
         ))}
       </div>
+      <ChoixTapis compte={compte} appel={appel} />
       <details className="gains-xp">
         <summary>Comment gagner de l’expérience ?</summary>
         <ul>

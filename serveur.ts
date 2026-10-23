@@ -18,7 +18,7 @@ import {
   TAILLE_PARTIE_PUBLIQUE,
 } from '../shared/config';
 import { ajouterAuJournal, appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
-import { niveauDepuisXp, resultatsPartie, titreNiveau } from '../shared/niveaux';
+import { estTapis, niveauDepuisXp, resultatsPartie, titreNiveau } from '../shared/niveaux';
 import { actionRobot, NIVEAUX_BOT, PRENOMS_BOTS, profilAleatoire, PROFIL_REMPLACANT, STYLES_BOT } from '../shared/robot';
 import type {
   Action,
@@ -514,6 +514,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     let identite: Identite | null = null;
     let resume: CompteJoueurVue | null = null;
     let derniereIdentification = 0;
+    let dernierTapis = 0;
     /** Rattache le compte à la place du joueur, sauf si ce compte occupe déjà une autre place du salon. */
     const lierCompte = (salon: Salon, joueur: JoueurSalon) => {
       if (!identite || joueur.uid === identite.uid) return;
@@ -666,6 +667,23 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       } catch (e) {
         console.error('Lecture du compte impossible :', e);
         repondre(rappel, { ok: false, erreur: 'Ton profil est indisponible pour le moment.' });
+      }
+    });
+
+    socket.on('tapis', async (data: { tapis?: unknown } = {}, rappel?: Rappel) => {
+      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: 'Connecte-toi à ton compte.' });
+      if (!estTapis(data?.tapis)) return repondre(rappel, { ok: false, erreur: 'Tapis inconnu.' });
+      if (Date.now() - dernierTapis < 400) return repondre(rappel, { ok: false, erreur: 'Patiente une seconde.' });
+      dernierTapis = Date.now();
+      const id = identite;
+      try {
+        const stats = await comptes.choisirTapis(id.uid, data.tapis);
+        if (!stats) return repondre(rappel, { ok: false, erreur: 'Ce tapis se débloque plus tard : continue de jouer pour monter de niveau.' });
+        resume = resumeCompte(stats);
+        repondre(rappel, { ok: true, profil: profilDe(id, stats) });
+      } catch (e) {
+        console.error('Choix du tapis impossible :', e);
+        repondre(rappel, { ok: false, erreur: 'Le tapis n’a pas pu être changé, réessaie plus tard.' });
       }
     });
 

@@ -99,3 +99,39 @@ export function resultatsPartie(joueurs: { id: string; score: number }[], bilans
     };
   });
 }
+
+/** Tapis de jeu : récompenses débloquées en montant de niveau. */
+export type IdTapis = 'baron' | 'jetons' | 'or';
+
+export interface Tapis {
+  id: IdTapis;
+  nom: string;
+  niveau: number;
+}
+
+export const TAPIS: Tapis[] = [
+  { id: 'baron', nom: 'Classique', niveau: 1 },
+  { id: 'jetons', nom: 'Jetons', niveau: 5 },
+  { id: 'or', nom: "Jetons d'or", niveau: 10 },
+];
+
+export const TAPIS_PAR_DEFAUT: IdTapis = 'baron';
+
+export function estTapis(v: unknown): v is IdTapis {
+  return TAPIS.some((t) => t.id === v);
+}
+
+export function tapisDebloque(id: IdTapis, niveau: number): boolean {
+  const t = TAPIS.find((x) => x.id === id);
+  return !!t && niveau >= t.niveau;
+}
+
+/** Tapis réellement posé sur la table : le choix du joueur s'il est débloqué, sinon le classique. */
+export function tapisActif(choix: unknown, xp: number): IdTapis {
+  return estTapis(choix) && tapisDebloque(choix, niveauDepuisXp(xp)) ? choix : TAPIS_PAR_DEFAUT;
+}
+
+/** Tapis gagnés en passant d'un niveau à un autre (fin de partie). */
+export function tapisGagnes(niveauAvant: number, niveauApres: number): Tapis[] {
+  return TAPIS.filter((t) => t.niveau > niveauAvant && t.niveau <= niveauApres);
+}
