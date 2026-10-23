@@ -124,6 +124,7 @@ export function App() {
 
   useEffect(() => {
     if (!message) return;
+    jouerEffet('erreur');
     const t = window.setTimeout(() => setMessage(null), 3500);
     return () => window.clearTimeout(t);
   }, [message]);
@@ -245,7 +246,10 @@ export function App() {
   }, [connectePourAmis, chargerAmis]);
   useEffect(() => {
     const surMaj = () => void chargerAmis();
-    const surInvitation = (inv: Invitation) => setInvitations((l) => [...l.filter((x) => x.code !== inv.code), inv]);
+    const surInvitation = (inv: Invitation) => {
+      jouerEffet('invitation');
+      setInvitations((l) => [...l.filter((x) => x.code !== inv.code), inv]);
+    };
     socket.on('amis_maj', surMaj);
     socket.on('invitation', surInvitation);
     return () => {
@@ -253,6 +257,14 @@ export function App() {
       socket.off('invitation', surInvitation);
     };
   }, [chargerAmis]);
+  // Nouvelle demande d'ami reçue : petite notification sonore.
+  const demandesConnues = useRef<number | null>(null);
+  const nbDemandes = listeAmis?.recues.length ?? null;
+  useEffect(() => {
+    const avant = demandesConnues.current;
+    demandesConnues.current = nbDemandes;
+    if (avant !== null && nbDemandes !== null && nbDemandes > avant) jouerEffet('ami');
+  }, [nbDemandes]);
   // Une invitation expire au bout de 2 minutes.
   useEffect(() => {
     if (!invitations.length) return;
@@ -545,6 +557,13 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
   useEffect(() => {
     if (compte.profil) recharger();
   }, [nbJoueurs, recharger, compte.profil]);
+  // Quelqu'un arrive à la table (joueur ou ordinateur) : on frappe à la porte.
+  const nbAvant = useRef<number | null>(null);
+  useEffect(() => {
+    const avant = nbAvant.current;
+    nbAvant.current = nbJoueurs;
+    if (avant !== null && nbJoueurs > avant) jouerEffet('arrivee');
+  }, [nbJoueurs]);
   const estHote = salon.hoteId === salon.moi && !salon.publique;
   const lien = `${location.origin}/?salon=${salon.code}`;
   const [copie, setCopie] = useState(false);

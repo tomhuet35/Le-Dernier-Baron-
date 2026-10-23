@@ -402,11 +402,17 @@ describe('Comptes de bout en bout', () => {
     d.close();
     await horsLigne;
     expect((await emettre(c, 'amis')).liste.amis[0].statut).toBe('hors_ligne');
+    // Sa fiche reste consultable depuis la liste d'amis, même hors ligne.
+    const ficheDan = await emettre(c, 'profil_ami', { code: listeD.monCode });
+    expect(ficheDan).toMatchObject({ ok: true, profil: { type: 'compte', nom: 'dan.martin', relation: 'ami' } });
+    expect(JSON.stringify(ficheDan)).not.toContain('@');
 
     // Retrait : plus aucun lien des deux côtés.
     expect((await emettre(c, 'retirer_ami', { code: listeD.monCode })).ok).toBe(true);
     expect(stockage.donnees.get('uid-dan')!.amis).toEqual([]);
     expect(stockage.donnees.get('uid-carla')!.amis).toEqual([]);
+    // Plus amis : la fiche n'est plus accessible par le code.
+    expect((await emettre(c, 'profil_ami', { code: listeD.monCode })).ok).toBe(false);
     c.close();
   });
 

@@ -178,7 +178,6 @@ button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .tableau .ma-ligne td { background: rgba(210, 168, 90, 0.08); }
 .reussi { color: var(--vert); }
 .rate { color: #e58b7c; }
-.couronne { text-align: center; font-size: 46px; color: var(--or); line-height: 1; }
 .dernier-baron { text-align: center; font-size: 17px; text-wrap: balance; }
 .dernier-baron span { display: block; font-family: var(--titre); font-size: 32px; color: var(--or); }
 .classement { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -661,8 +660,11 @@ select { font: inherit; width: 100%; min-height: 42px; padding: 8px 10px; color:
 .ajout-ami-ligne { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
 .ajout-ami-ligne input { font-family: var(--titre); letter-spacing: 0.18em; text-transform: uppercase; }
 .liste-amis { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
-.ligne-ami { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--nuit-3); border: 1px solid var(--filet); }
+.ligne-ami { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--nuit-3); border: 1px solid var(--filet); }
 .ligne-ami.statut-hors_ligne { opacity: 0.72; }
+.ligne-ami-voir { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; min-width: 0; min-height: 0; padding: 0; border: none; background: none; color: inherit; text-align: left; font: inherit; }
+.ligne-ami-voir:disabled { opacity: 1; cursor: default; }
+.ligne-ami-voir:not(:disabled):hover .ligne-ami-texte strong { color: var(--or-vif); }
 .ligne-ami-avatar { position: relative; flex: none; }
 .ligne-ami-avatar img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--or); }
 .ligne-ami-avatar .point { position: absolute; right: 0; bottom: 1px; width: 11px; height: 11px; border: 2px solid var(--nuit-3); }
@@ -835,9 +837,39 @@ select { font: inherit; width: 100%; min-height: 42px; padding: 8px 10px; color:
   .duel-eclat { display: none; }
 }
 
+/* ---------- Fin de partie : podium du classement final (≈ 3 s, un toucher passe l'animation) ---------- */
+.fin-partie { display: grid; gap: 12px; }
+.podium { display: grid; gap: 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.podium-titre { margin: 0; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--or); animation: monter 0.45s ease-out both; }
+.podium-marches { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; gap: 8px; min-height: 236px; padding: 30px 4px 0; }
+.podium-2 .podium-marches { padding-inline: 12%; }
+.podium-place { --d: 0.3s; position: relative; isolation: isolate; display: grid; justify-items: center; align-content: end; min-width: 0; }
+.place-2 { --d: 0.9s; }
+.place-1 { --d: 1.75s; }
+.podium-joueur { position: relative; display: grid; justify-items: center; gap: 1px; max-width: 100%; padding-bottom: 7px; animation: podium-arrivee 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--d) + 0.32s) both; }
+.podium-joueur img { width: 56px; aspect-ratio: 1; border-radius: 50%; object-fit: cover; border: 3px solid var(--filet); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6); }
+.place-1 .podium-joueur img { width: 70px; border-color: var(--or-vif); }
+.podium-place.baron .podium-joueur img { border-color: var(--or-vif); box-shadow: 0 0 0 2px rgba(22, 16, 12, 0.9), 0 0 24px rgba(231, 194, 122, 0.65); }
+.podium-joueur strong { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.5px; }
+.podium-place.moi .podium-joueur strong { color: var(--or-vif); }
+.podium-joueur small { font-size: 12px; color: var(--creme-doux); font-variant-numeric: tabular-nums; }
+.podium-marche { display: grid; place-items: start center; width: 100%; height: 46px; padding-top: 4px; border: 1px solid var(--or); border-bottom: none; border-radius: 9px 9px 2px 2px; background: linear-gradient(180deg, #5b3b1e, #2b1a0f); box-shadow: inset 0 2px 0 rgba(255, 230, 170, 0.22), 0 10px 22px rgba(0, 0, 0, 0.5); font-family: var(--titre); font-size: 28px; line-height: 1.1; color: var(--or-vif); transform-origin: bottom; animation: podium-monte 0.5s cubic-bezier(0.25, 0.9, 0.3, 1) var(--d) both; }
+.place-2 .podium-marche { height: 68px; }
+.place-1 .podium-marche { height: 98px; font-size: 36px; background: linear-gradient(180deg, #8d6626, #4a2f13); animation-duration: 0.85s; }
+.podium-couronne { position: absolute; top: -34px; left: 50%; width: 1em; margin-left: -0.5em; font-size: 36px; line-height: 1; color: #ffd978; text-shadow: 0 0 16px rgba(255, 214, 120, 0.95), 0 3px 6px rgba(0, 0, 0, 0.8); animation: podium-couronne 0.75s cubic-bezier(0.3, 1.4, 0.5, 1) 2.6s both; }
+.podium-place.baron::before { content: ''; position: absolute; z-index: -1; left: -18%; right: -18%; top: -26px; bottom: 30%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 214, 120, 0.42), rgba(255, 214, 120, 0)); animation: podium-lumiere 1.6s ease-out 2.6s both; }
+@keyframes podium-monte { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes podium-arrivee { from { opacity: 0; transform: translateY(-36px) scale(0.75); } to { opacity: 1; transform: none; } }
+@keyframes podium-couronne { 0% { opacity: 0; transform: translateY(-130px) rotate(-28deg) scale(1.5); } 70% { opacity: 1; transform: translateY(5px) rotate(6deg) scale(1); } 85% { transform: translateY(-3px) rotate(-2deg); } 100% { opacity: 1; transform: none; } }
+@keyframes podium-lumiere { 0% { opacity: 0; transform: scale(0.6); } 35% { opacity: 1; transform: scale(1.12); } 100% { opacity: 0.85; transform: scale(1); } }
+.fin-revelation { display: grid; gap: 4px; animation: monter 0.5s ease-out 2.95s both; }
+.fin-suite { display: grid; gap: 12px; animation: monter 0.5s ease-out 3.35s both; }
+.fin-partie.passe .podium *, .fin-partie.passe .podium *::before, .fin-partie.passe .podium-place::before, .fin-partie.passe .fin-revelation, .fin-partie.passe .fin-suite { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .podium *, .podium-place::before, .fin-revelation, .fin-suite { animation: none !important; }
+}
+
 /* ---------- Victoire du Dernier Baron ---------- */
-.couronne.brille { color: var(--or-vif); text-shadow: 0 0 18px rgba(255, 214, 120, 0.9); animation: briller-couronne 1.6s ease-in-out 0.3s 3; }
-@keyframes briller-couronne { 50% { transform: scale(1.18); text-shadow: 0 0 34px rgba(255, 224, 150, 1); } }
 .victoire-moi { text-align: center; font-family: var(--titre); font-size: clamp(24px, 6vw, 32px); color: var(--or-vif); text-shadow: 0 0 16px rgba(231, 194, 122, 0.5); }
 
 @media (prefers-reduced-motion: reduce) {

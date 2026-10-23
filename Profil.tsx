@@ -450,12 +450,14 @@ export function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte;
 }
 
 /** Fiche d'un joueur de la table : on l'ouvre en touchant son avatar. */
-export function FicheJoueur({ joueurId, appel, onFermer }: { joueurId: string; appel: Appel; onFermer: () => void }) {
+/** Fiche d'un joueur : à la table (joueurId) ou depuis la liste d'amis (code ami, même hors ligne). */
+export function FicheJoueur(props: { joueurId?: string; code?: string; statut?: string; appel: Appel; onFermer: () => void }) {
+  const { joueurId, code, statut, appel, onFermer } = props;
   const [profil, setProfil] = useState<ProfilPublic | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   useEffect(() => {
     let annule = false;
-    void appel('profil_joueur', { joueurId }).then((r) => {
+    void (code ? appel('profil_ami', { code }) : appel('profil_joueur', { joueurId })).then((r) => {
       if (annule) return;
       if (r.ok && r.profil) setProfil(r.profil as ProfilPublic);
       else setErreur(r.erreur ?? 'Profil indisponible.');
@@ -463,7 +465,7 @@ export function FicheJoueur({ joueurId, appel, onFermer }: { joueurId: string; a
     return () => {
       annule = true;
     };
-  }, [appel, joueurId]);
+  }, [appel, joueurId, code]);
   return (
     <Fenetre titre={profil?.nom ?? 'Profil'} onFermer={onFermer} large={profil?.type === 'compte'}>
       {!profil && !erreur && <p className="discret">Chargement…</p>}
@@ -474,6 +476,7 @@ export function FicheJoueur({ joueurId, appel, onFermer }: { joueurId: string; a
           <div>
             <strong>{profil.nom}</strong>
             {profil.type === 'compte' && <span className="titre-niveau">{progression(profil.xp).titre}</span>}
+            {statut && <span className="discret">{statut}</span>}
             {profil.type === 'bot' && <span className="discret">🤖 Joueur ordinateur</span>}
             {profil.type === 'invite' && <span className="discret">Joue en invité</span>}
           </div>
@@ -497,7 +500,7 @@ export function FicheJoueur({ joueurId, appel, onFermer }: { joueurId: string; a
         <BoutonAmiJoueur
           relation={profil.relation}
           onAjouter={async () => {
-            const r = await appel('ajouter_ami_joueur', { joueurId });
+            const r = code ? await appel('ajouter_ami', { code }) : await appel('ajouter_ami_joueur', { joueurId });
             if (r.ok && r.resultat) setProfil({ ...profil, relation: r.resultat === 'amis' || r.resultat === 'deja_amis' ? 'ami' : 'demande_envoyee' });
           }}
         />
@@ -560,21 +563,23 @@ function BoutonAmiJoueur({ relation, onAjouter }: { relation: 'ami' | 'demande_e
 
 const TEXTE_STATUT: Record<StatutAmi, string> = { en_ligne: 'En ligne', en_partie: 'En partie', hors_ligne: 'Hors ligne' };
 
-function LigneAmi({ ami, children }: { ami: AmiVue; children?: React.ReactNode }) {
+function LigneAmi({ ami, onVoir, children }: { ami: AmiVue; onVoir?: () => void; children?: React.ReactNode }) {
   return (
     <li className={`ligne-ami statut-${ami.statut}`}>
-      <span className="ligne-ami-avatar">
-        <img src={`/cartes/avatar-${ami.avatar}.webp`} alt="" />
-        <span className={`point ${ami.statut === 'hors_ligne' ? 'hors-ligne' : 'en-ligne'}`} />
-      </span>
-      <span className="ligne-ami-texte">
-        <strong>
-          {ami.nom} <BadgeNiveau niveau={ami.niveau} titre={ami.titre} />
-        </strong>
-        <small>
-          {TEXTE_STATUT[ami.statut]} · 🏆 {pluriel(ami.victoires, 'victoire')}
-        </small>
-      </span>
+      <button type="button" className="ligne-ami-voir" onClick={onVoir} disabled={!onVoir} aria-label={`Voir le profil de ${ami.nom}`}>
+        <span className="ligne-ami-avatar">
+          <img src={`/cartes/avatar-${ami.avatar}.webp`} alt="" />
+          <span className={`point ${ami.statut === 'hors_ligne' ? 'hors-ligne' : 'en-ligne'}`} />
+        </span>
+        <span className="ligne-ami-texte">
+          <strong>
+            {ami.nom} <BadgeNiveau niveau={ami.niveau} titre={ami.titre} />
+          </strong>
+          <small>
+            {TEXTE_STATUT[ami.statut]} · 🏆 {pluriel(ami.victoires, 'victoire')}
+          </small>
+        </span>
+      </button>
       <span className="ligne-ami-actions">{children}</span>
     </li>
   );
@@ -592,6 +597,7 @@ export function FenetreAmis(props: {
   const [code, setCode] = useState('');
   const [copie, setCopie] = useState(false);
   const [aRetirer, setARetirer] = useState<string | null>(null);
+  const [fiche, setFiche] = useState<AmiVue | null>(null);
   useEffect(() => {
     recharger();
     const t = window.setInterval(recharger, 20_000);
@@ -657,7 +663,7 @@ export function FenetreAmis(props: {
               <h3 className="profil-sous-titre">Demandes reçues ({liste.recues.length})</h3>
               <ul className="liste-amis">
                 {liste.recues.map((a) => (
-                  <LigneAmi key={a.code} ami={a}>
+                  <LigneAmi key={a.code} ami={a} onVoir={() => setFiche(a)}>
                     <button type="button" className="petit principal" onClick={() => agir('repondre_ami', { code: a.code, accepter: true })}>
                       Accepter
                     </button>
@@ -676,7 +682,7 @@ export function FenetreAmis(props: {
             ) : (
               <ul className="liste-amis">
                 {liste.amis.map((a) => (
-                  <LigneAmi key={a.code} ami={a}>
+                  <LigneAmi key={a.code} ami={a} onVoir={() => setFiche(a)}>
                     {aRetirer === a.code ? (
                       <>
                         <button type="button" className="petit danger" onClick={() => agir('retirer_ami', { code: a.code })}>
@@ -713,7 +719,7 @@ export function FenetreAmis(props: {
               <h3 className="profil-sous-titre">Demandes envoyées</h3>
               <ul className="liste-amis">
                 {liste.envoyees.map((a) => (
-                  <LigneAmi key={a.code} ami={a}>
+                  <LigneAmi key={a.code} ami={a} onVoir={() => setFiche(a)}>
                     <button type="button" className="petit" onClick={() => agir('retirer_ami', { code: a.code })}>
                       Annuler
                     </button>
@@ -722,9 +728,10 @@ export function FenetreAmis(props: {
               </ul>
             </section>
           )}
-          <p className="discret">« Inviter » ouvre une partie privée si tu n’en as pas encore, puis envoie l’invitation à ton ami en ligne.</p>
+          <p className="discret">Touche un ami pour voir son profil, même s’il est hors ligne. « Inviter » ouvre une partie privée si tu n’en as pas encore, puis envoie l’invitation à ton ami en ligne.</p>
         </>
       )}
+      {fiche && <FicheJoueur code={fiche.code} statut={TEXTE_STATUT[fiche.statut]} appel={appel} onFermer={() => setFiche(null)} />}
     </Fenetre>
   );
 }

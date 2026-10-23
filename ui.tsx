@@ -235,6 +235,14 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
   const messages = salon.messages ?? [];
   const dernier = messages.length ? messages[messages.length - 1].n : 0;
   const nonLus = ouvert ? 0 : messages.filter((m) => m.n > vu && m.auteurId !== salon.moi).length;
+  // Petite bulle sonore quand un autre joueur écrit (pas au chargement).
+  const dernierEntendu = useRef<number | null>(null);
+  useEffect(() => {
+    const avant = dernierEntendu.current;
+    dernierEntendu.current = dernier;
+    const m = messages[messages.length - 1];
+    if (avant !== null && dernier > avant && m && m.auteurId !== salon.moi) jouerEffet('message');
+  }, [dernier]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (ouvert) {
       setVu(dernier);
@@ -336,7 +344,40 @@ const VOLUME_MUSIQUE = 0.3;
 /** Pendant un effet important (lancement de partie), la musique baisse puis revient. */
 const VOLUME_MUSIQUE_BAISSE = 0.08;
 
-export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel_baron' | 'braquage' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge';
+export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel_baron' | 'braquage' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge'
+  | 'clic'
+  | 'selection'
+  | 'ouvrir'
+  | 'fermer'
+  | 'erreur'
+  | 'distribution'
+  | 'tour'
+  | 'tic'
+  | 'annonce'
+  | 'vol'
+  | 'reussite'
+  | 'echec'
+  | 'podium'
+  | 'roulement'
+  | 'victoire'
+  | 'revelation'
+  | 'niveau'
+  | 'deblocage'
+  | 'police'
+  | 'evt_trahison'
+  | 'casse'
+  | 'couvre_feu'
+  | 'evt_alliance'
+  | 'billets'
+  | 'diamants'
+  | 'lames'
+  | 'lingots'
+  | 'chat'
+  | 'alibi'
+  | 'invitation'
+  | 'ami'
+  | 'message'
+  | 'arrivee';
 const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
   lancement: { fichier: '/cartes/son-lancement.mp3', volume: 0.55, baisserMusique: true },
@@ -353,6 +394,45 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   homme_de_main: { fichier: '/cartes/son-homme-de-main.mp3', volume: 0.75, baisserMusique: false },
   croupier: { fichier: '/cartes/son-croupier.mp3', volume: 0.8, baisserMusique: false },
   juge: { fichier: '/cartes/son-juge.mp3', volume: 0.7, baisserMusique: false },
+  // Interface
+  clic: { fichier: '/cartes/son-clic.mp3', volume: 0.17, baisserMusique: false },
+  selection: { fichier: '/cartes/son-selection.mp3', volume: 0.18, baisserMusique: false },
+  ouvrir: { fichier: '/cartes/son-ouvrir.mp3', volume: 0.2, baisserMusique: false },
+  fermer: { fichier: '/cartes/son-fermer.mp3', volume: 0.14, baisserMusique: false },
+  erreur: { fichier: '/cartes/son-erreur.mp3', volume: 0.2, baisserMusique: false },
+  // Partie
+  distribution: { fichier: '/cartes/son-distribution.mp3', volume: 0.52, baisserMusique: false },
+  tour: { fichier: '/cartes/son-tour.mp3', volume: 0.36, baisserMusique: false },
+  tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
+  annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
+  vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },
+  reussite: { fichier: '/cartes/son-reussite.mp3', volume: 0.39, baisserMusique: false },
+  echec: { fichier: '/cartes/son-echec.mp3', volume: 0.31, baisserMusique: false },
+  // Fin de partie
+  podium: { fichier: '/cartes/son-podium.mp3', volume: 0.54, baisserMusique: false },
+  roulement: { fichier: '/cartes/son-roulement.mp3', volume: 1.0, baisserMusique: true },
+  victoire: { fichier: '/cartes/son-victoire.mp3', volume: 0.98, baisserMusique: true },
+  revelation: { fichier: '/cartes/son-revelation.mp3', volume: 0.73, baisserMusique: true },
+  niveau: { fichier: '/cartes/son-niveau.mp3', volume: 0.49, baisserMusique: false },
+  deblocage: { fichier: '/cartes/son-deblocage.mp3', volume: 0.47, baisserMusique: false },
+  // Cartes d'événement (après la carte qui tourne)
+  police: { fichier: '/cartes/son-police.mp3', volume: 0.45, baisserMusique: true },
+  evt_trahison: { fichier: '/cartes/son-evt-trahison.mp3', volume: 0.5, baisserMusique: true },
+  casse: { fichier: '/cartes/son-casse.mp3', volume: 0.68, baisserMusique: true },
+  couvre_feu: { fichier: '/cartes/son-couvre-feu.mp3', volume: 0.4, baisserMusique: true },
+  evt_alliance: { fichier: '/cartes/son-evt-alliance.mp3', volume: 0.63, baisserMusique: true },
+  // Familles de cartes posées (en plus du bruit de la carte)
+  billets: { fichier: '/cartes/son-billets.mp3', volume: 0.49, baisserMusique: false },
+  diamants: { fichier: '/cartes/son-diamants.mp3', volume: 0.19, baisserMusique: false },
+  lames: { fichier: '/cartes/son-lames.mp3', volume: 0.34, baisserMusique: false },
+  lingots: { fichier: '/cartes/son-lingots.mp3', volume: 0.3, baisserMusique: false },
+  chat: { fichier: '/cartes/son-chat.mp3', volume: 0.14, baisserMusique: false },
+  alibi: { fichier: '/cartes/son-alibi.mp3', volume: 0.11, baisserMusique: false },
+  // Amis et salon
+  invitation: { fichier: '/cartes/son-invitation.mp3', volume: 0.41, baisserMusique: false },
+  ami: { fichier: '/cartes/son-ami.mp3', volume: 0.24, baisserMusique: false },
+  message: { fichier: '/cartes/son-message.mp3', volume: 0.16, baisserMusique: false },
+  arrivee: { fichier: '/cartes/son-arrivee.mp3', volume: 0.5, baisserMusique: false },
 };
 
 /** Son propre à certaines cartes spéciales quand elles sont posées. */
@@ -362,6 +442,25 @@ export const SON_SPECIALE: Partial<Record<string, EffetSonore>> = {
   homme_de_main: 'homme_de_main',
   croupier: 'croupier',
   juge: 'juge',
+};
+
+/** Son d'une carte posée selon sa famille (Billets, Diamants, Lames, Lingots), le Chat noir ou une carte spéciale. */
+export function sonDeCarte(carteId: string): EffetSonore | null {
+  const c = CARTE[carteId];
+  if (!c) return null;
+  if (c.speciale) return SON_SPECIALE[c.speciale] ?? (c.speciale === 'alibi' ? 'alibi' : null);
+  if (c.type === 'atout' || c.famille === 'chat_noir') return 'chat';
+  return c.famille ?? null;
+  return null;
+}
+
+/** Son propre à chaque carte d'événement, joué quand son nom apparaît. */
+export const SON_EVENEMENT: Record<string, EffetSonore> = {
+  descente_police: 'police',
+  trahison: 'evt_trahison',
+  casse_du_siecle: 'casse',
+  couvre_feu: 'couvre_feu',
+  alliance: 'evt_alliance',
 };
 
 /**
@@ -536,6 +635,32 @@ const musique = (() => {
 /** Joue un effet sonore (rien si le son est coupé). */
 export function jouerEffet(nom: EffetSonore) {
   void musique.effet(nom);
+}
+
+/** Son des boutons : un clic discret partout, et un son propre à certains boutons (cartes, annonces, fenêtres). */
+function sonDuBouton(b: Element): EffetSonore | null {
+  if (b.closest('[data-son="aucun"]') || b.matches('.bouton-jouer, .bouton-musique, .bouton-menu-musique')) return null;
+  if (b.matches('.carte-bouton')) return 'selection';
+  if (b.closest('.choix-annonce')) return 'annonce';
+  if (b.matches('.fermer')) return 'fermer';
+  if (b.matches('.bouton-menu, .menu-entree, .bouton-icone, .chat-bouton')) return 'ouvrir';
+  return 'clic';
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener(
+    'click',
+    (e) => {
+      const cible = e.target instanceof Element ? e.target : null;
+      const bouton = cible?.closest('button');
+      if (bouton) {
+        if (!bouton.disabled) {
+          const son = sonDuBouton(bouton);
+          if (son) jouerEffet(son);
+        }
+      } else if (cible?.classList.contains('voile')) jouerEffet('fermer');
+    },
+    true,
+  );
 }
 
 export function useMusique(): [boolean, () => void] {

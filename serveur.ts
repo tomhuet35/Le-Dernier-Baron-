@@ -958,6 +958,36 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       }
     });
 
+    // Fiche d'un ami (ou d'une demande en cours), même s'il est hors ligne.
+    socket.on('profil_ami', async (data: { code?: string } = {}, rappel?: Rappel) => {
+      const a = avecCompte(rappel);
+      if (!a) return;
+      const autre = await uidDuCode(data?.code, rappel);
+      if (!autre) return;
+      try {
+        const [moi, stats] = await Promise.all([a.comptes.lire(a.uid), a.comptes.lire(autre)]);
+        const relation = autre === a.uid ? 'moi' : relationEntre(moi, autre);
+        if (relation === 'aucune' || !stats) return repondre(rappel, { ok: false, erreur: 'Ce joueur ne fait pas partie de tes amis.' });
+        const profil: ProfilPublic = {
+          type: 'compte',
+          relation,
+          nom: stats.nom || 'Joueur',
+          avatar: stats.avatar,
+          xp: stats.xp,
+          parties: stats.parties,
+          victoires: stats.victoires,
+          nuitsGagnees: stats.nuitsGagnees,
+          annoncesReussies: stats.annoncesReussies,
+          meilleurScore: stats.meilleurScore,
+          historique: stats.historique.slice(0, 5),
+        };
+        repondre(rappel, { ok: true, profil });
+      } catch (e) {
+        console.error('Lecture du profil impossible :', e);
+        repondre(rappel, { ok: false, erreur: 'Profil indisponible pour le moment.' });
+      }
+    });
+
     socket.on('ajouter_ami', async (data: { code?: string } = {}, rappel?: Rappel) => {
       if (!avecCompte(rappel)) return;
       const vers = await uidDuCode(data?.code, rappel);

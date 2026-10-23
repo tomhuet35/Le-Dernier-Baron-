@@ -8,7 +8,7 @@ import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
 import { duelDuPli, type DuelPli } from '../../shared/regles';
-import { Avatar, Butin, CarteImg, Chat, Duel, Fenetre, IconeImage, IconeMusique, Pastille, SON_SPECIALE, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Duel, Fenetre, IconeImage, IconeMusique, Pastille, SON_EVENEMENT, Zoom, jouerEffet, sonDeCarte, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -65,8 +65,14 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     dejaVu.current = cle;
     setRevelation(v.evenementId);
     jouerEffet('evenement');
+    // Puis le son propre à l'événement, quand son nom apparaît.
+    const sonEvenement = v.evenement ? SON_EVENEMENT[v.evenement] : undefined;
+    const s = sonEvenement ? window.setTimeout(() => jouerEffet(sonEvenement), 1800) : 0;
     const t = window.setTimeout(() => setRevelation(null), 5000);
-    return () => window.clearTimeout(t);
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(s);
+    };
   }, [v.nuit, v.evenementId, v.phase]);
 
   const nom = (id: string | null | undefined) => v.joueurs.find((j) => j.id === id)?.nom ?? '?';
@@ -99,7 +105,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const plisJoues = v.joueurs.reduce((s, j) => s + j.plis, 0);
 
   // Son de carte : chaque fois qu'une nouvelle carte arrive sur le tapis (la mienne ou celle d'un autre joueur),
-  // plus le son propre aux cartes spéciales (Baron, Pickpocket, Homme de main, Croupier, Juge).
+  // plus le son de sa famille (Billets, Diamants, Lames, Lingots, Chat noir) ou de la carte spéciale.
   const cartesSurTapis = (pliAffiche ? pliAffiche.cartes : v.pli).map((p) => p.carteId).join('|');
   const tapisPrecedent = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -111,10 +117,46 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     if (!nouvelles.length) return;
     jouerEffet('carte');
     for (const id of nouvelles) {
-      const son = SON_SPECIALE[CARTE[id]?.speciale ?? ''];
+      const son = sonDeCarte(id);
       if (son) jouerEffet(son);
     }
   }, [cartesSurTapis]);
+
+  // Distribution des cartes au début de chaque nuit (pas au chargement de la page).
+  const nuitPrecedente = useRef<number | null>(null);
+  useEffect(() => {
+    const avant = nuitPrecedente.current;
+    nuitPrecedente.current = v.nuit;
+    if (avant !== null && v.nuit > avant) jouerEffet('distribution');
+  }, [v.nuit]);
+
+  // « À toi de jouer » : petit carillon quand vient mon tour de poser une carte.
+  const tourPrecedent = useRef<boolean | null>(null);
+  const aJouer = monTour && v.phase === 'PLI';
+  useEffect(() => {
+    const avant = tourPrecedent.current;
+    tourPrecedent.current = aJouer;
+    if (avant === false && aJouer) jouerEffet('tour');
+  }, [aJouer]);
+
+  // Les 5 dernières secondes de mon temps : tic-tac.
+  useEffect(() => {
+    if (aMoi && secondes !== null && secondes > 0 && secondes <= 5) jouerEffet('tic');
+  }, [secondes, aMoi]);
+
+  // Phases : vol terminé, fin de nuit (annonce réussie ou ratée).
+  const phasePrecedente = useRef<string | null>(null);
+  useEffect(() => {
+    const avant = phasePrecedente.current;
+    phasePrecedente.current = v.phase;
+    if (avant === null || avant === v.phase) return;
+    if (avant === 'VOL') jouerEffet('vol');
+    if (v.phase === 'FIN_DE_NUIT') {
+      const bilan = v.bilans[v.bilans.length - 1];
+      const moiNuit = bilan?.scores.find((s) => s.joueurId === v.moi);
+      if (moiNuit) jouerEffet(moiNuit.reussie ? 'reussite' : 'echec');
+    }
+  }, [v.phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Son de fin de pli : chaque fois qu'un pli est remporté, juste après le bruit de la dernière carte posée.
   const cleDernierPli = v.dernierPli ? `${v.nuit}|${v.dernierPli.gagnantId}|${v.dernierPli.cartes.map((c) => c.carteId).join(',')}` : '';
@@ -661,103 +703,182 @@ function FinDePartie(props: {
   const [voirScores, setVoirScores] = useState(false);
   const enr = salon.enregistrement;
   const compteDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.compte ?? null;
+  const avatarDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.avatar ?? 1;
   const monBilan = enr?.bilans[v.moi];
+  const rangDe = (j: VueJoueur) => classement.findIndex((x) => x.score === j.score) + 1;
+
+  // Classement final animé : 3e, puis 2e, roulement de tambour et le Dernier Baron couronné. Un toucher passe l'animation.
+  const [passe, setPasse] = useState(false);
+  const minuteurs = useRef<number[]>([]);
+  const revele = useRef(false);
+  const reveler = () => {
+    if (revele.current) return;
+    revele.current = true;
+    jouerEffet(jeSuisBaron ? 'victoire' : 'revelation');
+  };
+  useEffect(() => {
+    const plus = (ms: number, f: () => void) => minuteurs.current.push(window.setTimeout(f, ms));
+    if (classement.length >= 3) plus(300, () => jouerEffet('podium'));
+    plus(900, () => jouerEffet('podium'));
+    plus(1600, () => jouerEffet('roulement'));
+    plus(2620, reveler);
+    return () => minuteurs.current.forEach((t) => window.clearTimeout(t));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const passer = () => {
+    if (passe) return;
+    minuteurs.current.forEach((t) => window.clearTimeout(t));
+    setPasse(true);
+    reveler();
+  };
+  // Après le podium : niveau gagné, puis tapis débloqué.
+  const debut = useRef(Date.now());
+  const sonBilan = useRef(false);
+  useEffect(() => {
+    if (!monBilan || sonBilan.current || monBilan.niveau <= monBilan.niveauAvant) return;
+    sonBilan.current = true;
+    const attente = passe ? 300 : Math.max(300, 3700 - (Date.now() - debut.current));
+    const a = window.setTimeout(() => jouerEffet('niveau'), attente);
+    const b = tapisGagnes(monBilan.niveauAvant, monBilan.niveau).length ? window.setTimeout(() => jouerEffet('deblocage'), attente + 1100) : 0;
+    minuteurs.current.push(a, b);
+  }, [monBilan, passe]);
   return (
     <Fenetre titre="Fin de la partie" large>
-      <div className={`couronne ${jeSuisBaron ? 'brille' : ''}`} aria-hidden="true">
-        ♛
-      </div>
-      {jeSuisBaron && <p className="victoire-moi">Tu es le Dernier Baron !</p>}
-      <p className="dernier-baron">
-        {barons.map((j) => j.nom).join(' et ')} {barons.length > 1 ? 'deviennent' : 'devient'}
-        <span>le Dernier Baron</span>
-      </p>
-      <ol className="classement">
-        {classement.map((j) => {
-          const rang = classement.findIndex((x) => x.score === j.score) + 1;
-          const bilan = enr?.bilans[j.id];
-          const compte = compteDe(j.id);
-          const niveau = bilan?.niveau ?? compte?.niveau;
-          return (
-            <li key={j.id} className={j.id === v.moi ? 'ma-ligne' : ''}>
-              <span className="rang">{rang}</span>
-              <span className="fin-joueur">
-                <span className="fin-nom">
-                  {nom(j.id)}
-                  {niveau !== undefined && <BadgeNiveau niveau={niveau} titre={bilan?.titre ?? compte?.titre} />}
-                </span>
-                {bilan && (
-                  <small className="fin-compte">
-                    🏆 {bilan.victoires} victoire{bilan.victoires > 1 ? 's' : ''} au total · +{bilan.xpGagne} XP
-                    {bilan.niveau > bilan.niveauAvant && <strong className="niveau-up"> · Niveau {bilan.niveau} !</strong>}
-                  </small>
-                )}
-                {!bilan && compte && enr?.etat !== 'en_cours' && (
-                  <small className="fin-compte">
-                    🏆 {compte.victoires} victoire{compte.victoires > 1 ? 's' : ''} au total
-                  </small>
-                )}
-              </span>
-              <strong>{j.score} pts</strong>
-            </li>
-          );
-        })}
-      </ol>
-      {monBilan && (
-        <div className={`mon-bilan ${monBilan.niveau > monBilan.niveauAvant ? 'monte' : ''}`}>
-          <strong>
-            {monBilan.niveau > monBilan.niveauAvant ? `Niveau ${monBilan.niveau} : ${monBilan.titre} !` : `+${monBilan.xpGagne} XP`}
-          </strong>
-          <small>{detailXp(monBilan)}</small>
-          <BarreXp xp={monBilan.xp} />
-          {tapisGagnes(monBilan.niveauAvant, monBilan.niveau).map((t) => (
-            <div key={t.id} className="tapis-debloque">
-              <img src={`/cartes/miniature-tapis-${t.id}.webp`} alt="" />
-              <span>
-                <strong>Nouveau tapis débloqué : {t.nom}</strong>
-                {tapis === t.id ? (
-                  <small>Il est posé sur ta table.</small>
-                ) : poserTapis ? (
-                  <button type="button" className="petit" onClick={() => void poserTapis(t.id)}>
-                    Poser ce tapis
-                  </button>
-                ) : (
-                  <small>Choisis-le dans ton profil.</small>
-                )}
-              </span>
-            </div>
-          ))}
+      <div className={`fin-partie ${passe ? 'passe' : ''}`}>
+        <Podium classement={classement} rangDe={rangDe} avatarDe={avatarDe} nom={nom} moi={v.moi} onPasser={passer} />
+        <div className="fin-revelation">
+          {jeSuisBaron && <p className="victoire-moi">Tu es le Dernier Baron !</p>}
+          <p className="dernier-baron">
+            {barons.map((j) => j.nom).join(' et ')} {barons.length > 1 ? 'deviennent' : 'devient'}
+            <span>le Dernier Baron</span>
+          </p>
         </div>
-      )}
-      {enr?.etat === 'en_cours' && <p className="discret">Enregistrement des victoires…</p>}
-      {enr?.etat === 'test' && <p className="discret">Partie de test avec des robots : elle ne compte pas dans les victoires.</p>}
-      {enr?.etat === 'solo' && <p className="discret">Partie contre l’ordinateur : elle ne compte dans les victoires qu’avec au moins 2 joueurs humains.</p>}
-      {enr?.etat === 'erreur' && <p className="discret">Certaines victoires n’ont pas pu être enregistrées.</p>}
-      {salon.comptesActifs && !compteDe(v.moi) && enr?.etat !== 'test' && enr?.etat !== 'solo' && (
-        <p className="discret">Crée un compte depuis l’accueil pour garder tes victoires et monter de niveau.</p>
-      )}
-      {voirScores ? <TableauScores v={v} /> : (
-        <button type="button" className="lien-discret" onClick={() => setVoirScores(true)}>
-          Voir le détail des nuits
-        </button>
-      )}
-      <div className="rangee">
-        {salon.publique ? (
-          <button type="button" className="principal" onClick={() => appel('jouer_public', { nom: nom(v.moi) })}>
-            🌍 Nouvelle partie en ligne
-          </button>
-        ) : estHote ? (
-          <button type="button" className="principal" onClick={() => appel('rejouer')}>
-            Rejouer
-          </button>
-        ) : (
-          <p className="attente">L'hôte peut relancer une partie.</p>
-        )}
-        <button type="button" onClick={quitter}>
-          Quitter
-        </button>
+        <div className="fin-suite">
+          <ol className="classement">
+            {classement.map((j) => {
+              const rang = classement.findIndex((x) => x.score === j.score) + 1;
+              const bilan = enr?.bilans[j.id];
+              const compte = compteDe(j.id);
+              const niveau = bilan?.niveau ?? compte?.niveau;
+              return (
+                <li key={j.id} className={j.id === v.moi ? 'ma-ligne' : ''}>
+                  <span className="rang">{rang}</span>
+                  <span className="fin-joueur">
+                    <span className="fin-nom">
+                      {nom(j.id)}
+                      {niveau !== undefined && <BadgeNiveau niveau={niveau} titre={bilan?.titre ?? compte?.titre} />}
+                    </span>
+                    {bilan && (
+                      <small className="fin-compte">
+                        🏆 {bilan.victoires} victoire{bilan.victoires > 1 ? 's' : ''} au total · +{bilan.xpGagne} XP
+                        {bilan.niveau > bilan.niveauAvant && <strong className="niveau-up"> · Niveau {bilan.niveau} !</strong>}
+                      </small>
+                    )}
+                    {!bilan && compte && enr?.etat !== 'en_cours' && (
+                      <small className="fin-compte">
+                        🏆 {compte.victoires} victoire{compte.victoires > 1 ? 's' : ''} au total
+                      </small>
+                    )}
+                  </span>
+                  <strong>{j.score} pts</strong>
+                </li>
+              );
+            })}
+          </ol>
+          {monBilan && (
+            <div className={`mon-bilan ${monBilan.niveau > monBilan.niveauAvant ? 'monte' : ''}`}>
+              <strong>
+                {monBilan.niveau > monBilan.niveauAvant ? `Niveau ${monBilan.niveau} : ${monBilan.titre} !` : `+${monBilan.xpGagne} XP`}
+              </strong>
+              <small>{detailXp(monBilan)}</small>
+              <BarreXp xp={monBilan.xp} />
+              {tapisGagnes(monBilan.niveauAvant, monBilan.niveau).map((t) => (
+                <div key={t.id} className="tapis-debloque">
+                  <img src={`/cartes/miniature-tapis-${t.id}.webp`} alt="" />
+                  <span>
+                    <strong>Nouveau tapis débloqué : {t.nom}</strong>
+                    {tapis === t.id ? (
+                      <small>Il est posé sur ta table.</small>
+                    ) : poserTapis ? (
+                      <button type="button" className="petit" onClick={() => void poserTapis(t.id)}>
+                        Poser ce tapis
+                      </button>
+                    ) : (
+                      <small>Choisis-le dans ton profil.</small>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {enr?.etat === 'en_cours' && <p className="discret">Enregistrement des victoires…</p>}
+          {enr?.etat === 'test' && <p className="discret">Partie de test avec des robots : elle ne compte pas dans les victoires.</p>}
+          {enr?.etat === 'solo' && <p className="discret">Partie contre l’ordinateur : elle ne compte dans les victoires qu’avec au moins 2 joueurs humains.</p>}
+          {enr?.etat === 'erreur' && <p className="discret">Certaines victoires n’ont pas pu être enregistrées.</p>}
+          {salon.comptesActifs && !compteDe(v.moi) && enr?.etat !== 'test' && enr?.etat !== 'solo' && (
+            <p className="discret">Crée un compte depuis l’accueil pour garder tes victoires et monter de niveau.</p>
+          )}
+          {voirScores ? <TableauScores v={v} /> : (
+            <button type="button" className="lien-discret" onClick={() => setVoirScores(true)}>
+              Voir le détail des nuits
+            </button>
+          )}
+          <div className="rangee">
+            {salon.publique ? (
+              <button type="button" className="principal" onClick={() => appel('jouer_public', { nom: nom(v.moi) })}>
+                🌍 Nouvelle partie en ligne
+              </button>
+            ) : estHote ? (
+              <button type="button" className="principal" onClick={() => appel('rejouer')}>
+                Rejouer
+              </button>
+            ) : (
+              <p className="attente">L'hôte peut relancer une partie.</p>
+            )}
+            <button type="button" onClick={quitter}>
+              Quitter
+            </button>
+          </div>
+        </div>
       </div>
     </Fenetre>
+  );
+}
+
+/** Podium du classement final (2e à gauche, 1er au centre, 3e à droite), qui monte marche par marche. */
+function Podium(props: {
+  classement: VueJoueur[];
+  rangDe: (j: VueJoueur) => number;
+  avatarDe: (id: string) => number;
+  nom: (id: string) => string;
+  moi: string;
+  onPasser: () => void;
+}) {
+  const { classement, rangDe, avatarDe, nom, moi, onPasser } = props;
+  const top = classement.slice(0, 3);
+  const ordre = top.length === 3 ? [top[1], top[0], top[2]] : top.length === 2 ? [top[1], top[0]] : top;
+  return (
+    <div className={`podium podium-${top.length}`} onClick={onPasser} role="img" aria-label={`Classement final : ${top.map((j) => `${rangDe(j)}. ${nom(j.id)}`).join(', ')}`}>
+      <p className="podium-titre">Classement final</p>
+      <div className="podium-marches">
+        {ordre.map((j) => {
+          const place = top.indexOf(j) + 1;
+          const rang = rangDe(j);
+          return (
+            <div key={j.id} className={`podium-place place-${place} ${rang === 1 ? 'baron' : ''} ${j.id === moi ? 'moi' : ''}`}>
+              <div className="podium-joueur">
+                {rang === 1 && <span className="podium-couronne">♛</span>}
+                <img src={`/cartes/avatar-${avatarDe(j.id)}.webp`} alt="" draggable={false} />
+                <strong>{nom(j.id)}</strong>
+                <small>{j.score} pts</small>
+              </div>
+              <div className="podium-marche">
+                <span>{rang}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
