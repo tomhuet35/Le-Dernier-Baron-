@@ -7,7 +7,7 @@ import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
-import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, PluieVictoire, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -625,7 +625,6 @@ function FinDePartie(props: {
   const monBilan = enr?.bilans[v.moi];
   return (
     <Fenetre titre="Fin de la partie" large>
-      {jeSuisBaron && <PluieVictoire />}
       <div className={`couronne ${jeSuisBaron ? 'brille' : ''}`} aria-hidden="true">
         ♛
       </div>
