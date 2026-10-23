@@ -147,8 +147,8 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
             <span className="libelle">Règles</span>
           </button>
           <Chat salon={salon} appel={appel} enLigne />
-          <button type="button" className="bouton-icone bouton-icone-seule points" onClick={() => setFenetre('menu')} aria-label="Menu">
-            <IconeImage nom="menu-points" repli="⋯" />
+          <button type="button" className="bouton-icone bouton-icone-seule" onClick={() => setFenetre('menu')} aria-label="Menu">
+            <IconeImage nom="menu" repli="⋯" />
           </button>
         </div>
       </header>
