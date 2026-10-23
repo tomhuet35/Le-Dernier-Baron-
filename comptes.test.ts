@@ -53,16 +53,21 @@ describe('Niveaux', () => {
 });
 
 describe('Tapis à débloquer', () => {
-  it('débloque Jetons au niveau 5 et Jetons d’or au niveau 10', () => {
-    expect(tapisGagnes(4, 5).map((t) => t.id)).toEqual(['jetons']);
+  it('débloque Velours au niveau 5, Prestige au niveau 10 et Noir au niveau 15', () => {
+    expect(tapisGagnes(4, 5).map((t) => t.id)).toEqual(['velours']);
     expect(tapisGagnes(5, 9)).toEqual([]);
-    expect(tapisGagnes(1, 10).map((t) => t.id)).toEqual(['jetons', 'or']);
+    expect(tapisGagnes(1, 10).map((t) => t.id)).toEqual(['velours', 'prestige']);
+    expect(tapisGagnes(14, 16).map((t) => t.id)).toEqual(['noir']);
   });
   it('ne pose qu’un tapis débloqué, sinon le classique', () => {
-    expect(tapisActif('jetons', xpPourNiveau(5))).toBe('jetons');
-    expect(tapisActif('jetons', xpPourNiveau(5) - 1)).toBe('baron');
-    expect(tapisActif('or', xpPourNiveau(9))).toBe('baron');
-    expect(tapisActif('or', xpPourNiveau(10))).toBe('or');
+    expect(tapisActif('velours', xpPourNiveau(5))).toBe('velours');
+    expect(tapisActif('velours', xpPourNiveau(5) - 1)).toBe('baron');
+    expect(tapisActif('prestige', xpPourNiveau(9))).toBe('baron');
+    expect(tapisActif('prestige', xpPourNiveau(10))).toBe('prestige');
+    expect(tapisActif('noir', xpPourNiveau(14))).toBe('baron');
+    expect(tapisActif('noir', xpPourNiveau(15))).toBe('noir');
+    // Anciens tapis (retirés) : on revient au classique.
+    expect(tapisActif('jetons', 99999)).toBe('baron');
     expect(tapisActif('inconnu', 99999)).toBe('baron');
     expect(tapisActif(undefined, 0)).toBe('baron');
     expect(normaliserStats({ tapis: 'tricheur' })?.tapis).toBe('baron');
@@ -311,23 +316,23 @@ describe('Comptes de bout en bout', () => {
   it('tapis : refusé tant que le niveau n’est pas atteint, puis posé et gardé sur le compte', async () => {
     const pause = () => new Promise((ok) => setTimeout(ok, 450));
     const e = connecter();
-    expect((await emettre(e, 'tapis', { tapis: 'jetons' })).ok).toBe(false); // pas connecté
+    expect((await emettre(e, 'tapis', { tapis: 'velours' })).ok).toBe(false); // pas connecté
     const id = await emettre(e, 'identifier', { jeton: 'jeton-eve' });
     expect(id.profil.tapis).toBe('baron');
-    expect((await emettre(e, 'tapis', { tapis: 'jetons' })).ok).toBe(false); // niveau 1
+    expect((await emettre(e, 'tapis', { tapis: 'velours' })).ok).toBe(false); // niveau 1
     stockage.donnees.get('uid-eve')!.xp = xpPourNiveau(5);
     await pause();
-    const r = await emettre(e, 'tapis', { tapis: 'jetons' });
-    expect(r).toMatchObject({ ok: true, profil: { tapis: 'jetons' } });
+    const r = await emettre(e, 'tapis', { tapis: 'velours' });
+    expect(r).toMatchObject({ ok: true, profil: { tapis: 'velours' } });
     await pause();
-    expect((await emettre(e, 'tapis', { tapis: 'or' })).ok).toBe(false); // niveau 10 requis
+    expect((await emettre(e, 'tapis', { tapis: 'prestige' })).ok).toBe(false); // niveau 10 requis
     await pause();
-    expect((await emettre(e, 'tapis', { tapis: 'velours' })).ok).toBe(false);
-    stockage.donnees.get('uid-eve')!.xp = xpPourNiveau(10);
+    expect((await emettre(e, 'tapis', { tapis: 'jetons' })).ok).toBe(false); // tapis retiré
+    stockage.donnees.get('uid-eve')!.xp = xpPourNiveau(15);
     await pause();
-    expect((await emettre(e, 'tapis', { tapis: 'or' })).profil.tapis).toBe('or');
-    expect(stockage.donnees.get('uid-eve')!.tapis).toBe('or');
-    expect((await emettre(e, 'profil')).profil.tapis).toBe('or');
+    expect((await emettre(e, 'tapis', { tapis: 'noir' })).profil.tapis).toBe('noir');
+    expect(stockage.donnees.get('uid-eve')!.tapis).toBe('noir');
+    expect((await emettre(e, 'profil')).profil.tapis).toBe('noir');
     e.close();
   });
 

@@ -19,7 +19,7 @@ import { socket } from './socket';
 import { Table } from './Table';
 import { FenetreRegles } from './Regles';
 import { AVATARS } from './textes';
-import { BoutonMusique, Chat, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
+import { BoutonMusique, Chat, Defilant, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
 
 type Reponse = {
   ok: boolean;
@@ -588,7 +588,7 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
       )}
       <section className="lobby-avatars">
         <h2>Ton personnage</h2>
-        <div className="avatars-grille">
+        <Defilant className="avatars-defilant" libelle="Personnages" actif={(salon.joueurs.find((j) => j.id === salon.moi)?.avatar ?? 1) - 1}>
           {AVATARS.map((nomPerso, i) => {
             const n = i + 1;
             const pris = salon.joueurs.find((j) => j.avatar === n);
@@ -608,7 +608,7 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
               </button>
             );
           })}
-        </div>
+        </Defilant>
       </section>
       <section className="lobby-joueurs">
         <h2>

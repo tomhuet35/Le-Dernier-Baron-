@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Children, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { CARTE } from '../../shared/cartes';
@@ -79,6 +79,88 @@ export function Butin({ ids }: { ids: string[] }) {
         <Pastille key={id} id={id} />
       ))}
     </span>
+  );
+}
+
+/**
+ * Liste qui ne montre qu'une rangée (3 éléments) pour garder de la place à l'écran :
+ * la flèche fait défiler vers la suite, puis remonte au début. On peut aussi glisser du doigt.
+ */
+export function Defilant(props: { children: ReactNode; libelle: string; parRangee?: number; actif?: number; role?: string; className?: string }) {
+  const { libelle, parRangee = 3, actif = -1, role = 'group', className = '' } = props;
+  const elements = Children.toArray(props.children);
+  const rangees: ReactNode[][] = [];
+  for (let i = 0; i < elements.length; i += parRangee) rangees.push(elements.slice(i, i + parRangee));
+  const zone = useRef<HTMLDivElement>(null);
+  const [hauteur, setHauteur] = useState<number>();
+  const [rangee, setRangee] = useState(0);
+  const rangeeActuelle = useRef(0);
+  rangeeActuelle.current = rangee;
+  const place = useRef(false);
+
+  // Hauteur de la plus haute rangée (un nom sur deux lignes, par exemple) : toutes les rangées prennent cette
+  // hauteur et la zone n'en laisse voir qu'une.
+  useLayoutEffect(() => {
+    const grilles = Array.from(zone.current?.querySelectorAll<HTMLElement>('.defilant-grille') ?? []);
+    if (!grilles.length) return;
+    const mesurer = () => setHauteur(Math.max(...grilles.map((g) => g.offsetHeight)));
+    mesurer();
+    const obs = new ResizeObserver(mesurer);
+    grilles.forEach((g) => obs.observe(g));
+    return () => obs.disconnect();
+  }, [rangees.length]);
+
+  // Premier affichage : la rangée de l'élément choisi ; ensuite on reste sur la rangée en cours si la taille change.
+  useLayoutEffect(() => {
+    const z = zone.current;
+    if (!z || !hauteur) return;
+    let r = rangeeActuelle.current;
+    if (!place.current) {
+      place.current = true;
+      r = actif >= 0 ? Math.min(Math.floor(actif / parRangee), rangees.length - 1) : 0;
+      setRangee(r);
+    }
+    z.scrollTop = r * hauteur;
+  }, [hauteur]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const derniere = rangee >= rangees.length - 1;
+  const aller = (r: number) => {
+    setRangee(r);
+    zone.current?.scrollTo({ top: r * (hauteur ?? 0), behavior: 'smooth' });
+  };
+  return (
+    <div className={`defilant ${className}`}>
+      <div
+        ref={zone}
+        className="defilant-zone"
+        role={role}
+        aria-label={libelle}
+        style={hauteur ? { height: hauteur } : undefined}
+        onScroll={(e) => {
+          if (hauteur) setRangee(Math.min(rangees.length - 1, Math.round(e.currentTarget.scrollTop / hauteur)));
+        }}
+      >
+        {rangees.map((r, i) => (
+          <div key={i} className="defilant-rangee" style={hauteur ? { height: hauteur } : undefined}>
+            <div className="defilant-grille" style={{ gridTemplateColumns: `repeat(${parRangee}, minmax(0, 1fr))` }}>
+              {r}
+            </div>
+          </div>
+        ))}
+      </div>
+      {rangees.length > 1 && (
+        <button
+          type="button"
+          className={`defilant-fleche ${derniere ? 'retour' : ''}`}
+          onClick={() => aller(derniere ? 0 : rangee + 1)}
+          aria-label={derniere ? `${libelle} : revenir au début` : `${libelle} : voir la suite`}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 9l7 7 7-7" />
+          </svg>
+        </button>
+      )}
+    </div>
   );
 }
 

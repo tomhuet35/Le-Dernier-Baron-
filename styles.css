@@ -334,16 +334,29 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 /* Centre de la table : tapis, anneau, pli et journal */
 /* Tapis orange : le cadre en bois garde son épaisseur (découpage en 9 parties), seule la feutrine s'adapte à la place disponible. */
 .centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-baron-portrait.webp') 83 / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); background: url('/cartes/logo-tapis-baron.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.24) 100%), url('/cartes/feutre-baron.webp') center / calc(var(--cadre) * 6.18) auto repeat, #420104; background-clip: padding-box; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
-/* Tapis débloqués avec les niveaux : le cadre détouré (bois, or, jetons) est posé sur la feutrine, qui passe dessous jusqu'au bois. */
-.centre.tapis-jetons {
-  border-image: url('/cartes/cadre-jetons.webp') 240 230 300 240 / calc(var(--cadre) * 2.18) calc(var(--cadre) * 2.09) calc(var(--cadre) * 2.73) calc(var(--cadre) * 2.18) stretch;
-  background: url('/cartes/logo-tapis-jetons.webp') center / contain no-repeat, url('/cartes/plis-jetons.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-jetons.webp') center / calc(var(--cadre) * 2.91) auto repeat, #440606;
+/* Tapis débloqués avec les niveaux : le cadre détouré (bois, or, ornements) est posé sur la feutrine, qui passe dessous jusqu'au bois.
+   Échelle : 110 px de l'image source = var(--cadre). */
+.centre.tapis-velours, .centre.tapis-prestige, .centre.tapis-noir { border-image: url('/cartes/cadre-velours.webp') 240 255 285 255 / calc(var(--cadre) * 2.18) calc(var(--cadre) * 2.32) calc(var(--cadre) * 2.59) calc(var(--cadre) * 2.32) stretch; }
+.centre.tapis-prestige { border-image-source: url('/cartes/cadre-prestige.webp'); }
+.centre.tapis-noir { border-image-source: url('/cartes/cadre-noir.webp'); }
+.centre.tapis-velours { background: url('/cartes/logo-tapis-velours.webp') center / contain no-repeat, url('/cartes/plis-velours.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-velours.webp') center / calc(var(--cadre) * 2.45) auto repeat, #4a0002; }
+.centre.tapis-prestige { background: url('/cartes/logo-tapis-prestige.webp') center / contain no-repeat, url('/cartes/plis-prestige.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-prestige.webp') center / calc(var(--cadre) * 2.45) auto repeat, #4a0002; }
+.centre.tapis-noir { background: url('/cartes/logo-tapis-noir.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.3) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-noir.webp') center / calc(var(--cadre) * 2.45) auto repeat, #070707; }
+.centre.tapis-velours, .centre.tapis-prestige { background-origin: padding-box, padding-box, border-box, padding-box; }
+.centre.tapis-noir { background-origin: padding-box, border-box, padding-box; }
+/* Losanges du milieu des bords : posés à part pour ne jamais être étirés (au-dessus du cadre, sous les cartes). */
+.centre.tapis-prestige, .centre.tapis-noir { position: relative; isolation: isolate; }
+.centre.tapis-prestige::before, .centre.tapis-noir::before { content: ''; position: absolute; inset: calc(var(--cadre) * -1); z-index: -1; pointer-events: none; background-repeat: no-repeat; }
+.centre.tapis-prestige::before {
+  background-image: url('/cartes/losange-prestige-haut.webp'), url('/cartes/losange-prestige-bas.webp'), url('/cartes/losange-prestige-gauche.webp'), url('/cartes/losange-prestige-droite.webp');
+  background-size: calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.418) auto, calc(var(--cadre) * 0.436) auto;
+  background-position: left 50% top calc(var(--cadre) * 0.436), left 50% bottom calc(var(--cadre) * 0.882), left calc(var(--cadre) * 0.436) top 50%, right calc(var(--cadre) * 0.436) top 50%;
 }
-.centre.tapis-or {
-  border-image: url('/cartes/cadre-or.webp') 265 262 350 262 / calc(var(--cadre) * 2.41) calc(var(--cadre) * 2.38) calc(var(--cadre) * 3.18) calc(var(--cadre) * 2.38) stretch;
-  background: url('/cartes/logo-tapis-or.webp') center / contain no-repeat, url('/cartes/plis-or.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-or.webp') center / calc(var(--cadre) * 2.91) auto repeat, #410304;
+.centre.tapis-noir::before {
+  background-image: url('/cartes/losange-noir-gauche.webp'), url('/cartes/losange-noir-droite.webp');
+  background-size: calc(var(--cadre) * 0.509) auto, calc(var(--cadre) * 0.527) auto;
+  background-position: left calc(var(--cadre) * 0.455) top 50%, right calc(var(--cadre) * 0.491) top 50%;
 }
-.centre.tapis-jetons, .centre.tapis-or { background-origin: padding-box, padding-box, border-box, padding-box; }
 .centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(36, 12, 3, 0.82); border: 1px solid rgba(231, 194, 122, 0.55); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
 .centre-tete strong { color: var(--or-vif); }
 .centre-table { --larg: clamp(60px, 17vw, 104px); position: relative; display: grid; place-items: center; width: 100%; min-height: calc(var(--larg) * 1.9); }
@@ -385,7 +398,18 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 
 /* Salon : choix du personnage */
 .lobby-avatars h2 { font-size: 20px; }
-.avatars-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.avatars-defilant { margin-top: 4px; }
+/* Liste à une rangée visible + flèche pour faire défiler (personnages, tapis). */
+.defilant { display: grid; justify-items: center; gap: 2px; min-width: 0; }
+.defilant-zone { width: 100%; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; }
+.defilant-zone::-webkit-scrollbar { display: none; }
+.defilant-rangee { scroll-snap-align: start; }
+.defilant-grille { display: grid; align-items: stretch; gap: 8px; padding: 6px 2px; }
+.defilant-fleche { display: grid; place-items: center; width: 46px; height: 30px; min-height: 0; padding: 0; border-radius: 99px; border: 1px solid var(--filet); background: rgba(33, 23, 17, 0.9); color: var(--or-vif); }
+.defilant-fleche svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; animation: fleche-bas 1.8s ease-in-out infinite; }
+.defilant-fleche.retour svg { transform: rotate(180deg); animation: none; }
+@keyframes fleche-bas { 0%, 100% { translate: 0 -1px; } 50% { translate: 0 3px; } }
+@media (prefers-reduced-motion: reduce) { .defilant-fleche svg { animation: none; } }
 .avatar-choix { display: grid; justify-items: center; align-content: start; gap: 4px; padding: 10px 4px 8px; border-radius: 12px; background: rgba(33, 23, 17, 0.88); line-height: 1.2; }
 .avatar-choix img { width: min(100%, 78px); aspect-ratio: 1; border-radius: 50%; object-fit: cover; border: 3px solid var(--filet); }
 .avatar-choix span { font-size: 12.5px; }
@@ -515,7 +539,6 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .gains-xp summary { cursor: pointer; color: var(--or); font-size: 14px; }
 .gains-xp ul { margin: 6px 0 4px; padding-left: 18px; font-size: 14px; }
 .profil-sous-titre { color: var(--or); font-size: 18px; }
-.tapis-choix { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .tapis-option { display: grid; justify-items: center; gap: 3px; min-height: 0; padding: 6px 6px 7px; border-radius: 10px; background: var(--nuit-3); border: 1px solid var(--filet); text-align: center; color: var(--creme); }
 .tapis-option.pose { border-color: var(--or-vif); box-shadow: 0 0 0 1px var(--or-vif), 0 0 14px rgba(231, 194, 122, 0.3); }
 .tapis-option:disabled { opacity: 1; cursor: default; }

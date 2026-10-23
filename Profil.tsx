@@ -5,7 +5,7 @@ import { DESCRIPTION_NIVEAU_BOT, DESCRIPTION_STYLE_BOT, NOM_NIVEAU_BOT, NOM_STYL
 import type { AmiVue, BilanCompte, ListeAmis, ProfilCompte, ProfilPublic, StatutAmi } from '../../shared/types';
 import type { Appel } from './App';
 import type { Utilisateur } from './connexion';
-import { Fenetre, IconeImage } from './ui';
+import { Defilant, Fenetre, IconeImage } from './ui';
 
 export type ModuleConnexion = typeof import('./connexion');
 
@@ -285,7 +285,7 @@ function ChoixTapis({ compte, appel }: { compte: EtatCompte; appel: Appel }) {
   return (
     <>
       <h3 className="profil-sous-titre">Tapis de jeu</h3>
-      <div className="tapis-choix" role="radiogroup" aria-label="Tapis de jeu">
+      <Defilant className="tapis-choix" role="radiogroup" libelle="Tapis de jeu" actif={TAPIS.findIndex((t) => t.id === p.tapis)}>
         {TAPIS.map((t) => {
           const ouvert = niveau >= t.niveau;
           const pose = p.tapis === t.id;
@@ -312,7 +312,7 @@ function ChoixTapis({ compte, appel }: { compte: EtatCompte; appel: Appel }) {
             </button>
           );
         })}
-      </div>
+      </Defilant>
     </>
   );
 }
