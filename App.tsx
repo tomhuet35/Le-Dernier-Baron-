@@ -421,8 +421,8 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
           <span className="point en-ligne" aria-hidden="true" />
           {enLigne ? `${enLigne.joueurs} en ligne` : '…'}
         </p>
-        <button type="button" className="bouton-menu" onClick={() => setFenetre('menu')} aria-label="Menu : profil, amis, règles et son">
-          <IconeImage nom="menu" repli="⋯" className="bouton-menu-icone" />
+        <button type="button" className="bouton-menu points" onClick={() => setFenetre('menu')} aria-label="Menu : profil, amis, règles et son">
+          <IconeImage nom="menu-points" repli="⋯" className="bouton-menu-icone" />
           {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
         </button>
       </div>

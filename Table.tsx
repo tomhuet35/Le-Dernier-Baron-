@@ -6,7 +6,7 @@ import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
-import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, PluieVictoire, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -145,8 +145,8 @@ export function Table({ salon, appel, quitter }: { salon: VueSalon; appel: Appel
             <span className="libelle">Règles</span>
           </button>
           <Chat salon={salon} appel={appel} enLigne />
-          <button type="button" className="bouton-icone bouton-icone-seule" onClick={() => setFenetre('menu')} aria-label="Menu">
-            <IconeImage nom="menu" repli="⋯" />
+          <button type="button" className="bouton-icone bouton-icone-seule points" onClick={() => setFenetre('menu')} aria-label="Menu">
+            <IconeImage nom="menu-points" repli="⋯" />
           </button>
         </div>
       </header>
@@ -607,15 +607,18 @@ function FinDePartie(props: { v: Vue; salon: VueSalon; estHote: boolean; appel: 
   const classement = [...v.joueurs].sort((a, b) => b.score - a.score);
   const max = classement[0].score;
   const barons = classement.filter((j) => j.score === max);
+  const jeSuisBaron = barons.some((j) => j.id === v.moi);
   const [voirScores, setVoirScores] = useState(false);
   const enr = salon.enregistrement;
   const compteDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.compte ?? null;
   const monBilan = enr?.bilans[v.moi];
   return (
     <Fenetre titre="Fin de la partie" large>
-      <div className="couronne" aria-hidden="true">
+      {jeSuisBaron && <PluieVictoire />}
+      <div className={`couronne ${jeSuisBaron ? 'brille' : ''}`} aria-hidden="true">
         ♛
       </div>
+      {jeSuisBaron && <p className="victoire-moi">Tu es le Dernier Baron !</p>}
       <p className="dernier-baron">
         {barons.map((j) => j.nom).join(' et ')} {barons.length > 1 ? 'deviennent' : 'devient'}
         <span>le Dernier Baron</span>
