@@ -168,3 +168,26 @@ export function allianceReussiePour(
   const paire = alliances.find(([a, b]) => a === joueurId || b === joueurId);
   return !!paire && reussites[paire[0]] && reussites[paire[1]];
 }
+
+/** Moments forts d'un pli, mis en scène à l'écran. */
+export interface DuelPli {
+  /** baron : le Baron écrase un ou plusieurs Hommes de main ; braquage : le Pickpocket dépouille le Baron. */
+  type: 'baron' | 'braquage';
+  gagnante: CartePosee;
+  perdante: CartePosee;
+  /** Nombre d'Hommes de main capturés (1 pour un braquage). */
+  nombre: number;
+}
+
+export function duelDuPli(p: { cartes: CartePosee[]; gagnantId: string; braquage: boolean }): DuelPli | null {
+  const speciale = (c: CartePosee) => CARTE[c.carteId]?.speciale;
+  const gagnante = p.cartes.find((c) => c.joueurId === p.gagnantId);
+  const baron = p.cartes.find((c) => speciale(c) === 'baron');
+  if (!gagnante || !baron) return null;
+  if (p.braquage && speciale(gagnante) === 'pickpocket') return { type: 'braquage', gagnante, perdante: baron, nombre: 1 };
+  if (gagnante === baron) {
+    const hommes = p.cartes.filter((c) => speciale(c) === 'homme_de_main');
+    if (hommes.length) return { type: 'baron', gagnante: baron, perdante: hommes[0], nombre: hommes.length };
+  }
+  return null;
+}

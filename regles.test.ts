@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { appliquerAction, creerPartie } from '../shared/moteur';
-import { allianceReussiePour, calculerScore, cartesJouables, resoudrePli } from '../shared/regles';
+import { allianceReussiePour, calculerScore, cartesJouables, duelDuPli, resoudrePli } from '../shared/regles';
 import type { CartePosee, EtatPartie } from '../shared/types';
 
 /** Traduit « Lames 5 », « Chat noir 2 », « Croupier (11) »… en carte posée. */
@@ -150,5 +150,35 @@ describe('Vols et Trahison', () => {
     expect(e.mains.B).toContain('diamants-01');
     expect(e.mains.C).toContain('lames-01');
     expect(e.phase).toBe('PLI');
+  });
+});
+
+describe('Grands moments d’un pli', () => {
+  const pli = (cartes: [string, string][], gagnantId: string, braquage = false) => ({
+    cartes: cartes.map(([joueurId, carteId]) => ({ joueurId, carteId })),
+    gagnantId,
+    braquage,
+  });
+  it('le Baron qui gagne avec des Hommes de main dans le pli', () => {
+    const d = duelDuPli(pli([['a', 'homme-de-main-1'], ['b', 'baron'], ['c', 'homme-de-main-3']], 'b'));
+    expect(d).toMatchObject({ type: 'baron', gagnante: { carteId: 'baron' }, perdante: { carteId: 'homme-de-main-1' }, nombre: 2 });
+  });
+  it('le Pickpocket qui braque le Baron', () => {
+    const d = duelDuPli(pli([['a', 'baron'], ['b', 'pickpocket'], ['c', 'billets-05']], 'b', true));
+    expect(d).toMatchObject({ type: 'braquage', gagnante: { carteId: 'pickpocket' }, perdante: { carteId: 'baron' } });
+  });
+  it('rien pour un pli ordinaire ou un Baron seul', () => {
+    expect(duelDuPli(pli([['a', 'baron'], ['b', 'billets-05']], 'a'))).toBeNull();
+    expect(duelDuPli(pli([['a', 'homme-de-main-1'], ['b', 'billets-05']], 'a'))).toBeNull();
+  });
+  it('les vrais plis du moteur donnent bien ces deux moments', () => {
+    for (const [cartes, attendu] of [
+      [['baron', 'homme-de-main-2'], 'baron'],
+      [['pickpocket', 'baron', 'homme-de-main-1'], 'braquage'],
+    ] as const) {
+      const posees = cartes.map((carteId, i) => ({ joueurId: `j${i}`, carteId }));
+      const r = resoudrePli(posees);
+      expect(duelDuPli({ cartes: posees, gagnantId: posees[r.gagnant].joueurId, braquage: r.braquage })?.type).toBe(attendu);
+    }
   });
 });

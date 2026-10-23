@@ -1,5 +1,7 @@
 import { Children, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import type { VueSalon } from '../../shared/types';
+import { BONUS_BARON_HOMME_DE_MAIN, BONUS_BRAQUAGE } from '../../shared/config';
+import type { DuelPli } from '../../shared/regles';
+import type { CartePosee, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { CARTE } from '../../shared/cartes';
 import { COULEUR_FAMILLE, infoCarte } from './textes';
@@ -289,6 +291,37 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Mise en scène (2,4 s, pendant la pause de fin de pli) des deux grands moments du jeu :
+ * le Baron écrase l'Homme de main, ou le Pickpocket dépouille le Baron (Braquage).
+ * Le Baron est toujours à gauche. Rien ne bloque le jeu : l'écran reste utilisable dessous.
+ */
+export function Duel({ duel, nom }: { duel: DuelPli; nom: (id: string) => string }) {
+  const image = (c: CartePosee) => `/${CARTE[c.carteId]?.image ?? ''}`;
+  const baron = duel.type === 'baron';
+  const gauche = baron ? duel.gagnante : duel.perdante;
+  const droite = baron ? duel.perdante : duel.gagnante;
+  const titre = baron
+    ? duel.nombre > 1
+      ? `Le Baron écrase ${duel.nombre} Hommes de main !`
+      : 'Le Baron écrase l’Homme de main !'
+    : 'Braquage ! Le Pickpocket dépouille le Baron';
+  return (
+    <div className={`duel duel-${duel.type}`} role="status" aria-live="polite">
+      <div className="duel-scene" aria-hidden="true">
+        <img className="duel-carte duel-gauche" src={image(gauche)} alt="" draggable={false} />
+        <img className="duel-carte duel-droite" src={image(droite)} alt="" draggable={false} />
+        <span className="duel-eclat" />
+        {baron ? duel.nombre > 1 && <span className="duel-nombre">×{duel.nombre}</span> : <span className="duel-butin">♛</span>}
+      </div>
+      <p className="duel-titre">{titre}</p>
+      <p className="duel-detail">
+        {nom(duel.gagnante.joueurId)} · +{baron ? BONUS_BARON_HOMME_DE_MAIN : BONUS_BRAQUAGE} points
+      </p>
+    </div>
   );
 }
 

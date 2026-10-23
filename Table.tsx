@@ -7,7 +7,8 @@ import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
-import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, SON_SPECIALE, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
+import { duelDuPli, type DuelPli } from '../../shared/regles';
+import { Avatar, Butin, CarteImg, Chat, Duel, Fenetre, IconeImage, IconeMusique, Pastille, SON_SPECIALE, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -125,6 +126,23 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     const t = window.setTimeout(() => jouerEffet('fin_de_pli'), 350);
     return () => window.clearTimeout(t);
   }, [cleDernierPli]);
+
+  // Grands moments : le Baron écrase un Homme de main, ou le Pickpocket braque le Baron (pas au rechargement).
+  const [duel, setDuel] = useState<DuelPli | null>(null);
+  const duelPrecedent = useRef<string | null>(null);
+  useEffect(() => {
+    const avant = duelPrecedent.current;
+    duelPrecedent.current = cleDernierPli;
+    if (avant === null || !cleDernierPli || cleDernierPli === avant || !v.dernierPli) return;
+    const d = duelDuPli(v.dernierPli);
+    if (!d) return;
+    setDuel(d);
+    const t = window.setTimeout(() => setDuel(null), 2500);
+    return () => {
+      window.clearTimeout(t);
+      setDuel(null);
+    };
+  }, [cleDernierPli]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toucherCarte = (id: string, jouable: boolean) => {
     if (v.phase === 'TRAHISON' && !v.aChoisiTrahison) return setSelection(id);
@@ -348,6 +366,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
       )}
       {zoom && <Zoom id={zoom} onFermer={() => setZoom(null)} />}
       {fiche && <FicheJoueur joueurId={fiche} appel={appel} onFermer={() => setFiche(null)} />}
+      {duel && <Duel duel={duel} nom={nom} />}
       {revelation && v.evenement && (
         <div className="revelation" role="dialog" aria-label={`Événement : ${NOM_EVENEMENT[v.evenement]}`} onClick={() => setRevelation(null)}>
           <span className="revelation-titre">Événement de la nuit {v.nuit}</span>
