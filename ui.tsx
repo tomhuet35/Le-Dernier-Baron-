@@ -298,11 +298,28 @@ const VOLUME_MUSIQUE = 0.3;
 /** Pendant un effet important (lancement de partie), la musique baisse puis revient. */
 const VOLUME_MUSIQUE_BAISSE = 0.08;
 
-export type EffetSonore = 'jouer' | 'lancement' | 'carte';
+export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge';
 const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
   lancement: { fichier: '/cartes/son-lancement.mp3', volume: 0.55, baisserMusique: true },
   carte: { fichier: '/cartes/son-carte.mp3', volume: 0.75, baisserMusique: false },
+  // Carte d'événement qui tourne au centre de l'écran au début de la nuit.
+  evenement: { fichier: '/cartes/son-evenement.mp3', volume: 0.8, baisserMusique: true },
+  // Cartes spéciales posées sur le tapis (en plus du bruit de la carte).
+  baron: { fichier: '/cartes/son-baron.mp3', volume: 0.7, baisserMusique: true },
+  pickpocket: { fichier: '/cartes/son-pickpocket.mp3', volume: 0.75, baisserMusique: false },
+  homme_de_main: { fichier: '/cartes/son-homme-de-main.mp3', volume: 0.75, baisserMusique: false },
+  croupier: { fichier: '/cartes/son-croupier.mp3', volume: 0.8, baisserMusique: false },
+  juge: { fichier: '/cartes/son-juge.mp3', volume: 0.7, baisserMusique: false },
+};
+
+/** Son propre à certaines cartes spéciales quand elles sont posées. */
+export const SON_SPECIALE: Partial<Record<string, EffetSonore>> = {
+  baron: 'baron',
+  pickpocket: 'pickpocket',
+  homme_de_main: 'homme_de_main',
+  croupier: 'croupier',
+  juge: 'juge',
 };
 
 /**

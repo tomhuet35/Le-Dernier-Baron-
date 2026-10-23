@@ -7,7 +7,7 @@ import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
-import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Fenetre, IconeImage, IconeMusique, Pastille, SON_SPECIALE, Zoom, jouerEffet, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -63,6 +63,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     if (dejaVu.current === cle) return;
     dejaVu.current = cle;
     setRevelation(v.evenementId);
+    jouerEffet('evenement');
     const t = window.setTimeout(() => setRevelation(null), 5000);
     return () => window.clearTimeout(t);
   }, [v.nuit, v.evenementId, v.phase]);
@@ -96,14 +97,22 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     v.pli.length > 0 ? null : v.dernierPli && (v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && v.vol?.source === 'baron')) ? v.dernierPli : null;
   const plisJoues = v.joueurs.reduce((s, j) => s + j.plis, 0);
 
-  // Son de carte : chaque fois qu'une nouvelle carte arrive sur le tapis (la mienne ou celle d'un autre joueur).
+  // Son de carte : chaque fois qu'une nouvelle carte arrive sur le tapis (la mienne ou celle d'un autre joueur),
+  // plus le son propre aux cartes spéciales (Baron, Pickpocket, Homme de main, Croupier, Juge).
   const cartesSurTapis = (pliAffiche ? pliAffiche.cartes : v.pli).map((p) => p.carteId).join('|');
   const tapisPrecedent = useRef<Set<string> | null>(null);
   useEffect(() => {
     const avant = tapisPrecedent.current;
     const maintenant = cartesSurTapis ? cartesSurTapis.split('|') : [];
     tapisPrecedent.current = new Set(maintenant);
-    if (avant && maintenant.some((id) => !avant.has(id))) jouerEffet('carte');
+    if (!avant) return;
+    const nouvelles = maintenant.filter((id) => !avant.has(id));
+    if (!nouvelles.length) return;
+    jouerEffet('carte');
+    for (const id of nouvelles) {
+      const son = SON_SPECIALE[CARTE[id]?.speciale ?? ''];
+      if (son) jouerEffet(son);
+    }
   }, [cartesSurTapis]);
 
   const toucherCarte = (id: string, jouable: boolean) => {
