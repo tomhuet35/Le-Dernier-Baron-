@@ -298,11 +298,12 @@ const VOLUME_MUSIQUE = 0.3;
 /** Pendant un effet important (lancement de partie), la musique baisse puis revient. */
 const VOLUME_MUSIQUE_BAISSE = 0.08;
 
-export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge';
+export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge';
 const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
   lancement: { fichier: '/cartes/son-lancement.mp3', volume: 0.55, baisserMusique: true },
   carte: { fichier: '/cartes/son-carte.mp3', volume: 0.75, baisserMusique: false },
+  fin_de_pli: { fichier: '/cartes/son-fin-de-pli.mp3', volume: 0.8, baisserMusique: false },
   // Carte d'événement qui tourne au centre de l'écran au début de la nuit.
   evenement: { fichier: '/cartes/son-evenement.mp3', volume: 0.8, baisserMusique: true },
   // Cartes spéciales posées sur le tapis (en plus du bruit de la carte).

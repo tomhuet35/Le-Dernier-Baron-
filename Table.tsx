@@ -115,6 +115,17 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     }
   }, [cartesSurTapis]);
 
+  // Son de fin de pli : chaque fois qu'un pli est remporté, juste après le bruit de la dernière carte posée.
+  const cleDernierPli = v.dernierPli ? `${v.nuit}|${v.dernierPli.gagnantId}|${v.dernierPli.cartes.map((c) => c.carteId).join(',')}` : '';
+  const pliPrecedent = useRef<string | null>(null);
+  useEffect(() => {
+    const avant = pliPrecedent.current;
+    pliPrecedent.current = cleDernierPli;
+    if (avant === null || !cleDernierPli || cleDernierPli === avant) return;
+    const t = window.setTimeout(() => jouerEffet('fin_de_pli'), 350);
+    return () => window.clearTimeout(t);
+  }, [cleDernierPli]);
+
   const toucherCarte = (id: string, jouable: boolean) => {
     if (v.phase === 'TRAHISON' && !v.aChoisiTrahison) return setSelection(id);
     if (v.phase === 'PLI' && monTour && jouable) return setSelection(selection === id ? null : id);
