@@ -304,6 +304,11 @@ export function Duel({ duel, nom }: { duel: DuelPli; nom: (id: string) => string
   const baron = duel.type === 'baron';
   const gauche = baron ? duel.gagnante : duel.perdante;
   const droite = baron ? duel.perdante : duel.gagnante;
+  // Le son part au moment du choc (Baron) ou quand le Pickpocket se faufile (Braquage).
+  useEffect(() => {
+    const t = window.setTimeout(() => jouerEffet(duel.type === 'baron' ? 'duel_baron' : 'braquage'), duel.type === 'baron' ? 720 : 600);
+    return () => window.clearTimeout(t);
+  }, [duel]);
   const titre = baron
     ? duel.nombre > 1
       ? `Le Baron écrase ${duel.nombre} Hommes de main !`
@@ -331,12 +336,15 @@ const VOLUME_MUSIQUE = 0.3;
 /** Pendant un effet important (lancement de partie), la musique baisse puis revient. */
 const VOLUME_MUSIQUE_BAISSE = 0.08;
 
-export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge';
+export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel_baron' | 'braquage' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge';
 const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
   lancement: { fichier: '/cartes/son-lancement.mp3', volume: 0.55, baisserMusique: true },
   carte: { fichier: '/cartes/son-carte.mp3', volume: 0.75, baisserMusique: false },
   fin_de_pli: { fichier: '/cartes/son-fin-de-pli.mp3', volume: 0.8, baisserMusique: false },
+  // Grands moments d'un pli (animations) : calés sur le choc et sur le vol de la couronne.
+  duel_baron: { fichier: '/cartes/son-duel-baron.mp3', volume: 0.85, baisserMusique: true },
+  braquage: { fichier: '/cartes/son-braquage.mp3', volume: 0.85, baisserMusique: true },
   // Carte d'événement qui tourne au centre de l'écran au début de la nuit.
   evenement: { fichier: '/cartes/son-evenement.mp3', volume: 0.8, baisserMusique: true },
   // Cartes spéciales posées sur le tapis (en plus du bruit de la carte).
