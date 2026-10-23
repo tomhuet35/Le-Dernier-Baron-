@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useState, type FormEvent } from 'react';
-import { niveauDepuisXp, progression, TAPIS, XP_NUIT, XP_PARTIE, XP_VICTOIRE, xpPourNiveau, type IdTapis } from '../../shared/niveaux';
+import { niveauDepuisXp, progression, TAPIS, XP_NUIT, XP_PARTIE, XP_VICTOIRE, xpPourNiveau, type IdTapis, type Tapis } from '../../shared/niveaux';
 import { DESCRIPTION_NIVEAU_BOT, DESCRIPTION_STYLE_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT } from '../../shared/robot';
 import type { AmiVue, BilanCompte, ListeAmis, ProfilCompte, ProfilPublic, StatutAmi } from '../../shared/types';
 import type { Appel } from './App';
@@ -272,6 +272,7 @@ export function FenetreConnexion(props: {
 /** Tapis de jeu : récompenses de niveau, choisies depuis le profil. */
 function ChoixTapis({ compte, appel }: { compte: EtatCompte; appel: Appel }) {
   const [occupe, setOccupe] = useState(false);
+  const [apercu, setApercu] = useState<Tapis | null>(null);
   const p = compte.profil;
   if (!p) return null;
   const niveau = niveauDepuisXp(p.xp);
@@ -295,15 +296,15 @@ function ChoixTapis({ compte, appel }: { compte: EtatCompte; appel: Appel }) {
               type="button"
               role="radio"
               aria-checked={pose}
-              disabled={!ouvert}
+              aria-label={ouvert ? undefined : `${t.nom} : voir l'aperçu (se débloque au niveau ${t.niveau})`}
               className={`tapis-option ${pose ? 'pose' : ''} ${ouvert ? '' : 'verrouille'}`}
-              onClick={() => void choisir(t.id)}
+              onClick={() => (ouvert ? void choisir(t.id) : setApercu(t))}
             >
               <span className="tapis-image">
                 <img src={`/cartes/miniature-tapis-${t.id}.webp`} alt="" />
                 {!ouvert && (
                   <span className="tapis-cadenas" aria-hidden="true">
-                    🔒
+                    🔒<small>Aperçu</small>
                   </span>
                 )}
               </span>
@@ -313,7 +314,29 @@ function ChoixTapis({ compte, appel }: { compte: EtatCompte; appel: Appel }) {
           );
         })}
       </Defilant>
+      {apercu && <ApercuTapis tapis={apercu} niveau={niveau} onFermer={() => setApercu(null)} />}
     </>
+  );
+}
+
+/** Aperçu en grand d'un tapis pas encore débloqué, tel qu'il sera posé sur la table. */
+function ApercuTapis({ tapis, niveau, onFermer }: { tapis: Tapis; niveau: number; onFermer: () => void }) {
+  const reste = tapis.niveau - niveau;
+  return (
+    <Fenetre titre={tapis.nom} onFermer={onFermer}>
+      <div className={`centre tapis-${tapis.id} tapis-apercu`} aria-hidden="true" />
+      <p className="tapis-apercu-info">
+        <span>
+          🔒 Se débloque au <strong>niveau {tapis.niveau}</strong>
+        </span>
+        <small>
+          Tu es niveau {niveau} : encore {reste} niveau{reste > 1 ? 'x' : ''} à gagner.
+        </small>
+      </p>
+      <button type="button" onClick={onFermer}>
+        Fermer
+      </button>
+    </Fenetre>
   );
 }
 

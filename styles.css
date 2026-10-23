@@ -336,17 +336,19 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-baron-portrait.webp') 83 / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); background: url('/cartes/logo-tapis-baron.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.24) 100%), url('/cartes/feutre-baron.webp') center / calc(var(--cadre) * 6.18) auto repeat, #420104; background-clip: padding-box; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
 /* Tapis débloqués avec les niveaux : le cadre détouré (bois, or, ornements) est posé sur la feutrine, qui passe dessous jusqu'au bois.
    Échelle : 110 px de l'image source = var(--cadre). */
-.centre.tapis-velours, .centre.tapis-prestige, .centre.tapis-noir { border-image: url('/cartes/cadre-velours.webp') 240 255 285 255 / calc(var(--cadre) * 2.18) calc(var(--cadre) * 2.32) calc(var(--cadre) * 2.59) calc(var(--cadre) * 2.32) stretch; }
+.centre.tapis-velours, .centre.tapis-prestige, .centre.tapis-noir, .centre.tapis-or-noir { border-image: url('/cartes/cadre-velours.webp') 240 255 285 255 / calc(var(--cadre) * 2.18) calc(var(--cadre) * 2.32) calc(var(--cadre) * 2.59) calc(var(--cadre) * 2.32) stretch; }
 .centre.tapis-prestige { border-image-source: url('/cartes/cadre-prestige.webp'); }
 .centre.tapis-noir { border-image-source: url('/cartes/cadre-noir.webp'); }
+.centre.tapis-or-noir { border-image-source: url('/cartes/cadre-or-noir.webp'); }
 .centre.tapis-velours { background: url('/cartes/logo-tapis-velours.webp') center / contain no-repeat, url('/cartes/plis-velours.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-velours.webp') center / calc(var(--cadre) * 2.45) auto repeat, #4a0002; }
 .centre.tapis-prestige { background: url('/cartes/logo-tapis-prestige.webp') center / contain no-repeat, url('/cartes/plis-prestige.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-prestige.webp') center / calc(var(--cadre) * 2.45) auto repeat, #4a0002; }
 .centre.tapis-noir { background: url('/cartes/logo-tapis-noir.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.3) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-noir.webp') center / calc(var(--cadre) * 2.45) auto repeat, #070707; }
+.centre.tapis-or-noir { background: url('/cartes/logo-tapis-or-noir.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.3) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-or-noir.webp') center / calc(var(--cadre) * 2.45) auto repeat, #070605; }
 .centre.tapis-velours, .centre.tapis-prestige { background-origin: padding-box, padding-box, border-box, padding-box; }
-.centre.tapis-noir { background-origin: padding-box, border-box, padding-box; }
+.centre.tapis-noir, .centre.tapis-or-noir { background-origin: padding-box, border-box, padding-box; }
 /* Losanges du milieu des bords : posés à part pour ne jamais être étirés (au-dessus du cadre, sous les cartes). */
-.centre.tapis-prestige, .centre.tapis-noir { position: relative; isolation: isolate; }
-.centre.tapis-prestige::before, .centre.tapis-noir::before { content: ''; position: absolute; inset: calc(var(--cadre) * -1); z-index: -1; pointer-events: none; background-repeat: no-repeat; }
+.centre.tapis-prestige, .centre.tapis-noir, .centre.tapis-or-noir { position: relative; isolation: isolate; }
+.centre.tapis-prestige::before, .centre.tapis-noir::before, .centre.tapis-or-noir::before { content: ''; position: absolute; inset: calc(var(--cadre) * -1); z-index: -1; pointer-events: none; background-repeat: no-repeat; }
 .centre.tapis-prestige::before {
   background-image: url('/cartes/losange-prestige-haut.webp'), url('/cartes/losange-prestige-bas.webp'), url('/cartes/losange-prestige-gauche.webp'), url('/cartes/losange-prestige-droite.webp');
   background-size: calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.418) auto, calc(var(--cadre) * 0.436) auto;
@@ -356,6 +358,11 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   background-image: url('/cartes/losange-noir-gauche.webp'), url('/cartes/losange-noir-droite.webp');
   background-size: calc(var(--cadre) * 0.509) auto, calc(var(--cadre) * 0.527) auto;
   background-position: left calc(var(--cadre) * 0.455) top 50%, right calc(var(--cadre) * 0.491) top 50%;
+}
+.centre.tapis-or-noir::before {
+  background-image: url('/cartes/losange-or-noir-haut.webp'), url('/cartes/losange-or-noir-bas.webp'), url('/cartes/losange-or-noir-gauche.webp'), url('/cartes/losange-or-noir-droite.webp');
+  background-size: calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.418) auto, calc(var(--cadre) * 0.418) auto;
+  background-position: left 50% top calc(var(--cadre) * 0.327), left 50% bottom calc(var(--cadre) * 0.464), left calc(var(--cadre) * 0.382) top 50%, right calc(var(--cadre) * 0.364) top 50%;
 }
 .centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(36, 12, 3, 0.82); border: 1px solid rgba(231, 194, 122, 0.55); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
 .centre-tete strong { color: var(--or-vif); }
@@ -541,11 +548,15 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .profil-sous-titre { color: var(--or); font-size: 18px; }
 .tapis-option { display: grid; justify-items: center; gap: 3px; min-height: 0; padding: 6px 6px 7px; border-radius: 10px; background: var(--nuit-3); border: 1px solid var(--filet); text-align: center; color: var(--creme); }
 .tapis-option.pose { border-color: var(--or-vif); box-shadow: 0 0 0 1px var(--or-vif), 0 0 14px rgba(231, 194, 122, 0.3); }
-.tapis-option:disabled { opacity: 1; cursor: default; }
 .tapis-image { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; }
 .tapis-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .tapis-option.verrouille .tapis-image img { filter: grayscale(0.85) brightness(0.45); }
-.tapis-cadenas { position: absolute; inset: 0; display: grid; place-items: center; font-size: 20px; }
+.tapis-cadenas { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1px; font-size: 18px; line-height: 1; }
+.tapis-cadenas small { font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; color: var(--creme); }
+.centre.tapis-apercu { --cadre: 18px; width: 100%; aspect-ratio: 16 / 10; max-width: none; padding: 0; justify-self: stretch; }
+.tapis-apercu-info { display: grid; justify-items: center; gap: 3px; margin: 0; text-align: center; }
+.tapis-apercu-info strong { color: var(--or-vif); }
+.tapis-apercu-info small { color: var(--creme-doux); font-size: 12.5px; }
 .tapis-nom { font-size: 12.5px; font-weight: 600; line-height: 1.2; }
 .tapis-option small { font-size: 11px; color: var(--creme-doux); }
 .tapis-option.pose small { color: var(--or-vif); }

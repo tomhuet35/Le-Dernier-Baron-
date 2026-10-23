@@ -53,11 +53,12 @@ describe('Niveaux', () => {
 });
 
 describe('Tapis à débloquer', () => {
-  it('débloque Velours au niveau 5, Prestige au niveau 10 et Noir au niveau 15', () => {
+  it('débloque Velours au niveau 5, Prestige au 10, Noir de sang au 15 et Or noir au 20', () => {
     expect(tapisGagnes(4, 5).map((t) => t.id)).toEqual(['velours']);
     expect(tapisGagnes(5, 9)).toEqual([]);
     expect(tapisGagnes(1, 10).map((t) => t.id)).toEqual(['velours', 'prestige']);
     expect(tapisGagnes(14, 16).map((t) => t.id)).toEqual(['noir']);
+    expect(tapisGagnes(19, 21).map((t) => t.id)).toEqual(['or-noir']);
   });
   it('ne pose qu’un tapis débloqué, sinon le classique', () => {
     expect(tapisActif('velours', xpPourNiveau(5))).toBe('velours');
@@ -66,6 +67,8 @@ describe('Tapis à débloquer', () => {
     expect(tapisActif('prestige', xpPourNiveau(10))).toBe('prestige');
     expect(tapisActif('noir', xpPourNiveau(14))).toBe('baron');
     expect(tapisActif('noir', xpPourNiveau(15))).toBe('noir');
+    expect(tapisActif('or-noir', xpPourNiveau(19))).toBe('baron');
+    expect(tapisActif('or-noir', xpPourNiveau(20))).toBe('or-noir');
     // Anciens tapis (retirés) : on revient au classique.
     expect(tapisActif('jetons', 99999)).toBe('baron');
     expect(tapisActif('inconnu', 99999)).toBe('baron');

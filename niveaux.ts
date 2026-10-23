@@ -101,7 +101,7 @@ export function resultatsPartie(joueurs: { id: string; score: number }[], bilans
 }
 
 /** Tapis de jeu : récompenses débloquées en montant de niveau. */
-export type IdTapis = 'baron' | 'velours' | 'prestige' | 'noir';
+export type IdTapis = 'baron' | 'velours' | 'prestige' | 'noir' | 'or-noir';
 
 export interface Tapis {
   id: IdTapis;
@@ -113,7 +113,8 @@ export const TAPIS: Tapis[] = [
   { id: 'baron', nom: 'Classique', niveau: 1 },
   { id: 'velours', nom: 'Velours', niveau: 5 },
   { id: 'prestige', nom: 'Prestige', niveau: 10 },
-  { id: 'noir', nom: 'Noir', niveau: 15 },
+  { id: 'noir', nom: 'Noir de sang', niveau: 15 },
+  { id: 'or-noir', nom: 'Or noir', niveau: 20 },
 ];
 
 export const TAPIS_PAR_DEFAUT: IdTapis = 'baron';
