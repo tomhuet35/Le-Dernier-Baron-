@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CARTE } from '../../shared/cartes';
 import { TAPIS_PAR_DEFAUT, tapisGagnes, type IdTapis } from '../../shared/niveaux';
 import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
@@ -22,6 +22,85 @@ const PLACES: Record<number, string[]> = {
   4: ['gauche', 'haut-gauche', 'haut-droite', 'droite'],
   5: ['gauche', 'haut-gauche', 'haut', 'haut-droite', 'droite'],
 };
+
+/**
+ * Disposition des cartes du pli sur le tapis : elles s'étalent côte à côte (chacune laisse voir sa valeur),
+ * sur une ou deux rangées, aussi grandes que la place le permet. La taille dépend du nombre de joueurs,
+ * pas du nombre de cartes posées : elle ne change pas pendant le pli.
+ */
+// Part visible de chaque carte recouverte par la suivante (plus serré sur un tapis étroit de téléphone).
+const pasPli = (largeur: number) => (largeur < 280 ? 0.46 : 0.56);
+const DECALAGE_RANGEE = 0.52; // la 2e rangée descend de 52 % de la hauteur d'une carte
+const ETIQUETTE_PLI = 17; // place du nom au-dessus de la carte
+function dispositionPli(nJoueurs: number, nCartes: number, t: { l: number; h: number } | null) {
+  if (!t || t.l < 60 || t.h < 60) return null;
+  const n = Math.max(nJoueurs, nCartes, 1);
+  const PAS_PLI = pasPli(t.l);
+  const W = t.l - 10;
+  const H = t.h - ETIQUETTE_PLI - 8;
+  const uneRangee = Math.min(W / (1 + (n - 1) * PAS_PLI), H / 1.5);
+  const k = Math.ceil(n / 2);
+  const deuxRangees = n >= 4 ? Math.min(W / (1 + (k - 1) * PAS_PLI), H / (1.5 * (1 + DECALAGE_RANGEE))) : 0;
+  const surDeux = deuxRangees > uneRangee * 1.1;
+  const parRangee = surDeux ? k : n;
+  const larg = Math.round(Math.max(48, Math.min(surDeux ? deuxRangees : uneRangee, 190)));
+  const haut = larg * 1.5;
+  const rangees = surDeux && nCartes > parRangee ? 2 : 1;
+  const total = ETIQUETTE_PLI + haut + (rangees - 1) * haut * DECALAGE_RANGEE;
+  const y0 = Math.max(ETIQUETTE_PLI, (t.h - total) / 2 + ETIQUETTE_PLI);
+  const positions = Array.from({ length: nCartes }, (_, i) => {
+    const r = Math.floor(i / parRangee);
+    const c = i % parRangee;
+    const nb = r === 0 ? Math.min(nCartes, parRangee) : nCartes - parRangee;
+    const largeurRangee = larg * (1 + (nb - 1) * PAS_PLI);
+    return { x: Math.round((t.l - largeurRangee) / 2 + c * larg * PAS_PLI), y: Math.round(y0 + r * haut * DECALAGE_RANGEE) };
+  });
+  return { larg, positions };
+}
+
+/** Ordinateur (souris, grand écran) : le pli s'étale en grand sur le tapis. Téléphone et tablette gardent la pile. */
+const REQUETE_ORDI = '(min-width: 900px) and (hover: hover) and (pointer: fine)';
+function useOrdi() {
+  const [ordi, setOrdi] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(REQUETE_ORDI).matches);
+  useEffect(() => {
+    const m = window.matchMedia?.(REQUETE_ORDI);
+    if (!m) return;
+    const maj = () => setOrdi(m.matches);
+    maj();
+    m.addEventListener?.('change', maj);
+    return () => m.removeEventListener?.('change', maj);
+  }, []);
+  return ordi;
+}
+
+/** Le pli en grand, par-dessus la table : toutes les cartes côte à côte avec le nom de chaque joueur. */
+function VuePli(props: { cartes: { joueurId: string; carteId: string; valeurCroupier?: 0 | 11 }[]; gagnantId: string | null; nom: (id: string) => string; onCarte: (id: string) => void; onFermer: () => void }) {
+  const { cartes, gagnantId, nom, onCarte, onFermer } = props;
+  return (
+    <div className="voile vue-pli-voile" role="dialog" aria-modal="true" aria-label="Le pli en grand" onClick={onFermer}>
+      <div className="vue-pli" onClick={(e) => e.stopPropagation()}>
+        <div className="vue-pli-tete">
+          <strong>{gagnantId ? `${nom(gagnantId)} remporte le pli` : `Pli en cours · ${cartes.length} carte${cartes.length > 1 ? 's' : ''}`}</strong>
+          <button type="button" className="fermer" onClick={onFermer} aria-label="Fermer">
+            ×
+          </button>
+        </div>
+        <div className={`vue-pli-cartes n-${cartes.length}`}>
+          {cartes.map((p, i) => (
+            <button key={p.carteId} type="button" className={`vue-pli-carte ${p.joueurId === gagnantId ? 'gagnante' : ''}`} style={{ animationDelay: `${i * 0.05}s` }} onClick={() => onCarte(p.carteId)}>
+              <span className="vue-pli-nom">
+                {i + 1}. {nom(p.joueurId)}
+                {p.valeurCroupier !== undefined ? ` · ${p.valeurCroupier}` : ''}
+              </span>
+              <img src={infoCarte(p.carteId).image} alt={infoCarte(p.carteId).nom} draggable={false} />
+            </button>
+          ))}
+        </div>
+        <p className="discret">Touche une carte pour lire son effet.</p>
+      </div>
+    </div>
+  );
+}
 
 /** Particules dorées qui montent doucement derrière la table. */
 const PARTICULES = Array.from({ length: 18 }, (_, i) => ({
@@ -47,6 +126,19 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const estHote = salon.hoteId === v.moi && !salon.publique;
   const [selection, setSelection] = useState<string | null>(null);
   const [zoom, setZoom] = useState<string | null>(null);
+  const [vuePli, setVuePli] = useState(false);
+  const surOrdi = useOrdi();
+  const tableRef = useRef<HTMLDivElement | null>(null);
+  const [tailleTable, setTailleTable] = useState<{ l: number; h: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = tableRef.current;
+    if (!el) return;
+    const mesurer = () => setTailleTable((t) => (t && t.l === el.clientWidth && t.h === el.clientHeight ? t : { l: el.clientWidth, h: el.clientHeight }));
+    mesurer();
+    const obs = new ResizeObserver(mesurer);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
   const [fenetre, setFenetre] = useState<'scores' | 'regles' | 'menu' | 'journal' | 'quitter' | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [fiche, setFiche] = useState<string | null>(null);
@@ -106,7 +198,13 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
 
   // Son de carte : chaque fois qu'une nouvelle carte arrive sur le tapis (la mienne ou celle d'un autre joueur),
   // plus le son de sa famille (Billets, Diamants, Lames, Lingots, Chat noir) ou de la carte spéciale.
-  const cartesSurTapis = (pliAffiche ? pliAffiche.cartes : v.pli).map((p) => p.carteId).join('|');
+  const cartesPli = pliAffiche ? pliAffiche.cartes : v.pli;
+  const disposition = surOrdi ? dispositionPli(v.joueurs.length, cartesPli.length, tailleTable) : null;
+  const cartesSurTapis = cartesPli.map((p) => p.carteId).join('|');
+  // Le pli ramassé : la vue en grand se referme d'elle-même.
+  useEffect(() => {
+    if (!cartesPli.length) setVuePli(false);
+  }, [cartesPli.length]);
   const tapisPrecedent = useRef<Set<string> | null>(null);
   useEffect(() => {
     const avant = tapisPrecedent.current;
@@ -264,7 +362,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               </span>
             )}
           </div>
-          <div className="centre-table">
+          <div className="centre-table" ref={tableRef} style={disposition ? ({ '--lp': `${disposition.larg}px` } as React.CSSProperties) : undefined}>
             <svg className={`anneau ${v.phase === 'PLI' ? 'tourne' : ''}`} viewBox="0 0 200 200" aria-hidden="true">
               <defs>
                 <marker id="pointe" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
@@ -274,14 +372,20 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               <path d="M143 25.5 A86 86 0 0 1 174.5 143" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" markerEnd="url(#pointe)" />
               <path d="M57 174.5 A86 86 0 0 1 25.5 57" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" markerEnd="url(#pointe)" />
             </svg>
-            <div className="pli-pile">
-              {(pliAffiche ? pliAffiche.cartes : v.pli).map((p, i) => {
-                // Pile verticale : chaque carte se pose un peu plus bas, légèrement de travers, comme sur une vraie table.
-                const style = { '--r': `${(i % 2 ? 1 : -1) * (1.5 + (i % 3))}deg`, '--x': `${((i * 37) % 13) - 6}px`, zIndex: i + 1 } as React.CSSProperties;
+            <div className={`pli-pile ${disposition ? 'disposee' : ''}`}>
+              {cartesPli.map((p, i) => {
+                // Cartes étalées côte à côte, légèrement de travers, comme sur une vraie table.
+                const pos = disposition?.positions[i];
+                const style = {
+                  '--r': `${(i % 2 ? 1 : -1) * (1 + (i % 3) * 0.7)}deg`,
+                  '--x': `${((i * 37) % 13) - 6}px`,
+                  zIndex: i + 1,
+                  ...(pos ? { left: pos.x, top: pos.y } : {}),
+                } as React.CSSProperties;
                 const gagnante = !!pliAffiche && p.joueurId === pliAffiche.gagnantId;
                 return (
                   <div key={p.carteId} className={`pli-carte ${gagnante ? 'gagnante-pli' : ''}`} style={style}>
-                    <CarteImg id={p.carteId} taille="pli" etat={gagnante ? 'gagnante' : undefined} onZoom={setZoom} />
+                    <CarteImg id={p.carteId} taille="pli" etat={gagnante ? 'gagnante' : undefined} onToucher={surOrdi ? () => setVuePli(true) : undefined} onZoom={setZoom} />
                     <span className="pli-nom" title={p.joueurId === v.moi ? 'Toi' : nom(p.joueurId)}>
                       {p.joueurId === v.moi ? 'Toi' : nom(p.joueurId)}
                       {p.valeurCroupier !== undefined ? ` · ${p.valeurCroupier}` : ''}
@@ -291,6 +395,14 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               })}
               {!pliAffiche && v.pli.length === 0 && <div className="pli-vide">Le pli est vide</div>}
             </div>
+            {surOrdi && cartesPli.length > 0 && (
+              <button type="button" className="pli-loupe" onClick={() => setVuePli(true)} aria-label="Voir le pli en grand">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="10.5" cy="10.5" r="6.5" />
+                  <path d="M15.5 15.5 L21 21" />
+                </svg>
+              </button>
+            )}
           </div>
           <ol className="centre-journal" aria-label="Dernières actions">
             {v.journal
@@ -405,6 +517,9 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
             </button>
           </div>
         </Fenetre>
+      )}
+      {vuePli && cartesPli.length > 0 && (
+        <VuePli cartes={cartesPli} gagnantId={pliAffiche?.gagnantId ?? null} nom={(id) => (id === v.moi ? 'Toi' : nom(id))} onCarte={setZoom} onFermer={() => setVuePli(false)} />
       )}
       {zoom && <Zoom id={zoom} onFermer={() => setZoom(null)} />}
       {fiche && <FicheJoueur joueurId={fiche} appel={appel} onFermer={() => setFiche(null)} />}

@@ -139,6 +139,36 @@ button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .carte.choisie .carte-bouton { transform: translateY(-12px); box-shadow: 0 0 0 3px var(--or-vif), 0 10px 20px rgba(0, 0, 0, 0.7); }
 .carte.gagnante .carte-bouton { box-shadow: 0 0 0 3px var(--or-vif), 0 0 22px rgba(231, 194, 122, 0.55); }
 @keyframes poser { from { opacity: 0; transform: translateY(-50px) rotate(0deg) scale(1.1); } to { opacity: 1; transform: translateX(var(--x)) rotate(var(--r)); } }
+/* Pli étalé sur le tapis (positions et taille calculées selon la place) : chaque carte arrive en grand puis se pose. */
+.pli-pile.disposee { position: absolute; inset: 0; display: block; min-height: 0; padding: 0; }
+.pli-pile.disposee .pli-carte { position: absolute; margin: 0; transform: rotate(var(--r)); transition: left 0.3s ease, top 0.3s ease, translate 0.3s ease; animation: poser-zoom 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
+.pli-pile.disposee .pli-carte + .pli-carte { margin-top: 0; }
+.pli-pile.disposee .pli-carte .carte-pli .carte-bouton { width: var(--lp); border-radius: calc(var(--lp) * 0.07); box-shadow: -4px 4px 12px rgba(0, 0, 0, 0.55), 0 10px 18px rgba(0, 0, 0, 0.45); }
+.pli-pile.disposee .pli-nom { top: -16px; left: 0; transform: none; max-width: calc(var(--lp) * 0.5 + 6px); font-size: clamp(10.5px, calc(var(--lp) * 0.08), 13.5px); line-height: 14px; }
+.pli-pile.disposee .pli-carte:last-child .pli-nom { max-width: calc(var(--lp) - 4px); }
+.pli-pile.disposee .pli-vide { position: absolute; left: 50%; top: 50%; width: var(--lp); translate: -50% -50%; }
+@keyframes poser-zoom {
+  0% { opacity: 0; transform: translateY(-28px) rotate(0deg) scale(1.55); }
+  45% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1.12); }
+  100% { opacity: 1; transform: rotate(var(--r)) scale(1); }
+}
+.pli-loupe { position: absolute; right: 2px; bottom: 2px; z-index: 20; display: grid; place-items: center; width: 34px; height: 34px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid rgba(231, 194, 122, 0.6); background: rgba(22, 16, 12, 0.78); color: var(--or-vif); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); }
+.pli-loupe svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+/* Le pli en grand */
+.vue-pli-voile { z-index: 30; }
+.vue-pli { display: grid; gap: 12px; justify-items: center; width: min(100%, 980px); max-height: 100%; overflow: auto; padding: 4px; }
+.vue-pli-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 640px; }
+.vue-pli-tete strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 5vw, 28px); color: var(--or-vif); }
+.vue-pli-cartes { --lv: min(40vw, 30vh, 230px); display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 12px; }
+.vue-pli-cartes.n-1, .vue-pli-cartes.n-2 { --lv: min(44vw, 46vh, 280px); }
+.vue-pli-cartes.n-5, .vue-pli-cartes.n-6 { --lv: min(30vw, 28vh, 210px); }
+.vue-pli-carte { display: grid; gap: 4px; justify-items: center; width: var(--lv); min-height: 0; padding: 0; border: none; background: none; color: var(--creme); animation: vue-pli-entree 0.35s ease-out both; }
+.vue-pli-carte img { display: block; width: 100%; aspect-ratio: 2 / 3; border-radius: calc(var(--lv) * 0.06); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.7); }
+.vue-pli-carte.gagnante img { box-shadow: 0 0 0 3px var(--or-vif), 0 0 28px rgba(231, 194, 122, 0.6); }
+.vue-pli-nom { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.5px; font-weight: 600; }
+.vue-pli-carte.gagnante .vue-pli-nom { color: var(--or-vif); }
+@keyframes vue-pli-entree { from { opacity: 0; transform: translateY(14px) scale(0.92); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pli-pile.disposee .pli-carte, .vue-pli-carte { animation: none; } }
 
 .consigne { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--filet); background: var(--nuit-2); min-height: 52px; align-content: center; }
 .consigne.a-toi { border-color: var(--or); background: #2b1d12; }
@@ -297,6 +327,11 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .rangee-haut { display: flex; justify-content: space-around; align-items: flex-start; gap: 4px; }
 .rangee-haut .siege { flex: 1 1 0; max-width: 150px; }
 .milieu { display: grid; grid-template-columns: minmax(0, 88px) minmax(0, 1fr) minmax(0, 88px); gap: 4px; align-items: center; }
+/* Ordinateur : le tapis prend toute la hauteur libre pour que les cartes du pli soient grandes. */
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .milieu { flex: 1; }
+  .milieu > .centre { align-self: stretch; grid-template-rows: auto minmax(0, 1fr) auto; align-content: stretch; }
+}
 .milieu.sans-cotes { grid-template-columns: minmax(0, 1fr); }
 .cote { display: grid; align-content: center; min-width: 0; }
 .siege { position: relative; display: grid; justify-items: center; gap: 1px; min-width: 0; padding: 2px 2px 4px; text-align: center; font-size: 11.5px; line-height: 1.3; border-radius: 12px; transition: background 0.2s; }
