@@ -210,6 +210,8 @@ export interface BilanCompte {
   xp: number; // totaux du compte après la partie
   victoires: number;
   parties: number;
+  /** Partie jouée pendant un week-end XP double. */
+  xpDouble?: boolean;
 }
 
 export interface EnregistrementVue {
@@ -262,6 +264,8 @@ export interface AmiVue {
   statut: StatutAmi;
   /** Déjà assis à la même table que moi. */
   avecMoi: boolean;
+  /** Hors ligne, mais joignable : il a activé les notifications d'invitation. */
+  notifiable?: boolean;
 }
 
 export interface ListeAmis {
@@ -307,6 +311,8 @@ export interface VueSalon {
   dureeTour: number;
   /** Partie guidée du tutoriel. */
   tutoriel?: boolean;
+  /** Partie publique : tranche de niveau de la table. */
+  tranche?: number | null;
   /** Partie publique (joueurs du monde entier, lancement automatique) ou privée (avec un code). */
   publique: boolean;
   /** Partie publique en attente : millisecondes avant le lancement automatique. */

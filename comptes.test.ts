@@ -13,8 +13,9 @@ import {
   stockageMemoire,
   TAILLE_HISTORIQUE,
 } from '../server/comptes';
+import { creerNotifications } from '../server/notifications';
 import { demarrerServeur } from '../server/serveur';
-import { niveauDepuisXp, progression, resultatsPartie, tapisActif, tapisGagnes, titreNiveau, xpPourNiveau, XP_NUIT, XP_PARTIE, XP_VICTOIRE } from '../shared/niveaux';
+import { estWeekendXpDouble, niveauDepuisXp, progression, resultatsPartie, tapisActif, tapisGagnes, titreNiveau, trancheNiveau, xpPourNiveau, XP_NUIT, XP_PARTIE, XP_VICTOIRE } from '../shared/niveaux';
 import { actionRobot } from '../shared/robot';
 import type { BilanNuit, Invitation, ListeAmis, ScoreNuit, VueSalon } from '../shared/types';
 
@@ -153,7 +154,13 @@ const identites = {
   'jeton-carla': { uid: 'uid-carla', nom: 'Carla', email: 'carla@gmail.com' },
   'jeton-dan': { uid: 'uid-dan', nom: null, email: 'dan.martin@gmail.com' },
   'jeton-eve': { uid: 'uid-eve', nom: 'Ève', email: 'eve@gmail.com' },
+  'jeton-fanny': { uid: 'uid-fanny', nom: 'Fanny', email: 'fanny@gmail.com' },
+  'jeton-gil': { uid: 'uid-gil', nom: 'Gil', email: 'gil@gmail.com' },
 };
+/** Notifications envoyées pendant les tests (aucune ne part vraiment) ; un endpoint « expire » répond 410. */
+const pushEnvoyes: { endpoint: string; message: Record<string, unknown> }[] = [];
+let notifications: Awaited<ReturnType<typeof creerNotifications>> = null;
+let xpDoubleActif = false;
 const stockage = stockageMemoire();
 const authentification = authentificationTest(identites);
 const service = creerServiceComptes({ configWeb: { apiKey: 'cle', authDomain: 'test.firebaseapp.com', projectId: 'test' }, authentification, stockage });
@@ -165,7 +172,20 @@ function emettre(s: Socket, evt: string, data?: unknown): Promise<any> {
 }
 
 beforeAll(async () => {
-  serveur = await demarrerServeur({ port: 0, delaiFinDePli: 5, delaiRobot: 5, servirClient: false, comptes: service });
+  notifications = await creerNotifications(service, {}, async (a, contenu) => {
+    pushEnvoyes.push({ endpoint: a.endpoint, message: JSON.parse(contenu) });
+    return a.endpoint.includes('expire') ? 410 : 201;
+  });
+  serveur = await demarrerServeur({
+    port: 0,
+    delaiFinDePli: 5,
+    delaiRobot: 5,
+    servirClient: false,
+    comptes: service,
+    notifications,
+    contact: 'contact@exemple.fr',
+    xpDouble: () => xpDoubleActif,
+  });
 });
 afterAll(async () => {
   await serveur.fermer();
@@ -208,6 +228,9 @@ describe('Comptes de bout en bout', () => {
   it('publie la configuration web et refuse un jeton inconnu', async () => {
     const config = await fetch(`${url()}/api/config`).then((r) => r.json());
     expect(config.firebase.projectId).toBe('test');
+    // Page Confidentialité : l'adresse de contact vient du serveur ; clé publique des notifications.
+    expect(config.contact).toBe('contact@exemple.fr');
+    expect(config.vapid).toMatch(/^[A-Za-z0-9_-]{80,100}$/);
     const s = connecter();
     expect((await emettre(s, 'identifier', { jeton: 'faux' })).ok).toBe(false);
     expect((await emettre(s, 'profil')).ok).toBe(false);
@@ -314,6 +337,54 @@ describe('Comptes de bout en bout', () => {
     expect(retour).toMatchObject({ ok: true, joueurId: cree.joueurId, jeton: cree.jeton });
     a.close();
     autre.close();
+  });
+
+  it('week-end XP double : l’expérience de la partie compte deux fois', async () => {
+    xpDoubleActif = true;
+    const avant = stockage.donnees.get('uid-carla')?.xp ?? 0;
+    const [a, b, c] = [connecter(), connecter(), connecter()];
+    await emettre(a, 'identifier', { jeton: 'jeton-carla' });
+    const cree = await emettre(a, 'creer', { nom: 'Carla' });
+    await emettre(b, 'rejoindre', { code: cree.code, nom: 'Bob' });
+    await emettre(c, 'rejoindre', { code: cree.code, nom: 'Cid' });
+    const fin = jouerJusquALaFin([a, b, c]);
+    expect((await emettre(a, 'lancer')).ok).toBe(true);
+    const [vue] = await fin;
+    xpDoubleActif = false;
+    const p = vue.partie!;
+    const r = resultatsPartie(p.joueurs.map((j) => ({ id: j.id, score: j.score })), p.bilans).find((x) => x.joueurId === cree.joueurId)!;
+    expect(vue.enregistrement!.bilans[cree.joueurId]).toMatchObject({ xpGagne: r.xp * 2, xpDouble: true });
+    expect(stockage.donnees.get('uid-carla')!.xp).toBe(avant + r.xp * 2);
+    [a, b, c].forEach((s) => s.close());
+  });
+
+  it('tables publiques par niveau : un débutant et un expert ne tombent pas à la même table', async () => {
+    expect([1, 4, 5, 9, 10, 14, 15, 30].map(trancheNiveau)).toEqual([0, 0, 1, 1, 2, 2, 3, 3]);
+    stockage.donnees.get('uid-bruno')!.xp = xpPourNiveau(12);
+    const [debutant, expert, confirme, autreExpert] = [connecter(), connecter(), connecter(), connecter()];
+    await emettre(expert, 'identifier', { jeton: 'jeton-bruno' });
+    const salonDe = (s: Socket) => new Promise<VueSalon>((ok) => s.once('salon', ok));
+    const vD = salonDe(debutant);
+    await emettre(debutant, 'jouer_public', { nom: 'Novice' });
+    const tableD = await vD;
+    expect(tableD.tranche).toBe(0);
+    const vE = salonDe(expert);
+    await emettre(expert, 'jouer_public', { nom: 'Bruno' });
+    const tableE = await vE;
+    expect(tableE.code).not.toBe(tableD.code);
+    expect(tableE.tranche).toBe(2);
+    // Un invité (niveau 1) retrouve la table des débutants.
+    const vC = salonDe(confirme);
+    await emettre(confirme, 'jouer_public', { nom: 'Invité' });
+    expect((await vC).code).toBe(tableD.code);
+    [debutant, expert, confirme, autreExpert].forEach((s) => s.close());
+  });
+
+  it('week-end : samedi et dimanche à l’heure de Paris', () => {
+    expect(estWeekendXpDouble(new Date('2026-10-24T10:00:00Z'))).toBe(true); // samedi
+    expect(estWeekendXpDouble(new Date('2026-10-25T21:30:00Z'))).toBe(true); // dimanche 23 h 30 à Paris
+    expect(estWeekendXpDouble(new Date('2026-10-25T23:30:00Z'))).toBe(false); // lundi 0 h 30 à Paris
+    expect(estWeekendXpDouble(new Date('2026-10-23T21:59:00Z'))).toBe(false); // vendredi 23 h 59 à Paris
   });
 
   it('tapis : refusé tant que le niveau n’est pas atteint, puis posé et gardé sur le compte', async () => {
@@ -435,5 +506,78 @@ describe('Comptes de bout en bout', () => {
     expect((await emettre(c, 'amis')).liste.amis).toEqual([]);
     c.close();
     b.close();
+  });
+
+  it('notifications : un ami hors ligne ou jeu en arrière-plan reçoit l’invitation par notification', async () => {
+    const [f, g] = [connecter(), connecter()];
+    await emettre(f, 'identifier', { jeton: 'jeton-fanny' });
+    await emettre(g, 'identifier', { jeton: 'jeton-gil' });
+    const codeF: string = (await emettre(f, 'amis')).liste.monCode;
+    const codeG: string = (await emettre(g, 'amis')).liste.monCode;
+    await emettre(f, 'ajouter_ami', { code: codeG });
+    await emettre(g, 'repondre_ami', { code: codeF, accepter: true });
+
+    // Abonnement : refusé sans compte ou mal formé, accepté sinon (et jamais montré aux autres joueurs).
+    const abonnement = { endpoint: 'https://push.exemple.fr/gil-telephone', keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) } };
+    const anonyme = connecter();
+    expect((await emettre(anonyme, 'push_abonner', abonnement)).ok).toBe(false);
+    anonyme.close();
+    expect((await emettre(g, 'push_abonner', { endpoint: 'http://pas-chiffre', keys: abonnement.keys })).ok).toBe(false);
+    expect((await emettre(g, 'push_abonner', abonnement)).ok).toBe(true);
+    expect((await emettre(g, 'push_abonner', abonnement)).ok).toBe(true); // même téléphone : pas de doublon
+    expect(stockage.donnees.get('uid-gil')!.push.map((a) => a.endpoint)).toEqual([abonnement.endpoint]);
+    expect(JSON.stringify((await emettre(g, 'profil')).profil)).not.toContain('push.exemple.fr');
+
+    await emettre(f, 'creer', { nom: 'Fanny' });
+    // Gil a le jeu ouvert et visible : invitation dans le jeu, pas de notification.
+    const recue = new Promise<Invitation>((ok) => g.once('invitation', ok));
+    expect((await emettre(f, 'inviter', { code: codeG })).ok).toBe(true);
+    await recue;
+    expect(pushEnvoyes).toEqual([]);
+
+    // Gil passe le jeu en arrière-plan : l'invitation part aussi en notification.
+    g.emit('visibilite', { visible: false });
+    await new Promise((ok) => setTimeout(ok, 5200)); // une invitation toutes les 5 secondes au plus
+    expect((await emettre(f, 'inviter', { code: codeG })).ok).toBe(true);
+    expect(pushEnvoyes).toHaveLength(1);
+    expect(pushEnvoyes[0].message).toMatchObject({ titre: expect.stringContaining('Invitation'), url: expect.stringMatching(/^\/\?salon=[A-Z]{4}$/) });
+    expect(String(pushEnvoyes[0].message.texte)).toContain('Fanny');
+
+    // Gil ferme le jeu : Fanny le voit « joignable » et peut encore l'inviter (pas plus d'une notification par 30 s).
+    const horsLigne = new Promise<void>((ok) => f.once('amis_maj', () => ok()));
+    g.close();
+    await horsLigne;
+    const ami = (await emettre(f, 'amis')).liste.amis[0];
+    expect(ami).toMatchObject({ statut: 'hors_ligne', notifiable: true });
+    await new Promise((ok) => setTimeout(ok, 5200));
+    expect((await emettre(f, 'inviter', { code: codeG })).erreur).toMatch(/Notification déjà envoyée/);
+
+    // Abonnement expiré (le téléphone a désinstallé le jeu) : retiré au premier envoi, les autres restent.
+    const expire = { endpoint: 'https://push.exemple.fr/expire', keys: abonnement.keys };
+    const g2 = connecter();
+    await emettre(g2, 'identifier', { jeton: 'jeton-gil' });
+    expect((await emettre(g2, 'push_abonner', expire)).ok).toBe(true);
+    expect(stockage.donnees.get('uid-gil')!.push).toHaveLength(2);
+    expect(await notifications!.envoyer('uid-gil', { titre: 't', texte: 't', url: '/' })).toBe(true);
+    expect(stockage.donnees.get('uid-gil')!.push.map((a) => a.endpoint)).toEqual([abonnement.endpoint]);
+    // Désactivées par Gil : plus « joignable ».
+    expect((await emettre(g2, 'push_desabonner', { endpoint: abonnement.endpoint })).ok).toBe(true);
+    expect(stockage.donnees.get('uid-gil')!.push).toEqual([]);
+    g2.close();
+    await new Promise((ok) => setTimeout(ok, 100));
+    expect((await emettre(f, 'amis')).liste.amis[0].notifiable).toBe(false);
+    f.close();
+  }, 20_000);
+
+  it('vitesse des ordinateurs : réglée par l’hôte d’une partie privée, jamais en partie publique', async () => {
+    const s = connecter();
+    await emettre(s, 'creer', { nom: 'Hôte', vitesse: 'rapide' });
+    expect((await emettre(s, 'vitesse', { vitesse: 'lente' })).ok).toBe(true);
+    const autre = connecter();
+    const salon = await emettre(s, 'quitter');
+    expect(salon.ok).toBe(true);
+    expect((await emettre(autre, 'vitesse', { vitesse: 'rapide' })).ok).toBe(false);
+    s.close();
+    autre.close();
   });
 });

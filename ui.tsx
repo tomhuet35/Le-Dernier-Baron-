@@ -5,6 +5,7 @@ import type { CartePosee, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { CARTE } from '../../shared/cartes';
 import { COULEUR_FAMILLE, infoCarte } from './textes';
+import { abonnerReglages, lireReglages } from './reglages';
 
 /** Une carte : toucher pour sélectionner, appui long pour l'afficher en grand. */
 export function CarteImg(props: {
@@ -477,6 +478,9 @@ const musique = (() => {
   let audio: HTMLAudioElement | null = null;
   let contexte: AudioContext | null = null;
   let gainMusique: GainNode | null = null;
+  // Volumes choisis dans les Réglages (0 à 1).
+  const volMusique = () => lireReglages().musique / 100;
+  const volEffets = () => lireReglages().effets / 100;
   const abonnes = new Set<() => void>();
   const prevenir = () => abonnes.forEach((f) => f());
 
@@ -531,7 +535,7 @@ const musique = (() => {
       audio = new Audio('/cartes/musique.mp3');
       audio.loop = true;
       audio.preload = 'auto';
-      audio.volume = VOLUME_MUSIQUE;
+      audio.volume = VOLUME_MUSIQUE * volMusique();
     }
     return audio;
   };
@@ -542,12 +546,12 @@ const musique = (() => {
     if (!c) return;
     try {
       gainMusique = c.createGain();
-      gainMusique.gain.value = VOLUME_MUSIQUE;
+      gainMusique.gain.value = VOLUME_MUSIQUE * volMusique();
       c.createMediaElementSource(a).connect(gainMusique).connect(c.destination);
       a.volume = 1;
     } catch {
       gainMusique = null;
-      a.volume = VOLUME_MUSIQUE;
+      a.volume = VOLUME_MUSIQUE * volMusique();
     }
   };
   /** Au moindre geste : débloque le son, prépare les effets et lance la musique si elle est activée. */
@@ -576,18 +580,26 @@ const musique = (() => {
       const g = gainMusique.gain;
       const t = c.currentTime;
       g.cancelScheduledValues(t);
-      g.setTargetAtTime(VOLUME_MUSIQUE_BAISSE, t, 0.08);
-      g.setTargetAtTime(VOLUME_MUSIQUE, t + Math.max(0.3, duree - 0.4), 0.35);
+      g.setTargetAtTime(VOLUME_MUSIQUE_BAISSE * volMusique(), t, 0.08);
+      g.setTargetAtTime(VOLUME_MUSIQUE * volMusique(), t + Math.max(0.3, duree - 0.4), 0.35);
     } else if (audio) {
       const a = audio;
-      a.volume = VOLUME_MUSIQUE_BAISSE;
-      window.setTimeout(() => (a.volume = VOLUME_MUSIQUE), duree * 1000);
+      a.volume = VOLUME_MUSIQUE_BAISSE * volMusique();
+      window.setTimeout(() => (a.volume = VOLUME_MUSIQUE * volMusique()), duree * 1000);
     }
   };
+  // Réglage du volume de la musique : appliqué tout de suite, en douceur.
+  abonnerReglages(() => {
+    const v = VOLUME_MUSIQUE * volMusique();
+    if (gainMusique && contexte) {
+      gainMusique.gain.cancelScheduledValues(contexte.currentTime);
+      gainMusique.gain.setTargetAtTime(v, contexte.currentTime, 0.05);
+    } else if (audio) audio.volume = v;
+  });
 
   const effet = async (nom: EffetSonore) => {
-    if (!active || document.hidden) return;
-    const reglage = EFFETS[nom];
+    if (!active || document.hidden || volEffets() === 0) return;
+    const reglage = { ...EFFETS[nom], volume: EFFETS[nom].volume * volEffets() };
     const c = ctx();
     if (c) {
       if (c.state === 'suspended') await c.resume().catch(() => undefined);

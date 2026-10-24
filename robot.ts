@@ -35,6 +35,20 @@ export const PRENOMS_BOTS = [
 /** Profil utilisé quand l'ordinateur remplace un joueur absent ou trop lent. */
 export const PROFIL_REMPLACANT: ProfilBot = { niveau: 'confirme', style: 'equilibre' };
 
+/** Ordinateurs d'une table publique : plus forts aux tables de haut niveau. */
+export function profilPourTranche(tranche: number, alea: () => number = Math.random): ProfilBot {
+  const r = alea();
+  const seuils: [number, number][] = [
+    [0.55, 0.95], // débutants : surtout des ordinateurs débutants
+    [0.2, 0.8],
+    [0.05, 0.5],
+    [0, 0.2], // barons : surtout des experts
+  ];
+  const [d, c] = seuils[Math.min(Math.max(tranche, 0), 3)];
+  const niveau: NiveauBot = r < d ? 'debutant' : r < c ? 'confirme' : 'expert';
+  return { niveau, style: STYLES_BOT[Math.floor(alea() * STYLES_BOT.length)] };
+}
+
 export function profilAleatoire(alea: () => number = Math.random): ProfilBot {
   const r = alea();
   const niveau: NiveauBot = r < 0.3 ? 'debutant' : r < 0.75 ? 'confirme' : 'expert';

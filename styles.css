@@ -401,7 +401,12 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 }
 .centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(36, 12, 3, 0.82); border: 1px solid rgba(231, 194, 122, 0.55); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
 .centre-tete strong { color: var(--or-vif); }
-.centre-table { --larg: clamp(60px, 17vw, 104px); position: relative; display: grid; place-items: center; width: 100%; min-height: calc(var(--larg) * 1.9); }
+.centre-table { --larg0: clamp(60px, 17vw, 104px); position: relative; display: grid; place-items: center; width: 100%; min-height: calc(var(--larg) * 1.9); }
+/* Taille des cartes (Réglages) : --zc agrandit le pli et la main ; la main ne dépasse jamais la largeur de l'écran. */
+html[data-cartes='grande'] { --zc: 1.15; }
+html[data-cartes='tres_grande'] { --zc: 1.3; }
+.centre-table { --larg: calc(var(--larg0) * var(--zc, 1)); }
+.eventail { --lc: min(calc(var(--lc0) * var(--zc, 1)), calc((100vw - 20px) / var(--etendue, 1))); }
 .anneau { position: absolute; top: 50%; left: 50%; width: min(118%, calc(var(--larg) * 2.3)); aspect-ratio: 1; translate: -50% -50%; color: rgba(255, 233, 196, 0.6); pointer-events: none; filter: drop-shadow(0 1px 3px rgba(60, 14, 0, 0.6)); }
 .anneau.tourne { animation: tourner 10s linear infinite; }
 @keyframes tourner { to { rotate: 360deg; } }
@@ -428,7 +433,7 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .minuteur.urgent .minuteur-barre span { background: #e2483b; }
 .minuteur.urgent small { color: #f08a7e; font-weight: 700; }
 .moi-stats { font-size: 12.5px; color: var(--creme-doux); font-variant-numeric: tabular-nums; }
-.eventail { --lc: clamp(66px, 20vw, 100px); display: flex; justify-content: center; align-items: flex-end; min-height: calc(var(--lc) * 1.5 + 30px); padding: 20px 4px 8px; }
+.eventail { --lc0: clamp(66px, 20vw, 100px); display: flex; justify-content: center; align-items: flex-end; min-height: calc(var(--lc) * 1.5 + 30px); padding: 20px 4px 8px; }
 .eventail-carte { position: relative; transform: translateY(var(--y)) rotate(var(--r)); transform-origin: 50% 140%; transition: translate 0.15s; }
 .eventail-carte + .eventail-carte { margin-left: calc(var(--lc) * var(--chev)); }
 .eventail .carte-main .carte-bouton { width: var(--lc); box-shadow: -3px 4px 10px rgba(0, 0, 0, 0.6); }
@@ -475,12 +480,12 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .siege-dos img { width: 24px; margin: 0 -8px; }
   .centre { --cadre: 32px; padding: 4px 8% 6px; border-image-source: url('/cartes/tapis-baron.webp'); border-image-slice: 110; max-width: 760px; width: 100%; justify-self: center; }
   .centre-tete { font-size: 14px; }
-  .centre-table { --larg: clamp(72px, 9.4vh, 112px); }
+  .centre-table { --larg0: clamp(72px, 9.4vh, 112px); }
   .centre-journal { font-size: 12.5px; }
   .ma-zone { max-width: 980px; width: 100%; align-self: center; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; align-items: center; }
   .ma-zone .moi-bandeau { grid-row: 1; grid-column: 1; }
   .ma-zone .consigne { grid-row: 1; grid-column: 2; }
-  .eventail { grid-column: 1 / -1; --lc: clamp(84px, 11.5vh, 120px); padding-top: 14px; }
+  .eventail { grid-column: 1 / -1; --lc0: clamp(84px, 11.5vh, 120px); padding-top: 14px; }
   .avatar.grand { --taille: 64px; }
 }
 @media (min-width: 1100px) {
@@ -496,11 +501,11 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .siege-dos img { width: 14px; margin: 0 -5px; }
   .siege .avatar { --taille: 40px; }
   .centre { --cadre: 15px; gap: 4px; padding-top: 2px; padding-bottom: 4px; }
-  .centre-table { --larg: clamp(54px, 7.4vh, 96px); min-height: calc(var(--larg) * 1.7); }
+  .centre-table { --larg0: clamp(54px, 7.4vh, 96px); min-height: calc(var(--larg) * 1.7); }
   .centre-journal li { -webkit-line-clamp: 1; }
   .ma-zone { gap: 4px; padding-top: 6px; }
   .avatar.grand { --taille: 48px; }
-  .eventail { --lc: clamp(60px, 9.6vh, 104px); padding-top: 14px; padding-bottom: 4px; }
+  .eventail { --lc0: clamp(60px, 9.6vh, 104px); padding-top: 14px; padding-bottom: 4px; }
 }
 /* ---------- Tablette (iPad) ---------- */
 /* iPad en portrait : tout est plus grand et la table occupe l'espace libre. */
@@ -514,13 +519,13 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .siege-dos img { width: 24px; margin: 0 -8px; }
   .centre { --cadre: 26px; padding: 8px 6% 8px; }
   .centre-tete { font-size: 14px; }
-  .centre-table { --larg: clamp(84px, calc((100dvh - 720px) / 2.8), 128px); min-height: calc(var(--larg) * 1.6); }
+  .centre-table { --larg0: clamp(84px, calc((100dvh - 720px) / 2.8), 128px); min-height: calc(var(--larg) * 1.6); }
   .centre-journal { font-size: 12.5px; }
   .ma-zone .consigne { font-size: 15px; }
   .avatar.grand { --taille: 68px; }
   .moi-nom strong { font-size: 18px; }
   .moi-stats { font-size: 13.5px; }
-  .eventail { --lc: clamp(96px, 11vh, 126px); }
+  .eventail { --lc0: clamp(96px, 11vh, 126px); }
 }
 /* iPad en paysage et écrans d'ordinateur peu hauts : la table prend la place libre, les cartes grandissent avec la hauteur. */
 @media (min-width: 900px) and (max-height: 860px) {
@@ -529,13 +534,13 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
   .siege-dos { height: 26px; margin-bottom: -10px; }
   .siege-dos img { width: 18px; margin: 0 -6px; }
   .centre { --cadre: 24px; }
-  .centre-table { --larg: clamp(54px, calc((100dvh - 580px) / 2.75), 112px); min-height: calc(var(--larg) * 1.9); }
-  .eventail { --lc: clamp(72px, calc((100dvh - 420px) / 3.8), 112px); }
+  .centre-table { --larg0: clamp(54px, calc((100dvh - 580px) / 2.75), 112px); min-height: calc(var(--larg) * 1.9); }
+  .eventail { --lc0: clamp(72px, calc((100dvh - 420px) / 3.8), 112px); }
   .avatar.grand { --taille: 56px; }
 }
 @media (min-width: 900px) and (min-height: 781px) and (max-height: 860px) {
-  .centre-table { --larg: clamp(54px, calc((100dvh - 615px) / 2.75), 112px); }
-  .eventail { --lc: clamp(72px, calc((100dvh - 470px) / 3.8), 112px); }
+  .centre-table { --larg0: clamp(54px, calc((100dvh - 615px) / 2.75), 112px); }
+  .eventail { --lc0: clamp(72px, calc((100dvh - 470px) / 3.8), 112px); }
 }
 /* Dès 1000 px de large (iPad en paysage), ma place tient sur une seule ligne. */
 @media (min-width: 1000px) {
@@ -918,6 +923,8 @@ select { font: inherit; width: 100%; min-height: 42px; padding: 8px 10px; color:
 .lien-tutoriel strong { color: var(--or-vif); }
 .tuto-bulle { position: fixed; z-index: 33; left: 50%; top: max(84px, calc(env(safe-area-inset-top) + 76px)); width: min(calc(100vw - 24px), 430px); translate: -50% 0; display: grid; gap: 5px; padding: 12px 14px 10px; border-radius: 14px; border: 1px solid var(--or); background: linear-gradient(180deg, rgba(48, 31, 18, 0.97), rgba(26, 17, 11, 0.97)); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65), 0 0 0 4px rgba(231, 194, 122, 0.12); animation: tuto-entree 0.35s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
 .tuto-bulle.bas { top: auto; bottom: max(14px, env(safe-area-inset-bottom)); }
+/* Menu, réglages, règles ouverts par-dessus la table : la bulle du tutoriel attend qu'on les referme. */
+body:has(.voile .fenetre .fermer) .tuto-bulle { display: none; }
 .tuto-fin { flex-basis: 100%; display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--or); background: rgba(210, 168, 90, 0.08); }
 .tuto-fin strong { font-family: var(--titre); font-weight: 400; font-size: 19px; color: var(--or-vif); }
 .tuto-fin p { margin: 0; font-size: 13.5px; line-height: 1.45; }
@@ -953,3 +960,50 @@ body[data-tuto='tapis'] .centre { animation: tuto-halo 1.3s ease-in-out infinite
 .reactions-palette button { display: grid; place-items: center; width: 42px; height: 42px; min-height: 0; padding: 0; border: none; border-radius: 50%; background: transparent; font-size: 24px; line-height: 1; transition: transform 0.12s; }
 .reactions-palette button:hover, .reactions-palette button:focus-visible { transform: scale(1.22); background: rgba(231, 194, 122, 0.14); }
 @media (prefers-reduced-motion: reduce) { .bulle-reaction { animation-duration: 2.6s; animation-name: apparaitre; } }
+
+/* ---------- Week-end XP double et tables par niveau ---------- */
+.bandeau-xp { display: flex; align-items: center; gap: 10px; width: min(100%, 460px); margin: 4px auto 12px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--or-vif); background: linear-gradient(90deg, rgba(142, 28, 20, 0.85), rgba(60, 22, 10, 0.88)); box-shadow: 0 0 18px rgba(231, 194, 122, 0.28); font-size: 13.5px; line-height: 1.35; text-align: left; animation: briller 2.4s ease-in-out infinite; }
+.bandeau-xp strong { color: var(--or-vif); }
+.bandeau-xp-badge { flex: none; padding: 5px 8px; border-radius: 8px; background: var(--or-vif); color: #2a1609; font-family: var(--titre); font-size: 17px; line-height: 1; }
+.lobby-tranche { display: inline-block; margin-bottom: 6px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--or); color: var(--or-vif); font-size: 12.5px; font-weight: 600; }
+
+/* ---------- Réglages ---------- */
+.reglages-bloc { display: grid; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--filet); }
+.reglages-bloc .discret { margin: 0; }
+.curseur { display: grid; grid-template-columns: 112px minmax(0, 1fr) 54px; align-items: center; gap: 10px; }
+.curseur label { font-size: 14px; }
+.curseur output { font-size: 13px; text-align: right; color: var(--creme-doux); font-variant-numeric: tabular-nums; }
+.curseur.desactive { opacity: 0.45; }
+.curseur input[type='range'] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; cursor: pointer; touch-action: pan-y; }
+.curseur input[type='range']::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--or) var(--pct), rgba(255, 255, 255, 0.14) var(--pct)); }
+.curseur input[type='range']::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--or) var(--pct), rgba(255, 255, 255, 0.14) var(--pct)); }
+.curseur input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -8px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3d0, var(--or-vif) 45%, #9b7232); border: 2px solid #3a2414; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.curseur input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3d0, var(--or-vif) 45%, #9b7232); border: 2px solid #3a2414; }
+.curseur input[type='range']:focus-visible { outline: 2px solid var(--or-vif); outline-offset: 2px; border-radius: 6px; }
+.segments { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; padding: 3px; border-radius: 11px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--filet); }
+.segments button { min-height: 40px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--creme-doux); font-size: 14px; box-shadow: none; }
+.segments button.choisi { background: linear-gradient(180deg, var(--or-vif), var(--or)); color: #2a1608; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); }
+.apercu-taille { display: flex; justify-content: center; align-items: flex-end; min-height: calc(64px * 1.3 * 1.5 + 8px); padding-top: 4px; }
+.apercu-taille img { width: calc(64px * var(--zc, 1)); aspect-ratio: 2 / 3; border-radius: calc(64px * var(--zc, 1) * 0.07); box-shadow: -3px 4px 10px rgba(0, 0, 0, 0.6); transition: width 0.2s ease; }
+.apercu-taille img + img { margin-left: calc(64px * var(--zc, 1) * -0.42); }
+.apercu-taille img:nth-child(1) { rotate: -8deg; transform-origin: 50% 140%; }
+.apercu-taille img:nth-child(3) { rotate: 8deg; transform-origin: 50% 140%; }
+.reglages-app { display: grid; gap: 8px; }
+.reglages-liens { margin: 0; text-align: center; font-size: 13px; }
+.reglages-liens a, .lien-confidentialite { color: var(--creme-doux); text-decoration: underline; text-underline-offset: 3px; }
+.etapes-installation { margin: 0; padding-left: 22px; display: grid; gap: 6px; font-size: 14px; line-height: 1.45; }
+.etapes-installation strong { color: var(--or-vif); }
+.icone-partager { width: 18px; height: 18px; vertical-align: -3px; color: var(--or-vif); }
+
+/* Accueil : installer le jeu, et lien vers la page Confidentialité */
+.lien-installer { display: flex; align-items: center; gap: 10px; width: min(100%, 460px); margin: 12px auto 0; min-height: 0; padding: 8px 14px 8px 8px; border: 1px solid rgba(231, 194, 122, 0.35); border-radius: 14px; background: rgba(22, 16, 12, 0.72); color: var(--creme); font-size: 13.5px; line-height: 1.35; text-align: left; box-shadow: none; }
+.lien-installer img { flex: none; width: 34px; height: 34px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+.lien-installer strong { color: var(--or-vif); }
+.accueil-pied { margin: 18px auto 4px; text-align: center; font-size: 12.5px; }
+
+/* Sous la main : la place des cartes du bord, qui descendent avec la courbe de l'éventail (calculée dans Table.tsx). */
+.eventail { padding-bottom: calc(6px + var(--chute-px, 0px) + var(--lc) * var(--chute-k, 0)); }
+/* Grand écran : la main est entre mon bandeau et la consigne ; les cartes du bord, inclinées, ne doivent pas les chevaucher. */
+@media (min-width: 1000px) {
+  .eventail { padding-inline: calc(4px + var(--lc) * var(--debord, 0)); }
+}

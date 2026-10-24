@@ -45,7 +45,18 @@ export interface StatsCompte {
   amis: string[];
   demandesRecues: string[];
   demandesEnvoyees: string[];
+  /** Abonnements aux notifications (un par téléphone ou navigateur), pour recevoir les invitations jeu fermé. */
+  push: AbonnementPush[];
 }
+
+/** Abonnement Web Push fourni par le navigateur (adresse du service de notification et clés de chiffrement). */
+export interface AbonnementPush {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  depuis: number;
+}
+export const MAX_ABONNEMENTS_PUSH = 5;
 
 export interface ContexteResultat {
   date: number;
@@ -72,6 +83,9 @@ export interface Stockage {
   ): Promise<Record<string, StatsCompte>>;
   /** Compte qui porte ce code ami. */
   chercherCode(code: string): Promise<string | null>;
+  /** Réglage du serveur gardé avec les comptes (clés des notifications). */
+  lireParametre?(cle: string): Promise<unknown>;
+  ecrireParametre?(cle: string, valeur: Record<string, unknown>): Promise<void>;
 }
 
 export type RelationAmi = 'ami' | 'demande_envoyee' | 'demande_recue' | 'aucune';
@@ -97,6 +111,12 @@ export interface ServiceComptes {
   retirerLien(uid: string, autre: string): Promise<Record<string, StatsCompte>>;
   /** Pose un tapis de jeu ; refusé (null) si le niveau du compte ne l'a pas encore débloqué. */
   choisirTapis(uid: string, tapis: IdTapis): Promise<StatsCompte | null>;
+  /** Ajoute (ou rafraîchit) l'abonnement aux notifications d'un appareil ; les plus anciens partent au-delà de 5. */
+  abonnerPush(uid: string, abonnement: Omit<AbonnementPush, 'depuis'>): Promise<StatsCompte | null>;
+  /** Retire des abonnements (désactivés par le joueur, ou expirés). */
+  retirerPush(uid: string, endpoints: string[]): Promise<void>;
+  lireParametre(cle: string): Promise<unknown>;
+  ecrireParametre(cle: string, valeur: Record<string, unknown>): Promise<void>;
 }
 
 export const MAX_AMIS = 100;
@@ -135,6 +155,7 @@ export function statsVides(nom: string, date: number): StatsCompte {
     amis: [],
     demandesRecues: [],
     demandesEnvoyees: [],
+    push: [],
   };
 }
 
@@ -181,6 +202,13 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
     amis: textes(d.amis),
     demandesRecues: textes(d.demandesRecues),
     demandesEnvoyees: textes(d.demandesEnvoyees),
+    push: Array.isArray(d.push)
+      ? d.push
+          .filter((a): a is Record<string, unknown> => !!a && typeof a === 'object')
+          .filter((a) => typeof a.endpoint === 'string' && typeof a.p256dh === 'string' && typeof a.auth === 'string')
+          .map((a) => ({ endpoint: a.endpoint as string, p256dh: a.p256dh as string, auth: a.auth as string, depuis: nombre(a.depuis) }))
+          .slice(-MAX_ABONNEMENTS_PUSH)
+      : [],
   };
 }
 
@@ -237,6 +265,7 @@ export function creerServiceComptes(parties: {
   stockage: Stockage;
 }): ServiceComptes {
   const { authentification, stockage } = parties;
+  const parametresMemoire = new Map<string, unknown>();
   return {
     configWeb: parties.configWeb,
     emulateurAuth: parties.emulateurAuth ?? null,
@@ -339,6 +368,27 @@ export function creerServiceComptes(parties: {
         const base = avant ?? actuel;
         return tapisDebloque(tapis, niveauDepuisXp(base.xp)) ? { ...base, tapis } : base;
       });
+    },
+    abonnerPush: async (uid, abonnement) => {
+      if (!(await stockage.lire(uid))) return null;
+      return stockage.modifier(uid, (avant) => {
+        const base = avant ?? statsVides('', Date.now());
+        const autres = (base.push ?? []).filter((a) => a.endpoint !== abonnement.endpoint);
+        return { ...base, push: [...autres, { ...abonnement, depuis: Date.now() }].slice(-MAX_ABONNEMENTS_PUSH) };
+      });
+    },
+    retirerPush: async (uid, endpoints) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel?.push.some((a) => endpoints.includes(a.endpoint))) return;
+      await stockage.modifier(uid, (avant) => {
+        const base = avant ?? actuel;
+        return { ...base, push: base.push.filter((a) => !endpoints.includes(a.endpoint)) };
+      });
+    },
+    lireParametre: async (cle) => (stockage.lireParametre ? stockage.lireParametre(cle) : (parametresMemoire.get(cle) ?? null)),
+    ecrireParametre: async (cle, valeur) => {
+      if (stockage.ecrireParametre) await stockage.ecrireParametre(cle, valeur);
+      else parametresMemoire.set(cle, valeur);
     },
   };
 }
@@ -529,6 +579,13 @@ export async function comptesDepuisEnvironnement(env: NodeJS.ProcessEnv = proces
         chercherCode: async (code) => {
           const r = await db.collection('comptes').where('codeAmi', '==', code).limit(1).get();
           return r.empty ? null : r.docs[0].id;
+        },
+        lireParametre: async (cle) => {
+          const snap = await db.collection('parametres').doc(cle).get();
+          return snap.exists ? snap.data() : null;
+        },
+        ecrireParametre: async (cle, valeur) => {
+          await db.collection('parametres').doc(cle).set(valeur);
         },
       };
     }

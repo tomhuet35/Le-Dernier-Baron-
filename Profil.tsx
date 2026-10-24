@@ -61,7 +61,7 @@ export function detailXp(b: BilanCompte): string {
   const morceaux = [`+${XP_PARTIE} partie terminée`];
   if (b.victoire) morceaux.push(`+${XP_VICTOIRE} victoire`);
   if (b.nuitsGagnees) morceaux.push(`+${XP_NUIT * b.nuitsGagnees} pour ${nuitsTexte(b.nuitsGagnees)}`);
-  return morceaux.join(' · ');
+  return morceaux.join(' · ') + (b.xpDouble ? ' · ×2 week-end XP double' : '');
 }
 
 /** Encart « Ton compte » de l'accueil et du salon. */
@@ -265,6 +265,15 @@ export function FenetreConnexion(props: {
         </button>
       )}
       <p className="discret">Ton adresse e-mail n’est jamais montrée aux autres joueurs : ils voient seulement ton pseudo et ton niveau.</p>
+      {mode === 'inscription' && (
+        <p className="discret">
+          En créant un compte, tu acceptes que tes données de jeu soient utilisées comme expliqué dans la page{' '}
+          <a href="/confidentialite" target="_blank" rel="noopener" className="lien-confidentialite">
+            Confidentialité
+          </a>
+          .
+        </p>
+      )}
     </Fenetre>
   );
 }
@@ -424,6 +433,11 @@ export function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte;
       ) : (
         <p className="discret">Aucune partie enregistrée pour l’instant : termine une partie avec tes amis pour la voir ici.</p>
       )}
+      <p className="reglages-liens">
+        <a href="/confidentialite" target="_blank" rel="noopener">
+          Tes données et la confidentialité
+        </a>
+      </p>
       <div className="rangee profil-actions">
         <button type="button" onClick={deconnecter}>
           Se déconnecter
@@ -562,6 +576,8 @@ function BoutonAmiJoueur({ relation, onAjouter }: { relation: 'ami' | 'demande_e
 }
 
 const TEXTE_STATUT: Record<StatutAmi, string> = { en_ligne: 'En ligne', en_partie: 'En partie', hors_ligne: 'Hors ligne' };
+/** Ami qu'on peut inviter maintenant : en ligne, ou hors ligne avec les notifications activées. */
+const invitable = (a: AmiVue) => a.statut === 'en_ligne' || (a.statut === 'hors_ligne' && !!a.notifiable);
 
 function LigneAmi({ ami, onVoir, children }: { ami: AmiVue; onVoir?: () => void; children?: React.ReactNode }) {
   return (
@@ -576,7 +592,8 @@ function LigneAmi({ ami, onVoir, children }: { ami: AmiVue; onVoir?: () => void;
             {ami.nom} <BadgeNiveau niveau={ami.niveau} titre={ami.titre} />
           </strong>
           <small>
-            {TEXTE_STATUT[ami.statut]} · 🏆 {pluriel(ami.victoires, 'victoire')}
+            {TEXTE_STATUT[ami.statut]}
+            {ami.statut === 'hors_ligne' && ami.notifiable ? ' · 🔔 joignable' : ''} · 🏆 {pluriel(ami.victoires, 'victoire')}
           </small>
         </span>
       </button>
@@ -697,8 +714,14 @@ export function FenetreAmis(props: {
                         <button
                           type="button"
                           className="petit principal bouton-inviter"
-                          disabled={a.statut !== 'en_ligne'}
-                          title={a.statut === 'en_ligne' ? 'Inviter dans ta partie privée' : TEXTE_STATUT[a.statut]}
+                          disabled={!invitable(a)}
+                          title={
+                            a.statut === 'en_ligne'
+                              ? 'Inviter dans ta partie privée'
+                              : invitable(a)
+                                ? 'Hors ligne : il recevra une notification'
+                                : TEXTE_STATUT[a.statut]
+                          }
                           onClick={() => inviter(a.code)}
                         >
                           <IconeImage nom="invitation" repli="✉️" className="icone-mini" />
@@ -728,7 +751,7 @@ export function FenetreAmis(props: {
               </ul>
             </section>
           )}
-          <p className="discret">Touche un ami pour voir son profil, même s’il est hors ligne. « Inviter » ouvre une partie privée si tu n’en as pas encore, puis envoie l’invitation à ton ami en ligne.</p>
+          <p className="discret">Touche un ami pour voir son profil, même s’il est hors ligne. « Inviter » ouvre une partie privée si tu n’en as pas encore, puis envoie l’invitation à ton ami : dans le jeu s’il est en ligne, par notification s’il est hors ligne et les a activées (🔔).</p>
         </>
       )}
       {fiche && <FicheJoueur code={fiche.code} statut={TEXTE_STATUT[fiche.statut]} appel={appel} onFermer={() => setFiche(null)} />}
@@ -739,7 +762,7 @@ export function FenetreAmis(props: {
 /** Dans le salon d'une partie privée : inviter ses amis en ligne. */
 export function SectionInviterAmis({ liste, inviter, ouvrirAmis }: { liste: ListeAmis | null; inviter: (code: string) => void; ouvrirAmis: () => void }) {
   if (!liste) return null;
-  const enLigne = liste.amis.filter((a) => a.statut === 'en_ligne' && !a.avecMoi);
+  const enLigne = liste.amis.filter((a) => invitable(a) && !a.avecMoi);
   return (
     <section className="inviter-amis">
       <h2>

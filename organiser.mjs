@@ -2,11 +2,11 @@
 import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs';
 
 const dossiers = {
-  client: ['index.html'],
-  'client/src': ['App.tsx', 'Table.tsx', 'Profil.tsx', 'Regles.tsx', 'Tutoriel.tsx', 'connexion.ts', 'main.tsx', 'socket.ts', 'styles.css', 'textes.ts', 'ui.tsx'],
-  'client/public': ['boite.webp', 'dos.webp', 'icone-192.png', 'icone-512.png', 'manifest.webmanifest'],
+  client: ['index.html', 'confidentialite.html'],
+  'client/src': ['App.tsx', 'Table.tsx', 'Profil.tsx', 'Regles.tsx', 'Reglages.tsx', 'reglages.ts', 'appli.ts', 'Tutoriel.tsx', 'connexion.ts', 'main.tsx', 'socket.ts', 'styles.css', 'textes.ts', 'ui.tsx'],
+  'client/public': ['boite.webp', 'dos.webp', 'icone-192.png', 'icone-512.png', 'manifest.webmanifest', 'sw.js'],
   shared: ['cartes.ts', 'config.ts', 'moteur.ts', 'niveaux.ts', 'regles.ts', 'rng.ts', 'robot.ts', 'types.ts', 'vue.ts'],
-  server: ['comptes.ts', 'index.ts', 'serveur.ts'],
+  server: ['comptes.ts', 'index.ts', 'notifications.ts', 'serveur.ts'],
   tests: ['comptes.test.ts', 'regles.test.ts', 'serveur.test.ts', 'simulation.test.ts'],
 };
 let deplaces = 0;

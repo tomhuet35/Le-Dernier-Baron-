@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
-import { tapisActif, type IdTapis } from '../../shared/niveaux';
+import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
 import type { Invitation, ListeAmis, ProfilCompte, ProfilPublic, VueSalon } from '../../shared/types';
 import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
@@ -18,6 +18,9 @@ import {
 import { socket } from './socket';
 import { Table } from './Table';
 import { FenetreRegles } from './Regles';
+import { FenetreReglages, useReglages } from './Reglages';
+import { lireReglages } from './reglages';
+import { configServeur, ecouterServiceWorker, rattacherNotifications, useInstallation } from './appli';
 import { tutorielDejaVu } from './Tutoriel';
 import { AVATARS } from './textes';
 import { BoutonMusique, Chat, Defilant, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
@@ -142,7 +145,9 @@ export function App() {
           setMessage('Connexion perdue, nouvelle tentative…');
           return ok({ ok: false });
         }
-        socket.timeout(8000).emit(evenement, data ?? {}, (err: unknown, r: Reponse) => {
+        // Nouvelle partie privée ou tutoriel : la vitesse des ordinateurs choisie dans les Réglages.
+        const envoi = evenement === 'creer' || evenement === 'tutoriel' ? { ...(data ?? {}), vitesse: lireReglages().vitesse } : (data ?? {});
+        socket.timeout(8000).emit(evenement, envoi, (err: unknown, r: Reponse) => {
           if (err) {
             setMessage('Le serveur ne répond pas.');
             return ok({ ok: false });
@@ -158,6 +163,18 @@ export function App() {
       }),
     [],
   );
+
+  // Vitesse des ordinateurs changée dans les Réglages : appliquée tout de suite à ma partie privée (si j'en suis l'hôte) ou au tutoriel.
+  const vitesse = useReglages().vitesse;
+  const premiereVitesse = useRef(true);
+  useEffect(() => {
+    if (premiereVitesse.current) {
+      premiereVitesse.current = false;
+      return;
+    }
+    const s = salonRef.current;
+    if (s && !s.publique && (s.hoteId === s.moi || s.tutoriel)) socket.emit('vitesse', { vitesse });
+  }, [vitesse]);
 
   const quitter = async () => {
     await appel('quitter');
@@ -200,13 +217,12 @@ export function App() {
   useEffect(() => {
     let arreter: (() => void) | null = null;
     let annule = false;
-    fetch('/api/config')
-      .then((r) => (r.ok ? r.json() : null))
-      .then(async (config: ConfigComptes | null) => {
+    configServeur()
+      .then(async (config) => {
         if (!config?.firebase || annule) return;
         const m = await import('./connexion');
         if (annule) return;
-        m.demarrer(config);
+        m.demarrer(config as ConfigComptes);
         moduleRef.current = m;
         setModule(m);
         arreter = m.suivre((u) => {
@@ -253,11 +269,18 @@ export function App() {
     };
     socket.on('amis_maj', surMaj);
     socket.on('invitation', surInvitation);
+    // Notification d'invitation touchée alors que le jeu était déjà ouvert.
+    const arreterSw = ecouterServiceWorker(surInvitation);
     return () => {
       socket.off('amis_maj', surMaj);
       socket.off('invitation', surInvitation);
+      arreterSw();
     };
   }, [chargerAmis]);
+  // Connexion au compte : les notifications déjà activées sur ce téléphone suivent le compte connecté.
+  useEffect(() => {
+    if (connectePourAmis) void rattacherNotifications();
+  }, [connectePourAmis]);
   // Nouvelle demande d'ami reçue : petite notification sonore.
   const demandesConnues = useRef<number | null>(null);
   const nbDemandes = listeAmis?.recues.length ?? null;
@@ -382,7 +405,7 @@ export function App() {
 
 function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; amis: EtatAmis }) {
   const [vue, setVue] = useState<'menu' | 'jouer'>(salonDansAdresse() ? 'jouer' : 'menu');
-  const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'regles' | 'connexion' | 'inscription' | null>(null);
+  const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'regles' | 'reglages' | 'connexion' | 'inscription' | null>(null);
   const [intro, setIntro] = useState<string | undefined>(undefined);
   const [musiqueActive, basculerMusique] = useMusique();
   const demandes = amis.liste?.recues.length ?? 0;
@@ -415,9 +438,9 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
               <IconeImage nom="regles-rond" repli="📜" className="menu-icone" />
               <span>Règles</span>
             </button>
-            <button type="button" className="menu-entree" onClick={basculerMusique} aria-pressed={musiqueActive}>
+            <button type="button" className="menu-entree" onClick={() => setFenetre('reglages')}>
               <IconeMusique active={musiqueActive} />
-              <span>{musiqueActive ? 'Son activé' : 'Son coupé'}</span>
+              <span>Réglages</span>
             </button>
           </div>
           {!compte.actif && <p className="discret">Les comptes joueurs ne sont pas activés sur ce serveur.</p>}
@@ -426,6 +449,7 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
       {fenetre === 'profil' && <FenetreProfil compte={compte} appel={appel} onFermer={fermer} />}
       {fenetre === 'amis' && <FenetreAmis liste={amis.liste} appel={appel} recharger={amis.recharger} inviter={amis.inviter} onFermer={fermer} />}
       {fenetre === 'regles' && <FenetreRegles onFermer={fermer} />}
+      {fenetre === 'reglages' && <FenetreReglages onFermer={fermer} avecCompte={!!compte.profil} />}
       {(fenetre === 'connexion' || fenetre === 'inscription') && compte.module && (
         <FenetreConnexion
           module={compte.module}
@@ -446,7 +470,7 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
           <span className="point en-ligne" aria-hidden="true" />
           {enLigne ? `${enLigne.joueurs} en ligne` : '…'}
         </p>
-        <button type="button" className="bouton-menu" onClick={() => setFenetre('menu')} aria-label="Menu : profil, amis, règles et son">
+        <button type="button" className="bouton-menu" onClick={() => setFenetre('menu')} aria-label="Menu : profil, amis, règles et réglages">
           <IconeImage nom="menu" repli="⋯" className="bouton-menu-icone" />
           {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
         </button>
@@ -455,6 +479,14 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
         <img src="/cartes/logo.webp" alt="Le Dernier Baron" width={900} height={450} />
       </h1>
       <p className="accroche">Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.</p>
+      {estWeekendXpDouble() && (
+        <div className="bandeau-xp" role="status">
+          <span className="bandeau-xp-badge">XP ×2</span>
+          <span>
+            <strong>Week-end XP double !</strong> Chaque partie en ligne rapporte deux fois plus d’expérience, jusqu’à dimanche minuit.
+          </span>
+        </div>
+      )}
       <button
         type="button"
         className="bouton-jouer"
@@ -471,8 +503,28 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
         </button>
       )}
       <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={lire(CLE_NOM) ?? ''} />
+      <LienInstallation ouvrirReglages={() => setFenetre('reglages')} />
+      <footer className="accueil-pied">
+        <a href="/confidentialite" className="lien-confidentialite">
+          Confidentialité et mentions légales
+        </a>
+      </footer>
       {fenetres}
     </main>
+  );
+}
+
+/** Accueil : proposer d'installer le jeu sur l'écran d'accueil (rien s'il l'est déjà ou si le navigateur ne sait pas faire). */
+function LienInstallation({ ouvrirReglages }: { ouvrirReglages: () => void }) {
+  const { etat, installer } = useInstallation();
+  if (etat !== 'proposer' && etat !== 'ios') return null;
+  return (
+    <button type="button" className="lien-installer" onClick={() => (etat === 'proposer' ? void installer() : ouvrirReglages())}>
+      <img src="/icone-192.png" alt="" width={28} height={28} />
+      <span>
+        <strong>Installe le jeu</strong> sur ton écran d’accueil : plein écran et lancement rapide
+      </span>
+    </button>
   );
 }
 
@@ -598,6 +650,11 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
       <h1>{salon.publique ? 'Partie en ligne' : 'Partie privée'}</h1>
       {salon.publique ? (
         <section className="lobby-depart" aria-live="polite">
+          {salon.tranche !== undefined && salon.tranche !== null && TRANCHES[salon.tranche] && (
+            <span className="lobby-tranche">
+              Table {TRANCHES[salon.tranche].nom} · {TRANCHES[salon.tranche].detail}
+            </span>
+          )}
           <span className="etiquette">La partie commence dans</span>
           <strong>{secondes ?? '…'} s</strong>
           <p className="discret">

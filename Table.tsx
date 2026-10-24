@@ -9,6 +9,8 @@ import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { FinTutoriel, Tutoriel } from './Tutoriel';
+import { FenetreReglages, useReglages } from './Reglages';
+import type { TailleCartes } from './reglages';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
 import { duelDuPli, type DuelPli } from '../../shared/regles';
 import { Avatar, Butin, CarteImg, Chat, Duel, Fenetre, IconeImage, IconeMusique, Pastille, SON_EVENEMENT, Zoom, jouerEffet, sonDeCarte, useMinuteur, useMusique } from './ui';
@@ -32,10 +34,12 @@ const PLACES: Record<number, string[]> = {
  * pas du nombre de cartes posées : elle ne change pas pendant le pli.
  */
 // Part visible de chaque carte recouverte par la suivante (plus serré sur un tapis étroit de téléphone).
+/** Taille des cartes choisie dans les Réglages (même valeur que --zc dans styles.css). */
+const ZOOM_CARTES: Record<TailleCartes, number> = { normale: 1, grande: 1.15, tres_grande: 1.3 };
 const pasPli = (largeur: number) => (largeur < 280 ? 0.46 : 0.56);
 const DECALAGE_RANGEE = 0.52; // la 2e rangée descend de 52 % de la hauteur d'une carte
 const ETIQUETTE_PLI = 17; // place du nom au-dessus de la carte
-function dispositionPli(nJoueurs: number, nCartes: number, t: { l: number; h: number } | null) {
+function dispositionPli(nJoueurs: number, nCartes: number, t: { l: number; h: number } | null, zoom = 1) {
   if (!t || t.l < 60 || t.h < 60) return null;
   const n = Math.max(nJoueurs, nCartes, 1);
   const PAS_PLI = pasPli(t.l);
@@ -46,7 +50,7 @@ function dispositionPli(nJoueurs: number, nCartes: number, t: { l: number; h: nu
   const deuxRangees = n >= 4 ? Math.min(W / (1 + (k - 1) * PAS_PLI), H / (1.5 * (1 + DECALAGE_RANGEE))) : 0;
   const surDeux = deuxRangees > uneRangee * 1.1;
   const parRangee = surDeux ? k : n;
-  const larg = Math.round(Math.max(48, Math.min(surDeux ? deuxRangees : uneRangee, 190)));
+  const larg = Math.round(Math.max(48, Math.min(surDeux ? deuxRangees : uneRangee, Math.round(190 * zoom))));
   const haut = larg * 1.5;
   const rangees = surDeux && nCartes > parRangee ? 2 : 1;
   const total = ETIQUETTE_PLI + haut + (rangees - 1) * haut * DECALAGE_RANGEE;
@@ -192,6 +196,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const [vuePli, setVuePli] = useState(false);
   const reactions = useReactions();
   const surOrdi = useOrdi();
+  const reglages = useReglages();
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [tailleTable, setTailleTable] = useState<{ l: number; h: number } | null>(null);
   useLayoutEffect(() => {
@@ -203,7 +208,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
-  const [fenetre, setFenetre] = useState<'scores' | 'regles' | 'menu' | 'journal' | 'quitter' | null>(null);
+  const [fenetre, setFenetre] = useState<'scores' | 'regles' | 'menu' | 'journal' | 'quitter' | 'reglages' | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [fiche, setFiche] = useState<string | null>(null);
   const [musiqueActive, basculerMusique] = useMusique();
@@ -263,7 +268,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   // Son de carte : chaque fois qu'une nouvelle carte arrive sur le tapis (la mienne ou celle d'un autre joueur),
   // plus le son de sa famille (Billets, Diamants, Lames, Lingots, Chat noir) ou de la carte spéciale.
   const cartesPli = pliAffiche ? pliAffiche.cartes : v.pli;
-  const disposition = surOrdi ? dispositionPli(v.joueurs.length, cartesPli.length, tailleTable) : null;
+  const disposition = surOrdi ? dispositionPli(v.joueurs.length, cartesPli.length, tailleTable, ZOOM_CARTES[reglages.cartes]) : null;
   const cartesSurTapis = cartesPli.map((p) => p.carteId).join('|');
   // Le pli ramassé : la vue en grand se referme d'elle-même.
   useEffect(() => {
@@ -356,7 +361,16 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const siegeDe = (j: VueJoueur) => (
     <Siege key={j.id} j={j} v={v} salon={salon} estHote={estHote} appel={appel} nom={nom} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} reaction={reactions[j.id]} />
   );
-  const chevauchement = main.length > 6 ? -0.56 : -0.42;
+  // Cartes plus grandes (Réglages) : elles se recouvrent un peu plus, pour que la main tienne toujours dans la largeur de l'écran.
+  const chevauchement = (main.length > 6 ? -0.56 : -0.42) - (ZOOM_CARTES[reglages.cartes] - 1) * 0.4;
+  // Largeur de l'éventail en largeurs de carte, rotation comprise (les cartes tournent autour d'un point situé 1,4 hauteur
+  // sous leur haut) : la main ne dépasse jamais de l'écran, même à 8 cartes ou en « très grande » taille.
+  const angleMax = ((Math.max(0, main.length - 1) / 2) * 4 * Math.PI) / 180;
+  const debord = 0.5 * Math.cos(angleMax) + 2.1 * Math.sin(angleMax) - 0.5; // ce que la carte du bord dépasse, de chaque côté
+  const etendue = 1 + Math.max(0, main.length - 1) * (1 + chevauchement) + 2 * debord;
+  // Les cartes du bord descendent (courbe de l'éventail et rotation) : place gardée sous la main pour qu'elles ne soient pas coupées.
+  const dMax = Math.max(0, main.length - 1) / 2;
+  const chute = { px: dMax * dMax * 2.2, k: 0.5 * Math.sin(angleMax) + 0.6 * (1 - Math.cos(angleMax)) };
 
   return (
     <div className="plateau">
@@ -514,7 +528,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           </div>
           {!salon.tutoriel && <BoutonReactions appel={appel} />}
         </div>
-        <div className="eventail" style={{ '--chev': chevauchement } as React.CSSProperties} aria-label="Ta main">
+        <div className="eventail" style={{ '--chev': chevauchement, '--etendue': etendue.toFixed(3), '--debord': debord.toFixed(3), '--chute-px': `${chute.px.toFixed(1)}px`, '--chute-k': chute.k.toFixed(3) } as React.CSSProperties} aria-label="Ta main">
           {main.map((c, i) => {
             const d = i - (main.length - 1) / 2;
             const style = { '--r': `${d * 4}deg`, '--y': `${d * d * 2.2}px`, zIndex: i + 1 } as React.CSSProperties;
@@ -554,11 +568,15 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
             <IconeMusique active={musiqueActive} />
             {musiqueActive ? 'Musique : activée' : 'Musique : coupée'}
           </button>
+          <button type="button" className="large" onClick={() => setFenetre('reglages')}>
+            Réglages
+          </button>
           <button type="button" className="large danger" onClick={() => setFenetre('quitter')}>
             Quitter la partie
           </button>
         </Fenetre>
       )}
+      {fenetre === 'reglages' && <FenetreReglages onFermer={() => setFenetre(null)} enPartie />}
       {fenetre === 'journal' && (
         <Fenetre titre="Journal de la partie" onFermer={() => setFenetre(null)} large>
           <ol className="journal-complet">

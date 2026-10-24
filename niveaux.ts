@@ -137,3 +137,26 @@ export function tapisActif(choix: unknown, xp: number): IdTapis {
 export function tapisGagnes(niveauAvant: number, niveauApres: number): Tapis[] {
   return TAPIS.filter((t) => t.niveau > niveauAvant && t.niveau <= niveauApres);
 }
+
+/** Tables publiques par niveau : chaque joueur rejoint d'abord une table de sa tranche. */
+export const TRANCHES = [
+  { min: 1, nom: 'Débutants', detail: 'niv. 1 à 4' },
+  { min: 5, nom: 'Confirmés', detail: 'niv. 5 à 9' },
+  { min: 10, nom: 'Experts', detail: 'niv. 10 à 14' },
+  { min: 15, nom: 'Barons', detail: 'niv. 15 et plus' },
+];
+export function trancheNiveau(niveau: number): number {
+  let t = 0;
+  TRANCHES.forEach((x, i) => {
+    if (niveau >= x.min) t = i;
+  });
+  return t;
+}
+
+/** Week-end XP double : samedi et dimanche, à l'heure de Paris. */
+export const XP_DOUBLE_LE_WEEKEND = true;
+export function estWeekendXpDouble(date: Date = new Date()): boolean {
+  if (!XP_DOUBLE_LE_WEEKEND) return false;
+  const jour = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', weekday: 'short' }).format(date);
+  return jour === 'Sat' || jour === 'Sun';
+}

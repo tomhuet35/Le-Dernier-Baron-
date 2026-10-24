@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#16100c" />
+    <meta name="description" content="Confidentialité et mentions légales du jeu Le Dernier Baron." />
+    <title>Confidentialité – Le Dernier Baron</title>
+    <link rel="icon" href="/icone-192.png" />
+    <style>
+      :root {
+        --nuit: #16100c;
+        --nuit-2: #211711;
+        --filet: #46301f;
+        --creme: #ecd9b4;
+        --creme-doux: #b9a585;
+        --or: #d2a85a;
+        --or-vif: #e7c27a;
+        --rouge: #8e1c14;
+        --titre: 'Limelight', 'Didot', Georgia, serif;
+        --texte: 'Libre Franklin', 'Helvetica Neue', Arial, sans-serif;
+        color-scheme: dark;
+      }
+      * { box-sizing: border-box; }
+      html { background: var(--nuit); }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        background: radial-gradient(120% 60% at 50% 0%, rgba(142, 28, 20, 0.28), transparent 70%), var(--nuit);
+        color: var(--creme);
+        font-family: var(--texte);
+        font-size: 16px;
+        line-height: 1.6;
+        -webkit-text-size-adjust: 100%;
+      }
+      main { max-width: 720px; margin: 0 auto; padding: calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); }
+      .retour { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--or); border-radius: 99px; color: var(--creme); text-decoration: none; font-weight: 600; background: rgba(33, 23, 17, 0.8); }
+      .retour:hover { background: rgba(210, 168, 90, 0.16); }
+      header { text-align: center; margin: 22px 0 10px; }
+      header img { width: min(64%, 300px); height: auto; }
+      h1 { margin: 6px 0 4px; font-family: var(--titre); font-weight: 400; font-size: clamp(28px, 7vw, 40px); line-height: 1.15; color: var(--or-vif); letter-spacing: 0.02em; }
+      .maj { margin: 0; color: var(--creme-doux); font-size: 14px; }
+      .resume { margin: 22px 0 6px; padding: 16px 18px; border: 1px solid var(--or); border-radius: 14px; background: linear-gradient(180deg, rgba(45, 31, 23, 0.95), rgba(33, 23, 17, 0.95)); }
+      .resume strong { color: var(--or-vif); }
+      .resume ul { margin: 8px 0 0; padding-left: 20px; }
+      nav { margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+      nav a { padding: 6px 12px; border: 1px solid var(--filet); border-radius: 99px; color: var(--creme-doux); text-decoration: none; font-size: 14px; }
+      nav a:hover { color: var(--creme); border-color: var(--or); }
+      section { margin-top: 30px; padding-top: 4px; border-top: 1px solid var(--filet); scroll-margin-top: 12px; }
+      h2 { margin: 18px 0 8px; font-family: var(--titre); font-weight: 400; font-size: 23px; line-height: 1.25; color: var(--or); }
+      h3 { margin: 18px 0 4px; font-size: 16px; color: var(--creme); }
+      p { margin: 8px 0; }
+      ul { margin: 8px 0; padding-left: 22px; }
+      li { margin: 4px 0; }
+      li::marker { color: var(--or); }
+      a { color: var(--or-vif); text-underline-offset: 3px; }
+      .tableau { width: 100%; overflow-x: auto; margin: 10px 0; border: 1px solid var(--filet); border-radius: 12px; }
+      table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+      th:first-child, td:first-child { width: 54%; }
+      th, td { padding: 9px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--filet); }
+      th { color: var(--or); font-weight: 600; background: rgba(0, 0, 0, 0.25); }
+      tr:last-child td { border-bottom: 0; }
+      .adresse { font-style: normal; padding: 10px 14px; border-left: 3px solid var(--or); background: rgba(0, 0, 0, 0.22); border-radius: 0 10px 10px 0; }
+      .contact { font-weight: 600; word-break: break-word; }
+      footer { margin-top: 36px; text-align: center; color: var(--creme-doux); font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="retour" href="/">← Retour au jeu</a>
+      <header>
+        <img src="/cartes/logo.webp" alt="Le Dernier Baron" width="900" height="450" />
+        <h1>Confidentialité et mentions légales</h1>
+        <p class="maj">Dernière mise à jour : 24 octobre 2026</p>
+      </header>
+
+      <div class="resume">
+        <strong>En bref</strong>
+        <ul>
+          <li>Tu peux jouer <strong>sans compte</strong> : rien n’est alors enregistré sur toi, à part ce qui reste sur ton propre appareil et les journaux techniques de l’hébergeur.</li>
+          <li>Avec un compte, on garde ton e-mail, ton pseudo et ta progression dans le jeu. C’est tout.</li>
+          <li>Aucune publicité, aucun traceur, aucune revente de données.</li>
+          <li>Tu peux supprimer ton compte à tout moment depuis ton profil : tout est effacé.</li>
+        </ul>
+      </div>
+
+      <nav aria-label="Sommaire">
+        <a href="#responsable">Responsable</a>
+        <a href="#donnees">Données</a>
+        <a href="#pourquoi">Pourquoi</a>
+        <a href="#partage">Partage</a>
+        <a href="#duree">Durée</a>
+        <a href="#appareil">Ton appareil</a>
+        <a href="#droits">Tes droits</a>
+        <a href="#mentions">Mentions légales</a>
+      </nav>
+
+      <section id="responsable">
+        <h2>Qui est responsable de tes données ?</h2>
+        <p>
+          Le Dernier Baron est un jeu de cartes en ligne gratuit et sans publicité, créé et édité à titre non professionnel par
+          l’équipe étudiante du projet « Le Dernier Baron ». Cette équipe est responsable du traitement de tes données personnelles
+          au sens du Règlement général sur la protection des données (RGPD).
+        </p>
+        <p>Pour toute question sur tes données : <span class="contact" data-contact>écris-nous à l’adresse de contact du jeu</span>.</p>
+      </section>
+
+      <section id="donnees">
+        <h2>Les données que nous utilisons</h2>
+        <h3>Si tu joues sans compte</h3>
+        <p>
+          Ton pseudo, tes cartes, les messages du chat et les réactions de la partie passent par notre serveur pour que les autres
+          joueurs les voient. Ils restent seulement dans la mémoire du serveur, le temps de la partie, et ne sont jamais enregistrés :
+          ils disparaissent quand le salon se ferme.
+        </p>
+        <h3>Si tu crées un compte</h3>
+        <ul>
+          <li><strong>Identifiants :</strong> ton adresse e-mail et ton mot de passe, ou ton compte Google si tu choisis « Continuer avec Google » (nom, e-mail et identifiant Google). Le mot de passe est géré par Firebase Authentication : nous ne le voyons jamais.</li>
+          <li><strong>Profil de jeu :</strong> ton pseudo, ton code ami, ton personnage et ton tapis préférés, ta date d’inscription.</li>
+          <li><strong>Progression :</strong> parties jouées, victoires, nuits gagnées, annonces réussies, meilleur score, expérience et niveau, et l’historique de tes dernières parties (date, nombre de joueurs, pseudos des adversaires, score, classement).</li>
+          <li><strong>Amis :</strong> ta liste d’amis et les demandes d’ami envoyées ou reçues.</li>
+          <li><strong>Notifications (si tu les actives) :</strong> l’adresse d’abonnement que ton navigateur nous donne pour t’envoyer une notification quand un ami t’invite.</li>
+        </ul>
+        <h3>Données techniques</h3>
+        <p>
+          Comme tout site, notre hébergeur reçoit ton adresse IP et des informations techniques de connexion (type de navigateur,
+          date et heure) pour faire fonctionner le service et le protéger. Nous n’utilisons pas ces données pour te suivre.
+        </p>
+        <p>Nous ne demandons jamais ton nom réel, ton âge, ton adresse ni ton numéro de téléphone.</p>
+      </section>
+
+      <section id="pourquoi">
+        <h2>Pourquoi, et sur quelle base</h2>
+        <div class="tableau">
+          <table>
+            <thead>
+              <tr><th>Ce que nous faisons</th><th>Base légale (RGPD)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Faire fonctionner les parties, le chat et les réactions</td><td>Exécution du service que tu demandes (article 6.1.b)</td></tr>
+              <tr><td>Créer ton compte, sauvegarder ta progression, gérer tes amis et tes invitations</td><td>Exécution du service que tu demandes (article 6.1.b)</td></tr>
+              <tr><td>T’envoyer une notification quand un ami t’invite</td><td>Ton consentement, que tu peux retirer à tout moment (article 6.1.a)</td></tr>
+              <tr><td>Protéger le jeu contre les abus (messages en rafale, tricherie)</td><td>Notre intérêt légitime à garder un jeu sûr (article 6.1.f)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="partage">
+        <h2>Qui voit tes données</h2>
+        <p>
+          <strong>Les autres joueurs</strong> voient seulement ton pseudo, ton personnage, ton niveau et tes statistiques de jeu.
+          Ton adresse e-mail n’est jamais montrée à personne.
+        </p>
+        <p><strong>Nos prestataires techniques</strong>, qui traitent les données uniquement pour notre compte :</p>
+        <ul>
+          <li><strong>Google Firebase</strong> (Authentication et Cloud Firestore), fourni par Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irlande : comptes et sauvegarde de la progression.</li>
+          <li><strong>Render</strong>, Render Services, Inc., aux États-Unis : hébergement du jeu.</li>
+          <li><strong>Le service de notification de ton navigateur</strong> (Apple, Google ou Mozilla selon ton appareil), seulement si tu actives les notifications : il transmet l’invitation jusqu’à ton appareil.</li>
+        </ul>
+        <p>
+          Certaines de ces données peuvent être traitées aux États-Unis. Ces transferts sont encadrés par le cadre de protection des
+          données UE–États-Unis (Data Privacy Framework), auquel Google et Render adhèrent, et par les clauses de protection des
+          données prévues dans leurs contrats.
+        </p>
+        <p>Nous ne vendons, ne louons et ne partageons jamais tes données à des fins publicitaires.</p>
+      </section>
+
+      <section id="duree">
+        <h2>Combien de temps nous les gardons</h2>
+        <ul>
+          <li><strong>Compte et progression :</strong> tant que ton compte existe. Quand tu le supprimes, tout est effacé tout de suite, et tu disparais de la liste d’amis des autres joueurs.</li>
+          <li><strong>Notifications :</strong> jusqu’à ce que tu les désactives, que tu supprimes ton compte ou que ton navigateur nous indique que l’abonnement n’est plus valable.</li>
+          <li><strong>Partie, chat et réactions :</strong> seulement le temps de la partie, dans la mémoire du serveur.</li>
+          <li><strong>Si le jeu s’arrête,</strong> toutes les données des comptes sont supprimées.</li>
+        </ul>
+      </section>
+
+      <section id="appareil">
+        <h2>Ce qui reste sur ton appareil</h2>
+        <p>Le jeu enregistre quelques informations dans ton navigateur, uniquement pour fonctionner :</p>
+        <ul>
+          <li>ton pseudo, tes réglages (son, volume, vitesse des ordinateurs, taille des cartes) et le fait que tu as vu le tutoriel ;</li>
+          <li>la partie en cours, pour te reconnecter si la page se recharge ;</li>
+          <li>ta session de connexion à ton compte (gérée par Firebase) ;</li>
+          <li>une copie des images, sons et fichiers du jeu, pour qu’il se lance plus vite.</li>
+        </ul>
+        <p>
+          Nous n’utilisons aucun cookie publicitaire ni outil de mesure d’audience. Ces informations, strictement nécessaires au jeu,
+          ne demandent donc pas de bandeau de consentement. Tu peux les effacer à tout moment en vidant les données du site dans ton
+          navigateur.
+        </p>
+      </section>
+
+      <section id="droits">
+        <h2>Tes droits</h2>
+        <p>Tu peux à tout moment :</p>
+        <ul>
+          <li>consulter tes données et en recevoir une copie (droits d’accès et de portabilité) ;</li>
+          <li>corriger ton pseudo ou toute donnée inexacte (droit de rectification) ;</li>
+          <li>supprimer ton compte et toutes ses données (droit à l’effacement) : <strong>Profil → Supprimer mon compte</strong> ;</li>
+          <li>t’opposer à un traitement ou demander sa limitation ;</li>
+          <li>retirer ton accord pour les notifications : <strong>Réglages → Notifications</strong>, ou dans les réglages de ton appareil.</li>
+        </ul>
+        <p>Pour exercer ces droits, <span data-contact-phrase>écris-nous à l’adresse de contact du jeu</span>. Nous répondons sous un mois au plus tard.</p>
+        <p>
+          Si tu estimes que tes droits ne sont pas respectés, tu peux adresser une réclamation à la CNIL (Commission nationale de
+          l’informatique et des libertés), 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 —
+          <a href="https://www.cnil.fr" rel="noopener">www.cnil.fr</a>.
+        </p>
+        <h3>Joueurs de moins de 15 ans</h3>
+        <p>Si tu as moins de 15 ans, demande l’accord d’un de tes parents avant de créer un compte.</p>
+        <h3>Sécurité</h3>
+        <p>Tous les échanges avec le jeu sont chiffrés (HTTPS). L’accès aux données des comptes est réservé au serveur du jeu.</p>
+      </section>
+
+      <section id="mentions">
+        <h2>Mentions légales</h2>
+        <h3>Éditeur</h3>
+        <p>
+          Le Dernier Baron, jeu de cartes en ligne gratuit, édité à titre non professionnel par l’équipe étudiante du projet.
+          Contact : <span class="contact" data-contact>adresse de contact du jeu</span>.
+        </p>
+        <h3>Hébergeur</h3>
+        <address class="adresse">
+          Render Services, Inc.<br />
+          525 Brannan Street, Suite 300<br />
+          San Francisco, CA 94107, États-Unis<br />
+          <a href="https://render.com" rel="noopener">render.com</a>
+        </address>
+        <h3>Propriété intellectuelle</h3>
+        <p>
+          Le jeu, ses règles, ses illustrations, ses sons et son code sont la propriété de leurs auteurs. Toute reproduction sans
+          autorisation est interdite. Les polices Limelight et Libre Franklin sont utilisées sous licence SIL Open Font License.
+        </p>
+      </section>
+
+      <footer>
+        <p><a class="retour" href="/">← Retour au jeu</a></p>
+      </footer>
+    </main>
+    <script type="module">
+      import '@fontsource/limelight/latin-400.css';
+      import '@fontsource/libre-franklin/latin-400.css';
+      import '@fontsource/libre-franklin/latin-600.css';
+
+      // Adresse de contact : réglée sur le serveur (variable CONTACT_EMAIL), jamais écrite dans le code public.
+      fetch('/api/config')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((config) => {
+          const mail = config && typeof config.contact === 'string' ? config.contact : null;
+          if (!mail) return;
+          const lien = () => {
+            const a = document.createElement('a');
+            a.href = `mailto:${mail}`;
+            a.textContent = mail;
+            return a;
+          };
+          document.querySelectorAll('[data-contact]').forEach((el) => el.replaceChildren(lien()));
+          document.querySelectorAll('[data-contact-phrase]').forEach((el) => el.replaceChildren('écris-nous à ', lien()));
+        })
+        .catch(() => undefined);
+    </script>
+  </body>
+</html>

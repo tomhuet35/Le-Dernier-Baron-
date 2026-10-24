@@ -1,4 +1,5 @@
 import { comptesDepuisEnvironnement } from './comptes';
+import { creerNotifications } from './notifications';
 import { demarrerServeur } from './serveur';
 
 const port = Number(process.env.PORT) || 3000;
@@ -9,8 +10,12 @@ const attentePublique = Number(process.env.ATTENTE_PUBLIQUE_MS) || undefined;
 
 // Comptes joueurs (Firebase) : activés seulement si FIREBASE_CONFIG et la clé du compte de service sont présentes.
 const comptes = await comptesDepuisEnvironnement(process.env);
+// Notifications d'invitation (jeu fermé) : seulement avec les comptes, puisqu'on invite ses amis.
+const notifications = await creerNotifications(comptes, process.env);
+// Adresse de contact de la page Confidentialité : réglée sur Render, jamais écrite dans le code public.
+const contact = process.env.CONTACT_EMAIL?.trim() || null;
 
-demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes }).then(({ port: p }) => {
+demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes, notifications, contact }).then(({ port: p }) => {
   console.log(`Le Dernier Baron est en ligne sur http://localhost:${p}`);
   garderEveille();
 });
