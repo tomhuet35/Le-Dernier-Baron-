@@ -394,12 +394,12 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   homme_de_main: { fichier: '/cartes/son-homme-de-main.mp3', volume: 0.75, baisserMusique: false },
   croupier: { fichier: '/cartes/son-croupier.mp3', volume: 0.8, baisserMusique: false },
   juge: { fichier: '/cartes/son-juge.mp3', volume: 0.7, baisserMusique: false },
-  // Interface
-  clic: { fichier: '/cartes/son-clic.mp3', volume: 0.17, baisserMusique: false },
-  selection: { fichier: '/cartes/son-selection.mp3', volume: 0.18, baisserMusique: false },
-  ouvrir: { fichier: '/cartes/son-ouvrir.mp3', volume: 0.2, baisserMusique: false },
-  fermer: { fichier: '/cartes/son-fermer.mp3', volume: 0.14, baisserMusique: false },
-  erreur: { fichier: '/cartes/son-erreur.mp3', volume: 0.2, baisserMusique: false },
+  // Interface (volume volontairement bas : sons discrets dans les menus)
+  clic: { fichier: '/cartes/son-clic.mp3', volume: 0.06, baisserMusique: false },
+  selection: { fichier: '/cartes/son-selection.mp3', volume: 0.07, baisserMusique: false },
+  ouvrir: { fichier: '/cartes/son-ouvrir.mp3', volume: 0.05, baisserMusique: false },
+  fermer: { fichier: '/cartes/son-fermer.mp3', volume: 0.04, baisserMusique: false },
+  erreur: { fichier: '/cartes/son-erreur.mp3', volume: 0.08, baisserMusique: false },
   // Partie
   distribution: { fichier: '/cartes/son-distribution.mp3', volume: 0.52, baisserMusique: false },
   tour: { fichier: '/cartes/son-tour.mp3', volume: 0.36, baisserMusique: false },

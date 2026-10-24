@@ -335,10 +335,11 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .centre { --cadre: 20px; display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 0; padding: 4px 2px 6px; border: var(--cadre) solid transparent; border-image: url('/cartes/tapis-baron-portrait.webp') 83 / var(--cadre) stretch; border-radius: calc(var(--cadre) * 0.5); background: url('/cartes/logo-tapis-baron.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.24) 100%), url('/cartes/feutre-baron.webp') center / calc(var(--cadre) * 6.18) auto repeat, #420104; background-clip: padding-box; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); }
 /* Tapis débloqués avec les niveaux : le cadre détouré (bois, or, ornements) est posé sur la feutrine, qui passe dessous jusqu'au bois.
    Échelle : 110 px de l'image source = var(--cadre). */
-.centre.tapis-velours, .centre.tapis-prestige, .centre.tapis-noir, .centre.tapis-or-noir { border-image: url('/cartes/cadre-velours.webp') 240 255 285 255 / calc(var(--cadre) * 2.18) calc(var(--cadre) * 2.32) calc(var(--cadre) * 2.59) calc(var(--cadre) * 2.32) stretch; }
-.centre.tapis-prestige { border-image-source: url('/cartes/cadre-prestige.webp'); }
-.centre.tapis-noir { border-image-source: url('/cartes/cadre-noir.webp'); }
-.centre.tapis-or-noir { border-image-source: url('/cartes/cadre-or-noir.webp'); }
+/* Cadres égalisés : bois de même épaisseur en haut et en bas (tranches haut = bas). */
+.centre.tapis-velours { border-image: url('/cartes/cadre-velours.webp') 247 255 247 255 / calc(var(--cadre) * 2.245) calc(var(--cadre) * 2.318) calc(var(--cadre) * 2.245) calc(var(--cadre) * 2.318) stretch; }
+.centre.tapis-prestige { border-image: url('/cartes/cadre-prestige.webp') 240 255 240 255 / calc(var(--cadre) * 2.182) calc(var(--cadre) * 2.318) calc(var(--cadre) * 2.182) calc(var(--cadre) * 2.318) stretch; }
+.centre.tapis-noir { border-image: url('/cartes/cadre-noir.webp') 240 255 240 255 / calc(var(--cadre) * 2.182) calc(var(--cadre) * 2.318) calc(var(--cadre) * 2.182) calc(var(--cadre) * 2.318) stretch; }
+.centre.tapis-or-noir { border-image: url('/cartes/cadre-or-noir.webp') 268 255 268 255 / calc(var(--cadre) * 2.436) calc(var(--cadre) * 2.318) calc(var(--cadre) * 2.436) calc(var(--cadre) * 2.318) stretch; }
 .centre.tapis-velours { background: url('/cartes/logo-tapis-velours.webp') center / contain no-repeat, url('/cartes/plis-velours.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-velours.webp') center / calc(var(--cadre) * 2.45) auto repeat, #4a0002; }
 .centre.tapis-prestige { background: url('/cartes/logo-tapis-prestige.webp') center / contain no-repeat, url('/cartes/plis-prestige.webp') center / 100% 100% no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-prestige.webp') center / calc(var(--cadre) * 2.45) auto repeat, #4a0002; }
 .centre.tapis-noir { background: url('/cartes/logo-tapis-noir.webp') center / contain no-repeat, radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.3) 100%) center / 100% 100% no-repeat, url('/cartes/feutre-noir.webp') center / calc(var(--cadre) * 2.45) auto repeat, #070707; }
@@ -351,7 +352,7 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .centre.tapis-prestige::before {
   background-image: url('/cartes/losange-prestige-haut.webp'), url('/cartes/losange-prestige-bas.webp'), url('/cartes/losange-prestige-gauche.webp'), url('/cartes/losange-prestige-droite.webp');
   background-size: calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.418) auto, calc(var(--cadre) * 0.436) auto;
-  background-position: left 50% top calc(var(--cadre) * 0.436), left 50% bottom calc(var(--cadre) * 0.882), left calc(var(--cadre) * 0.436) top 50%, right calc(var(--cadre) * 0.436) top 50%;
+  background-position: left 50% top calc(var(--cadre) * 0.436), left 50% bottom calc(var(--cadre) * 0.436), left calc(var(--cadre) * 0.436) top 50%, right calc(var(--cadre) * 0.436) top 50%;
 }
 .centre.tapis-noir::before {
   background-image: url('/cartes/losange-noir-gauche.webp'), url('/cartes/losange-noir-droite.webp');
@@ -361,7 +362,7 @@ button.icone { min-width: 38px; min-height: 38px; padding: 4px 8px; font-size: 1
 .centre.tapis-or-noir::before {
   background-image: url('/cartes/losange-or-noir-haut.webp'), url('/cartes/losange-or-noir-bas.webp'), url('/cartes/losange-or-noir-gauche.webp'), url('/cartes/losange-or-noir-droite.webp');
   background-size: calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.745) auto, calc(var(--cadre) * 0.418) auto, calc(var(--cadre) * 0.418) auto;
-  background-position: left 50% top calc(var(--cadre) * 0.327), left 50% bottom calc(var(--cadre) * 0.464), left calc(var(--cadre) * 0.382) top 50%, right calc(var(--cadre) * 0.364) top 50%;
+  background-position: left 50% top calc(var(--cadre) * 0.327), left 50% bottom calc(var(--cadre) * 0.309), left calc(var(--cadre) * 0.382) top 50%, right calc(var(--cadre) * 0.364) top 50%;
 }
 .centre-tete { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; border-radius: 99px; background: rgba(36, 12, 3, 0.82); border: 1px solid rgba(231, 194, 122, 0.55); font-size: 12px; line-height: 1.35; text-align: center; color: #efe3c6; }
 .centre-tete strong { color: var(--or-vif); }
