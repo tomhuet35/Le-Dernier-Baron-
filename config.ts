@@ -46,6 +46,12 @@ export const NB_AVATARS = 6;
 /** Réactions rapides en partie (une toutes les 1,5 seconde par joueur). */
 export const REACTIONS = ['👏', '😂', '😱', '🔥', '😡', '👍'] as const;
 export const DELAI_REACTION_MS = 1500;
+/** Revanche en fin de partie publique : temps laissé aux joueurs pour accepter (millisecondes). */
+export const DELAI_REVANCHE_MS = 20_000;
+/** Joueur déconnecté en pleine partie : l'ordinateur prend sa place après ce délai (millisecondes). */
+export const DELAI_REMPLACEMENT_MS = 45_000;
+/** Chat coupé pour toute la table quand un joueur est signalé par ce nombre de joueurs différents. */
+export const SIGNALEMENTS_POUR_COUPER = 2;
 
 /** Parties publiques : attente d'autres joueurs avant le lancement, puis les places libres sont prises par des bots. */
 export const ATTENTE_PARTIE_PUBLIQUE_MS = 30_000;

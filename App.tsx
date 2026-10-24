@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
+import { NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, TRANCHES_EN } from '../../shared/langue';
+import { changerLangue, EN, LANGUE, pluriel, tr } from './traduction';
 import type { Invitation, ListeAmis, ProfilCompte, ProfilPublic, VueSalon } from '../../shared/types';
 import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
@@ -22,6 +24,7 @@ import { FenetreReglages, useReglages } from './Reglages';
 import { lireReglages } from './reglages';
 import { configServeur, ecouterServiceWorker, rattacherNotifications, useInstallation } from './appli';
 import { tutorielDejaVu } from './Tutoriel';
+import { FenetreSignalementGlobale } from './Moderation';
 import { AVATARS } from './textes';
 import { BoutonMusique, Chat, Defilant, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
 
@@ -50,7 +53,7 @@ export interface EtatAmis {
 function demander(evenement: string, data?: unknown): Promise<Reponse> {
   return new Promise((ok) => {
     if (!socket.connected) return ok({ ok: false });
-    socket.timeout(8000).emit(evenement, data ?? {}, (err: unknown, r: Reponse) => ok(err ? { ok: false, erreur: 'Le serveur ne répond pas.' } : r));
+    socket.timeout(8000).emit(evenement, data ?? {}, (err: unknown, r: Reponse) => ok(err ? { ok: false, erreur: tr('Le serveur ne répond pas.', 'The server is not responding.') } : r));
   });
 }
 
@@ -109,8 +112,14 @@ export function App() {
     const surDeconnexion = () => setConnecte(false);
     const surExclu = () => {
       oublier();
-      setMessage("L'hôte t'a retiré du salon.");
+      setMessage(tr("L'hôte t'a retiré du salon.", 'The host removed you from the room.'));
     };
+    // Revanche lancée sans moi (je ne l'avais pas acceptée) : retour à l'accueil.
+    const surSorti = () => {
+      oublier();
+      setInfo(tr('La revanche a commencé sans toi.', 'The rematch started without you.'));
+    };
+    socket.on('sorti', surSorti);
     socket.on('connect', reprendre);
     socket.on('disconnect', surDeconnexion);
     socket.on('salon', surSalon);
@@ -122,6 +131,7 @@ export function App() {
       socket.off('disconnect', surDeconnexion);
       socket.off('salon', surSalon);
       socket.off('exclu', surExclu);
+      socket.off('sorti', surSorti);
       socket.off('en_ligne', surEnLigne);
     };
   }, [oublier]);
@@ -142,14 +152,14 @@ export function App() {
     (evenement, data) =>
       new Promise((ok) => {
         if (!socket.connected) {
-          setMessage('Connexion perdue, nouvelle tentative…');
+          setMessage(tr('Connexion perdue, nouvelle tentative…', 'Connection lost, retrying…'));
           return ok({ ok: false });
         }
         // Nouvelle partie privée ou tutoriel : la vitesse des ordinateurs choisie dans les Réglages.
         const envoi = evenement === 'creer' || evenement === 'tutoriel' ? { ...(data ?? {}), vitesse: lireReglages().vitesse } : (data ?? {});
         socket.timeout(8000).emit(evenement, envoi, (err: unknown, r: Reponse) => {
           if (err) {
-            setMessage('Le serveur ne répond pas.');
+            setMessage(tr('Le serveur ne répond pas.', 'The server is not responding.'));
             return ok({ ok: false });
           }
           if (!r.ok && r.erreur) setMessage(r.erreur);
@@ -201,10 +211,10 @@ export function App() {
     }
     setChargement(true);
     const jeton = await m.jeton().catch(() => null);
-    const r = jeton ? await demander('identifier', { jeton }) : { ok: false, erreur: 'Session expirée : reconnecte-toi à ton compte.' };
+    const r = jeton ? await demander('identifier', { jeton }) : { ok: false, erreur: tr('Session expirée : reconnecte-toi à ton compte.', 'Session expired: please sign in again.') };
     setChargement(false);
     if (r.ok) setProfil((r.profil as ProfilCompte | null | undefined) ?? null);
-    else if (r.erreur && r.erreur !== 'Patiente une seconde.') setMessage(r.erreur);
+    else if (r.erreur && r.erreur !== 'Patiente une seconde.' && r.erreur !== 'Wait a second.') setMessage(r.erreur);
   }, []);
 
   const rafraichir = useCallback(async () => {
@@ -296,7 +306,7 @@ export function App() {
     return () => window.clearInterval(t);
   }, [invitations.length]);
 
-  const pseudo = () => (lire(CLE_NOM) || profil?.nom || 'Joueur').slice(0, 16);
+  const pseudo = () => (lire(CLE_NOM) || profil?.nom || tr('Joueur', 'Player')).slice(0, 16);
   const salonRef = useRef<VueSalon | null>(null);
   salonRef.current = salon;
   const inviter = useCallback(
@@ -304,7 +314,7 @@ export function App() {
       const s = salonRef.current;
       // Pas encore de partie privée : on en ouvre une, puis on invite.
       if (!s || s.publique || s.partie) {
-        const r = await appel('creer', { nom: (lire(CLE_NOM) || profil?.nom || 'Joueur').slice(0, 16) });
+        const r = await appel('creer', { nom: (lire(CLE_NOM) || profil?.nom || tr('Joueur', 'Player')).slice(0, 16) });
         if (!r.ok) return;
       }
       await appel('inviter', { code });
@@ -361,34 +371,35 @@ export function App() {
   let ecran;
   if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} tapis={tapisActif(profil?.tapis, profil?.xp ?? 0)} poserTapis={poserTapis} />;
   else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} amis={amis} />;
-  else if (reprise) ecran = <div className="chargement">Connexion à la partie…</div>;
+  else if (reprise) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
   else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} />;
 
   return (
     <>
       {ecran}
       {salon && !salon.partie && <Chat salon={salon} appel={appel} />}
-      {!connecte && <div className="bandeau-reseau">Connexion perdue. Reconnexion en cours…</div>}
+      {!connecte && <div className="bandeau-reseau">{tr('Connexion perdue. Reconnexion en cours…', 'Connection lost. Reconnecting…')}</div>}
       {!enPartie && invitations.length > 0 && (
         <div className="invitations" role="status">
           {invitations.map((inv) => (
             <div key={inv.id} className="invitation">
               <IconeImage nom="invitation" repli="✉️" className="invitation-icone" />
               <p>
-                <strong>{inv.de}</strong> t’invite à sa partie privée.
+                <strong>{inv.de}</strong> {tr('t’invite à sa partie privée.', 'invites you to their private game.')}
               </p>
               <div className="rangee">
                 <button type="button" className="petit principal" onClick={() => void rejoindreInvitation(inv)}>
-                  Rejoindre
+                  {tr('Rejoindre', 'Join')}
                 </button>
                 <button type="button" className="petit" onClick={() => setInvitations((l) => l.filter((x) => x.id !== inv.id))}>
-                  Plus tard
+                  {tr('Plus tard', 'Later')}
                 </button>
               </div>
             </div>
           ))}
         </div>
       )}
+      <FenetreSignalementGlobale />
       {message && (
         <div className="toast" role="status" onClick={() => setMessage(null)}>
           {message}
@@ -425,25 +436,33 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
       {fenetre === 'menu' && (
         <Fenetre titre="Menu" onFermer={fermer}>
           <div className="menu-liste">
-            <button type="button" className="menu-entree" onClick={() => ouvrirAvecCompte('profil', 'Connecte-toi pour voir ton profil, tes victoires et ton niveau.')}>
+            <button
+              type="button"
+              className="menu-entree"
+              onClick={() => ouvrirAvecCompte('profil', tr('Connecte-toi pour voir ton profil, tes victoires et ton niveau.', 'Sign in to see your profile, wins and level.'))}
+            >
               <IconeImage nom="profil" repli="👤" className="menu-icone" />
-              <span>Profil</span>
+              <span>{tr('Profil', 'Profile')}</span>
             </button>
-            <button type="button" className="menu-entree" onClick={() => ouvrirAvecCompte('amis', 'Crée un compte (gratuit) pour ajouter tes amis et les inviter à jouer.')}>
+            <button
+              type="button"
+              className="menu-entree"
+              onClick={() => ouvrirAvecCompte('amis', tr('Crée un compte (gratuit) pour ajouter tes amis et les inviter à jouer.', 'Create a free account to add friends and invite them to play.'))}
+            >
               <IconeImage nom="amis" repli="👥" className="menu-icone" />
-              <span>Amis</span>
+              <span>{tr('Amis', 'Friends')}</span>
               {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
             </button>
             <button type="button" className="menu-entree" onClick={() => setFenetre('regles')}>
               <IconeImage nom="regles-rond" repli="📜" className="menu-icone" />
-              <span>Règles</span>
+              <span>{tr('Règles', 'Rules')}</span>
             </button>
             <button type="button" className="menu-entree" onClick={() => setFenetre('reglages')}>
               <IconeMusique active={musiqueActive} />
-              <span>Réglages</span>
+              <span>{tr('Réglages', 'Settings')}</span>
             </button>
           </div>
-          {!compte.actif && <p className="discret">Les comptes joueurs ne sont pas activés sur ce serveur.</p>}
+          {!compte.actif && <p className="discret">{tr('Les comptes joueurs ne sont pas activés sur ce serveur.', 'Player accounts are not enabled on this server.')}</p>}
         </Fenetre>
       )}
       {fenetre === 'profil' && <FenetreProfil compte={compte} appel={appel} onFermer={fermer} />}
@@ -468,9 +487,10 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
       <div className="menu-haut">
         <p className="en-ligne-info">
           <span className="point en-ligne" aria-hidden="true" />
-          {enLigne ? `${enLigne.joueurs} en ligne` : '…'}
+          {enLigne ? tr(`${enLigne.joueurs} en ligne`, `${enLigne.joueurs} online`) : '…'}
         </p>
-        <button type="button" className="bouton-menu" onClick={() => setFenetre('menu')} aria-label="Menu : profil, amis, règles et réglages">
+        <BoutonLangue />
+        <button type="button" className="bouton-menu" onClick={() => setFenetre('menu')} aria-label={tr('Menu : profil, amis, règles et réglages', 'Menu: profile, friends, rules and settings')}>
           <IconeImage nom="menu" repli="⋯" className="bouton-menu-icone" />
           {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
         </button>
@@ -478,12 +498,20 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
       <h1 className="accueil-logo">
         <img src="/cartes/logo.webp" alt="Le Dernier Baron" width={900} height={450} />
       </h1>
-      <p className="accroche">Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.</p>
+      <p className="accroche">{tr('Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.', 'Eight nights. One crown. A trick-taking game for 3 to 6 players.')}</p>
       {estWeekendXpDouble() && (
         <div className="bandeau-xp" role="status">
           <span className="bandeau-xp-badge">XP ×2</span>
           <span>
-            <strong>Week-end XP double !</strong> Chaque partie en ligne rapporte deux fois plus d’expérience, jusqu’à dimanche minuit.
+            {EN ? (
+              <>
+                <strong>Double XP weekend!</strong> Every online game earns twice the experience, until Sunday midnight (Paris time).
+              </>
+            ) : (
+              <>
+                <strong>Week-end XP double !</strong> Chaque partie en ligne rapporte deux fois plus d’expérience, jusqu’à dimanche minuit.
+              </>
+            )}
           </span>
         </div>
       )}
@@ -495,18 +523,19 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
           setVue('jouer');
         }}
       >
-        Jouer
+        {tr('Jouer', 'Play')}
       </button>
       {!tutorielDejaVu() && (
-        <button type="button" className="lien-tutoriel" onClick={() => void appel('tutoriel', { nom: (lire(CLE_NOM) || compte.profil?.nom || 'Toi').slice(0, 16) })}>
-          Nouveau ? <strong>Apprends à jouer en 3 nuits</strong> →
+        <button type="button" className="lien-tutoriel" onClick={() => void appel('tutoriel', { nom: (lire(CLE_NOM) || compte.profil?.nom || tr('Joueur', 'Player')).slice(0, 16) })}>
+          {tr('Nouveau ? ', 'New? ')}
+          <strong>{tr('Apprends à jouer en 3 nuits', 'Learn to play in 3 nights')}</strong> →
         </button>
       )}
       <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={lire(CLE_NOM) ?? ''} />
       <LienInstallation ouvrirReglages={() => setFenetre('reglages')} />
       <footer className="accueil-pied">
         <a href="/confidentialite" className="lien-confidentialite">
-          Confidentialité et mentions légales
+          {tr('Confidentialité et mentions légales', 'Privacy and legal notice')}
         </a>
       </footer>
       {fenetres}
@@ -522,8 +551,32 @@ function LienInstallation({ ouvrirReglages }: { ouvrirReglages: () => void }) {
     <button type="button" className="lien-installer" onClick={() => (etat === 'proposer' ? void installer() : ouvrirReglages())}>
       <img src="/icone-192.png" alt="" width={28} height={28} />
       <span>
-        <strong>Installe le jeu</strong> sur ton écran d’accueil : plein écran et lancement rapide
+        {EN ? (
+          <>
+            <strong>Install the game</strong> on your home screen: full screen and fast launch
+          </>
+        ) : (
+          <>
+            <strong>Installe le jeu</strong> sur ton écran d’accueil : plein écran et lancement rapide
+          </>
+        )}
       </span>
+    </button>
+  );
+}
+
+/** Accueil : passer du français à l'anglais (et inversement). */
+function BoutonLangue() {
+  const autre = LANGUE === 'fr' ? 'en' : 'fr';
+  return (
+    <button
+      type="button"
+      className="bouton-langue"
+      onClick={() => changerLangue(autre)}
+      aria-label={tr('Play in English', 'Jouer en français')}
+      title={tr('Play in English', 'Jouer en français')}
+    >
+      <span aria-hidden="true">🌐</span> {autre.toUpperCase()}
     </button>
   );
 }
@@ -555,32 +608,32 @@ function PageJouer({ appel, compte, enLigne, retour }: { appel: Appel; compte: E
         <button type="button" className="bouton-retour" onClick={retour}>
           ← Menu
         </button>
-        <h1 className="titre-page">Jouer</h1>
+        <h1 className="titre-page">{tr('Jouer', 'Play')}</h1>
         <span className="menu-haut-vide" />
       </div>
       <form className="accueil-form" onSubmit={(e) => e.preventDefault()}>
-        <label htmlFor="pseudo">Ton pseudo</label>
-        <input id="pseudo" value={nom} maxLength={16} autoComplete="nickname" placeholder="Ex. Lucas" onChange={(e) => setNom(e.target.value)} />
+        <label htmlFor="pseudo">{tr('Ton pseudo', 'Your nickname')}</label>
+        <input id="pseudo" value={nom} maxLength={16} autoComplete="nickname" placeholder={tr('Ex. Lucas', 'e.g. Alex')} onChange={(e) => setNom(e.target.value)} />
         {!invite && (
           <>
             <button type="button" className="bouton-plaque" disabled={!nom.trim() || occupe} onClick={() => valider('jouer_public')}>
-              <span>Jouer en ligne</span>
+              <span>{tr('Jouer en ligne', 'Play online')}</span>
               <small>
                 <span className="point en-ligne" aria-hidden="true" />
-                {enLigne ? `${enLigne.joueurs} joueur${enLigne.joueurs > 1 ? 's' : ''} en ligne` : 'Connexion…'}
+                {enLigne ? tr(`${pluriel(enLigne.joueurs, 'joueur', 'player')} en ligne`, `${pluriel(enLigne.joueurs, 'joueur', 'player')} online`) : tr('Connexion…', 'Connecting…')}
               </small>
             </button>
             <button type="button" className="bouton-plaque sombre" disabled={!nom.trim() || occupe} onClick={() => valider('creer')}>
-              <span>Partie privée</span>
+              <span>{tr('Partie privée', 'Private game')}</span>
             </button>
             <button type="button" className="bouton-plaque petite sombre" disabled={occupe} onClick={() => valider('tutoriel')}>
-              <span>Apprendre à jouer</span>
-              <small>Tutoriel guidé · 3 nuits</small>
+              <span>{tr('Apprendre à jouer', 'Learn to play')}</span>
+              <small>{tr('Tutoriel guidé · 3 nuits', 'Guided tutorial · 3 nights')}</small>
             </button>
           </>
         )}
-        <div className="separateur">{invite ? 'Tu es invité dans le salon' : 'ou rejoindre une partie privée'}</div>
-        <label htmlFor="code">Code du salon</label>
+        <div className="separateur">{invite ? tr('Tu es invité dans le salon', 'You are invited to the room') : tr('ou rejoindre une partie privée', 'or join a private game')}</div>
+        <label htmlFor="code">{tr('Code du salon', 'Room code')}</label>
         <input
           id="code"
           value={code}
@@ -591,7 +644,7 @@ function PageJouer({ appel, compte, enLigne, retour }: { appel: Appel; compte: E
           onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
         />
         <button type="button" className={`bouton-plaque petite ${invite ? '' : 'sombre'}`} disabled={!nom.trim() || code.length !== 4 || occupe} onClick={() => valider('rejoindre')}>
-          <span>Rejoindre</span>
+          <span>{tr('Rejoindre', 'Join')}</span>
         </button>
       </form>
     </main>
@@ -636,7 +689,7 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
   const n = salon.joueurs.length;
   const partager = async () => {
     try {
-      if (navigator.share) await navigator.share({ title: 'Le Dernier Baron', text: `Rejoins ma partie (code ${salon.code})`, url: lien });
+      if (navigator.share) await navigator.share({ title: 'Le Dernier Baron', text: tr(`Rejoins ma partie (code ${salon.code})`, `Join my game (code ${salon.code})`), url: lien });
       else {
         await navigator.clipboard.writeText(lien);
         setCopie(true);
@@ -647,34 +700,38 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
   };
   return (
     <main className="lobby">
-      <h1>{salon.publique ? 'Partie en ligne' : 'Partie privée'}</h1>
+      <h1>{salon.publique ? tr('Partie en ligne', 'Online game') : tr('Partie privée', 'Private game')}</h1>
       {salon.publique ? (
         <section className="lobby-depart" aria-live="polite">
           {salon.tranche !== undefined && salon.tranche !== null && TRANCHES[salon.tranche] && (
             <span className="lobby-tranche">
-              Table {TRANCHES[salon.tranche].nom} · {TRANCHES[salon.tranche].detail}
+              {EN
+                ? `${TRANCHES_EN[salon.tranche].nom} table · ${TRANCHES_EN[salon.tranche].detail}`
+                : `Table ${TRANCHES[salon.tranche].nom} · ${TRANCHES[salon.tranche].detail}`}
             </span>
           )}
-          <span className="etiquette">La partie commence dans</span>
+          <span className="etiquette">{tr('La partie commence dans', 'The game starts in')}</span>
           <strong>{secondes ?? '…'} s</strong>
           <p className="discret">
-            En attente de joueurs du monde entier ({salon.joueurs.length}/{MAX_JOUEURS}). Au lancement, les places libres sont prises par des joueurs
-            ordinateur.
+            {tr(
+              `En attente de joueurs du monde entier (${salon.joueurs.length}/${MAX_JOUEURS}). Au lancement, les places libres sont prises par des joueurs ordinateur.`,
+              `Waiting for players from around the world (${salon.joueurs.length}/${MAX_JOUEURS}). At the start, empty seats are filled by computer players.`,
+            )}
           </p>
         </section>
       ) : (
         <section className="lobby-code">
-          <span className="etiquette">Code du salon</span>
+          <span className="etiquette">{tr('Code du salon', 'Room code')}</span>
           <strong>{salon.code}</strong>
-          <input id="lien" readOnly value={lien} onFocus={(e) => e.target.select()} aria-label="Lien d'invitation" />
+          <input id="lien" readOnly value={lien} onFocus={(e) => e.target.select()} aria-label={tr("Lien d'invitation", 'Invitation link')} />
           <button type="button" onClick={partager}>
-            {copie ? 'Lien copié' : 'Partager le lien'}
+            {copie ? tr('Lien copié', 'Link copied') : tr('Partager le lien', 'Share the link')}
           </button>
         </section>
       )}
       <section className="lobby-avatars">
-        <h2>Ton personnage</h2>
-        <Defilant className="avatars-defilant" libelle="Personnages" actif={(salon.joueurs.find((j) => j.id === salon.moi)?.avatar ?? 1) - 1}>
+        <h2>{tr('Ton personnage', 'Your character')}</h2>
+        <Defilant className="avatars-defilant" libelle={tr('Personnages', 'Characters')} actif={(salon.joueurs.find((j) => j.id === salon.moi)?.avatar ?? 1) - 1}>
           {AVATARS.map((nomPerso, i) => {
             const n = i + 1;
             const pris = salon.joueurs.find((j) => j.avatar === n);
@@ -698,79 +755,81 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
       </section>
       <section className="lobby-joueurs">
         <h2>
-          Joueurs ({n}/{MAX_JOUEURS})
+          {tr('Joueurs', 'Players')} ({n}/{MAX_JOUEURS})
         </h2>
         <ol>
           {salon.joueurs.map((j) => (
             <li key={j.id}>
-              <button type="button" className="lobby-nom" onClick={() => setFiche(j.id)} aria-label={`Voir le profil de ${j.nom}`}>
+              <button type="button" className="lobby-nom" onClick={() => setFiche(j.id)} aria-label={tr(`Voir le profil de ${j.nom}`, `View ${j.nom}’s profile`)}>
                 <img className="mini-avatar" src={`/cartes/avatar-${j.avatar}.webp`} alt="" />
                 <span className="lobby-nom-texte">
                   {j.nom}
-                  {j.id === salon.moi && ' (toi)'}
+                  {j.id === salon.moi && tr(' (toi)', ' (you)')}
                 </span>
               </button>
               <span className="badges">
                 {j.compte && <BadgeNiveau niveau={j.compte.niveau} titre={j.compte.titre} />}
-                {j.id === salon.hoteId && !salon.publique && <span className="badge or">Hôte</span>}
-                {j.bot && <span className="badge">🤖 {NOM_NIVEAU_BOT[j.bot.niveau]}</span>}
-                {!j.connecte && <span className="badge rouge">Hors ligne</span>}
+                {j.id === salon.hoteId && !salon.publique && <span className="badge or">{tr('Hôte', 'Host')}</span>}
+                {j.bot && <span className="badge">🤖 {EN ? NOM_NIVEAU_BOT_EN[j.bot.niveau] : NOM_NIVEAU_BOT[j.bot.niveau]}</span>}
+                {!j.connecte && <span className="badge rouge">{tr('Hors ligne', 'Offline')}</span>}
                 {estHote && j.id !== salon.moi && (
-                  <button type="button" className="petit" onClick={() => appel('retirer', { joueurId: j.id })} aria-label={`Retirer ${j.nom}`}>
-                    Retirer
+                  <button type="button" className="petit" onClick={() => appel('retirer', { joueurId: j.id })} aria-label={tr(`Retirer ${j.nom}`, `Remove ${j.nom}`)}>
+                    {tr('Retirer', 'Remove')}
                   </button>
                 )}
               </span>
             </li>
           ))}
         </ol>
-        <p className="discret">Touche un joueur pour voir son profil. Les places sont jouées dans cet ordre.</p>
+        <p className="discret">{tr('Touche un joueur pour voir son profil. Les places sont jouées dans cet ordre.', 'Tap a player to see their profile. Seats play in this order.')}</p>
       </section>
       {!salon.publique && compte.profil && <SectionInviterAmis liste={amis.liste} inviter={amis.inviter} ouvrirAmis={() => setFenetreAmis(true)} />}
       <CarteCompte compte={compte} appel={appel} contexte="salon" pseudo={salon.joueurs.find((j) => j.id === salon.moi)?.nom ?? ''} />
       {estHote ? (
         <section className="lobby-actions">
           <button type="button" className="principal" disabled={n < MIN_JOUEURS || n > MAX_JOUEURS} onClick={() => appel('lancer')}>
-            {n < MIN_JOUEURS ? `Encore ${MIN_JOUEURS - n} joueur${MIN_JOUEURS - n > 1 ? 's' : ''} pour lancer` : 'Lancer la partie'}
+            {n < MIN_JOUEURS
+              ? tr(`Encore ${pluriel(MIN_JOUEURS - n, 'joueur', 'player')} pour lancer`, `${pluriel(MIN_JOUEURS - n, 'joueur', 'player')} more to start`)
+              : tr('Lancer la partie', 'Start the game')}
           </button>
           <div className="ajout-bot">
-            <span className="etiquette">Ajouter un joueur ordinateur</span>
+            <span className="etiquette">{tr('Ajouter un joueur ordinateur', 'Add a computer player')}</span>
             <div className="ajout-bot-choix">
-              <select value={niveauBot} onChange={(e) => setNiveauBot(e.target.value)} aria-label="Niveau du joueur ordinateur">
-                <option value="hasard">Niveau au hasard</option>
+              <select value={niveauBot} onChange={(e) => setNiveauBot(e.target.value)} aria-label={tr('Niveau du joueur ordinateur', 'Computer player level')}>
+                <option value="hasard">{tr('Niveau au hasard', 'Random level')}</option>
                 {NIVEAUX_BOT.map((nv) => (
                   <option key={nv} value={nv}>
-                    {NOM_NIVEAU_BOT[nv]}
+                    {EN ? NOM_NIVEAU_BOT_EN[nv] : NOM_NIVEAU_BOT[nv]}
                   </option>
                 ))}
               </select>
-              <select value={styleBot} onChange={(e) => setStyleBot(e.target.value)} aria-label="Style du joueur ordinateur">
-                <option value="hasard">Style au hasard</option>
+              <select value={styleBot} onChange={(e) => setStyleBot(e.target.value)} aria-label={tr('Style du joueur ordinateur', 'Computer player style')}>
+                <option value="hasard">{tr('Style au hasard', 'Random style')}</option>
                 {STYLES_BOT.map((st) => (
                   <option key={st} value={st}>
-                    {NOM_STYLE_BOT[st]}
+                    {EN ? NOM_STYLE_BOT_EN[st] : NOM_STYLE_BOT[st]}
                   </option>
                 ))}
               </select>
             </div>
             <button type="button" onClick={() => appel('ajouter_bot', { niveau: niveauBot, style: styleBot })} disabled={n >= MAX_JOUEURS}>
-              🤖 Ajouter un ordinateur
+              {tr('🤖 Ajouter un ordinateur', '🤖 Add a computer')}
             </button>
-            <small className="discret">Une partie ne compte dans les victoires qu’avec au moins 2 joueurs humains.</small>
+            <small className="discret">{tr('Une partie ne compte dans les victoires qu’avec au moins 2 joueurs humains.', 'A game only counts towards wins with at least 2 human players.')}</small>
           </div>
           <button type="button" onClick={() => appel('melanger')} disabled={n < 2}>
-            Mélanger les places
+            {tr('Mélanger les places', 'Shuffle seats')}
           </button>
         </section>
       ) : (
-        !salon.publique && <p className="attente">En attente du lancement par l'hôte…</p>
+        !salon.publique && <p className="attente">{tr("En attente du lancement par l'hôte…", 'Waiting for the host to start…')}</p>
       )}
       <BoutonRegles />
       <button type="button" className="lien-discret" onClick={quitter}>
-        Quitter {salon.publique ? 'la file d’attente' : 'le salon'}
+        {salon.publique ? tr('Quitter la file d’attente', 'Leave the queue') : tr('Quitter le salon', 'Leave the room')}
       </button>
       <BoutonMusique />
-      {fiche && <FicheJoueur joueurId={fiche} appel={appel} onFermer={() => setFiche(null)} />}
+      {fiche && <FicheJoueur joueurId={fiche} salonCode={salon.code} appel={appel} onFermer={() => setFiche(null)} />}
       {fenetreAmis && <FenetreAmis liste={amis.liste} appel={appel} recharger={amis.recharger} inviter={amis.inviter} onFermer={() => setFenetreAmis(false)} />}
     </main>
   );
@@ -783,7 +842,7 @@ function BoutonRegles() {
     <>
       <button type="button" className="bouton-regles" onClick={() => setOuvert(true)}>
         <img className="icone-bouton" src="/cartes/icone-regles.webp" alt="" draggable={false} />
-        Règles du jeu
+        {tr('Règles du jeu', 'Game rules')}
       </button>
       {ouvert && <FenetreRegles onFermer={() => setOuvert(false)} />}
     </>

@@ -16,6 +16,7 @@ import {
   updateProfile,
   type Auth,
 } from 'firebase/auth';
+import { EN, LANGUE } from './traduction';
 
 export interface ConfigComptes {
   firebase: { apiKey: string; authDomain: string; projectId: string; appId?: string };
@@ -37,7 +38,7 @@ const a = () => {
 export function demarrer(config: ConfigComptes) {
   if (auth) return;
   auth = getAuth(initializeApp(config.firebase));
-  auth.languageCode = 'fr'; // e-mails et fenêtre Google en français
+  auth.languageCode = LANGUE; // e-mails et fenêtre Google dans la langue du jeu
   if (config.emulateurAuth) connectAuthEmulator(auth, `http://${config.emulateurAuth.replace(/^https?:\/\//, '')}`, { disableWarnings: true });
 }
 
@@ -76,7 +77,30 @@ export async function deconnecter() {
   await signOut(a());
 }
 
-const MESSAGES: Record<string, string> = {
+const MESSAGES_EN: Record<string, string> = {
+  'auth/invalid-email': 'Invalid e-mail address.',
+  'auth/missing-email': 'Enter your e-mail address.',
+  'auth/missing-password': 'Enter your password.',
+  'auth/weak-password': 'Password too short: at least 6 characters.',
+  'auth/email-already-in-use': 'An account already exists with this address: sign in.',
+  'auth/invalid-credential': 'Wrong e-mail or password.',
+  'auth/invalid-login-credentials': 'Wrong e-mail or password.',
+  'auth/wrong-password': 'Wrong e-mail or password.',
+  'auth/user-not-found': 'No account with this address.',
+  'auth/user-disabled': 'This account has been disabled.',
+  'auth/too-many-requests': 'Too many attempts: try again in a few minutes.',
+  'auth/popup-closed-by-user': 'Google sign-in cancelled.',
+  'auth/cancelled-popup-request': 'Google sign-in cancelled.',
+  'auth/popup-blocked': 'The Google window was blocked: allow pop-ups or use your e-mail.',
+  'auth/unauthorized-domain': 'This site is not authorised in Firebase yet (Authentication > Settings > Authorised domains).',
+  'auth/operation-not-allowed': 'This sign-in method is not enabled in Firebase.',
+  'auth/network-request-failed': 'No internet connection.',
+  'auth/requires-recent-login': 'Sign in again, then retry.',
+  'auth/account-exists-with-different-credential': 'This address is already linked to another sign-in method.',
+  'auth/internal-error': 'Sign-in failed: try again, or use your e-mail and a password.',
+};
+
+const MESSAGES_FR: Record<string, string> = {
   'auth/invalid-email': 'Adresse e-mail invalide.',
   'auth/missing-email': 'Entre ton adresse e-mail.',
   'auth/missing-password': 'Entre ton mot de passe.',
@@ -101,5 +125,7 @@ const MESSAGES: Record<string, string> = {
 
 export function messageErreur(e: unknown): string {
   const code = typeof e === 'object' && e && 'code' in e ? String((e as { code: unknown }).code) : '';
-  return MESSAGES[code] ?? (code ? `Erreur de connexion (${code.replace('auth/', '')}).` : 'Erreur de connexion.');
+  const messages = EN ? MESSAGES_EN : MESSAGES_FR;
+  const generique = EN ? 'Sign-in error' : 'Erreur de connexion';
+  return messages[code] ?? (code ? `${generique} (${code.replace('auth/', '')}).` : `${generique}.`);
 }

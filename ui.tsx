@@ -4,8 +4,10 @@ import type { DuelPli } from '../../shared/regles';
 import type { CartePosee, VueSalon } from '../../shared/types';
 import type { Appel } from './App';
 import { CARTE } from '../../shared/cartes';
-import { COULEUR_FAMILLE, infoCarte } from './textes';
+import { COULEUR_FAMILLE, infoCarte, NOM_FAMILLE, nomCarte } from './textes';
 import { abonnerReglages, lireReglages } from './reglages';
+import { EN, tr } from './traduction';
+import { ActionsModeration, useMasques } from './Moderation';
 
 /** Une carte : toucher pour sélectionner, appui long pour l'afficher en grand. */
 export function CarteImg(props: {
@@ -60,22 +62,22 @@ export function Pastille({ id, onClick, choisie }: { id: string; onClick?: () =>
   const contenu = (
     <>
       <span className="pastille-valeur">{c.valeur}</span>
-      <span className="pastille-nom">{c.famille === 'chat_noir' ? 'Chat' : c.nom.split(' ')[0]}</span>
+      <span className="pastille-nom">{c.famille === 'chat_noir' ? tr('Chat', 'Cat') : c.famille ? NOM_FAMILLE[c.famille] : nomCarte(id)}</span>
     </>
   );
   return onClick ? (
-    <button type="button" className={`pastille ${choisie ? 'choisie' : ''}`} style={{ background: couleur }} onClick={onClick} aria-label={c.nom}>
+    <button type="button" className={`pastille ${choisie ? 'choisie' : ''}`} style={{ background: couleur }} onClick={onClick} aria-label={nomCarte(id)}>
       {contenu}
     </button>
   ) : (
-    <span className="pastille" style={{ background: couleur }} title={c.nom}>
+    <span className="pastille" style={{ background: couleur }} title={nomCarte(id)}>
       {contenu}
     </span>
   );
 }
 
 export function Butin({ ids }: { ids: string[] }) {
-  if (!ids.length) return <span className="vide">Aucun butin</span>;
+  if (!ids.length) return <span className="vide">{tr('Aucun butin', 'No loot')}</span>;
   return (
     <span className="butin">
       {ids.map((id) => (
@@ -156,7 +158,7 @@ export function Defilant(props: { children: ReactNode; libelle: string; parRange
           type="button"
           className={`defilant-fleche ${derniere ? 'retour' : ''}`}
           onClick={() => aller(derniere ? 0 : rangee + 1)}
-          aria-label={derniere ? `${libelle} : revenir au début` : `${libelle} : voir la suite`}
+          aria-label={derniere ? tr(`${libelle} : revenir au début`, `${libelle}: back to the start`) : tr(`${libelle} : voir la suite`, `${libelle}: show more`)}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 9l7 7 7-7" />
@@ -174,7 +176,7 @@ export function Fenetre({ titre, onFermer, children, large }: { titre: string; o
         <div className="fenetre-tete">
           <h2>{titre}</h2>
           {onFermer && (
-            <button type="button" className="fermer" onClick={onFermer} aria-label="Fermer">
+            <button type="button" className="fermer" onClick={onFermer} aria-label={tr('Fermer', 'Close')}>
               ×
             </button>
           )}
@@ -193,7 +195,7 @@ export function Zoom({ id, onFermer }: { id: string; onFermer: () => void }) {
         <img src={info.image} alt={info.nom} />
         <h2>{info.nom}</h2>
         <p>{info.effet}</p>
-        <p className="discret">Touche pour fermer</p>
+        <p className="discret">{tr('Touche pour fermer', 'Tap to close')}</p>
       </div>
     </div>
   );
@@ -232,8 +234,14 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
   const [ouvert, setOuvert] = useState(false);
   const [texte, setTexte] = useState('');
   const [vu, setVu] = useState(0);
+  const [actions, setActions] = useState<number | null>(null);
   const fin = useRef<HTMLDivElement | null>(null);
-  const messages = salon.messages ?? [];
+  // Les joueurs dont tu as coupé le chat n'apparaissent plus (ni leurs messages, ni la pastille de messages non lus).
+  const coupes = useMasques(salon.code);
+  const tous = salon.messages ?? [];
+  const messages = tous.filter((m) => !coupes.has(m.auteurId));
+  const caches = tous.length - messages.length;
+  const humain = (id: string) => salon.joueurs.some((j) => j.id === id && !j.bot);
   const dernier = messages.length ? messages[messages.length - 1].n : 0;
   const nonLus = ouvert ? 0 : messages.filter((m) => m.n > vu && m.auteurId !== salon.moi).length;
   // Petite bulle sonore quand un autre joueur écrit (pas au chargement).
@@ -261,28 +269,48 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
         type="button"
         className={`chat-bouton ${enLigne ? 'en-ligne' : ''}`}
         onClick={() => setOuvert(!ouvert)}
-        aria-label={ouvert ? 'Fermer la discussion' : 'Ouvrir la discussion'}
+        aria-label={ouvert ? tr('Fermer la discussion', 'Close chat') : tr('Ouvrir la discussion', 'Open chat')}
       >
         <img src="/cartes/icone-chat.webp" alt="" draggable={false} />
-        {enLigne && <span className="libelle">Discussion</span>}
+        {enLigne && <span className="libelle">{tr('Discussion', 'Chat')}</span>}
         {nonLus > 0 && <span className="chat-pastille">{nonLus}</span>}
       </button>
       {ouvert && (
-        <div className={`chat-panneau ${enLigne ? 'haut' : ''}`} role="dialog" aria-label="Discussion">
+        <div className={`chat-panneau ${enLigne ? 'haut' : ''}`} role="dialog" aria-label={tr('Discussion', 'Chat')}>
           <div className="chat-tete">
-            <strong>Discussion</strong>
-            <button type="button" className="fermer" onClick={() => setOuvert(false)} aria-label="Fermer">
+            <strong>{tr('Discussion', 'Chat')}</strong>
+            <button type="button" className="fermer" onClick={() => setOuvert(false)} aria-label={tr('Fermer', 'Close')}>
               ×
             </button>
           </div>
           <div className="chat-messages">
-            {messages.length === 0 && <p className="discret">Pas encore de message. Dis bonjour à la table !</p>}
-            {messages.map((m) => (
-              <p key={m.n} className={m.auteurId === salon.moi ? 'moi' : ''}>
-                <span className="chat-auteur">{m.auteurId === salon.moi ? 'Toi' : m.nom}</span>
-                {m.texte}
-              </p>
-            ))}
+            {tous.length === 0 && <p className="discret">{tr('Pas encore de message. Dis bonjour à la table !', 'No messages yet. Say hello to the table!')}</p>}
+            {messages.map((m) => {
+              const moi = m.auteurId === salon.moi;
+              const peutAgir = !moi && humain(m.auteurId);
+              return (
+                <div key={m.n} className={`chat-message ${moi ? 'moi' : ''}`}>
+                  <p>
+                    {peutAgir ? (
+                      <button
+                        type="button"
+                        className="chat-auteur lien-auteur"
+                        aria-expanded={actions === m.n}
+                        title={tr('Couper son chat ou le signaler', 'Mute or report')}
+                        onClick={() => setActions(actions === m.n ? null : m.n)}
+                      >
+                        {m.nom}
+                      </button>
+                    ) : (
+                      <span className="chat-auteur">{moi ? tr('Toi', 'You') : m.nom}</span>
+                    )}
+                    {m.texte}
+                  </p>
+                  {actions === m.n && peutAgir && <ActionsModeration code={salon.code} joueurId={m.auteurId} nom={m.nom} appel={appel} compact />}
+                </div>
+              );
+            })}
+            {caches > 0 && <p className="discret chat-caches">{tr(`${caches} message${caches > 1 ? 's' : ''} masqué${caches > 1 ? 's' : ''} (chat coupé)`, `${caches} hidden message${caches > 1 ? 's' : ''} (muted)`)}</p>}
             <div ref={fin} />
           </div>
           <form
@@ -292,9 +320,9 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
               void envoyer();
             }}
           >
-            <input id="chat-texte" value={texte} maxLength={200} placeholder="Écris un message…" autoComplete="off" onChange={(e) => setTexte(e.target.value)} />
+            <input id="chat-texte" value={texte} maxLength={200} placeholder={tr('Écris un message…', 'Write a message…')} autoComplete="off" onChange={(e) => setTexte(e.target.value)} />
             <button type="submit" className="principal" disabled={!texte.trim()}>
-              Envoyer
+              {tr('Envoyer', 'Send')}
             </button>
           </form>
         </div>
@@ -320,9 +348,9 @@ export function Duel({ duel, nom }: { duel: DuelPli; nom: (id: string) => string
   }, [duel]);
   const titre = baron
     ? duel.nombre > 1
-      ? `Le Baron écrase ${duel.nombre} Hommes de main !`
-      : 'Le Baron écrase l’Homme de main !'
-    : 'Braquage ! Le Pickpocket dépouille le Baron';
+      ? tr(`Le Baron écrase ${duel.nombre} Hommes de main !`, `The Baron crushes ${duel.nombre} Henchmen!`)
+      : tr('Le Baron écrase l’Homme de main !', 'The Baron crushes the Henchman!')
+    : tr('Braquage ! Le Pickpocket dépouille le Baron', 'Stick-up! The Pickpocket robs the Baron');
   return (
     <div className={`duel duel-${duel.type}`} role="status" aria-live="polite">
       <div className="duel-scene" aria-hidden="true">
@@ -333,7 +361,7 @@ export function Duel({ duel, nom }: { duel: DuelPli; nom: (id: string) => string
       </div>
       <p className="duel-titre">{titre}</p>
       <p className="duel-detail">
-        {nom(duel.gagnante.joueurId)} · +{baron ? BONUS_BARON_HOMME_DE_MAIN : BONUS_BRAQUAGE} points
+        {nom(duel.gagnante.joueurId)} · +{baron ? BONUS_BARON_HOMME_DE_MAIN : BONUS_BRAQUAGE} {tr('points', 'points')}
       </p>
     </div>
   );
@@ -690,10 +718,10 @@ export function BoutonMusique() {
       className="bouton-musique"
       onClick={basculer}
       aria-pressed={active}
-      aria-label={active ? 'Couper la musique' : 'Remettre la musique'}
+      aria-label={active ? tr('Couper la musique', 'Mute music') : tr('Remettre la musique', 'Turn music on')}
     >
       <IconeMusique active={active} />
-      <span>{active ? 'Musique activée' : 'Musique coupée'}</span>
+      <span>{active ? tr('Musique activée', 'Music on') : tr('Musique coupée', 'Music off')}</span>
     </button>
   );
 }

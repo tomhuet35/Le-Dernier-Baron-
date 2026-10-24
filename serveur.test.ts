@@ -223,4 +223,61 @@ describe('Serveur de bout en bout', () => {
     a.close();
     await rapide.fermer();
   });
+
+  it('langue anglaise : les messages du serveur et le journal sont en anglais', async () => {
+    const en = io(url(), { transports: ['websocket'], forceNew: true, auth: { langue: 'en' } });
+    const fr = io(url(), { transports: ['websocket'], forceNew: true });
+    expect((await emettre(en, 'rejoindre', { code: 'ZZZZ', nom: 'Sam' })).erreur).toBe('No game with this code.');
+    expect((await emettre(fr, 'rejoindre', { code: 'ZZZZ', nom: 'Sam' })).erreur).toBe('Aucune partie avec ce code.');
+    const cree = await emettre(en, 'creer', { nom: 'Sam' });
+    await emettre(fr, 'rejoindre', { code: cree.code, nom: 'Léa' });
+    await emettre(en, 'ajouter_bot');
+    const lancee = new Promise<VueSalon>((ok) => en.on('salon', (v: VueSalon) => v.partie && ok(v)));
+    await emettre(en, 'lancer');
+    const v = await lancee;
+    // Chaque ligne du journal existe dans les deux langues.
+    expect(v.partie!.journal[0].texte).toMatch(/^La partie commence/);
+    expect(v.partie!.journal[0].en).toMatch(/^The game begins/);
+    expect(v.partie!.journal.some((e) => /^Night 1: 1 card each/.test(e.en ?? ''))).toBe(true);
+    // Erreurs du moteur traduites.
+    expect((await emettre(en, 'action', { type: 'ANNONCE', valeur: 9 })).erreur).toBe('Your bid must be between 0 and 1.');
+    expect((await emettre(fr, 'action', { type: 'ANNONCE', valeur: 9 })).erreur).toBe("L'annonce doit être comprise entre 0 et 1.");
+    en.close();
+    fr.close();
+  });
+
+  it('revanche en fin de partie en ligne : on rejoue à la même table, un ordinateur remplace celui qui ne veut pas', async () => {
+    const pub = await demarrerServeur({ port: 0, delaiFinDePli: 5, delaiRobot: 5, dureeTour: 30, attentePublique: 300, delaiRevanche: 1500, servirClient: false });
+    const url2 = `http://localhost:${pub.port}`;
+    const [a, b, c] = [0, 1, 2].map(() => io(url2, { transports: ['websocket'], forceNew: true }));
+    const dernieres = new Map<Socket, VueSalon>();
+    for (const s of [a, b, c]) s.on('salon', (v: VueSalon) => dernieres.set(s, v));
+    const finPartie = new Promise<VueSalon>((ok) => a.on('salon', (v: VueSalon) => v.partie?.phase === 'FIN_DE_PARTIE' && ok(v)));
+    const ra = await emettre(a, 'jouer_public', { nom: 'Alma' });
+    const rb = await emettre(b, 'jouer_public', { nom: 'Bao' });
+    const rc = await emettre(c, 'jouer_public', { nom: 'Cyd' });
+    expect(new Set([ra.code, rb.code, rc.code]).size).toBe(1);
+    const fin = await finPartie;
+    expect(fin.revanche ?? null).toBeNull();
+    // Pas de revanche en pleine partie privée ou hors fin de partie.
+    expect((await emettre(io(url2, { transports: ['websocket'], forceNew: true }), 'revanche')).ok).toBe(false);
+    const sorti = new Promise<void>((ok) => c.once('sorti', () => ok()));
+    const relancee = new Promise<VueSalon>((ok) => a.on('salon', (v: VueSalon) => v.partie && v.partie.phase !== 'FIN_DE_PARTIE' && ok(v)));
+    expect((await emettre(a, 'revanche', { veut: true })).ok).toBe(true);
+    expect((await emettre(b, 'revanche', { veut: true })).ok).toBe(true);
+    await new Promise((ok) => setTimeout(ok, 100));
+    expect(dernieres.get(a)!.revanche?.votants.sort()).toEqual([ra.joueurId, rb.joueurId].sort());
+    // Cyd ne répond pas : au bout du délai, la revanche part sans lui.
+    const v = await relancee;
+    await sorti;
+    expect(v.code).toBe(ra.code);
+    expect(v.partie!.nuit).toBe(1);
+    expect(v.joueurs).toHaveLength(6);
+    expect(v.joueurs.map((j) => j.id)).toEqual(expect.arrayContaining([ra.joueurId, rb.joueurId]));
+    expect(v.joueurs.some((j) => j.id === rc.joueurId)).toBe(false);
+    expect(v.joueurs.filter((j) => j.bot)).toHaveLength(4);
+    for (const s of [a, b, c]) s.close();
+    await pub.fermer();
+  }, 40_000);
 });
+

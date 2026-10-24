@@ -10,6 +10,8 @@ import {
   ATTENTE_PARTIE_PUBLIQUE_MS,
   DELAI_FIN_DE_PLI_MS,
   DELAI_REACTION_MS,
+  DELAI_REMPLACEMENT_MS,
+  DELAI_REVANCHE_MS,
   DELAI_ROBOT_MS,
   DUREE_TOUR_MS,
   HUMAINS_MIN_POUR_COMPTER,
@@ -17,8 +19,11 @@ import {
   MIN_JOUEURS,
   NB_AVATARS,
   REACTIONS,
+  SIGNALEMENTS_POUR_COUPER,
   TAILLE_PARTIE_PUBLIQUE,
 } from '../shared/config';
+import { estLangue, selon, traduireErreurMoteur, type Langue } from '../shared/langue';
+import { filtrerMessage, pseudoAcceptable } from '../shared/moderation';
 import { CARTE } from '../shared/cartes';
 import { ajouterAuJournal, appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
 import { estTapis, estWeekendXpDouble, niveauDepuisXp, resultatsPartie, titreNiveau, trancheNiveau } from '../shared/niveaux';
@@ -55,6 +60,8 @@ interface JoueurSalon {
   /** Compte Firebase du joueur (null pour un invité). */
   uid: string | null;
   compte: CompteJoueurVue | null;
+  /** A quitté la partie en cours (ou ne répond plus) : l'ordinateur joue à sa place, la partie ne lui rapporte pas d'XP. */
+  abandon: boolean;
 }
 
 interface Salon {
@@ -80,6 +87,14 @@ interface Salon {
   tranche: number | null;
   /** Vitesse des ordinateurs (partie privée et tutoriel, réglée par l'hôte) : multiplie leur temps de réflexion. */
   vitesse: number;
+  /** Fin de partie publique : joueurs qui veulent la revanche. */
+  revanche: { votes: Set<string>; fin: number; minuterie: ReturnType<typeof setTimeout> } | null;
+  /** Joueurs dont le chat est coupé pour toute la table (après plusieurs signalements). */
+  muets: Set<string>;
+  /** Signalements reçus par chaque joueur de la table (qui l'a signalé). */
+  signalements: Map<string, Set<string>>;
+  /** Numéro de la partie jouée dans ce salon (change à chaque nouvelle partie ou revanche). */
+  numeroPartie: number;
 }
 
 /** Réglage « Vitesse des ordinateurs » : lente, normale ou rapide. */
@@ -105,6 +120,8 @@ export interface OptionsServeur {
   notifications?: ServiceNotifications | null;
   /** Adresse de contact affichée sur la page Confidentialité (variable CONTACT_EMAIL). */
   contact?: string | null;
+  /** Temps laissé pour accepter la revanche (millisecondes, remplaçable pour les tests). */
+  delaiRevanche?: number;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -207,6 +224,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       tutoriel: false,
       tranche: null,
       vitesse: 1,
+      revanche: null,
+      muets: new Set(),
+      signalements: new Map(),
+      numeroPartie: 0,
     };
     salons.set(salon.code, salon);
     return salon;
@@ -223,6 +244,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       avatar: avatarLibre(salon),
       uid: null,
       compte: null,
+      abandon: false,
     };
     salon.joueurs.push(joueur);
     if (!salon.hoteId) salon.hoteId = joueur.id;
@@ -234,7 +256,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     const pris = new Set(salon.joueurs.map((j) => j.nom.toLowerCase()));
     const libres = PRENOMS_BOTS.filter((n) => !pris.has(n.toLowerCase()));
     const nom = prenom && !pris.has(prenom.toLowerCase()) ? prenom : libres.length ? libres[randomInt(libres.length)] : nomUnique(salon, 'Bot');
-    const bot: JoueurSalon = { id: nouvelId(), nom, jeton: nouvelId(), socketId: null, robot: true, bot: profil, avatar: avatarLibre(salon), uid: null, compte: null };
+    const bot: JoueurSalon = { id: nouvelId(), nom, jeton: nouvelId(), socketId: null, robot: true, bot: profil, avatar: avatarLibre(salon), uid: null, compte: null, abandon: false };
     salon.joueurs.push(bot);
     return bot;
   }
@@ -243,6 +265,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     if (salon.minuterie) clearTimeout(salon.minuterie);
     if (salon.minuterieTour) clearTimeout(salon.minuterieTour);
     if (salon.depart) clearTimeout(salon.depart.minuterie);
+    if (salon.revanche) clearTimeout(salon.revanche.minuterie);
     salons.delete(salon.code);
     diffuserEnLigne();
   }
@@ -293,9 +316,12 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         bot: j.bot,
         avatar: j.avatar,
         compte: j.compte,
+        ...(j.abandon ? { abandon: true } : {}),
       })),
       partie: salon.partie ? vuePourJoueur(salon.partie, joueurId) : null,
       messages: salon.messages,
+      revanche: salon.revanche ? { votants: [...salon.revanche.votes], finDans: Math.max(0, salon.revanche.fin - Date.now()) } : null,
+      ...(salon.muets.has(joueurId) ? { chatCoupe: true } : {}),
       tempsRestant: salon.echeance ? Math.max(0, salon.echeance.fin - Date.now()) : null,
       dureeTour,
       publique: salon.publique,
@@ -401,13 +427,13 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     };
   }
 
-  const MESSAGE_DEMANDE: Record<ResultatDemande, string> = {
-    envoyee: 'Demande d’ami envoyée.',
-    amis: 'Vous êtes maintenant amis !',
-    deja_amis: 'Vous êtes déjà amis.',
-    deja_envoyee: 'Demande déjà envoyée : elle attend sa réponse.',
-    soi_meme: 'C’est ton propre code !',
-    limite: 'Trop d’amis ou de demandes en attente.',
+  const MESSAGE_DEMANDE: Record<ResultatDemande, [string, string]> = {
+    envoyee: ['Demande d’ami envoyée.', 'Friend request sent.'],
+    amis: ['Vous êtes maintenant amis !', 'You are now friends!'],
+    deja_amis: ['Vous êtes déjà amis.', 'You are already friends.'],
+    deja_envoyee: ['Demande déjà envoyée : elle attend sa réponse.', 'Request already sent: waiting for an answer.'],
+    soi_meme: ['C’est ton propre code !', 'That’s your own code!'],
+    limite: ['Trop d’amis ou de demandes en attente.', 'Too many friends or pending requests.'],
   };
 
   const resumeCompte = (stats: StatsCompte | null): CompteJoueurVue => {
@@ -440,8 +466,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     ).map((r) => (xpDouble ? { ...r, xp: r.xp * 2 } : r));
     void Promise.all(
       avecCompte.map(async (j) => {
-        const r = resultats.find((x) => x.joueurId === j.id);
-        if (!r || !j.uid) return true;
+        const brut = resultats.find((x) => x.joueurId === j.id);
+        if (!brut || !j.uid) return true;
+        // Abandon : le joueur est parti (ou ne répondait plus) et l'ordinateur a fini à sa place : pas d'XP.
+        const r = j.abandon || j.robot ? { ...brut, victoire: false, nuitsGagnees: 0, annoncesReussies: 0, xp: 0, abandon: true } : brut;
         try {
           const adversaires = p.joueurs.filter((x) => x.id !== j.id).map((x) => x.nom);
           const stats = await comptes.enregistrer(j.uid, j.nom, r, { date, nbJoueurs: p.joueurs.length, adversaires }, j.avatar);
@@ -456,7 +484,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
             xp: stats.xp,
             victoires: stats.victoires,
             parties: stats.parties,
-            ...(xpDouble ? { xpDouble: true } : {}),
+            ...(xpDouble && !r.abandon ? { xpDouble: true } : {}),
+            ...(r.abandon ? { abandon: true } : {}),
           };
           j.compte = resumeCompte(stats);
           return true;
@@ -492,7 +521,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (!action) continue;
       if (p.phase !== 'FIN_DE_NUIT') {
         const nom = salon.joueurs.find((j) => j.id === id)?.nom ?? '?';
-        salon.partie = ajouterAuJournal(p, `Temps écoulé pour ${nom} : l'ordinateur joue à sa place.`);
+        salon.partie = ajouterAuJournal(p, `Temps écoulé pour ${nom} : l'ordinateur joue à sa place.`, `Time’s up for ${nom}: the computer plays instead.`);
       }
       appliquer(salon, action);
     }
@@ -534,6 +563,9 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
   function lancerPartie(salon: Salon) {
     salon.enregistrement = null;
+    if (salon.revanche) clearTimeout(salon.revanche.minuterie);
+    salon.revanche = null;
+    salon.numeroPartie += 1;
     const joueurs = salon.joueurs.map((j) => ({ id: j.id, nom: j.nom }));
     // Le tutoriel distribue toujours la même donne : la nuit 1, le joueur ouvre et gagne son premier pli à coup sûr ;
     // la nuit 2 (Casse du siècle), un Chat noir ; la nuit 3, le Baron face à un Homme de main.
@@ -542,6 +574,47 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       : creerPartie(joueurs, randomInt(1, 2 ** 31));
     planifier(salon);
     diffuser(salon);
+  }
+
+  /** Revanche : lancée dès que tous les joueurs présents l'ont acceptée. */
+  function verifierRevanche(salon: Salon) {
+    const r = salon.revanche;
+    if (!r) return;
+    const presents = salon.joueurs.filter((j) => !j.bot && j.socketId && !j.abandon);
+    if (presents.length && presents.every((j) => r.votes.has(j.id))) lancerRevanche(salon);
+  }
+
+  /**
+   * Revanche d'une partie publique : les mêmes joueurs rejouent à la même table. Les humains qui ne l'ont pas
+   * acceptée quittent le salon et un ordinateur prend leur siège ; les ordinateurs de la partie restent.
+   */
+  function lancerRevanche(salon: Salon) {
+    const r = salon.revanche;
+    if (!r) return;
+    clearTimeout(r.minuterie);
+    salon.revanche = null;
+    if (!salons.has(salon.code) || salon.partie?.phase !== 'FIN_DE_PARTIE') return;
+    if (!salon.joueurs.some((j) => !j.bot && r.votes.has(j.id))) return diffuser(salon);
+    const taille = salon.joueurs.length;
+    const partants = salon.joueurs.filter((j) => !j.bot && !r.votes.has(j.id));
+    for (const j of partants) {
+      if (!j.socketId) continue;
+      socketsVersJoueur.delete(j.socketId);
+      io.to(j.socketId).emit('sorti', { raison: 'revanche' });
+    }
+    salon.joueurs = salon.joueurs.filter((j) => !partants.includes(j));
+    while (salon.joueurs.length < Math.max(taille, MIN_JOUEURS)) {
+      ajouterBot(salon, salon.tranche === null ? profilAleatoire() : profilPourTranche(salon.tranche));
+    }
+    for (const j of salon.joueurs) {
+      if (j.bot) continue;
+      // Parti entre-temps : l'ordinateur tient sa place jusqu'à son retour.
+      j.robot = !j.socketId;
+      j.abandon = false;
+    }
+    salon.sansHumainDepuis = null;
+    lancerPartie(salon);
+    diffuserEnLigne();
   }
 
   function attacher(socket: Socket, salon: Salon, joueur: JoueurSalon) {
@@ -559,6 +632,19 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     const joueur = salon?.joueurs.find((j) => j.id === lien.joueurId);
     if (!salon || !joueur || joueur.socketId !== socketId) return;
     joueur.socketId = null;
+    // En pleine partie, un joueur qui ne revient pas est remplacé par l'ordinateur (la table n'attend pas).
+    if (salon.partie && salon.partie.phase !== 'FIN_DE_PARTIE' && !salon.tutoriel && !joueur.bot && !joueur.robot) {
+      const numero = salon.numeroPartie;
+      setTimeout(() => {
+        const p = salon.partie;
+        if (joueur.socketId || joueur.robot || !p || salon.numeroPartie !== numero || p.phase === 'FIN_DE_PARTIE' || !salons.has(salon.code)) return;
+        joueur.robot = true;
+        salon.partie = ajouterAuJournal(p, `${joueur.nom} ne répond plus : l'ordinateur prend sa place.`, `${joueur.nom} is not responding: the computer takes over.`);
+        planifier(salon);
+        diffuser(salon);
+      }, DELAI_REMPLACEMENT_MS).unref();
+    }
+    verifierRevanche(salon);
     if (salon.hoteId === joueur.id) {
       // Si l'hôte ne revient pas dans les 45 secondes, un autre joueur connecté prend le relais.
       setTimeout(() => {
@@ -574,6 +660,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   }
 
   io.on('connection', (socket) => {
+    // Langue du téléphone (envoyée à la connexion) : les messages du serveur sont écrits dans cette langue.
+    const langue: Langue = estLangue(socket.handshake.auth?.langue) ? socket.handshake.auth.langue : 'fr';
+    socket.data.langue = langue;
+    const L = (fr: string, en: string) => selon(langue, fr, en);
     const contexte = () => {
       const lien = socketsVersJoueur.get(socket.id);
       const salon = lien ? salons.get(lien.code) : undefined;
@@ -585,9 +675,9 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     };
     const hote = (rappel: unknown) => {
       const c = contexte();
-      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' }), null;
-      if (c.salon.publique) return repondre(rappel, { ok: false, erreur: 'Partie publique : elle se lance toute seule.' }), null;
-      if (c.salon.hoteId !== c.joueur.id) return repondre(rappel, { ok: false, erreur: "Seul l'hôte peut faire cela." }), null;
+      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') }), null;
+      if (c.salon.publique) return repondre(rappel, { ok: false, erreur: L('Partie publique : elle se lance toute seule.', 'Public game: it starts by itself.') }), null;
+      if (c.salon.hoteId !== c.joueur.id) return repondre(rappel, { ok: false, erreur: L("Seul l'hôte peut faire cela.", 'Only the host can do that.') }), null;
       return c;
     };
     socket.emit('en_ligne', resumeEnLigne());
@@ -610,7 +700,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     socket.on('creer', (data: { nom?: string; modeTest?: boolean; vitesse?: string } = {}, rappel?: Rappel) => {
       const nom = nettoyerNom(data?.nom);
-      if (!nom) return repondre(rappel, { ok: false, erreur: 'Choisis un pseudo.' });
+      if (!nom) return repondre(rappel, { ok: false, erreur: L('Choisis un pseudo.', 'Choose a nickname.') });
       quitterSalonActuel();
       const salon = nouveauSalon(false, !!data?.modeTest);
       salon.vitesse = vitesseDe(data?.vitesse);
@@ -623,7 +713,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     // Tutoriel : une partie guidée qui démarre tout de suite, seul contre deux ordinateurs débutants.
     socket.on('tutoriel', (data: { nom?: string; vitesse?: string } = {}, rappel?: Rappel) => {
-      const nom = nettoyerNom(data?.nom) || 'Toi';
+      const nom = nettoyerNom(data?.nom) || L('Joueur', 'Player');
       quitterSalonActuel();
       const salon = nouveauSalon(false, true);
       salon.tutoriel = true;
@@ -638,14 +728,14 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     socket.on('rejoindre', (data: { code?: string; nom?: string } = {}, rappel?: Rappel) => {
       const salon = salons.get(String(data?.code ?? '').trim().toUpperCase());
-      if (!salon) return repondre(rappel, { ok: false, erreur: 'Aucune partie avec ce code.' });
+      if (!salon) return repondre(rappel, { ok: false, erreur: L('Aucune partie avec ce code.', 'No game with this code.') });
       // Un joueur connecté à son compte retrouve sa place, même depuis un autre téléphone ou en cours de partie.
       const sienne = identite ? salon.joueurs.find((j) => j.uid === identite?.uid) : undefined;
       if (sienne) return reprendrePlace(salon, sienne, rappel);
-      if (salon.partie) return repondre(rappel, { ok: false, erreur: 'La partie a déjà commencé.' });
-      if (salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: `Le salon est complet (${MAX_JOUEURS} joueurs).` });
+      if (salon.partie) return repondre(rappel, { ok: false, erreur: L('La partie a déjà commencé.', 'The game has already started.') });
+      if (salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: L(`Le salon est complet (${MAX_JOUEURS} joueurs).`, `The room is full (${MAX_JOUEURS} players).`) });
       const nom = nettoyerNom(data?.nom);
-      if (!nom) return repondre(rappel, { ok: false, erreur: 'Choisis un pseudo.' });
+      if (!nom) return repondre(rappel, { ok: false, erreur: L('Choisis un pseudo.', 'Choose a nickname.') });
       entrer(salon, nom, rappel);
     });
 
@@ -668,15 +758,18 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     /** Partie publique : rejoint une partie qui attend des joueurs, ou en ouvre une nouvelle. */
     socket.on('jouer_public', (data: { nom?: string } = {}, rappel?: Rappel) => {
       const nom = nettoyerNom(data?.nom);
-      if (!nom) return repondre(rappel, { ok: false, erreur: 'Choisis un pseudo.' });
+      if (!nom) return repondre(rappel, { ok: false, erreur: L('Choisis un pseudo.', 'Choose a nickname.') });
       // Un compte qui a déjà une place dans une partie publique en cours la retrouve.
       if (identite) {
         for (const s of salons.values()) {
-          const sienne = s.publique && s.partie && s.partie.phase !== 'FIN_DE_PARTIE' ? s.joueurs.find((j) => j.uid === identite?.uid) : undefined;
+          const sienne =
+            s.publique && s.partie && s.partie.phase !== 'FIN_DE_PARTIE' ? s.joueurs.find((j) => j.uid === identite?.uid && !j.abandon) : undefined;
           if (sienne) return reprendrePlace(s, sienne, rappel);
         }
       }
       quitterSalonActuel();
+      // Partie publique : pas de pseudo insultant à la table d'inconnus.
+      const pseudo = pseudoAcceptable(nom) ? nom : L('Joueur', 'Player');
       const maintenant = Date.now();
       const ouvertes = [...salons.values()].filter(
         (s) =>
@@ -699,13 +792,13 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         salon.tranche = tranche;
         programmerDepart(salon, attentePublique);
       }
-      entrer(salon, nom, rappel);
+      entrer(salon, pseudo, rappel);
     });
 
     socket.on('reprendre', (data: { code?: string; jeton?: string } = {}, rappel?: Rappel) => {
       const salon = salons.get(String(data?.code ?? '').toUpperCase());
       const joueur = salon?.joueurs.find((j) => j.jeton === data?.jeton);
-      if (!salon || !joueur) return repondre(rappel, { ok: false, erreur: 'Cette partie n’existe plus.' });
+      if (!salon || !joueur) return repondre(rappel, { ok: false, erreur: L('Cette partie n’existe plus.', 'This game no longer exists.') });
       reprendrePlace(salon, joueur, rappel);
     });
 
@@ -715,7 +808,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         socketsVersJoueur.delete(joueur.socketId);
       }
       attacher(socket, salon, joueur);
-      if (!joueur.bot) joueur.robot = false;
+      if (!joueur.bot) {
+        joueur.robot = false;
+        joueur.abandon = false; // revenu avant la fin : la partie compte normalement
+      }
       salon.sansHumainDepuis = null;
       repondre(rappel, { ok: true, code: salon.code, jeton: joueur.jeton, joueurId: joueur.id });
       planifier(salon);
@@ -723,7 +819,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     }
 
     socket.on('identifier', async (data: { jeton?: string } = {}, rappel?: Rappel) => {
-      if (!comptes) return repondre(rappel, { ok: false, erreur: 'Les comptes ne sont pas activés sur ce serveur.' });
+      if (!comptes) return repondre(rappel, { ok: false, erreur: L('Les comptes ne sont pas activés sur ce serveur.', 'Accounts are not enabled on this server.') });
       const jeton = typeof data?.jeton === 'string' ? data.jeton : '';
       if (!jeton) {
         // Déconnexion du compte : la place d'un salon pas encore lancé redevient « invité ».
@@ -739,21 +835,22 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         return repondre(rappel, { ok: true, profil: null });
       }
       const maintenant = Date.now();
-      if (maintenant - derniereIdentification < 800) return repondre(rappel, { ok: false, erreur: 'Patiente une seconde.' });
+      if (maintenant - derniereIdentification < 800) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
       derniereIdentification = maintenant;
       const id = await comptes.verifier(jeton).catch(() => null);
-      if (!id) return repondre(rappel, { ok: false, erreur: 'Session expirée : reconnecte-toi à ton compte.' });
+      if (!id) return repondre(rappel, { ok: false, erreur: L('Session expirée : reconnecte-toi à ton compte.', 'Session expired: please sign in again.') });
       let stats: StatsCompte | null;
       try {
         stats = await comptes.preparer(id.uid, id.nom, id.email ? id.email.split('@')[0] : '');
       } catch (e) {
         console.error('Lecture du compte impossible :', e);
-        return repondre(rappel, { ok: false, erreur: 'Ton profil est indisponible pour le moment. Tu peux jouer en invité.' });
+        return repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment. Tu peux jouer en invité.', 'Your profile is unavailable right now. You can play as a guest.') });
       }
       if (identite && identite.uid !== id.uid) oublierPresence();
       identite = id;
       resume = resumeCompte(stats);
       noterPresence(id.uid, stats);
+      if (stats.langue !== langue) void comptes.definirLangue(id.uid, langue).catch(() => undefined);
       const c = contexte();
       if (c) {
         lierCompte(c.salon, c.joueur);
@@ -763,7 +860,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     });
 
     socket.on('profil', async (_data: unknown, rappel?: Rappel) => {
-      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: 'Connecte-toi à ton compte.' });
+      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: L('Connecte-toi à ton compte.', 'Sign in to your account.') });
       const id = identite;
       try {
         const stats = await comptes.lire(id.uid);
@@ -771,7 +868,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         repondre(rappel, { ok: true, profil: profilDe(id, stats) });
       } catch (e) {
         console.error('Lecture du compte impossible :', e);
-        repondre(rappel, { ok: false, erreur: 'Ton profil est indisponible pour le moment.' });
+        repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment.', 'Your profile is unavailable right now.') });
       }
     });
 
@@ -784,30 +881,30 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     });
 
     socket.on('tapis', async (data: { tapis?: unknown } = {}, rappel?: Rappel) => {
-      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: 'Connecte-toi à ton compte.' });
-      if (!estTapis(data?.tapis)) return repondre(rappel, { ok: false, erreur: 'Tapis inconnu.' });
-      if (Date.now() - dernierTapis < 400) return repondre(rappel, { ok: false, erreur: 'Patiente une seconde.' });
+      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: L('Connecte-toi à ton compte.', 'Sign in to your account.') });
+      if (!estTapis(data?.tapis)) return repondre(rappel, { ok: false, erreur: L('Tapis inconnu.', 'Unknown felt.') });
+      if (Date.now() - dernierTapis < 400) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
       dernierTapis = Date.now();
       const id = identite;
       try {
         const stats = await comptes.choisirTapis(id.uid, data.tapis);
-        if (!stats) return repondre(rappel, { ok: false, erreur: 'Ce tapis se débloque plus tard : continue de jouer pour monter de niveau.' });
+        if (!stats) return repondre(rappel, { ok: false, erreur: L('Ce tapis se débloque plus tard : continue de jouer pour monter de niveau.', 'This felt unlocks later: keep playing to level up.') });
         resume = resumeCompte(stats);
         repondre(rappel, { ok: true, profil: profilDe(id, stats) });
       } catch (e) {
         console.error('Choix du tapis impossible :', e);
-        repondre(rappel, { ok: false, erreur: 'Le tapis n’a pas pu être changé, réessaie plus tard.' });
+        repondre(rappel, { ok: false, erreur: L('Le tapis n’a pas pu être changé, réessaie plus tard.', 'The felt could not be changed, try again later.') });
       }
     });
 
     socket.on('supprimer_compte', async (_data: unknown, rappel?: Rappel) => {
-      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: 'Connecte-toi à ton compte.' });
+      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: L('Connecte-toi à ton compte.', 'Sign in to your account.') });
       const uid = identite.uid;
       try {
         await comptes.supprimer(uid);
       } catch (e) {
         console.error('Suppression du compte impossible :', e);
-        return repondre(rappel, { ok: false, erreur: 'La suppression a échoué, réessaie plus tard.' });
+        return repondre(rappel, { ok: false, erreur: L('La suppression a échoué, réessaie plus tard.', 'Deletion failed, try again later.') });
       }
       const amisAvant = amisParUid.get(uid) ?? new Set<string>();
       oublierPresence();
@@ -842,10 +939,18 @@ export function demarrerServeur(options: OptionsServeur = {}) {
           diffuser(salon);
         }
       } else {
-        if (salon.publique && salon.partie.phase !== 'FIN_DE_PARTIE') {
+        // Abandon : l'ordinateur finit la partie à sa place, et elle ne lui rapportera pas d'XP.
+        if (salon.partie.phase !== 'FIN_DE_PARTIE' && !salon.tutoriel && !joueur.bot) {
           joueur.robot = true;
+          joueur.abandon = true;
+          salon.partie = ajouterAuJournal(
+            salon.partie,
+            `${joueur.nom} a quitté la partie : l'ordinateur prend sa place.`,
+            `${joueur.nom} left the game: the computer takes over.`,
+          );
           planifier(salon);
         }
+        salon.revanche?.votes.delete(joueur.id);
         detacher(socket.id);
       }
       diffuserEnLigne();
@@ -860,8 +965,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const c = hote(rappel);
       if (!c) return;
       const n = c.salon.joueurs.length;
-      if (c.salon.partie) return repondre(rappel, { ok: false, erreur: 'La partie est déjà lancée.' });
-      if (n < MIN_JOUEURS || n > MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: `Il faut entre ${MIN_JOUEURS} et ${MAX_JOUEURS} joueurs.` });
+      if (c.salon.partie) return repondre(rappel, { ok: false, erreur: L('La partie est déjà lancée.', 'The game has already started.') });
+      if (n < MIN_JOUEURS || n > MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: L(`Il faut entre ${MIN_JOUEURS} et ${MAX_JOUEURS} joueurs.`, `You need between ${MIN_JOUEURS} and ${MAX_JOUEURS} players.`) });
       lancerPartie(c.salon);
       repondre(rappel, { ok: true });
     });
@@ -883,7 +988,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const c = hote(rappel);
       if (!c) return;
       const { salon } = c;
-      if (salon.partie || salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: 'Impossible d’ajouter un joueur ordinateur.' });
+      if (salon.partie || salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: L('Impossible d’ajouter un joueur ordinateur.', 'Cannot add a computer player.') });
       const hasard = profilAleatoire();
       const niveau = NIVEAUX_BOT.find((n) => n === data?.niveau) ?? hasard.niveau;
       const style = STYLES_BOT.find((st) => st === data?.style) ?? hasard.style;
@@ -895,9 +1000,9 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     /** Fiche d'un joueur de la table : statistiques de son compte, ou niveau et style d'un bot. */
     socket.on('profil_joueur', async (data: { joueurId?: string } = {}, rappel?: Rappel) => {
       const c = contexte();
-      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' });
+      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
       const j = c.salon.joueurs.find((x) => x.id === data?.joueurId);
-      if (!j) return repondre(rappel, { ok: false, erreur: 'Joueur introuvable.' });
+      if (!j) return repondre(rappel, { ok: false, erreur: L('Joueur introuvable.', 'Player not found.') });
       let profil: ProfilPublic;
       if (j.bot) profil = { type: 'bot', nom: j.nom, avatar: j.avatar, niveau: j.bot.niveau, style: j.bot.style };
       else if (!j.uid || !comptes) profil = { type: 'invite', nom: j.nom, avatar: j.avatar };
@@ -921,7 +1026,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
           };
         } catch (e) {
           console.error('Lecture du profil impossible :', e);
-          return repondre(rappel, { ok: false, erreur: 'Profil indisponible pour le moment.' });
+          return repondre(rappel, { ok: false, erreur: L('Profil indisponible pour le moment.', 'Profile unavailable right now.') });
         }
       }
       repondre(rappel, { ok: true, profil });
@@ -931,7 +1036,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const c = hote(rappel);
       if (!c) return;
       const { salon } = c;
-      if (salon.partie || data?.joueurId === c.joueur.id) return repondre(rappel, { ok: false, erreur: 'Impossible de retirer ce joueur.' });
+      if (salon.partie || data?.joueurId === c.joueur.id) return repondre(rappel, { ok: false, erreur: L('Impossible de retirer ce joueur.', 'Cannot remove this player.') });
       const cible = salon.joueurs.find((j) => j.id === data?.joueurId);
       if (cible?.socketId) {
         socketsVersJoueur.delete(cible.socketId);
@@ -947,7 +1052,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (!c) return;
       const cible = c.salon.joueurs.find((j) => j.id === data?.joueurId);
       if (!c.salon.partie || !cible || cible.socketId || cible.bot) {
-        return repondre(rappel, { ok: false, erreur: 'Seul un joueur déconnecté peut être remplacé.' });
+        return repondre(rappel, { ok: false, erreur: L('Seul un joueur déconnecté peut être remplacé.', 'Only a disconnected player can be replaced.') });
       }
       cible.robot = !!data?.actif;
       planifier(c.salon);
@@ -957,20 +1062,21 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     socket.on('action', (data: Partial<Action> = {}, rappel?: Rappel) => {
       const c = contexte();
-      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' });
+      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
       const type = data?.type;
-      if (type === 'SUITE') return repondre(rappel, { ok: false, erreur: 'Action réservée au serveur.' });
-      if (type === 'FORCER_SUITE' && c.salon.hoteId !== c.joueur.id) return repondre(rappel, { ok: false, erreur: "Seul l'hôte peut passer à la suite." });
+      if (type === 'SUITE') return repondre(rappel, { ok: false, erreur: L('Action réservée au serveur.', 'Server-only action.') });
+      if (type === 'FORCER_SUITE' && c.salon.hoteId !== c.joueur.id) return repondre(rappel, { ok: false, erreur: L("Seul l'hôte peut passer à la suite.", 'Only the host can move on.') });
       const action = { ...data, joueurId: c.joueur.id } as Action;
-      repondre(rappel, appliquer(c.salon, action));
+      const r = appliquer(c.salon, action);
+      repondre(rappel, r.ok ? r : { ok: false, erreur: traduireErreurMoteur(r.erreur, langue) });
     });
 
     socket.on('avatar', (data: { avatar?: number } = {}, rappel?: Rappel) => {
       const c = contexte();
-      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' });
+      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
       const n = Number(data?.avatar);
-      if (!Number.isInteger(n) || n < 1 || n > NB_AVATARS) return repondre(rappel, { ok: false, erreur: 'Personnage inconnu.' });
-      if (c.salon.joueurs.some((j) => j.id !== c.joueur.id && j.avatar === n)) return repondre(rappel, { ok: false, erreur: 'Ce personnage est déjà pris.' });
+      if (!Number.isInteger(n) || n < 1 || n > NB_AVATARS) return repondre(rappel, { ok: false, erreur: L('Personnage inconnu.', 'Unknown character.') });
+      if (c.salon.joueurs.some((j) => j.id !== c.joueur.id && j.avatar === n)) return repondre(rappel, { ok: false, erreur: L('Ce personnage est déjà pris.', 'This character is already taken.') });
       c.joueur.avatar = n;
       diffuser(c.salon);
       repondre(rappel, { ok: true });
@@ -979,11 +1085,16 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     const dernierMessage = new Map<string, number>();
     socket.on('chat', (data: { texte?: string } = {}, rappel?: Rappel) => {
       const c = contexte();
-      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' });
-      const texte = typeof data?.texte === 'string' ? data.texte.replace(/\s+/g, ' ').trim().slice(0, 200) : '';
-      if (!texte) return repondre(rappel, { ok: false, erreur: 'Message vide.' });
+      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
+      const brut = typeof data?.texte === 'string' ? data.texte.replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+      if (!brut) return repondre(rappel, { ok: false, erreur: L('Message vide.', 'Empty message.') });
+      if (c.salon.muets.has(c.joueur.id)) {
+        return repondre(rappel, { ok: false, erreur: L('Ton chat est coupé dans cette partie après des signalements.', 'Your chat is muted in this game after reports.') });
+      }
+      // Partie publique (inconnus) : les insultes sont remplacées par des étoiles.
+      const texte = c.salon.publique ? filtrerMessage(brut).texte : brut;
       const maintenant = Date.now();
-      if (maintenant - (dernierMessage.get(c.joueur.id) ?? 0) < 700) return repondre(rappel, { ok: false, erreur: 'Doucement, un message à la fois.' });
+      if (maintenant - (dernierMessage.get(c.joueur.id) ?? 0) < 700) return repondre(rappel, { ok: false, erreur: L('Doucement, un message à la fois.', 'Easy, one message at a time.') });
       dernierMessage.set(c.joueur.id, maintenant);
       const { salon } = c;
       salon.compteurMessages += 1;
@@ -996,20 +1107,86 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     let derniereReaction = 0;
     socket.on('reaction', (data: { emoji?: string } = {}, rappel?: Rappel) => {
       const c = contexte();
-      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' });
+      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
       const emoji = REACTIONS.find((e) => e === data?.emoji);
-      if (!emoji) return repondre(rappel, { ok: false, erreur: 'Réaction inconnue.' });
+      if (!emoji) return repondre(rappel, { ok: false, erreur: L('Réaction inconnue.', 'Unknown reaction.') });
       const maintenant = Date.now();
-      if (maintenant - derniereReaction < DELAI_REACTION_MS) return repondre(rappel, { ok: false, erreur: 'Une réaction à la fois.' });
+      if (maintenant - derniereReaction < DELAI_REACTION_MS) return repondre(rappel, { ok: false, erreur: L('Une réaction à la fois.', 'One reaction at a time.') });
       derniereReaction = maintenant;
       envoyerReaction(c.salon, c.joueur.id, emoji);
       repondre(rappel, { ok: true });
     });
 
+    // Fin de partie publique : « Revanche » avec les mêmes joueurs.
+    socket.on('revanche', (data: { veut?: boolean } = {}, rappel?: Rappel) => {
+      const c = contexte();
+      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
+      const { salon, joueur } = c;
+      if (!salon.publique || salon.partie?.phase !== 'FIN_DE_PARTIE') {
+        return repondre(rappel, { ok: false, erreur: L('La revanche se propose à la fin d’une partie en ligne.', 'A rematch is offered at the end of an online game.') });
+      }
+      if (data?.veut === false) {
+        salon.revanche?.votes.delete(joueur.id);
+        diffuser(salon);
+        return repondre(rappel, { ok: true });
+      }
+      if (!salon.revanche) {
+        const delai = options.delaiRevanche ?? DELAI_REVANCHE_MS;
+        const minuterie = setTimeout(() => lancerRevanche(salon), delai);
+        salon.revanche = { votes: new Set(), fin: Date.now() + delai, minuterie };
+      }
+      salon.revanche.votes.add(joueur.id);
+      joueur.abandon = false;
+      repondre(rappel, { ok: true });
+      verifierRevanche(salon);
+      if (salon.revanche) diffuser(salon);
+    });
+
+    // Signaler un joueur : enregistré avec ses derniers messages ; à partir de 2 signalements, son chat est coupé pour la table.
+    const mesSignalements: number[] = [];
+    socket.on('signaler', async (data: { joueurId?: string; motif?: string } = {}, rappel?: Rappel) => {
+      const c = contexte();
+      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
+      const { salon, joueur } = c;
+      const cible = salon.joueurs.find((j) => j.id === data?.joueurId);
+      if (!cible || cible.bot || cible.id === joueur.id) return repondre(rappel, { ok: false, erreur: L('Ce joueur ne peut pas être signalé.', 'This player cannot be reported.') });
+      const maintenant = Date.now();
+      while (mesSignalements.length && maintenant - mesSignalements[0] > 10 * 60 * 1000) mesSignalements.shift();
+      const deja = salon.signalements.get(cible.id) ?? new Set<string>();
+      if (deja.has(joueur.id)) return repondre(rappel, { ok: true, message: L('Tu as déjà signalé ce joueur.', 'You have already reported this player.') });
+      if (mesSignalements.length >= 5) return repondre(rappel, { ok: false, erreur: L('Trop de signalements : réessaie plus tard.', 'Too many reports: try again later.') });
+      mesSignalements.push(maintenant);
+      deja.add(joueur.id);
+      salon.signalements.set(cible.id, deja);
+      const motif = ['insultes', 'pseudo', 'triche', 'autre'].includes(String(data?.motif)) ? String(data?.motif) : 'autre';
+      const messages = salon.messages.filter((m) => m.auteurId === cible.id).slice(-10).map((m) => ({ texte: m.texte, heure: m.heure }));
+      const signalement = {
+        date: maintenant,
+        salon: salon.code,
+        publique: salon.publique,
+        motif,
+        signaleur: { nom: joueur.nom, uid: joueur.uid },
+        signale: { nom: cible.nom, uid: cible.uid },
+        messages,
+      };
+      if (comptes) await comptes.signaler(signalement).catch((e) => console.error('Signalement non enregistré :', e));
+      else console.log('Signalement :', JSON.stringify(signalement));
+      const autresHumains = humains(salon).filter((j) => j.id !== cible.id).length;
+      if (deja.size >= Math.min(SIGNALEMENTS_POUR_COUPER, autresHumains) && !salon.muets.has(cible.id)) {
+        salon.muets.add(cible.id);
+        salon.messages = salon.messages.filter((m) => m.auteurId !== cible.id);
+        if (salon.partie) {
+          salon.partie = ajouterAuJournal(salon.partie, `Le chat de ${cible.nom} est coupé après des signalements.`, `${cible.nom}’s chat has been muted after reports.`);
+        }
+        diffuser(salon);
+      }
+      repondre(rappel, { ok: true, message: L('Signalement enregistré. Merci !', 'Report recorded. Thank you!') });
+    });
+
     socket.on('rejouer', (_data: unknown, rappel?: Rappel) => {
       const c = hote(rappel);
       if (!c) return;
-      if (c.salon.partie?.phase !== 'FIN_DE_PARTIE') return repondre(rappel, { ok: false, erreur: "La partie n'est pas terminée." });
+      if (c.salon.partie?.phase !== 'FIN_DE_PARTIE') return repondre(rappel, { ok: false, erreur: L("La partie n'est pas terminée.", 'The game is not over.') });
       lancerPartie(c.salon);
       repondre(rappel, { ok: true });
     });
@@ -1041,7 +1218,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     }
     const avecCompte = (rappel: unknown) => {
       if (!comptes || !identite) {
-        repondre(rappel, { ok: false, erreur: 'Connecte-toi à ton compte pour gérer tes amis.' });
+        repondre(rappel, { ok: false, erreur: L('Connecte-toi à ton compte pour gérer tes amis.', 'Sign in to your account to manage your friends.') });
         return null;
       }
       return { comptes, uid: identite.uid };
@@ -1050,26 +1227,26 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     async function uidDuCode(code: unknown, rappel: unknown): Promise<string | null> {
       const c = codeValide(code);
       const uid = c && comptes ? await comptes.chercherCode(c).catch(() => null) : null;
-      if (!uid) repondre(rappel, { ok: false, erreur: 'Aucun joueur avec ce code ami.' });
+      if (!uid) repondre(rappel, { ok: false, erreur: L('Aucun joueur avec ce code ami.', 'No player with this friend code.') });
       return uid;
     }
     let derniereDemande = 0;
     async function demander(vers: string, rappel: unknown) {
       const a = avecCompte(rappel);
       if (!a) return;
-      if (vers === a.uid) return repondre(rappel, { ok: false, erreur: MESSAGE_DEMANDE.soi_meme });
+      if (vers === a.uid) return repondre(rappel, { ok: false, erreur: L(...MESSAGE_DEMANDE.soi_meme) });
       const maintenant = Date.now();
-      if (maintenant - derniereDemande < 300) return repondre(rappel, { ok: false, erreur: 'Patiente une seconde.' });
+      if (maintenant - derniereDemande < 300) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
       derniereDemande = maintenant;
       try {
         const { resultat, stats } = await a.comptes.demanderAmi(a.uid, vers);
         memoriserAmis(stats);
         if (resultat === 'envoyee' || resultat === 'amis') prevenirAmis([a.uid, vers]);
         const ok = resultat === 'envoyee' || resultat === 'amis' || resultat === 'deja_amis' || resultat === 'deja_envoyee';
-        repondre(rappel, ok ? { ok: true, resultat, message: MESSAGE_DEMANDE[resultat] } : { ok: false, erreur: MESSAGE_DEMANDE[resultat] });
+        repondre(rappel, ok ? { ok: true, resultat, message: L(...MESSAGE_DEMANDE[resultat]) } : { ok: false, erreur: L(...MESSAGE_DEMANDE[resultat]) });
       } catch (e) {
         console.error('Demande d’ami impossible :', e);
-        repondre(rappel, { ok: false, erreur: 'La demande n’a pas pu être envoyée, réessaie.' });
+        repondre(rappel, { ok: false, erreur: L('La demande n’a pas pu être envoyée, réessaie.', 'The request could not be sent, try again.') });
       }
     }
 
@@ -1080,7 +1257,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         repondre(rappel, { ok: true, liste: await listeAmis(a.uid, contexte()?.salon) });
       } catch (e) {
         console.error('Liste d’amis indisponible :', e);
-        repondre(rappel, { ok: false, erreur: 'Liste d’amis indisponible pour le moment.' });
+        repondre(rappel, { ok: false, erreur: L('Liste d’amis indisponible pour le moment.', 'Friends list unavailable right now.') });
       }
     });
 
@@ -1093,7 +1270,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       try {
         const [moi, stats] = await Promise.all([a.comptes.lire(a.uid), a.comptes.lire(autre)]);
         const relation = autre === a.uid ? 'moi' : relationEntre(moi, autre);
-        if (relation === 'aucune' || !stats) return repondre(rappel, { ok: false, erreur: 'Ce joueur ne fait pas partie de tes amis.' });
+        if (relation === 'aucune' || !stats) return repondre(rappel, { ok: false, erreur: L('Ce joueur ne fait pas partie de tes amis.', 'This player is not one of your friends.') });
         const profil: ProfilPublic = {
           type: 'compte',
           relation,
@@ -1110,7 +1287,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         repondre(rappel, { ok: true, profil });
       } catch (e) {
         console.error('Lecture du profil impossible :', e);
-        repondre(rappel, { ok: false, erreur: 'Profil indisponible pour le moment.' });
+        repondre(rappel, { ok: false, erreur: L('Profil indisponible pour le moment.', 'Profile unavailable right now.') });
       }
     });
 
@@ -1123,7 +1300,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     socket.on('ajouter_ami_joueur', async (data: { joueurId?: string } = {}, rappel?: Rappel) => {
       if (!avecCompte(rappel)) return;
       const j = contexte()?.salon.joueurs.find((x) => x.id === data?.joueurId);
-      if (!j?.uid) return repondre(rappel, { ok: false, erreur: 'Ce joueur n’a pas de compte.' });
+      if (!j?.uid) return repondre(rappel, { ok: false, erreur: L('Ce joueur n’a pas de compte.', 'This player has no account.') });
       await demander(j.uid, rappel);
     });
 
@@ -1135,10 +1312,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       try {
         memoriserAmis(await a.comptes.repondreAmi(a.uid, autre, !!data?.accepter));
         prevenirAmis([a.uid, autre]);
-        repondre(rappel, { ok: true, message: data?.accepter ? 'Vous êtes maintenant amis !' : 'Demande refusée.' });
+        repondre(rappel, { ok: true, message: data?.accepter ? L('Vous êtes maintenant amis !', 'You are now friends!') : L('Demande refusée.', 'Request declined.') });
       } catch (e) {
         console.error('Réponse impossible :', e);
-        repondre(rappel, { ok: false, erreur: 'Réessaie dans un instant.' });
+        repondre(rappel, { ok: false, erreur: L('Réessaie dans un instant.', 'Try again in a moment.') });
       }
     });
 
@@ -1153,7 +1330,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         repondre(rappel, { ok: true });
       } catch (e) {
         console.error('Retrait impossible :', e);
-        repondre(rappel, { ok: false, erreur: 'Réessaie dans un instant.' });
+        repondre(rappel, { ok: false, erreur: L('Réessaie dans un instant.', 'Try again in a moment.') });
       }
     });
 
@@ -1165,20 +1342,20 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     // Notifications d'invitation : ce téléphone s'abonne (ou se désabonne) pour le compte connecté.
     socket.on('push_abonner', async (data: { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } = {}, rappel?: Rappel) => {
-      if (!notifications) return repondre(rappel, { ok: false, erreur: 'Les notifications ne sont pas disponibles sur ce serveur.' });
+      if (!notifications) return repondre(rappel, { ok: false, erreur: L('Les notifications ne sont pas disponibles sur ce serveur.', 'Notifications are not available on this server.') });
       const a = avecCompte(rappel);
       if (!a) return;
       const endpoint = typeof data?.endpoint === 'string' ? data.endpoint : '';
       const p256dh = typeof data?.keys?.p256dh === 'string' ? data.keys.p256dh : '';
       const auth = typeof data?.keys?.auth === 'string' ? data.keys.auth : '';
       const valide = /^https:\/\/[^\s]+$/.test(endpoint) && endpoint.length <= 1000 && /^[A-Za-z0-9_=-]{20,200}$/.test(p256dh) && /^[A-Za-z0-9_=-]{8,100}$/.test(auth);
-      if (!valide) return repondre(rappel, { ok: false, erreur: 'Abonnement aux notifications invalide.' });
+      if (!valide) return repondre(rappel, { ok: false, erreur: L('Abonnement aux notifications invalide.', 'Invalid notification subscription.') });
       try {
         await a.comptes.abonnerPush(a.uid, { endpoint, p256dh, auth });
         repondre(rappel, { ok: true });
       } catch (e) {
         console.error('Abonnement aux notifications impossible :', e);
-        repondre(rappel, { ok: false, erreur: 'Réessaie dans un instant.' });
+        repondre(rappel, { ok: false, erreur: L('Réessaie dans un instant.', 'Try again in a moment.') });
       }
     });
     socket.on('push_desabonner', async (data: { endpoint?: unknown } = {}, rappel?: Rappel) => {
@@ -1193,48 +1370,56 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const a = avecCompte(rappel);
       if (!a) return;
       const c = contexte();
-      if (!c || c.salon.publique || c.salon.partie) return repondre(rappel, { ok: false, erreur: 'Crée d’abord une partie privée pour inviter tes amis.' });
+      if (!c || c.salon.publique || c.salon.partie) return repondre(rappel, { ok: false, erreur: L('Crée d’abord une partie privée pour inviter tes amis.', 'Create a private game first to invite your friends.') });
       const ami = await uidDuCode(data?.code, rappel);
       if (!ami) return;
       if (!(amisParUid.get(a.uid)?.has(ami) ?? (await a.comptes.lire(a.uid))?.amis.includes(ami))) {
-        return repondre(rappel, { ok: false, erreur: 'Ce joueur n’est pas dans tes amis.' });
+        return repondre(rappel, { ok: false, erreur: L('Ce joueur n’est pas dans tes amis.', 'This player is not in your friends.') });
       }
-      if (c.salon.joueurs.some((j) => j.uid === ami)) return repondre(rappel, { ok: false, erreur: 'Cet ami est déjà dans ta partie.' });
-      if (c.salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: 'La partie est complète.' });
+      if (c.salon.joueurs.some((j) => j.uid === ami)) return repondre(rappel, { ok: false, erreur: L('Cet ami est déjà dans ta partie.', 'This friend is already in your game.') });
+      if (c.salon.joueurs.length >= MAX_JOUEURS) return repondre(rappel, { ok: false, erreur: L('La partie est complète.', 'The game is full.') });
       const sockets = socketsParUid.get(ami) ?? new Set<string>();
       // Jeu ouvert et visible sur un appareil de l'ami : l'invitation s'affiche dans le jeu.
       // Jeu fermé ou en arrière-plan : une notification part aussi, si l'ami les a activées.
       const visible = [...sockets].some((sid) => io.sockets.sockets.get(sid)?.data.visible !== false);
-      const notifiable = !visible && !!notifications && !!(await a.comptes.lire(ami))?.push.length;
+      const statsAmi = !visible && notifications ? await a.comptes.lire(ami) : null;
+      const notifiable = !visible && !!notifications && !!statsAmi?.push.length;
       if (!sockets.size && !notifiable) {
-        return repondre(rappel, { ok: false, erreur: 'Cet ami n’est pas en ligne et n’a pas activé les notifications : envoie-lui le lien du salon.' });
+        return repondre(rappel, { ok: false, erreur: L('Cet ami n’est pas en ligne et n’a pas activé les notifications : envoie-lui le lien du salon.', 'This friend is offline and has not enabled notifications: send them the room link.') });
       }
       const maintenant = Date.now();
-      if (maintenant - (dernieresInvitations.get(ami) ?? 0) < 5000) return repondre(rappel, { ok: false, erreur: 'Invitation déjà envoyée, patiente un peu.' });
+      if (maintenant - (dernieresInvitations.get(ami) ?? 0) < 5000) return repondre(rappel, { ok: false, erreur: L('Invitation déjà envoyée, patiente un peu.', 'Invitation already sent, wait a little.') });
       dernieresInvitations.set(ami, maintenant);
       const invitation: Invitation = { id: nouvelId(), de: c.joueur.nom, code: c.salon.code, heure: maintenant };
       for (const sid of sockets) io.to(sid).emit('invitation', invitation);
       if (notifiable && notifications) {
         const cle = `${a.uid}>${ami}`;
         if (maintenant - (dernieresNotifications.get(cle) ?? 0) < 30_000) {
-          return repondre(rappel, { ok: false, erreur: 'Notification déjà envoyée : laisse-lui le temps de répondre.' });
+          return repondre(rappel, { ok: false, erreur: L('Notification déjà envoyée : laisse-lui le temps de répondre.', 'Notification already sent: give them time to answer.') });
         }
         dernieresNotifications.set(cle, maintenant);
         const recue = await notifications
           .envoyer(ami, {
-            titre: 'Invitation au Dernier Baron',
-            texte: `${c.joueur.nom} t’invite à sa table. Touche pour la rejoindre.`,
+            // Écrite dans la langue de l'ami (celle de son jeu).
+            titre: selon(statsAmi?.langue ?? 'fr', 'Invitation au Dernier Baron', 'Invitation to Le Dernier Baron'),
+            texte: selon(statsAmi?.langue ?? 'fr', `${c.joueur.nom} t’invite à sa table. Touche pour la rejoindre.`, `${c.joueur.nom} invites you to their table. Tap to join.`),
             url: `/?salon=${c.salon.code}`,
             etiquette: `invitation-${c.salon.code}`,
             invitation,
           })
           .catch(() => false);
-        if (!recue && !sockets.size) return repondre(rappel, { ok: false, erreur: 'La notification n’a pas pu partir : envoie-lui le lien du salon.' });
-        return repondre(rappel, { ok: true, message: sockets.size ? 'Invitation envoyée !' : 'Invitation envoyée par notification !' });
+        if (!recue && !sockets.size) return repondre(rappel, { ok: false, erreur: L('La notification n’a pas pu partir : envoie-lui le lien du salon.', 'The notification could not be sent: send them the room link.') });
+        return repondre(rappel, { ok: true, message: sockets.size ? L('Invitation envoyée !', 'Invitation sent!') : L('Invitation envoyée par notification !', 'Invitation sent by notification!') });
       }
-      repondre(rappel, { ok: true, message: 'Invitation envoyée !' });
+      repondre(rappel, { ok: true, message: L('Invitation envoyée !', 'Invitation sent!') });
     });
   });
+
+  // Signalements de plus de 6 mois : supprimés au démarrage, puis chaque jour.
+  const purger = () => void comptes?.purgerSignalements().catch((e) => console.error('Ménage des signalements impossible :', e));
+  if (comptes) purger();
+  const purgeQuotidienne = setInterval(purger, 24 * 60 * 60 * 1000);
+  purgeQuotidienne.unref();
 
   // Ménage : salons privés abandonnés depuis 3 heures, parties publiques sans aucun humain connecté depuis 2 minutes.
   const menage = setInterval(() => {
@@ -1258,6 +1443,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
           new Promise<void>((fin) => {
             ferme = true;
             clearInterval(menage);
+            clearInterval(purgeQuotidienne);
             for (const s of salons.values()) {
               if (s.minuterie) clearTimeout(s.minuterie);
               if (s.minuterieTour) clearTimeout(s.minuterieTour);

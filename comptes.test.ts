@@ -156,6 +156,8 @@ const identites = {
   'jeton-eve': { uid: 'uid-eve', nom: 'Ève', email: 'eve@gmail.com' },
   'jeton-fanny': { uid: 'uid-fanny', nom: 'Fanny', email: 'fanny@gmail.com' },
   'jeton-gil': { uid: 'uid-gil', nom: 'Gil', email: 'gil@gmail.com' },
+  'jeton-hugo': { uid: 'uid-hugo', nom: 'Hugo', email: 'hugo@gmail.com' },
+  'jeton-iris': { uid: 'uid-iris', nom: 'Iris', email: 'iris@gmail.com' },
 };
 /** Notifications envoyées pendant les tests (aucune ne part vraiment) ; un endpoint « expire » répond 410. */
 const pushEnvoyes: { endpoint: string; message: Record<string, unknown> }[] = [];
@@ -580,4 +582,71 @@ describe('Comptes de bout en bout', () => {
     s.close();
     autre.close();
   });
+
+  it('abandon : le joueur qui quitte est remplacé par l’ordinateur et la partie ne lui rapporte pas d’XP', async () => {
+    const [h, i] = [connecter(), connecter()];
+    await emettre(h, 'identifier', { jeton: 'jeton-hugo' });
+    await emettre(i, 'identifier', { jeton: 'jeton-iris' });
+    const cree = await emettre(h, 'creer', { nom: 'Hugo' });
+    const ri = await emettre(i, 'rejoindre', { code: cree.code, nom: 'Iris' });
+    await emettre(h, 'ajouter_bot');
+    const xpAvant = stockage.donnees.get('uid-iris')!.xp;
+    const fin = jouerJusquALaFin([h]);
+    const remplacee = new Promise<VueSalon>((ok) => h.on('salon', (v: VueSalon) => v.joueurs.find((j) => j.id === ri.joueurId)?.abandon && ok(v)));
+    await emettre(h, 'lancer');
+    await new Promise((ok) => setTimeout(ok, 30));
+    await emettre(i, 'quitter');
+    const v = await remplacee;
+    expect(v.joueurs.find((j) => j.id === ri.joueurId)).toMatchObject({ robot: true, abandon: true });
+    expect(v.partie!.journal.some((e) => e.texte.includes('Iris a quitté la partie'))).toBe(true);
+    const [derniere] = await fin;
+    expect(derniere.enregistrement?.etat).toBe('fait');
+    const iris = stockage.donnees.get('uid-iris')!;
+    expect(iris.xp).toBe(xpAvant);
+    expect(iris.abandons).toBe(1);
+    expect(iris.historique[0]).toMatchObject({ abandon: true, xp: 0, victoire: false });
+    expect(derniere.enregistrement?.bilans[ri.joueurId]).toMatchObject({ abandon: true, xpGagne: 0 });
+    // Hugo, resté jusqu'au bout, gagne son XP normalement.
+    expect(derniere.enregistrement?.bilans[cree.joueurId].xpGagne).toBeGreaterThan(0);
+    h.close();
+    i.close();
+  });
+
+  it('chat des parties en ligne : insultes masquées, pseudo choquant remplacé, signalements et chat coupé', async () => {
+    const [x, y, z] = [connecter(), connecter(), connecter()];
+    await emettre(x, 'identifier', { jeton: 'jeton-hugo' });
+    const rx = await emettre(x, 'jouer_public', { nom: 'Hugo' });
+    const ry = await emettre(y, 'jouer_public', { nom: 'Yaël' });
+    const rz = await emettre(z, 'jouer_public', { nom: 'GrosConnard' });
+    expect(new Set([rx.code, ry.code, rz.code]).size).toBe(1);
+    const avecMessage = new Promise<VueSalon>((ok) => x.on('salon', (w: VueSalon) => w.messages.length > 0 && ok(w)));
+    await emettre(z, 'chat', { texte: 'bien joué espèce de connard' });
+    let v = await avecMessage;
+    expect(v.joueurs.find((j) => j.id === rz.joueurId)!.nom).toBe('Joueur');
+    expect(v.messages.at(-1)!.texte).toBe('bien joué espèce de c******');
+    // Un premier signalement : enregistré avec ses messages, le chat reste ouvert.
+    expect((await emettre(x, 'signaler', { joueurId: rz.joueurId, motif: 'insultes' })).ok).toBe(true);
+    expect((await emettre(x, 'signaler', { joueurId: rz.joueurId, motif: 'insultes' })).message).toMatch(/déjà signalé/);
+    expect((await emettre(x, 'signaler', { joueurId: rx.joueurId })).ok).toBe(false); // soi-même
+    expect(stockage.signalements.at(-1)).toMatchObject({ motif: 'insultes', signaleur: { nom: 'Hugo', uid: 'uid-hugo' }, signale: { nom: 'Joueur', uid: null } });
+    expect(stockage.signalements.at(-1)!.messages[0].texte).toContain('c******');
+    await new Promise((ok) => setTimeout(ok, 750)); // un message à la fois
+    expect((await emettre(z, 'chat', { texte: 'encore moi' })).ok).toBe(true);
+    // Deuxième joueur qui signale : son chat est coupé pour toute la table et ses messages disparaissent.
+    const coupe = new Promise<VueSalon>((ok) => x.on('salon', (w: VueSalon) => !w.messages.some((m) => m.auteurId === rz.joueurId) && ok(w)));
+    expect((await emettre(y, 'signaler', { joueurId: rz.joueurId, motif: 'insultes' })).ok).toBe(true);
+    v = await coupe;
+    expect(v.messages.filter((m) => m.auteurId === rz.joueurId)).toEqual([]);
+    await new Promise((ok) => setTimeout(ok, 750));
+    expect((await emettre(z, 'chat', { texte: 'je peux parler ?' })).erreur).toMatch(/chat est coupé/);
+    expect(stockage.signalements.filter((s) => s.salon === rx.code)).toHaveLength(2);
+    // Signalements de plus de 6 mois : supprimés au ménage.
+    stockage.signalements[0].date = Date.now() - 200 * 24 * 60 * 60 * 1000;
+    expect(await service.purgerSignalements()).toBe(1);
+    for (const s of [x, y, z]) {
+      await emettre(s, 'quitter');
+      s.close();
+    }
+  });
 });
+

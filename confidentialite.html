@@ -63,11 +63,24 @@
       .adresse { font-style: normal; padding: 10px 14px; border-left: 3px solid var(--or); background: rgba(0, 0, 0, 0.22); border-radius: 0 10px 10px 0; }
       .contact { font-weight: 600; word-break: break-word; }
       footer { margin-top: 36px; text-align: center; color: var(--creme-doux); font-size: 14px; }
+      .haut { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+      .langues { display: inline-flex; padding: 3px; border-radius: 99px; border: 1px solid var(--filet); background: rgba(0, 0, 0, 0.3); }
+      .langues button { min-height: 36px; padding: 4px 12px; border: 0; border-radius: 99px; background: transparent; color: var(--creme-doux); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+      .langues button[aria-pressed='true'] { background: linear-gradient(180deg, var(--or-vif), var(--or)); color: #2a1608; }
+      [data-langue][hidden] { display: none !important; }
     </style>
   </head>
   <body>
     <main>
-      <a class="retour" href="/">← Retour au jeu</a>
+      <div class="haut">
+        <a class="retour" href="/" data-retour>← Retour au jeu</a>
+        <div class="langues" role="group" aria-label="Langue / Language">
+          <button type="button" data-choix="fr" aria-pressed="true">FR</button>
+          <button type="button" data-choix="en" aria-pressed="false">EN</button>
+        </div>
+      </div>
+
+      <article data-langue="fr" lang="fr">
       <header>
         <img src="/cartes/logo.webp" alt="Le Dernier Baron" width="900" height="450" />
         <h1>Confidentialité et mentions légales</h1>
@@ -85,27 +98,27 @@
       </div>
 
       <nav aria-label="Sommaire">
-        <a href="#responsable">Responsable</a>
-        <a href="#donnees">Données</a>
-        <a href="#pourquoi">Pourquoi</a>
-        <a href="#partage">Partage</a>
-        <a href="#duree">Durée</a>
-        <a href="#appareil">Ton appareil</a>
-        <a href="#droits">Tes droits</a>
-        <a href="#mentions">Mentions légales</a>
+        <a href="#fr-responsable">Responsable</a>
+        <a href="#fr-donnees">Données</a>
+        <a href="#fr-pourquoi">Pourquoi</a>
+        <a href="#fr-partage">Partage</a>
+        <a href="#fr-duree">Durée</a>
+        <a href="#fr-appareil">Ton appareil</a>
+        <a href="#fr-droits">Tes droits</a>
+        <a href="#fr-mentions">Mentions légales</a>
       </nav>
 
-      <section id="responsable">
+      <section id="fr-responsable">
         <h2>Qui est responsable de tes données ?</h2>
         <p>
           Le Dernier Baron est un jeu de cartes en ligne gratuit et sans publicité, créé et édité à titre non professionnel par
           l’équipe étudiante du projet « Le Dernier Baron ». Cette équipe est responsable du traitement de tes données personnelles
           au sens du Règlement général sur la protection des données (RGPD).
         </p>
-        <p>Pour toute question sur tes données : <span class="contact" data-contact>écris-nous à l’adresse de contact du jeu</span>.</p>
+        <p>Pour toute question sur tes données : <a class="contact" data-contact href="mailto:ledernierbaron@gmail.com">ledernierbaron@gmail.com</a>.</p>
       </section>
 
-      <section id="donnees">
+      <section id="fr-donnees">
         <h2>Les données que nous utilisons</h2>
         <h3>Si tu joues sans compte</h3>
         <p>
@@ -116,11 +129,17 @@
         <h3>Si tu crées un compte</h3>
         <ul>
           <li><strong>Identifiants :</strong> ton adresse e-mail et ton mot de passe, ou ton compte Google si tu choisis « Continuer avec Google » (nom, e-mail et identifiant Google). Le mot de passe est géré par Firebase Authentication : nous ne le voyons jamais.</li>
-          <li><strong>Profil de jeu :</strong> ton pseudo, ton code ami, ton personnage et ton tapis préférés, ta date d’inscription.</li>
-          <li><strong>Progression :</strong> parties jouées, victoires, nuits gagnées, annonces réussies, meilleur score, expérience et niveau, et l’historique de tes dernières parties (date, nombre de joueurs, pseudos des adversaires, score, classement).</li>
+          <li><strong>Profil de jeu :</strong> ton pseudo, ton code ami, ton personnage et ton tapis préférés, la langue du jeu, ta date d’inscription.</li>
+          <li><strong>Progression :</strong> parties jouées et quittées, victoires, nuits gagnées, annonces réussies, meilleur score, expérience et niveau, et l’historique de tes dernières parties (date, nombre de joueurs, pseudos des adversaires, score, classement).</li>
           <li><strong>Amis :</strong> ta liste d’amis et les demandes d’ami envoyées ou reçues.</li>
           <li><strong>Notifications (si tu les actives) :</strong> l’adresse d’abonnement que ton navigateur nous donne pour t’envoyer une notification quand un ami t’invite.</li>
         </ul>
+        <h3>Si un joueur est signalé</h3>
+        <p>
+          Dans les parties en ligne, les insultes du chat sont masquées automatiquement. Quand un joueur en signale un autre, nous
+          enregistrons la date, la partie, le motif, les pseudos (et l’identifiant de compte) des deux joueurs et les derniers messages
+          du joueur signalé, pour vérifier les abus.
+        </p>
         <h3>Données techniques</h3>
         <p>
           Comme tout site, notre hébergeur reçoit ton adresse IP et des informations techniques de connexion (type de navigateur,
@@ -129,7 +148,7 @@
         <p>Nous ne demandons jamais ton nom réel, ton âge, ton adresse ni ton numéro de téléphone.</p>
       </section>
 
-      <section id="pourquoi">
+      <section id="fr-pourquoi">
         <h2>Pourquoi, et sur quelle base</h2>
         <div class="tableau">
           <table>
@@ -140,21 +159,21 @@
               <tr><td>Faire fonctionner les parties, le chat et les réactions</td><td>Exécution du service que tu demandes (article 6.1.b)</td></tr>
               <tr><td>Créer ton compte, sauvegarder ta progression, gérer tes amis et tes invitations</td><td>Exécution du service que tu demandes (article 6.1.b)</td></tr>
               <tr><td>T’envoyer une notification quand un ami t’invite</td><td>Ton consentement, que tu peux retirer à tout moment (article 6.1.a)</td></tr>
-              <tr><td>Protéger le jeu contre les abus (messages en rafale, tricherie)</td><td>Notre intérêt légitime à garder un jeu sûr (article 6.1.f)</td></tr>
+              <tr><td>Protéger les joueurs : filtre à insultes, signalements, abandons, messages en rafale</td><td>Notre intérêt légitime à garder un jeu sûr et agréable (article 6.1.f)</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <section id="partage">
+      <section id="fr-partage">
         <h2>Qui voit tes données</h2>
         <p>
           <strong>Les autres joueurs</strong> voient seulement ton pseudo, ton personnage, ton niveau et tes statistiques de jeu.
-          Ton adresse e-mail n’est jamais montrée à personne.
+          Ton adresse e-mail n’est jamais montrée à personne. Les signalements ne sont jamais montrés aux joueurs.
         </p>
         <p><strong>Nos prestataires techniques</strong>, qui traitent les données uniquement pour notre compte :</p>
         <ul>
-          <li><strong>Google Firebase</strong> (Authentication et Cloud Firestore), fourni par Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irlande : comptes et sauvegarde de la progression.</li>
+          <li><strong>Google Firebase</strong> (Authentication et Cloud Firestore), fourni par Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irlande : comptes, sauvegarde de la progression et signalements.</li>
           <li><strong>Render</strong>, Render Services, Inc., aux États-Unis : hébergement du jeu.</li>
           <li><strong>Le service de notification de ton navigateur</strong> (Apple, Google ou Mozilla selon ton appareil), seulement si tu actives les notifications : il transmet l’invitation jusqu’à ton appareil.</li>
         </ul>
@@ -166,22 +185,23 @@
         <p>Nous ne vendons, ne louons et ne partageons jamais tes données à des fins publicitaires.</p>
       </section>
 
-      <section id="duree">
+      <section id="fr-duree">
         <h2>Combien de temps nous les gardons</h2>
         <ul>
           <li><strong>Compte et progression :</strong> tant que ton compte existe. Quand tu le supprimes, tout est effacé tout de suite, et tu disparais de la liste d’amis des autres joueurs.</li>
           <li><strong>Notifications :</strong> jusqu’à ce que tu les désactives, que tu supprimes ton compte ou que ton navigateur nous indique que l’abonnement n’est plus valable.</li>
+          <li><strong>Signalements :</strong> 6 mois, puis ils sont supprimés automatiquement.</li>
           <li><strong>Partie, chat et réactions :</strong> seulement le temps de la partie, dans la mémoire du serveur.</li>
           <li><strong>Si le jeu s’arrête,</strong> toutes les données des comptes sont supprimées.</li>
         </ul>
       </section>
 
-      <section id="appareil">
+      <section id="fr-appareil">
         <h2>Ce qui reste sur ton appareil</h2>
         <p>Le jeu enregistre quelques informations dans ton navigateur, uniquement pour fonctionner :</p>
         <ul>
-          <li>ton pseudo, tes réglages (son, volume, vitesse des ordinateurs, taille des cartes) et le fait que tu as vu le tutoriel ;</li>
-          <li>la partie en cours, pour te reconnecter si la page se recharge ;</li>
+          <li>ton pseudo, ta langue, tes réglages (son, volume, vitesse des ordinateurs, taille des cartes) et le fait que tu as vu le tutoriel ;</li>
+          <li>la partie en cours, pour te reconnecter si la page se recharge, et les joueurs dont tu as coupé le chat ;</li>
           <li>ta session de connexion à ton compte (gérée par Firebase) ;</li>
           <li>une copie des images, sons et fichiers du jeu, pour qu’il se lance plus vite.</li>
         </ul>
@@ -192,7 +212,7 @@
         </p>
       </section>
 
-      <section id="droits">
+      <section id="fr-droits">
         <h2>Tes droits</h2>
         <p>Tu peux à tout moment :</p>
         <ul>
@@ -202,7 +222,7 @@
           <li>t’opposer à un traitement ou demander sa limitation ;</li>
           <li>retirer ton accord pour les notifications : <strong>Réglages → Notifications</strong>, ou dans les réglages de ton appareil.</li>
         </ul>
-        <p>Pour exercer ces droits, <span data-contact-phrase>écris-nous à l’adresse de contact du jeu</span>. Nous répondons sous un mois au plus tard.</p>
+        <p>Pour exercer ces droits, écris-nous à <a data-contact href="mailto:ledernierbaron@gmail.com">ledernierbaron@gmail.com</a>. Nous répondons sous un mois au plus tard.</p>
         <p>
           Si tu estimes que tes droits ne sont pas respectés, tu peux adresser une réclamation à la CNIL (Commission nationale de
           l’informatique et des libertés), 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 —
@@ -214,12 +234,12 @@
         <p>Tous les échanges avec le jeu sont chiffrés (HTTPS). L’accès aux données des comptes est réservé au serveur du jeu.</p>
       </section>
 
-      <section id="mentions">
+      <section id="fr-mentions">
         <h2>Mentions légales</h2>
         <h3>Éditeur</h3>
         <p>
           Le Dernier Baron, jeu de cartes en ligne gratuit, édité à titre non professionnel par l’équipe étudiante du projet.
-          Contact : <span class="contact" data-contact>adresse de contact du jeu</span>.
+          Contact : <a class="contact" data-contact href="mailto:ledernierbaron@gmail.com">ledernierbaron@gmail.com</a>.
         </p>
         <h3>Hébergeur</h3>
         <address class="adresse">
@@ -234,9 +254,182 @@
           autorisation est interdite. Les polices Limelight et Libre Franklin sont utilisées sous licence SIL Open Font License.
         </p>
       </section>
+      </article>
+
+      <article data-langue="en" lang="en" hidden>
+      <header>
+        <img src="/cartes/logo.webp" alt="Le Dernier Baron" width="900" height="450" />
+        <h1>Privacy and legal notice</h1>
+        <p class="maj">Last updated: 24 October 2026</p>
+      </header>
+
+      <div class="resume">
+        <strong>In short</strong>
+        <ul>
+          <li>You can play <strong>without an account</strong>: nothing about you is then recorded, apart from what stays on your own device and the host’s technical logs.</li>
+          <li>With an account, we keep your e-mail, your nickname and your progress in the game. That’s all.</li>
+          <li>No ads, no trackers, no selling of data.</li>
+          <li>You can delete your account at any time from your profile: everything is erased.</li>
+        </ul>
+      </div>
+
+      <nav aria-label="Contents">
+        <a href="#en-controller">Controller</a>
+        <a href="#en-data">Data</a>
+        <a href="#en-why">Why</a>
+        <a href="#en-sharing">Sharing</a>
+        <a href="#en-retention">Retention</a>
+        <a href="#en-device">Your device</a>
+        <a href="#en-rights">Your rights</a>
+        <a href="#en-legal">Legal notice</a>
+      </nav>
+
+      <section id="en-controller">
+        <h2>Who is responsible for your data?</h2>
+        <p>
+          Le Dernier Baron is a free, ad-free online card game, created and published on a non-professional basis by the student team
+          of the “Le Dernier Baron” project. This team is the controller of your personal data under the General Data Protection
+          Regulation (GDPR).
+        </p>
+        <p>For any question about your data: <a class="contact" data-contact href="mailto:ledernierbaron@gmail.com">ledernierbaron@gmail.com</a>.</p>
+      </section>
+
+      <section id="en-data">
+        <h2>The data we use</h2>
+        <h3>If you play without an account</h3>
+        <p>
+          Your nickname, your cards, chat messages and reactions go through our server so other players can see them. They only stay
+          in the server’s memory for the duration of the game and are never saved: they disappear when the room closes.
+        </p>
+        <h3>If you create an account</h3>
+        <ul>
+          <li><strong>Credentials:</strong> your e-mail address and password, or your Google account if you choose “Continue with Google” (name, e-mail and Google ID). The password is handled by Firebase Authentication: we never see it.</li>
+          <li><strong>Game profile:</strong> your nickname, friend code, favourite character and felt, game language and sign-up date.</li>
+          <li><strong>Progress:</strong> games played and left, wins, nights won, bids made, best score, experience and level, and the history of your latest games (date, number of players, opponents’ nicknames, score, ranking).</li>
+          <li><strong>Friends:</strong> your friends list and friend requests sent or received.</li>
+          <li><strong>Notifications (if you turn them on):</strong> the subscription address your browser gives us so we can notify you when a friend invites you.</li>
+        </ul>
+        <h3>If a player is reported</h3>
+        <p>
+          In online games, insults in the chat are masked automatically. When a player reports another, we record the date, the game,
+          the reason, both players’ nicknames (and account ID) and the reported player’s latest messages, to check for abuse.
+        </p>
+        <h3>Technical data</h3>
+        <p>
+          Like any website, our host receives your IP address and technical connection information (browser type, date and time) to
+          run and protect the service. We do not use this data to track you.
+        </p>
+        <p>We never ask for your real name, age, address or phone number.</p>
+      </section>
+
+      <section id="en-why">
+        <h2>Why, and on what basis</h2>
+        <div class="tableau">
+          <table>
+            <thead>
+              <tr><th>What we do</th><th>Legal basis (GDPR)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Run games, the chat and reactions</td><td>Performance of the service you request (article 6.1.b)</td></tr>
+              <tr><td>Create your account, save your progress, manage friends and invitations</td><td>Performance of the service you request (article 6.1.b)</td></tr>
+              <tr><td>Notify you when a friend invites you</td><td>Your consent, which you can withdraw at any time (article 6.1.a)</td></tr>
+              <tr><td>Protect players: insult filter, reports, forfeits, message flooding</td><td>Our legitimate interest in keeping the game safe and pleasant (article 6.1.f)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="en-sharing">
+        <h2>Who sees your data</h2>
+        <p>
+          <strong>Other players</strong> only see your nickname, character, level and game statistics. Your e-mail address is never
+          shown to anyone. Reports are never shown to players.
+        </p>
+        <p><strong>Our technical providers</strong>, who process data only on our behalf:</p>
+        <ul>
+          <li><strong>Google Firebase</strong> (Authentication and Cloud Firestore), provided by Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland: accounts, saved progress and reports.</li>
+          <li><strong>Render</strong>, Render Services, Inc., in the United States: game hosting.</li>
+          <li><strong>Your browser’s notification service</strong> (Apple, Google or Mozilla depending on your device), only if you turn notifications on: it delivers the invitation to your device.</li>
+        </ul>
+        <p>
+          Some of this data may be processed in the United States. These transfers are covered by the EU–U.S. Data Privacy Framework,
+          which Google and Render have joined, and by the data protection clauses in their contracts.
+        </p>
+        <p>We never sell, rent or share your data for advertising.</p>
+      </section>
+
+      <section id="en-retention">
+        <h2>How long we keep it</h2>
+        <ul>
+          <li><strong>Account and progress:</strong> as long as your account exists. When you delete it, everything is erased at once, and you disappear from other players’ friends lists.</li>
+          <li><strong>Notifications:</strong> until you turn them off, delete your account, or your browser tells us the subscription is no longer valid.</li>
+          <li><strong>Reports:</strong> 6 months, then they are deleted automatically.</li>
+          <li><strong>Game, chat and reactions:</strong> only for the duration of the game, in the server’s memory.</li>
+          <li><strong>If the game shuts down,</strong> all account data is deleted.</li>
+        </ul>
+      </section>
+
+      <section id="en-device">
+        <h2>What stays on your device</h2>
+        <p>The game stores a little information in your browser, only so that it works:</p>
+        <ul>
+          <li>your nickname, language, settings (sound, volume, computer speed, card size) and whether you have seen the tutorial;</li>
+          <li>the game in progress, to reconnect you if the page reloads, and the players whose chat you muted;</li>
+          <li>your account sign-in session (handled by Firebase);</li>
+          <li>a copy of the game’s images, sounds and files, so it launches faster.</li>
+        </ul>
+        <p>
+          We use no advertising cookies or audience measurement tools. This strictly necessary information therefore needs no consent
+          banner. You can erase it at any time by clearing the site’s data in your browser.
+        </p>
+      </section>
+
+      <section id="en-rights">
+        <h2>Your rights</h2>
+        <p>At any time, you can:</p>
+        <ul>
+          <li>see your data and receive a copy of it (rights of access and portability);</li>
+          <li>correct your nickname or any inaccurate data (right to rectification);</li>
+          <li>delete your account and all its data (right to erasure): <strong>Profile → Delete my account</strong>;</li>
+          <li>object to processing or ask for it to be restricted;</li>
+          <li>withdraw your consent to notifications: <strong>Settings → Notifications</strong>, or in your device settings.</li>
+        </ul>
+        <p>To exercise these rights, write to us at <a data-contact href="mailto:ledernierbaron@gmail.com">ledernierbaron@gmail.com</a>. We reply within one month at the latest.</p>
+        <p>
+          If you believe your rights are not respected, you can lodge a complaint with your data protection authority — in France, the
+          CNIL (Commission nationale de l’informatique et des libertés), 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 —
+          <a href="https://www.cnil.fr" rel="noopener">www.cnil.fr</a>.
+        </p>
+        <h3>Players under 15</h3>
+        <p>If you are under 15, ask one of your parents before creating an account.</p>
+        <h3>Security</h3>
+        <p>All exchanges with the game are encrypted (HTTPS). Access to account data is restricted to the game server.</p>
+      </section>
+
+      <section id="en-legal">
+        <h2>Legal notice</h2>
+        <h3>Publisher</h3>
+        <p>
+          Le Dernier Baron, a free online card game, published on a non-professional basis by the project’s student team.
+          Contact: <a class="contact" data-contact href="mailto:ledernierbaron@gmail.com">ledernierbaron@gmail.com</a>.
+        </p>
+        <h3>Host</h3>
+        <address class="adresse">
+          Render Services, Inc.<br />
+          525 Brannan Street, Suite 300<br />
+          San Francisco, CA 94107, United States<br />
+          <a href="https://render.com" rel="noopener">render.com</a>
+        </address>
+        <h3>Intellectual property</h3>
+        <p>
+          The game, its rules, illustrations, sounds and code belong to their authors. Any reproduction without permission is
+          prohibited. The Limelight and Libre Franklin fonts are used under the SIL Open Font License.
+        </p>
+      </section>
+      </article>
 
       <footer>
-        <p><a class="retour" href="/">← Retour au jeu</a></p>
+        <p><a class="retour" href="/" data-retour>← Retour au jeu</a></p>
       </footer>
     </main>
     <script type="module">
@@ -244,20 +437,41 @@
       import '@fontsource/libre-franklin/latin-400.css';
       import '@fontsource/libre-franklin/latin-600.css';
 
-      // Adresse de contact : réglée sur le serveur (variable CONTACT_EMAIL), jamais écrite dans le code public.
+      // Langue : celle choisie dans le jeu, sinon celle du téléphone.
+      const lireLangue = () => {
+        try {
+          const l = localStorage.getItem('ldb-langue');
+          if (l === 'fr' || l === 'en') return l;
+        } catch {}
+        return (navigator.languages?.[0] ?? navigator.language ?? 'fr').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+      };
+      const afficher = (l) => {
+        document.documentElement.lang = l;
+        document.title = l === 'en' ? 'Privacy – Le Dernier Baron' : 'Confidentialité – Le Dernier Baron';
+        document.querySelectorAll('[data-langue]').forEach((el) => (el.hidden = el.dataset.langue !== l));
+        document.querySelectorAll('[data-choix]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.choix === l)));
+        document.querySelectorAll('[data-retour]').forEach((a) => (a.textContent = l === 'en' ? '← Back to the game' : '← Retour au jeu'));
+      };
+      afficher(lireLangue());
+      document.querySelectorAll('[data-choix]').forEach((b) =>
+        b.addEventListener('click', () => {
+          try {
+            localStorage.setItem('ldb-langue', b.dataset.choix);
+          } catch {}
+          afficher(b.dataset.choix);
+        }),
+      );
+
+      // Adresse de contact : celle du jeu, ou celle réglée sur le serveur (variable CONTACT_EMAIL).
       fetch('/api/config')
         .then((r) => (r.ok ? r.json() : null))
         .then((config) => {
           const mail = config && typeof config.contact === 'string' ? config.contact : null;
           if (!mail) return;
-          const lien = () => {
-            const a = document.createElement('a');
+          document.querySelectorAll('[data-contact]').forEach((a) => {
             a.href = `mailto:${mail}`;
             a.textContent = mail;
-            return a;
-          };
-          document.querySelectorAll('[data-contact]').forEach((el) => el.replaceChildren(lien()));
-          document.querySelectorAll('[data-contact-phrase]').forEach((el) => el.replaceChildren('écris-nous à ', lien()));
+          });
         })
         .catch(() => undefined);
     </script>

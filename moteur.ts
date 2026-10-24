@@ -7,6 +7,7 @@ import {
   NUITS_AVEC_EVENEMENT,
   TAILLE_JOURNAL,
 } from './config';
+import { NOM_EVENEMENT_TR, nomCarteTr } from './langue';
 import { allianceReussiePour, calculerScore, carte, cartesJouables, resoudrePli } from './regles';
 import { melanger, suivant } from './rng';
 import type { Action, BilanNuit, EtatPartie, JoueurPartie, Resultat } from './types';
@@ -27,16 +28,18 @@ function siege(e: EtatPartie, id: string): number {
   return e.joueurs.findIndex((j) => j.id === id);
 }
 
-function noter(e: EtatPartie, texte: string) {
+/** Ligne du journal, en français et en anglais (chaque joueur la lit dans sa langue). */
+function noter(e: EtatPartie, texte: string, en: string = texte) {
   e.compteurJournal += 1;
-  e.journal.push({ n: e.compteurJournal, texte });
+  e.journal.push({ n: e.compteurJournal, texte, en });
   if (e.journal.length > TAILLE_JOURNAL) e.journal.splice(0, e.journal.length - TAILLE_JOURNAL);
 }
 
 function nomCarte(id: string, valeurCroupier?: 0 | 11): string {
-  const c = carte(id);
-  return c.speciale === 'croupier' && valeurCroupier !== undefined ? `${c.nom} (${valeurCroupier})` : c.nom;
+  return nomCarteTr(id, 'fr', valeurCroupier);
 }
+const nomCarteEn = (id: string, valeurCroupier?: 0 | 11) => nomCarteTr(id, 'en', valeurCroupier);
+const plurielEn = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
 /** Crée une partie et distribue la première nuit. La graine rend la partie rejouable (tests). */
 export function creerPartie(joueurs: JoueurPartie[], graine: number, reglages: { nbNuits?: number; nuitsAvecEvenement?: number[] } = {}): EtatPartie {
@@ -85,7 +88,7 @@ export function creerPartie(joueurs: JoueurPartie[], graine: number, reglages: {
   };
   if (reglages.nbNuits) e.nbNuits = reglages.nbNuits;
   if (reglages.nuitsAvecEvenement) e.nuitsAvecEvenement = reglages.nuitsAvecEvenement;
-  noter(e, `La partie commence. ${nom(e, joueurs[premier].id)} est le premier joueur.`);
+  noter(e, `La partie commence. ${nom(e, joueurs[premier].id)} est le premier joueur.`, `The game begins. ${nom(e, joueurs[premier].id)} plays first.`);
   demarrerNuit(e);
   return e;
 }
@@ -125,17 +128,25 @@ function demarrerNuit(e: EtatPartie) {
     const id = e.piocheEvenements.shift() as string;
     e.evenementId = id;
     e.evenement = EVENEMENT[id].evenement;
-    noter(e, `Nuit ${n} : ${n} cartes chacun. Événement : ${NOMS_EVENEMENTS[e.evenement]}. ${premierNom} ouvre la nuit.`);
+    noter(
+      e,
+      `Nuit ${n} : ${n} cartes chacun. Événement : ${NOMS_EVENEMENTS[e.evenement]}. ${premierNom} ouvre la nuit.`,
+      `Night ${n}: ${plurielEn(n, 'card')} each. Event: ${NOM_EVENEMENT_TR.en[e.evenement]}. ${premierNom} opens the night.`,
+    );
   } else {
-    noter(e, `Nuit ${n} : ${n} carte${n > 1 ? 's' : ''} chacun, pas d'événement. ${premierNom} ouvre la nuit.`);
+    noter(
+      e,
+      `Nuit ${n} : ${n} carte${n > 1 ? 's' : ''} chacun, pas d'événement. ${premierNom} ouvre la nuit.`,
+      `Night ${n}: ${plurielEn(n, 'card')} each, no event. ${premierNom} opens the night.`,
+    );
   }
   e.phase = 'ANNONCES';
 }
 
 /** Ajoute une ligne au journal (utilisé par le serveur, par exemple quand le temps est écoulé). */
-export function ajouterAuJournal(etat: EtatPartie, texte: string): EtatPartie {
+export function ajouterAuJournal(etat: EtatPartie, texte: string, en: string = texte): EtatPartie {
   const e = structuredClone(etat);
-  noter(e, texte);
+  noter(e, texte, en);
   return e;
 }
 
@@ -194,7 +205,7 @@ function traiter(e: EtatPartie, a: Action): string | null {
         for (const j of e.joueurs) e.mains[j.id] = e.mains[j.id].filter((c) => c !== e.choixTrahison[j.id]);
         // Chacun donne sa carte au joueur de droite, c'est-à-dire au joueur précédent dans l'ordre du tour.
         e.joueurs.forEach((j, i) => e.mains[e.joueurs[(i - 1 + nb) % nb].id].push(e.choixTrahison[j.id]));
-        noter(e, 'Trahison : chacun a passé une carte au joueur de droite.');
+        noter(e, 'Trahison : chacun a passé une carte au joueur de droite.', 'Betrayal: everyone passed a card to the player on their right.');
         commencerPlis(e);
       }
       return null;
@@ -211,7 +222,7 @@ function traiter(e: EtatPartie, a: Action): string | null {
         e.annoncesRevelees = true;
         const total = e.joueurs.reduce((s, j) => s + (e.annonces[j.id] ?? 0), 0);
         const liste = e.joueurs.map((j) => `${j.nom} ${e.annonces[j.id]}`).join(', ');
-        noter(e, `Annonces : ${liste} (total ${total} pour ${e.nuit} pli${e.nuit > 1 ? 's' : ''}).`);
+        noter(e, `Annonces : ${liste} (total ${total} pour ${e.nuit} pli${e.nuit > 1 ? 's' : ''}).`, `Bids: ${liste} (total ${total} for ${plurielEn(e.nuit, 'trick')}).`);
         if (e.evenement === 'alliance') e.phase = 'ALLIANCE';
         else if (e.evenement === 'trahison') e.phase = 'TRAHISON';
         else commencerPlis(e);
@@ -231,17 +242,17 @@ function traiter(e: EtatPartie, a: Action): string | null {
             if (e.choixAlliance[ids[i]] === ids[k] && e.choixAlliance[ids[k]] === ids[i]) e.alliances.push([ids[i], ids[k]]);
           }
         }
-        noter(
-          e,
-          `Choix des alliés : ${e.joueurs
-            .map((j) => `${j.nom} → ${e.choixAlliance[j.id] ? nom(e, e.choixAlliance[j.id] as string) : 'personne'}`)
-            .join(', ')}.`,
-        );
+        const choix = (personne: string) =>
+          e.joueurs.map((j) => `${j.nom} → ${e.choixAlliance[j.id] ? nom(e, e.choixAlliance[j.id] as string) : personne}`).join(', ');
+        noter(e, `Choix des alliés : ${choix('personne')}.`, `Allies chosen: ${choix('nobody')}.`);
         noter(
           e,
           e.alliances.length
             ? `Alliance : ${e.alliances.map(([x, y]) => `${nom(e, x)} et ${nom(e, y)}`).join(' ; ')}.`
             : 'Alliance : aucun choix réciproque, personne n’est allié.',
+          e.alliances.length
+            ? `Alliance: ${e.alliances.map(([x, y]) => `${nom(e, x)} and ${nom(e, y)}`).join('; ')}.`
+            : 'Alliance: no mutual choice, nobody is allied.',
         );
         commencerPlis(e);
       }
@@ -261,14 +272,15 @@ function traiter(e: EtatPartie, a: Action): string | null {
       }
       e.mains[a.joueurId] = main.filter((x) => x !== a.carteId);
       e.pli.push(valeurCroupier === undefined ? { joueurId: a.joueurId, carteId: a.carteId } : { joueurId: a.joueurId, carteId: a.carteId, valeurCroupier });
-      noter(e, `${nom(e, a.joueurId)} joue ${nomCarte(a.carteId, valeurCroupier)}.`);
+      noter(e, `${nom(e, a.joueurId)} joue ${nomCarte(a.carteId, valeurCroupier)}.`, `${nom(e, a.joueurId)} plays ${nomCarteEn(a.carteId, valeurCroupier)}.`);
       if (c.speciale === 'pickpocket') {
         if (volPossible(e, a.joueurId)) {
           e.vol = { voleurId: a.joueurId, source: 'pickpocket' };
           e.phase = 'VOL';
           return null;
         }
-        noter(e, e.evenement === 'descente_police' ? 'Descente de police : le Pickpocket ne peut rien voler.' : 'Pickpocket : aucun butin à voler pour le moment.');
+        if (e.evenement === 'descente_police') noter(e, 'Descente de police : le Pickpocket ne peut rien voler.', 'Police Raid: the Pickpocket cannot steal anything.');
+        else noter(e, 'Pickpocket : aucun butin à voler pour le moment.', 'Pickpocket: no loot to steal yet.');
       }
       apresPose(e);
       return null;
@@ -276,7 +288,7 @@ function traiter(e: EtatPartie, a: Action): string | null {
     case 'VOLER': {
       if (e.phase !== 'VOL' || !e.vol) return "Ce n'est pas le moment de voler.";
       if (e.vol.voleurId !== a.joueurId) return "Ce n'est pas à toi de voler.";
-      if (a.cibleId === null) noter(e, `${nom(e, a.joueurId)} renonce à voler.`);
+      if (a.cibleId === null) noter(e, `${nom(e, a.joueurId)} renonce à voler.`, `${nom(e, a.joueurId)} decides not to steal.`);
       else {
         if (!estJoueur(e, a.cibleId) || a.cibleId === a.joueurId) return 'Cible invalide.';
         resoudreVol(e, a.joueurId, a.cibleId, a.carteId);
@@ -342,6 +354,7 @@ function terminerPli(e: EtatPartie) {
   noter(
     e,
     `${nom(e, gagnantId)} remporte le pli${r.braquage ? ' : Braquage !' : ''}${butinId ? ` et garde ${nomCarte(butinId)} en butin.` : '.'}`,
+    `${nom(e, gagnantId)} wins the trick${r.braquage ? ': Stick-up!' : ''}${butinId ? ` and keeps ${nomCarteEn(butinId)} as loot.` : '.'}`,
   );
   e.pli = [];
   e.ouvreur = siege(e, gagnantId);
@@ -356,17 +369,17 @@ function resoudreVol(e: EtatPartie, voleurId: string, cibleId: string, carteId?:
   const voleur = nom(e, voleurId);
   const cible = nom(e, cibleId);
   if (e.evenement === 'descente_police') {
-    noter(e, 'Descente de police : aucun vol cette nuit.');
+    noter(e, 'Descente de police : aucun vol cette nuit.', 'Police Raid: no stealing tonight.');
     return;
   }
   const butin = e.butins[cibleId];
   if (butin.length === 0) {
-    noter(e, `${voleur} tente de voler ${cible}, qui n'a pas de butin.`);
+    noter(e, `${voleur} tente de voler ${cible}, qui n'a pas de butin.`, `${voleur} tries to rob ${cible}, who has no loot.`);
     return;
   }
   const alibi = e.mains[cibleId].some((id) => carte(id).speciale === 'alibi');
   if (alibi && e.evenement !== 'couvre_feu') {
-    noter(e, `${voleur} tente de voler ${cible} : protégé par un Alibi !`);
+    noter(e, `${voleur} tente de voler ${cible} : protégé par un Alibi !`, `${voleur} tries to rob ${cible}: protected by an Alibi!`);
     return;
   }
   const prise =
@@ -375,7 +388,7 @@ function resoudreVol(e: EtatPartie, voleurId: string, cibleId: string, carteId?:
       : butin.reduce((m, id) => ((carte(id).valeur ?? 0) > (carte(m).valeur ?? 0) ? id : m), butin[0]);
   e.butins[cibleId] = butin.filter((id) => id !== prise);
   e.butins[voleurId].push(prise);
-  noter(e, `${voleur} vole ${nomCarte(prise)} à ${cible}.`);
+  noter(e, `${voleur} vole ${nomCarte(prise)} à ${cible}.`, `${voleur} steals ${nomCarteEn(prise)} from ${cible}.`);
 }
 
 function finNuit(e: EtatPartie) {
@@ -398,7 +411,7 @@ function finNuit(e: EtatPartie) {
   e.bilans.push(bilan);
   e.prets = {};
   e.phase = 'FIN_DE_NUIT';
-  noter(e, `Fin de la nuit ${e.nuit}.`);
+  noter(e, `Fin de la nuit ${e.nuit}.`, `End of night ${e.nuit}.`);
 }
 
 function nuitSuivante(e: EtatPartie) {
@@ -406,7 +419,11 @@ function nuitSuivante(e: EtatPartie) {
     e.phase = 'FIN_DE_PARTIE';
     const max = Math.max(...e.joueurs.map((j) => e.scores[j.id]));
     const gagnants = e.joueurs.filter((j) => e.scores[j.id] === max).map((j) => j.nom);
-    noter(e, `Fin de la partie. ${gagnants.join(' et ')} ${gagnants.length > 1 ? 'deviennent' : 'devient'} le Dernier Baron avec ${max} points.`);
+    noter(
+      e,
+      `Fin de la partie. ${gagnants.join(' et ')} ${gagnants.length > 1 ? 'deviennent' : 'devient'} le Dernier Baron avec ${max} points.`,
+      `Game over. ${gagnants.join(' and ')} ${gagnants.length > 1 ? 'become' : 'becomes'} the Last Baron with ${max} points.`,
+    );
     return;
   }
   e.nuit += 1;

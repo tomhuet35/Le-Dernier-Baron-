@@ -8,6 +8,7 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { estLangue, type Langue } from '../shared/langue';
 import { estTapis, niveauDepuisXp, tapisActif, tapisDebloque, TAPIS_PAR_DEFAUT, type IdTapis, type ResultatJoueur } from '../shared/niveaux';
 import type { EntreeHistorique, ProfilCompte } from '../shared/types';
 
@@ -47,7 +48,23 @@ export interface StatsCompte {
   demandesEnvoyees: string[];
   /** Abonnements aux notifications (un par téléphone ou navigateur), pour recevoir les invitations jeu fermé. */
   push: AbonnementPush[];
+  /** Parties quittées avant la fin. */
+  abandons: number;
+  /** Langue du jeu sur le dernier appareil utilisé (pour écrire les notifications dans sa langue). */
+  langue: Langue;
 }
+
+/** Signalement d'un joueur par un autre (gardé 6 mois pour vérification). */
+export interface Signalement {
+  date: number;
+  salon: string;
+  publique: boolean;
+  motif: string;
+  signaleur: { nom: string; uid: string | null };
+  signale: { nom: string; uid: string | null };
+  messages: { texte: string; heure: number }[];
+}
+export const DUREE_SIGNALEMENTS_MS = 183 * 24 * 60 * 60 * 1000;
 
 /** Abonnement Web Push fourni par le navigateur (adresse du service de notification et clés de chiffrement). */
 export interface AbonnementPush {
@@ -86,6 +103,9 @@ export interface Stockage {
   /** Réglage du serveur gardé avec les comptes (clés des notifications). */
   lireParametre?(cle: string): Promise<unknown>;
   ecrireParametre?(cle: string, valeur: Record<string, unknown>): Promise<void>;
+  /** Signalements de joueurs : ajout, et suppression des plus anciens. */
+  ajouterSignalement?(s: Signalement): Promise<void>;
+  purgerSignalements?(avant: number): Promise<number>;
 }
 
 export type RelationAmi = 'ami' | 'demande_envoyee' | 'demande_recue' | 'aucune';
@@ -117,6 +137,11 @@ export interface ServiceComptes {
   retirerPush(uid: string, endpoints: string[]): Promise<void>;
   lireParametre(cle: string): Promise<unknown>;
   ecrireParametre(cle: string, valeur: Record<string, unknown>): Promise<void>;
+  /** Langue du joueur (notifications). */
+  definirLangue(uid: string, langue: Langue): Promise<void>;
+  signaler(s: Signalement): Promise<void>;
+  /** Supprime les signalements de plus de 6 mois ; renvoie le nombre supprimé. */
+  purgerSignalements(maintenant?: number): Promise<number>;
 }
 
 export const MAX_AMIS = 100;
@@ -156,6 +181,8 @@ export function statsVides(nom: string, date: number): StatsCompte {
     demandesRecues: [],
     demandesEnvoyees: [],
     push: [],
+    abandons: 0,
+    langue: 'fr',
   };
 }
 
@@ -183,6 +210,7 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
           nuitsGagnees: nombre(e.nuitsGagnees),
           xp: nombre(e.xp),
           adversaires: Array.isArray(e.adversaires) ? e.adversaires.filter((a): a is string => typeof a === 'string') : [],
+          ...(e.abandon === true ? { abandon: true } : {}),
         }))
     : [];
   return {
@@ -209,6 +237,8 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
           .map((a) => ({ endpoint: a.endpoint as string, p256dh: a.p256dh as string, auth: a.auth as string, depuis: nombre(a.depuis) }))
           .slice(-MAX_ABONNEMENTS_PUSH)
       : [],
+    abandons: nombre(d.abandons),
+    langue: estLangue(d.langue) ? d.langue : 'fr',
   };
 }
 
@@ -224,17 +254,21 @@ export function appliquerResultat(avant: StatsCompte | null, nom: string, r: Res
     nuitsGagnees: r.nuitsGagnees,
     xp: r.xp,
     adversaires: c.adversaires.slice(0, 5),
+    ...(r.abandon ? { abandon: true } : {}),
   };
+  // Partie abandonnée : comptée comme jouée, mais l'ordinateur a fini à sa place : ni victoire, ni XP, ni record.
+  const ab = !!r.abandon;
   return {
     ...base,
     // Le nom du compte (pseudo choisi à l'inscription) reste stable ; à défaut, le pseudo de la partie.
     nom: base.nom || nom,
     parties: base.parties + 1,
-    victoires: base.victoires + (r.victoire ? 1 : 0),
-    nuitsGagnees: base.nuitsGagnees + r.nuitsGagnees,
-    annoncesReussies: base.annoncesReussies + r.annoncesReussies,
-    meilleurScore: base.meilleurScore === null ? r.score : Math.max(base.meilleurScore, r.score),
-    xp: base.xp + r.xp,
+    victoires: base.victoires + (r.victoire && !ab ? 1 : 0),
+    nuitsGagnees: base.nuitsGagnees + (ab ? 0 : r.nuitsGagnees),
+    annoncesReussies: base.annoncesReussies + (ab ? 0 : r.annoncesReussies),
+    meilleurScore: ab ? base.meilleurScore : base.meilleurScore === null ? r.score : Math.max(base.meilleurScore, r.score),
+    abandons: (base.abandons ?? 0) + (ab ? 1 : 0),
+    xp: base.xp + (ab ? 0 : r.xp),
     historique: [entree, ...base.historique].slice(0, TAILLE_HISTORIQUE),
     majLe: c.date,
     avatar: avatar ?? base.avatar,
@@ -266,6 +300,7 @@ export function creerServiceComptes(parties: {
 }): ServiceComptes {
   const { authentification, stockage } = parties;
   const parametresMemoire = new Map<string, unknown>();
+  const signalementsMemoire: Signalement[] = [];
   return {
     configWeb: parties.configWeb,
     emulateurAuth: parties.emulateurAuth ?? null,
@@ -385,6 +420,22 @@ export function creerServiceComptes(parties: {
         return { ...base, push: base.push.filter((a) => !endpoints.includes(a.endpoint)) };
       });
     },
+    definirLangue: async (uid, langue) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel || actuel.langue === langue) return;
+      await stockage.modifier(uid, (avant) => ({ ...(avant ?? actuel), langue }));
+    },
+    signaler: async (s) => {
+      if (stockage.ajouterSignalement) await stockage.ajouterSignalement(s);
+      else signalementsMemoire.push(s);
+    },
+    purgerSignalements: async (maintenant = Date.now()) => {
+      const avant = maintenant - DUREE_SIGNALEMENTS_MS;
+      if (stockage.purgerSignalements) return stockage.purgerSignalements(avant);
+      const n = signalementsMemoire.length;
+      signalementsMemoire.splice(0, n, ...signalementsMemoire.filter((s) => s.date >= avant));
+      return n - signalementsMemoire.length;
+    },
     lireParametre: async (cle) => (stockage.lireParametre ? stockage.lireParametre(cle) : (parametresMemoire.get(cle) ?? null)),
     ecrireParametre: async (cle, valeur) => {
       if (stockage.ecrireParametre) await stockage.ecrireParametre(cle, valeur);
@@ -393,10 +444,20 @@ export function creerServiceComptes(parties: {
   };
 }
 
-export function stockageMemoire(): Stockage & { donnees: Map<string, StatsCompte> } {
+export function stockageMemoire(): Stockage & { donnees: Map<string, StatsCompte>; signalements: Signalement[] } {
   const donnees = new Map<string, StatsCompte>();
+  const signalements: Signalement[] = [];
   return {
     donnees,
+    signalements,
+    ajouterSignalement: async (s) => {
+      signalements.push(structuredClone(s));
+    },
+    purgerSignalements: async (avant) => {
+      const n = signalements.length;
+      signalements.splice(0, n, ...signalements.filter((s) => s.date >= avant));
+      return n - signalements.length;
+    },
     lire: async (uid) => structuredClone(donnees.get(uid) ?? null),
     modifier: async (uid, changement) => {
       const apres = changement(structuredClone(donnees.get(uid) ?? null));
@@ -586,6 +647,17 @@ export async function comptesDepuisEnvironnement(env: NodeJS.ProcessEnv = proces
         },
         ecrireParametre: async (cle, valeur) => {
           await db.collection('parametres').doc(cle).set(valeur);
+        },
+        ajouterSignalement: async (s) => {
+          await db.collection('signalements').add(s);
+        },
+        purgerSignalements: async (avant) => {
+          const vieux = await db.collection('signalements').where('date', '<', avant).limit(400).get();
+          if (vieux.empty) return 0;
+          const lot = db.batch();
+          vieux.docs.forEach((d) => lot.delete(d.ref));
+          await lot.commit();
+          return vieux.size;
         },
       };
     }

@@ -13,7 +13,7 @@ const comptes = await comptesDepuisEnvironnement(process.env);
 // Notifications d'invitation (jeu fermé) : seulement avec les comptes, puisqu'on invite ses amis.
 const notifications = await creerNotifications(comptes, process.env);
 // Adresse de contact de la page Confidentialité : réglée sur Render, jamais écrite dans le code public.
-const contact = process.env.CONTACT_EMAIL?.trim() || null;
+const contact = process.env.CONTACT_EMAIL?.trim() || 'ledernierbaron@gmail.com';
 
 demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes, notifications, contact }).then(({ port: p }) => {
   console.log(`Le Dernier Baron est en ligne sur http://localhost:${p}`);

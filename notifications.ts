@@ -50,7 +50,8 @@ export async function creerNotifications(
     }
     const { publicKey, privateKey } = cles;
     // Contact demandé par les services de notification : l'adresse du jeu, sinon son site.
-    const contact = env.CONTACT_EMAIL && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(env.CONTACT_EMAIL) ? `mailto:${env.CONTACT_EMAIL}` : null;
+    const adresse = env.CONTACT_EMAIL?.trim() || 'ledernierbaron@gmail.com';
+    const contact = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adresse) ? `mailto:${adresse}` : null;
     const site = env.RENDER_EXTERNAL_URL?.startsWith('https://') ? env.RENDER_EXTERNAL_URL : 'https://le-dernier-baron.onrender.com';
     const sujet = contact ?? site;
 

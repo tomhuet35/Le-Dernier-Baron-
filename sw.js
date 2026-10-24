@@ -109,7 +109,7 @@ self.addEventListener('push', (e) => {
     self.registration.showNotification(titre, {
       body: d.texte || 'Un ami t’invite à sa table.',
       icon: '/icone-192.png',
-      badge: '/icone-192.png',
+      badge: '/icone-badge.png',
       tag: d.etiquette || 'invitation',
       renotify: true,
       lang: 'fr',

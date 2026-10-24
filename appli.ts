@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { socket } from './socket';
+import { tr } from './traduction';
 
 // ---------- Configuration publique du serveur (lue une seule fois) ----------
 
@@ -29,8 +30,8 @@ export function configServeur(): Promise<ConfigServeur | null> {
 type Reponse = { ok: boolean; erreur?: string };
 function demander(evenement: string, data?: unknown): Promise<Reponse> {
   return new Promise((ok) => {
-    if (!socket.connected) return ok({ ok: false, erreur: 'Connexion perdue, réessaie dans un instant.' });
-    socket.timeout(8000).emit(evenement, data ?? {}, (err: unknown, r: Reponse) => ok(err ? { ok: false, erreur: 'Le serveur ne répond pas.' } : r));
+    if (!socket.connected) return ok({ ok: false, erreur: tr('Connexion perdue, réessaie dans un instant.', 'Connection lost, try again in a moment.') });
+    socket.timeout(8000).emit(evenement, data ?? {}, (err: unknown, r: Reponse) => ok(err ? { ok: false, erreur: tr('Le serveur ne répond pas.', 'The server is not responding.') } : r));
   });
 }
 
@@ -198,10 +199,10 @@ export async function activerNotifications(): Promise<{ etat: EtatNotifications;
     }
     abonnement ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: cle as BufferSource });
     const r = await demander('push_abonner', abonnement.toJSON());
-    if (!r.ok) return { etat: 'inactives', erreur: r.erreur || 'Le serveur n’a pas enregistré l’abonnement.' };
+    if (!r.ok) return { etat: 'inactives', erreur: r.erreur || tr('Le serveur n’a pas enregistré l’abonnement.', 'The server did not save the subscription.') };
     return { etat: 'actives' };
   } catch {
-    return { etat: await lireEtatNotifications(), erreur: 'Les notifications n’ont pas pu être activées sur cet appareil.' };
+    return { etat: await lireEtatNotifications(), erreur: tr('Les notifications n’ont pas pu être activées sur cet appareil.', 'Notifications could not be turned on for this device.') };
   }
 }
 

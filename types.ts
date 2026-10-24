@@ -65,6 +65,8 @@ export interface BilanNuit {
 export interface EntreeJournal {
   n: number;
   texte: string;
+  /** La même ligne en anglais. */
+  en?: string;
 }
 
 export interface JoueurPartie {
@@ -191,6 +193,8 @@ export interface JoueurSalonVue {
   avatar: number;
   /** Niveau et victoires du joueur s'il est connecté à son compte (visible de tout le salon). */
   compte: CompteJoueurVue | null;
+  /** A quitté la partie en cours : l'ordinateur joue à sa place. */
+  abandon?: boolean;
 }
 
 export interface CompteJoueurVue {
@@ -212,6 +216,8 @@ export interface BilanCompte {
   parties: number;
   /** Partie jouée pendant un week-end XP double. */
   xpDouble?: boolean;
+  /** Partie quittée avant la fin : aucune XP. */
+  abandon?: boolean;
 }
 
 export interface EnregistrementVue {
@@ -230,6 +236,8 @@ export interface EntreeHistorique {
   nuitsGagnees: number;
   xp: number;
   adversaires: string[];
+  /** Partie quittée avant la fin (aucune XP). */
+  abandon?: boolean;
 }
 
 /** Fiche d'un joueur de la table, visible par tous (jamais d'adresse e-mail). */
@@ -321,6 +329,10 @@ export interface VueSalon {
   comptesActifs: boolean;
   /** Enregistrement des victoires de la partie terminée (null tant que la partie n'est pas finie). */
   enregistrement: EnregistrementVue | null;
+  /** Fin de partie publique : joueurs qui ont accepté la revanche, et temps restant pour la rejoindre. */
+  revanche?: { votants: string[]; finDans: number } | null;
+  /** Mon chat est coupé pour toute la table (après des signalements). */
+  chatCoupe?: boolean;
 }
 
 /** Réaction rapide d'un joueur, affichée quelques secondes au-dessus de son avatar. */

@@ -66,6 +66,8 @@ export interface ResultatJoueur {
   nuitsGagnees: number;
   annoncesReussies: number;
   xp: number;
+  /** Le joueur a quitté la partie avant la fin : l'ordinateur a fini à sa place, la partie ne lui rapporte rien. */
+  abandon?: boolean;
 }
 
 /**
