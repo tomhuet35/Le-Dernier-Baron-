@@ -39,7 +39,7 @@ function nomCarte(id: string, valeurCroupier?: 0 | 11): string {
 }
 
 /** Crée une partie et distribue la première nuit. La graine rend la partie rejouable (tests). */
-export function creerPartie(joueurs: JoueurPartie[], graine: number): EtatPartie {
+export function creerPartie(joueurs: JoueurPartie[], graine: number, reglages: { nbNuits?: number; nuitsAvecEvenement?: number[] } = {}): EtatPartie {
   if (joueurs.length < MIN_JOUEURS || joueurs.length > MAX_JOUEURS) {
     throw new Error(`Il faut entre ${MIN_JOUEURS} et ${MAX_JOUEURS} joueurs.`);
   }
@@ -83,6 +83,8 @@ export function creerPartie(joueurs: JoueurPartie[], graine: number): EtatPartie
     journal: [],
     compteurJournal: 0,
   };
+  if (reglages.nbNuits) e.nbNuits = reglages.nbNuits;
+  if (reglages.nuitsAvecEvenement) e.nuitsAvecEvenement = reglages.nuitsAvecEvenement;
   noter(e, `La partie commence. ${nom(e, joueurs[premier].id)} est le premier joueur.`);
   demarrerNuit(e);
   return e;
@@ -119,7 +121,7 @@ function demarrerNuit(e: EtatPartie) {
   e.evenement = null;
   e.evenementId = null;
   const premierNom = nom(e, e.joueurs[e.premier].id);
-  if (NUITS_AVEC_EVENEMENT.includes(n) && e.piocheEvenements.length) {
+  if ((e.nuitsAvecEvenement ?? NUITS_AVEC_EVENEMENT).includes(n) && e.piocheEvenements.length) {
     const id = e.piocheEvenements.shift() as string;
     e.evenementId = id;
     e.evenement = EVENEMENT[id].evenement;
@@ -400,7 +402,7 @@ function finNuit(e: EtatPartie) {
 }
 
 function nuitSuivante(e: EtatPartie) {
-  if (e.nuit >= NB_NUITS) {
+  if (e.nuit >= (e.nbNuits ?? NB_NUITS)) {
     e.phase = 'FIN_DE_PARTIE';
     const max = Math.max(...e.joueurs.map((j) => e.scores[j.id]));
     const gagnants = e.joueurs.filter((j) => e.scores[j.id] === max).map((j) => j.nom);

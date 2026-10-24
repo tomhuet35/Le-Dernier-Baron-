@@ -631,6 +631,7 @@ select { font: inherit; width: 100%; min-height: 42px; padding: 8px 10px; color:
 .ajout-bot { display: grid; gap: 8px; padding: 12px; border-radius: 12px; border: 1px dashed var(--filet); background: rgba(33, 23, 17, 0.6); }
 .ajout-bot-choix { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .bouton-avatar, .siege-avatar { padding: 0; border: none; background: none; min-height: 0; border-radius: 50%; cursor: pointer; }
+.bouton-avatar { position: relative; }
 .bouton-avatar:focus-visible, .siege-avatar:focus-visible { outline: 2px solid var(--or-vif); outline-offset: 3px; }
 .fiche-tete { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
 .fiche-tete > div { display: grid; gap: 2px; min-width: 0; }
@@ -911,3 +912,44 @@ select { font: inherit; width: 100%; min-height: 42px; padding: 8px 10px; color:
 @media (prefers-reduced-motion: reduce) {
   .particules { display: none; }
 }
+
+/* ---------- Tutoriel ---------- */
+.lien-tutoriel { display: block; margin: 10px auto 0; min-height: 0; padding: 8px 14px; border: 1px solid rgba(231, 194, 122, 0.45); border-radius: 99px; background: rgba(22, 16, 12, 0.72); color: var(--creme); font-size: 14px; }
+.lien-tutoriel strong { color: var(--or-vif); }
+.tuto-bulle { position: fixed; z-index: 33; left: 50%; top: max(84px, calc(env(safe-area-inset-top) + 76px)); width: min(calc(100vw - 24px), 430px); translate: -50% 0; display: grid; gap: 5px; padding: 12px 14px 10px; border-radius: 14px; border: 1px solid var(--or); background: linear-gradient(180deg, rgba(48, 31, 18, 0.97), rgba(26, 17, 11, 0.97)); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65), 0 0 0 4px rgba(231, 194, 122, 0.12); animation: tuto-entree 0.35s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+.tuto-bulle.bas { top: auto; bottom: max(14px, env(safe-area-inset-bottom)); }
+.tuto-fin { flex-basis: 100%; display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--or); background: rgba(210, 168, 90, 0.08); }
+.tuto-fin strong { font-family: var(--titre); font-weight: 400; font-size: 19px; color: var(--or-vif); }
+.tuto-fin p { margin: 0; font-size: 13.5px; line-height: 1.45; }
+.tuto-etiquette { margin: 0; font-size: 10.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--or); }
+.tuto-titre { font-family: var(--titre); font-weight: 400; font-size: 20px; line-height: 1.15; color: var(--or-vif); }
+.tuto-texte { margin: 0; font-size: 14px; line-height: 1.45; color: var(--creme); }
+.tuto-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
+.tuto-actions .lien-discret { font-size: 12px; }
+@keyframes tuto-entree { from { opacity: 0; transform: translateY(-10px) scale(0.96); } to { opacity: 1; transform: none; } }
+/* Halo doré autour de la zone à utiliser */
+@keyframes tuto-halo { 0%, 100% { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.85), 0 0 14px rgba(231, 194, 122, 0.35); } 50% { box-shadow: 0 0 0 4px rgba(231, 194, 122, 1), 0 0 26px rgba(231, 194, 122, 0.7); } }
+body[data-tuto='annonce'] .choix-annonce button:not(:disabled),
+body[data-tuto='vol'] .consigne .pastille,
+body[data-tuto='main'] .eventail .carte.jouable .carte-bouton { animation: tuto-halo 1.3s ease-in-out infinite; }
+body[data-tuto='main'] .eventail { border-radius: 14px; animation: tuto-halo 1.3s ease-in-out infinite; }
+body[data-tuto='tapis'] .centre { animation: tuto-halo 1.3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .tuto-bulle, body[data-tuto] * { animation: none !important; } }
+
+/* ---------- Réactions rapides ---------- */
+.bulle-reaction { position: absolute; left: 50%; bottom: 78%; z-index: 6; width: 1.3em; margin-left: -0.65em; font-size: 30px; line-height: 1; text-align: center; pointer-events: none; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6)); animation: reaction-monte 2.6s ease-out forwards; }
+@keyframes reaction-monte {
+  0% { opacity: 0; transform: translateY(12px) scale(0.3); }
+  12% { opacity: 1; transform: translateY(-4px) scale(1.3); }
+  22% { transform: translateY(-6px) scale(1); }
+  78% { opacity: 1; transform: translateY(-16px) scale(1); }
+  100% { opacity: 0; transform: translateY(-30px) scale(0.9); }
+}
+.reactions { position: relative; margin-left: auto; align-self: center; flex: none; }
+.reactions-bouton { display: grid; place-items: center; width: 42px; height: 42px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid rgba(231, 194, 122, 0.6); background: rgba(22, 16, 12, 0.85); font-size: 21px; line-height: 1; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); }
+.reactions-bouton.ouvert { border-color: var(--or-vif); box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.4); }
+.reactions-bouton:disabled { opacity: 0.45; }
+.reactions-palette { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 19; display: flex; gap: 4px; padding: 6px; border-radius: 99px; border: 1px solid var(--or); background: rgba(26, 17, 11, 0.97); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6); animation: tuto-entree 0.2s ease-out both; }
+.reactions-palette button { display: grid; place-items: center; width: 42px; height: 42px; min-height: 0; padding: 0; border: none; border-radius: 50%; background: transparent; font-size: 24px; line-height: 1; transition: transform 0.12s; }
+.reactions-palette button:hover, .reactions-palette button:focus-visible { transform: scale(1.22); background: rgba(231, 194, 122, 0.14); }
+@media (prefers-reduced-motion: reduce) { .bulle-reaction { animation-duration: 2.6s; animation-name: apparaitre; } }

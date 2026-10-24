@@ -18,6 +18,61 @@ function emettre(s: Socket, evt: string, data?: unknown): Promise<any> {
   return new Promise((ok) => s.emit(evt, data, ok));
 }
 
+describe('Réactions rapides', () => {
+  it('une réaction est envoyée à toute la table, une à la fois, et seulement parmi les émojis prévus', async () => {
+    const [a, b] = [io(url(), { transports: ['websocket'], forceNew: true }), io(url(), { transports: ['websocket'], forceNew: true })];
+    expect((await emettre(a, 'reaction', { emoji: '👏' })).ok).toBe(false); // hors salon
+    const cree = await emettre(a, 'creer', { nom: 'Alice' });
+    const rejoint = await emettre(b, 'rejoindre', { code: cree.code, nom: 'Bruno' });
+    const recue = new Promise<any>((ok) => a.once('reaction', ok));
+    expect((await emettre(b, 'reaction', { emoji: '🔥' })).ok).toBe(true);
+    expect(await recue).toMatchObject({ joueurId: rejoint.joueurId, emoji: '🔥' });
+    expect((await emettre(b, 'reaction', { emoji: '👏' })).ok).toBe(false); // trop rapproché
+    expect((await emettre(a, 'reaction', { emoji: '💩' })).ok).toBe(false); // pas dans la liste
+    a.close();
+    b.close();
+  });
+});
+
+describe('Tutoriel', () => {
+  it('partie guidée de 3 nuits contre 2 ordinateurs, sans minuteur, avec la donne prévue', async () => {
+    const s = io(url(), { transports: ['websocket'], forceNew: true });
+    const vues: VueSalon[] = [];
+    const fini = new Promise<VueSalon>((ok) => {
+      let enCours = false;
+      s.on('salon', async (v: VueSalon) => {
+        vues.push(v);
+        const p = v.partie;
+        if (!p) return;
+        if (p.phase === 'FIN_DE_PARTIE') return ok(v);
+        if (enCours) return;
+        enCours = true;
+        const action = actionRobot(p);
+        if (action) await emettre(s, 'action', action);
+        enCours = false;
+      });
+    });
+    const r = await emettre(s, 'tutoriel', { nom: 'Lucas' });
+    expect(r.ok).toBe(true);
+    const fin = await fini;
+    const premiere = vues.find((v) => v.partie)!;
+    expect(premiere.tutoriel).toBe(true);
+    expect(premiere.tempsRestant).toBeNull();
+    expect(premiere.joueurs.map((j) => j.nom)).toEqual(['Lucas', 'Greg', 'Cyrielle']);
+    expect(premiere.partie!.nbNuits).toBe(3);
+    expect(premiere.partie!.main.map((c) => c.id)).toEqual(['lames-08']);
+    const nuit2 = vues.find((v) => v.partie?.nuit === 2 && v.partie.phase === 'ANNONCES')!.partie!;
+    expect(nuit2.main.map((c) => c.id).sort()).toEqual(['chat-noir-05', 'lames-03']);
+    expect(nuit2.evenement).toBe('casse_du_siecle');
+    const nuit3 = vues.find((v) => v.partie?.nuit === 3 && v.partie.phase === 'ANNONCES')!.partie!;
+    expect(nuit3.main.map((c) => c.id)).toContain('baron');
+    expect(nuit3.evenement).toBeNull();
+    expect(vues.every((v) => v.tempsRestant === null)).toBe(true);
+    expect(fin.partie!.bilans).toHaveLength(3);
+    s.close();
+  }, 30_000);
+});
+
 describe('Serveur de bout en bout', () => {
   it('trois téléphones jouent une partie complète, chacun ne voyant que sa main', async () => {
     const noms = ['Alice', 'Bruno', 'Chloé'];

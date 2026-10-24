@@ -43,6 +43,10 @@ export const DUREE_TOUR_MS = 30_000;
 /** Nombre d'avatars disponibles (un par joueur, 6 joueurs au maximum). */
 export const NB_AVATARS = 6;
 
+/** Réactions rapides en partie (une toutes les 1,5 seconde par joueur). */
+export const REACTIONS = ['👏', '😂', '😱', '🔥', '😡', '👍'] as const;
+export const DELAI_REACTION_MS = 1500;
+
 /** Parties publiques : attente d'autres joueurs avant le lancement, puis les places libres sont prises par des bots. */
 export const ATTENTE_PARTIE_PUBLIQUE_MS = 30_000;
 export const TAILLE_PARTIE_PUBLIQUE = 6;

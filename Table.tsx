@@ -2,10 +2,13 @@ import type React from 'react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CARTE } from '../../shared/cartes';
 import { TAPIS_PAR_DEFAUT, tapisGagnes, type IdTapis } from '../../shared/niveaux';
-import type { Action, Vue, VueJoueur, VueSalon } from '../../shared/types';
+import { DELAI_REACTION_MS, REACTIONS } from '../../shared/config';
+import type { Action, Reaction, Vue, VueJoueur, VueSalon } from '../../shared/types';
+import { socket } from './socket';
 import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
+import { FinTutoriel, Tutoriel } from './Tutoriel';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, trierMain } from './textes';
 import { duelDuPli, type DuelPli } from '../../shared/regles';
 import { Avatar, Butin, CarteImg, Chat, Duel, Fenetre, IconeImage, IconeMusique, Pastille, SON_EVENEMENT, Zoom, jouerEffet, sonDeCarte, useMinuteur, useMusique } from './ui';
@@ -73,6 +76,66 @@ function useOrdi() {
   return ordi;
 }
 
+/** Réactions rapides reçues : la dernière de chaque joueur, affichée quelques secondes au-dessus de son avatar. */
+function useReactions() {
+  const [reactions, setReactions] = useState<Record<string, Reaction>>({});
+  useEffect(() => {
+    const minuteurs = new Set<number>();
+    const surReaction = (r: Reaction) => {
+      jouerEffet('message');
+      setReactions((x) => ({ ...x, [r.joueurId]: r }));
+      const t = window.setTimeout(() => {
+        minuteurs.delete(t);
+        setReactions((x) => (x[r.joueurId]?.n === r.n ? Object.fromEntries(Object.entries(x).filter(([id]) => id !== r.joueurId)) : x));
+      }, 2700);
+      minuteurs.add(t);
+    };
+    socket.on('reaction', surReaction);
+    return () => {
+      socket.off('reaction', surReaction);
+      minuteurs.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
+  return reactions;
+}
+
+function BulleReaction({ r }: { r?: Reaction }) {
+  if (!r) return null;
+  return (
+    <span key={r.n} className="bulle-reaction" aria-label={`Réaction ${r.emoji}`}>
+      {r.emoji}
+    </span>
+  );
+}
+
+/** Bouton des réactions rapides : ouvre une petite palette d'émojis à envoyer à la table. */
+function BoutonReactions({ appel }: { appel: Appel }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [attente, setAttente] = useState(false);
+  const envoyer = async (emoji: string) => {
+    setOuvert(false);
+    setAttente(true);
+    window.setTimeout(() => setAttente(false), DELAI_REACTION_MS);
+    await appel('reaction', { emoji });
+  };
+  return (
+    <div className="reactions">
+      <button type="button" className={`reactions-bouton ${ouvert ? 'ouvert' : ''}`} onClick={() => setOuvert(!ouvert)} disabled={attente} aria-expanded={ouvert} aria-label="Envoyer une réaction">
+        <span aria-hidden="true">😊</span>
+      </button>
+      {ouvert && (
+        <div className="reactions-palette" role="menu" aria-label="Réactions">
+          {REACTIONS.map((e) => (
+            <button key={e} type="button" role="menuitem" onClick={() => void envoyer(e)} aria-label={`Réagir ${e}`}>
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Le pli en grand, par-dessus la table : toutes les cartes côte à côte avec le nom de chaque joueur. */
 function VuePli(props: { cartes: { joueurId: string; carteId: string; valeurCroupier?: 0 | 11 }[]; gagnantId: string | null; nom: (id: string) => string; onCarte: (id: string) => void; onFermer: () => void }) {
   const { cartes, gagnantId, nom, onCarte, onFermer } = props;
@@ -127,6 +190,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const [selection, setSelection] = useState<string | null>(null);
   const [zoom, setZoom] = useState<string | null>(null);
   const [vuePli, setVuePli] = useState(false);
+  const reactions = useReactions();
   const surOrdi = useOrdi();
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [tailleTable, setTailleTable] = useState<{ l: number; h: number } | null>(null);
@@ -290,7 +354,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     setZoom(id);
   };
   const siegeDe = (j: VueJoueur) => (
-    <Siege key={j.id} j={j} v={v} salon={salon} estHote={estHote} appel={appel} nom={nom} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} />
+    <Siege key={j.id} j={j} v={v} salon={salon} estHote={estHote} appel={appel} nom={nom} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} reaction={reactions[j.id]} />
   );
   const chevauchement = main.length > 6 ? -0.56 : -0.42;
 
@@ -425,6 +489,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
         <div className="moi-bandeau">
           <button type="button" className="bouton-avatar" onClick={() => setFiche(v.moi)} aria-label="Voir mon profil">
             <Avatar n={avatarDe(v.moi)} grand fraction={aMoi ? fraction : null} />
+            <BulleReaction r={reactions[v.moi]} />
           </button>
           <div className="moi-texte">
             <div className="moi-nom">
@@ -447,6 +512,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
             {v.choixAllies && <ChoixAllie v={v} id={v.moi} nom={nom} />}
             <Butin ids={moi.butin} />
           </div>
+          {!salon.tutoriel && <BoutonReactions appel={appel} />}
         </div>
         <div className="eventail" style={{ '--chev': chevauchement } as React.CSSProperties} aria-label="Ta main">
           {main.map((c, i) => {
@@ -523,6 +589,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
       )}
       {zoom && <Zoom id={zoom} onFermer={() => setZoom(null)} />}
       {fiche && <FicheJoueur joueurId={fiche} appel={appel} onFermer={() => setFiche(null)} />}
+      {salon.tutoriel && <Tutoriel v={v} pliAffiche={pliAffiche} revelation={!!revelation} nom={nom} />}
       {duel && <Duel duel={duel} nom={nom} />}
       {revelation && v.evenement && (
         <div className="revelation" role="dialog" aria-label={`Événement : ${NOM_EVENEMENT[v.evenement]}`} onClick={() => setRevelation(null)}>
@@ -553,8 +620,9 @@ function Siege(props: {
   fraction: number | null;
   avatar: number;
   onProfil: (id: string) => void;
+  reaction?: Reaction;
 }) {
-  const { j, v, salon, estHote, appel, nom, fraction, avatar, onProfil } = props;
+  const { j, v, salon, estHote, appel, nom, fraction, avatar, onProfil, reaction } = props;
   const s = salon.joueurs.find((x) => x.id === j.id);
   const nb = Math.min(j.nbCartes, 8);
   const minute = j.attendu && v.phase !== 'FIN_DE_NUIT' && v.phase !== 'FIN_DE_PARTIE';
@@ -567,6 +635,7 @@ function Siege(props: {
       </div>
       <button type="button" className="siege-avatar" onClick={() => onProfil(j.id)} aria-label={`Voir le profil de ${j.nom}`}>
         <Avatar n={avatar} fraction={minute ? fraction : null} />
+        <BulleReaction r={reaction} />
         <span className="siege-nb" title="Cartes en main">
           {j.nbCartes}
         </span>
@@ -926,7 +995,9 @@ function FinDePartie(props: {
             </div>
           )}
           {enr?.etat === 'en_cours' && <p className="discret">Enregistrement des victoires…</p>}
-          {enr?.etat === 'test' && <p className="discret">Partie de test avec des robots : elle ne compte pas dans les victoires.</p>}
+          {enr?.etat === 'test' && (
+            <p className="discret">{salon.tutoriel ? 'Partie d’apprentissage : elle ne compte pas dans les victoires.' : 'Partie de test avec des robots : elle ne compte pas dans les victoires.'}</p>
+          )}
           {enr?.etat === 'solo' && <p className="discret">Partie contre l’ordinateur : elle ne compte dans les victoires qu’avec au moins 2 joueurs humains.</p>}
           {enr?.etat === 'erreur' && <p className="discret">Certaines victoires n’ont pas pu être enregistrées.</p>}
           {salon.comptesActifs && !compteDe(v.moi) && enr?.etat !== 'test' && enr?.etat !== 'solo' && (
@@ -938,7 +1009,17 @@ function FinDePartie(props: {
             </button>
           )}
           <div className="rangee">
-            {salon.publique ? (
+            {salon.tutoriel ? (
+              <>
+                <FinTutoriel />
+                <button type="button" className="principal" onClick={() => appel('jouer_public', { nom: nom(v.moi) })}>
+                  Jouer en ligne
+                </button>
+                <button type="button" onClick={() => appel('rejouer')}>
+                  Recommencer le tutoriel
+                </button>
+              </>
+            ) : salon.publique ? (
               <button type="button" className="principal" onClick={() => appel('jouer_public', { nom: nom(v.moi) })}>
                 🌍 Nouvelle partie en ligne
               </button>

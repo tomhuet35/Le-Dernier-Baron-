@@ -18,6 +18,7 @@ import {
 import { socket } from './socket';
 import { Table } from './Table';
 import { FenetreRegles } from './Regles';
+import { tutorielDejaVu } from './Tutoriel';
 import { AVATARS } from './textes';
 import { BoutonMusique, Chat, Defilant, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
 
@@ -464,6 +465,11 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
       >
         Jouer
       </button>
+      {!tutorielDejaVu() && (
+        <button type="button" className="lien-tutoriel" onClick={() => void appel('tutoriel', { nom: (lire(CLE_NOM) || compte.profil?.nom || 'Toi').slice(0, 16) })}>
+          Nouveau ? <strong>Apprends à jouer en 3 nuits</strong> →
+        </button>
+      )}
       <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={lire(CLE_NOM) ?? ''} />
       {fenetres}
     </main>
@@ -485,7 +491,7 @@ function PageJouer({ appel, compte, enLigne, retour }: { appel: Appel; compte: E
   const [code, setCode] = useState((salonDansAdresse() ?? '').toUpperCase());
   const [occupe, setOccupe] = useState(false);
   const invite = !!salonDansAdresse();
-  const valider = async (evenement: 'creer' | 'rejoindre' | 'jouer_public') => {
+  const valider = async (evenement: 'creer' | 'rejoindre' | 'jouer_public' | 'tutoriel') => {
     ecrire(CLE_NOM, nom.trim());
     setOccupe(true);
     await appel(evenement, { nom, code, modeTest: parametres.has('test') });
@@ -514,6 +520,10 @@ function PageJouer({ appel, compte, enLigne, retour }: { appel: Appel; compte: E
             </button>
             <button type="button" className="bouton-plaque sombre" disabled={!nom.trim() || occupe} onClick={() => valider('creer')}>
               <span>Partie privée</span>
+            </button>
+            <button type="button" className="bouton-plaque petite sombre" disabled={occupe} onClick={() => valider('tutoriel')}>
+              <span>Apprendre à jouer</span>
+              <small>Tutoriel guidé · 3 nuits</small>
             </button>
           </>
         )}

@@ -9,14 +9,17 @@ import { Server, type Socket } from 'socket.io';
 import {
   ATTENTE_PARTIE_PUBLIQUE_MS,
   DELAI_FIN_DE_PLI_MS,
+  DELAI_REACTION_MS,
   DELAI_ROBOT_MS,
   DUREE_TOUR_MS,
   HUMAINS_MIN_POUR_COMPTER,
   MAX_JOUEURS,
   MIN_JOUEURS,
   NB_AVATARS,
+  REACTIONS,
   TAILLE_PARTIE_PUBLIQUE,
 } from '../shared/config';
+import { CARTE } from '../shared/cartes';
 import { ajouterAuJournal, appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
 import { estTapis, niveauDepuisXp, resultatsPartie, titreNiveau } from '../shared/niveaux';
 import { actionRobot, NIVEAUX_BOT, PRENOMS_BOTS, profilAleatoire, PROFIL_REMPLACANT, STYLES_BOT } from '../shared/robot';
@@ -27,6 +30,7 @@ import type {
   EnregistrementVue,
   EtatPartie,
   MessageChat,
+  Reaction,
   AmiVue,
   Invitation,
   ListeAmis,
@@ -69,6 +73,8 @@ interface Salon {
   publique: boolean;
   depart: { fin: number; minuterie: ReturnType<typeof setTimeout> } | null;
   sansHumainDepuis: number | null;
+  /** Tutoriel : partie guidée de 3 nuits contre 2 ordinateurs débutants, sans minuteur, jamais comptée. */
+  tutoriel: boolean;
 }
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
@@ -87,6 +93,8 @@ export interface OptionsServeur {
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+/** Donne du tutoriel (choisie pour montrer une carte spéciale, un Chat noir et un événement simple). */
+export const GRAINE_TUTORIEL = 40750;
 
 export function demarrerServeur(options: OptionsServeur = {}) {
   const delaiFinDePli = options.delaiFinDePli ?? DELAI_FIN_DE_PLI_MS;
@@ -104,6 +112,11 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const amisParUid = new Map<string, Set<string>>();
   let ferme = false;
 
+  // Petit « coucou » qui garde le site éveillé (voir index.ts) : répond tout de suite, sans rien calculer.
+  app.get('/api/ping', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.type('text/plain').send('ok');
+  });
   app.get('/sante', (_req, res) => {
     res.json({ ok: true, salons: salons.size, comptes: !!comptes });
   });
@@ -165,6 +178,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       publique,
       depart: null,
       sansHumainDepuis: null,
+      tutoriel: false,
     };
     salons.set(salon.code, salon);
     return salon;
@@ -187,11 +201,11 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     return joueur;
   }
 
-  /** Ajoute un joueur ordinateur avec un prénom libre. */
-  function ajouterBot(salon: Salon, profil: ProfilBot): JoueurSalon {
+  /** Ajoute un joueur ordinateur avec un prénom libre (ou celui demandé). */
+  function ajouterBot(salon: Salon, profil: ProfilBot, prenom?: string): JoueurSalon {
     const pris = new Set(salon.joueurs.map((j) => j.nom.toLowerCase()));
     const libres = PRENOMS_BOTS.filter((n) => !pris.has(n.toLowerCase()));
-    const nom = libres.length ? libres[randomInt(libres.length)] : nomUnique(salon, 'Bot');
+    const nom = prenom && !pris.has(prenom.toLowerCase()) ? prenom : libres.length ? libres[randomInt(libres.length)] : nomUnique(salon, 'Bot');
     const bot: JoueurSalon = { id: nouvelId(), nom, jeton: nouvelId(), socketId: null, robot: true, bot: profil, avatar: avatarLibre(salon), uid: null, compte: null };
     salon.joueurs.push(bot);
     return bot;
@@ -257,6 +271,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       tempsRestant: salon.echeance ? Math.max(0, salon.echeance.fin - Date.now()) : null,
       dureeTour,
       publique: salon.publique,
+      tutoriel: salon.tutoriel,
       departDans: salon.depart ? Math.max(0, salon.depart.fin - Date.now()) : null,
       comptesActifs: !!comptes,
       enregistrement: salon.enregistrement,
@@ -270,13 +285,42 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
   function appliquer(salon: Salon, action: Action): Reponse {
     if (!salon.partie) return { ok: false, erreur: "La partie n'a pas commencé." };
+    const avant = salon.partie.dernierPli;
     const r = appliquerAction(salon.partie, action);
     if (!r.ok) return { ok: false, erreur: r.erreur };
     salon.partie = r.etat;
     planifier(salon);
     if (salon.partie.phase === 'FIN_DE_PARTIE' && !salon.enregistrement) enregistrerPartie(salon);
     diffuser(salon);
+    if (salon.partie.dernierPli && salon.partie.dernierPli !== avant && JSON.stringify(salon.partie.dernierPli) !== JSON.stringify(avant)) reactionsDesBots(salon);
     return { ok: true };
+  }
+
+  /** Réaction rapide : envoyée à toute la table (pas gardée dans l'historique). */
+  let compteurReactions = 0;
+  function envoyerReaction(salon: Salon, joueurId: string, emoji: string) {
+    compteurReactions += 1;
+    const reaction: Reaction = { n: compteurReactions, joueurId, emoji };
+    for (const j of salon.joueurs) if (j.socketId) io.to(j.socketId).emit('reaction', reaction);
+  }
+  /** De temps en temps, un joueur ordinateur réagit au pli qui vient de se terminer, comme le ferait un humain. */
+  function reactionsDesBots(salon: Salon) {
+    const pli = salon.partie?.dernierPli;
+    if (!pli || salon.tutoriel) return;
+    const bot = (id: string) => salon.joueurs.find((j) => j.id === id && j.bot);
+    const plus = (id: string, emoji: string, proba: number, delai: number) => {
+      if (!bot(id) || Math.random() > proba) return;
+      setTimeout(() => salon.partie && envoyerReaction(salon, id, emoji), delai).unref();
+    };
+    const speciale = (c: { carteId: string }) => CARTE[c.carteId]?.speciale;
+    if (pli.braquage) {
+      const victime = pli.cartes.find((c) => speciale(c) === 'baron')?.joueurId;
+      plus(pli.gagnantId, '😂', 0.7, 500);
+      if (victime) plus(victime, Math.random() < 0.5 ? '😱' : '😡', 0.7, 1100);
+      return;
+    }
+    if (pli.cartes.some((c) => speciale(c) === 'baron') && pli.cartes.some((c) => speciale(c) === 'homme_de_main')) plus(pli.gagnantId, '🔥', 0.6, 600);
+    else plus(pli.gagnantId, Math.random() < 0.5 ? '🔥' : '👍', 0.12, 700);
   }
 
   function statutDe(uid: string): StatutAmi {
@@ -425,7 +469,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   function planifier(salon: Salon) {
     if (ferme) return;
     const pTour = salon.partie;
-    const cle = pTour ? cleTour(pTour) : null;
+    // Tutoriel : pas de minuteur, le joueur prend le temps de lire les explications.
+    const cle = pTour && !salon.tutoriel ? cleTour(pTour) : null;
     if (cle !== (salon.echeance?.cle ?? null)) {
       if (salon.minuterieTour) clearTimeout(salon.minuterieTour);
       salon.minuterieTour = null;
@@ -437,13 +482,13 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     const p = salon.partie;
     if (!p) return;
     if (p.phase === 'FIN_DE_PLI') {
-      salon.minuterie = setTimeout(() => appliquer(salon, { type: 'SUITE' }), delaiFinDePli);
+      salon.minuterie = setTimeout(() => appliquer(salon, { type: 'SUITE' }), salon.tutoriel ? delaiFinDePli * 1.6 : delaiFinDePli);
       return;
     }
     const robot = salon.joueurs.find((j) => j.robot && attenteDe(p).includes(j.id));
     if (!robot) return;
     // Les bots prennent un temps de réflexion variable, comme des joueurs humains.
-    const delai = robot.bot && p.phase !== 'FIN_DE_NUIT' ? delaiRobot * (0.7 + Math.random() * 1.3) : delaiRobot;
+    const delai = (robot.bot && p.phase !== 'FIN_DE_NUIT' ? delaiRobot * (0.7 + Math.random() * 1.3) : delaiRobot) * (salon.tutoriel ? 1.7 : 1);
     salon.minuterie = setTimeout(() => {
       if (!salon.partie) return;
       const action = actionRobot(vuePourJoueur(salon.partie, robot.id), Math.random, robot.bot ?? PROFIL_REMPLACANT);
@@ -453,10 +498,12 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
   function lancerPartie(salon: Salon) {
     salon.enregistrement = null;
-    salon.partie = creerPartie(
-      salon.joueurs.map((j) => ({ id: j.id, nom: j.nom })),
-      randomInt(1, 2 ** 31),
-    );
+    const joueurs = salon.joueurs.map((j) => ({ id: j.id, nom: j.nom }));
+    // Le tutoriel distribue toujours la même donne : la nuit 1, le joueur ouvre et gagne son premier pli à coup sûr ;
+    // la nuit 2 (Casse du siècle), un Chat noir ; la nuit 3, le Baron face à un Homme de main.
+    salon.partie = salon.tutoriel
+      ? creerPartie(joueurs, GRAINE_TUTORIEL, { nbNuits: 3, nuitsAvecEvenement: [2] })
+      : creerPartie(joueurs, randomInt(1, 2 ** 31));
     planifier(salon);
     diffuser(salon);
   }
@@ -535,6 +582,20 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       attacher(socket, salon, joueur);
       repondre(rappel, { ok: true, code: salon.code, jeton: joueur.jeton, joueurId: joueur.id });
       diffuser(salon);
+    });
+
+    // Tutoriel : une partie guidée qui démarre tout de suite, seul contre deux ordinateurs débutants.
+    socket.on('tutoriel', (data: { nom?: string } = {}, rappel?: Rappel) => {
+      const nom = nettoyerNom(data?.nom) || 'Toi';
+      quitterSalonActuel();
+      const salon = nouveauSalon(false, true);
+      salon.tutoriel = true;
+      const joueur = nouveauJoueur(salon, nom);
+      attacher(socket, salon, joueur);
+      ajouterBot(salon, { niveau: 'debutant', style: 'equilibre' }, 'Greg');
+      ajouterBot(salon, { niveau: 'debutant', style: 'prudent' }, 'Cyrielle');
+      lancerPartie(salon);
+      repondre(rappel, { ok: true, code: salon.code, jeton: joueur.jeton, joueurId: joueur.id });
     });
 
     socket.on('rejoindre', (data: { code?: string; nom?: string } = {}, rappel?: Rappel) => {
@@ -877,6 +938,19 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       salon.messages.push({ n: salon.compteurMessages, auteurId: c.joueur.id, nom: c.joueur.nom, texte, heure: maintenant });
       if (salon.messages.length > 80) salon.messages.splice(0, salon.messages.length - 80);
       diffuser(salon);
+      repondre(rappel, { ok: true });
+    });
+
+    let derniereReaction = 0;
+    socket.on('reaction', (data: { emoji?: string } = {}, rappel?: Rappel) => {
+      const c = contexte();
+      if (!c) return repondre(rappel, { ok: false, erreur: 'Tu ne fais partie d’aucun salon.' });
+      const emoji = REACTIONS.find((e) => e === data?.emoji);
+      if (!emoji) return repondre(rappel, { ok: false, erreur: 'Réaction inconnue.' });
+      const maintenant = Date.now();
+      if (maintenant - derniereReaction < DELAI_REACTION_MS) return repondre(rappel, { ok: false, erreur: 'Une réaction à la fois.' });
+      derniereReaction = maintenant;
+      envoyerReaction(c.salon, c.joueur.id, emoji);
       repondre(rappel, { ok: true });
     });
 

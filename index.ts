@@ -12,4 +12,21 @@ const comptes = await comptesDepuisEnvironnement(process.env);
 
 demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes }).then(({ port: p }) => {
   console.log(`Le Dernier Baron est en ligne sur http://localhost:${p}`);
+  garderEveille();
 });
+
+/**
+ * Render (offre gratuite) endort le site après 15 minutes sans visite : le joueur suivant attend alors près d'une minute.
+ * Le serveur passe donc par sa propre adresse publique toutes les 10 minutes, ce qui compte comme une visite.
+ * Render fournit cette adresse (RENDER_EXTERNAL_URL) ; GARDER_EVEILLE=non désactive ce réveil.
+ */
+function garderEveille() {
+  const adresse = process.env.RENDER_EXTERNAL_URL;
+  if (!adresse || process.env.GARDER_EVEILLE === 'non') return;
+  const url = `${adresse.replace(/\/$/, '')}/api/ping`;
+  const coucou = () =>
+    fetch(url, { signal: AbortSignal.timeout(20_000) }).catch((e) => console.log('Réveil automatique : échec', (e as Error).message));
+  setInterval(coucou, 10 * 60 * 1000);
+  setTimeout(coucou, 60 * 1000);
+  console.log(`Réveil automatique activé : ${url} toutes les 10 minutes.`);
+}

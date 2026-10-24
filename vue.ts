@@ -15,7 +15,7 @@ export function vuePourJoueur(e: EtatPartie, joueurId: string): Vue {
   return {
     moi: joueurId,
     nuit: e.nuit,
-    nbNuits: NB_NUITS,
+    nbNuits: e.nbNuits ?? NB_NUITS,
     phase: e.phase,
     evenement: e.evenement,
     evenementId: e.evenementId,

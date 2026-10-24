@@ -108,6 +108,9 @@ export interface EtatPartie {
   prets: Record<string, boolean>;
   journal: EntreeJournal[];
   compteurJournal: number;
+  /** Partie courte (tutoriel) : nombre de nuits et nuits avec un événement. Absents : règles normales. */
+  nbNuits?: number;
+  nuitsAvecEvenement?: number[];
 }
 
 export type Action =
@@ -302,6 +305,8 @@ export interface VueSalon {
   /** Millisecondes restantes pour agir (joueurs attendus), ou null s'il n'y a pas de minuteur. */
   tempsRestant: number | null;
   dureeTour: number;
+  /** Partie guidée du tutoriel. */
+  tutoriel?: boolean;
   /** Partie publique (joueurs du monde entier, lancement automatique) ou privée (avec un code). */
   publique: boolean;
   /** Partie publique en attente : millisecondes avant le lancement automatique. */
@@ -310,6 +315,13 @@ export interface VueSalon {
   comptesActifs: boolean;
   /** Enregistrement des victoires de la partie terminée (null tant que la partie n'est pas finie). */
   enregistrement: EnregistrementVue | null;
+}
+
+/** Réaction rapide d'un joueur, affichée quelques secondes au-dessus de son avatar. */
+export interface Reaction {
+  n: number;
+  joueurId: string;
+  emoji: string;
 }
 
 export interface MessageChat {
