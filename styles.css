@@ -1223,3 +1223,32 @@ button.mini-carte img { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.55), 0 4px 1
 @media (prefers-reduced-motion: reduce) {
   .recap-ligne, .tampon, .jeton.nouveau, .eventail-carte.distribuee, .couronne-pli, .pli-pile .pli-carte.gagnante-pli .carte.gagnante .carte-bouton, .paillettes i { animation: none !important; }
 }
+
+/* Étiquettes du tapis en grand : le nom, puis les jetons et le butin. */
+.etiquette-joueur { height: auto; min-height: 38px; padding: 3px 10px 3px 3px; border-radius: 22px; max-width: 48%; }
+.etiquette-texte { display: grid; gap: 3px; min-width: 0; justify-items: start; }
+.etiquette-ligne { display: inline-flex; align-items: center; gap: 5px; min-height: 15px; }
+@media (min-width: 700px) {
+  .etiquette-joueur { height: auto; min-height: 46px; padding-right: 14px; border-radius: 26px; }
+}
+/* Butin en tuiles (tapis en grand) : la couleur de la famille et la valeur. */
+.butin-tuiles { display: inline-flex; align-items: center; }
+.tuile { display: inline-grid; place-items: center; flex: none; width: 15px; height: 21px; border-radius: 3px; border: 1px solid rgba(255, 240, 210, 0.85); color: #fff8ea; font-size: 10.5px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; box-shadow: -1px 1px 3px rgba(0, 0, 0, 0.6); }
+.tuile + .tuile { margin-left: -3px; }
+.tuile:nth-child(odd) { rotate: -4deg; }
+.tuile:nth-child(even) { rotate: 4deg; }
+.moi-compact-nom .butin-tuiles { margin-left: 2px; }
+.moi-compact-nom .tuile { width: 17px; height: 24px; font-size: 11.5px; }
+@media (min-width: 700px) {
+  .tuile { width: 18px; height: 25px; font-size: 12px; }
+}
+
+/* Bouton du zoom automatique, en haut à gauche du tapis */
+.plateau .centre { position: relative; }
+.bouton-zoom-tapis { position: absolute; left: calc(var(--cadre, 20px) * -0.75); top: calc(var(--cadre, 20px) * -0.75); z-index: 20; display: grid; place-items: center; width: 34px; height: 34px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid rgba(231, 194, 122, 0.45); background: rgba(22, 16, 12, 0.78); color: var(--creme-doux); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); }
+.bouton-zoom-tapis.actif { border-color: rgba(231, 194, 122, 0.75); color: var(--or-vif); }
+.bouton-zoom-tapis svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.plateau.zoome .bouton-zoom-tapis { left: 4px; top: 8px; }
+.plateau.zoome .avis-zoom { left: 44px; top: 8px; }
+.avis-zoom { position: absolute; left: 30px; top: 0;  z-index: 21; padding: 5px 10px; border-radius: 99px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.94); color: var(--creme); font-size: 12.5px; white-space: nowrap; pointer-events: none; animation: avis-zoom 1.6s ease both; }
+@keyframes avis-zoom { 0% { opacity: 0; translate: -6px 0; } 12% { opacity: 1; translate: 0 0; } 80% { opacity: 1; } 100% { opacity: 0; } }

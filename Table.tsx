@@ -11,6 +11,7 @@ import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { FinTutoriel, Tutoriel } from './Tutoriel';
 import { FenetreReglages, useReglages } from './Reglages';
+import { changerReglages } from './reglages';
 import type { TailleCartes } from './reglages';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, nomCarte, trierMain } from './textes';
 import { EN, pluriel, titreNiveau, tr } from './traduction';
@@ -140,14 +141,19 @@ function Etiquette({ j, v, absent, fraction, avatar, onProfil, reaction }: { j: 
         <Avatar n={avatar} fraction={minute ? fraction : null} />
         <BulleReaction r={reaction} />
       </span>
-      <span className="etiquette-nom">{j.nom}</span>
-      {j.annonce !== null ? (
-        <Jetons plis={j.plis} annonce={j.annonce} />
-      ) : (
-        <span className="etiquette-compte">
-          {j.plis}/{annonce}
+      <span className="etiquette-texte">
+        <span className="etiquette-nom">{j.nom}</span>
+        <span className="etiquette-ligne">
+          {j.annonce !== null ? (
+            <Jetons plis={j.plis} annonce={j.annonce} />
+          ) : (
+            <span className="etiquette-compte">
+              {j.plis}/{annonce}
+            </span>
+          )}
+          <Butin ids={j.butin} compact />
         </span>
-      )}
+      </span>
     </button>
   );
 }
@@ -173,6 +179,19 @@ function ActionsJouer({ selection, agir, envoi }: { selection: string; agir: (a:
         {tr(`Jouer ${nomSel}`, `Play ${nomSel}`)}
       </button>
     </div>
+  );
+}
+
+/** Icône du zoom automatique : quatre flèches vers l'extérieur (activé) ou vers l'intérieur (désactivé). */
+function IconeZoom({ actif }: { actif: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {actif ? (
+        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5M4 4l5.5 5.5M20 4l-5.5 5.5M4 20l5.5-5.5M20 20l-5.5-5.5" />
+      ) : (
+        <path d="M9.5 4v5.5H4M14.5 4v5.5H20M9.5 20v-5.5H4M14.5 20v-5.5H20M4 4l5.5 5.5M20 4l-5.5 5.5M4 20l5.5-5.5M20 20l-5.5-5.5" />
+      )}
+    </svg>
   );
 }
 
@@ -394,7 +413,10 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     if (doitZoomer === zoome) return;
     // Passage en douceur (le tapis grandit) quand le navigateur sait le faire ; sinon, tout de suite.
     const doc = document as Document & { startViewTransition?: (maj: () => void) => unknown };
-    const douceur = typeof doc.startViewTransition === 'function' && document.visibilityState === 'visible' && !mouvementReduit();
+    // Pendant la transition, le tapis est dessiné au-dessus de tout : on ne l'anime pas si une fenêtre (fin de nuit, menu,
+    // fiche…), la discussion, l'événement ou un conseil du tutoriel est ouvert, il passerait devant.
+    const couvert = !!document.querySelector('.voile, .revelation, .chat-panneau, .tuto-bulle, .duel-scene, .reactions-palette') || v.phase === 'FIN_DE_NUIT' || v.phase === 'FIN_DE_PARTIE';
+    const douceur = typeof doc.startViewTransition === 'function' && document.visibilityState === 'visible' && !mouvementReduit() && !couvert;
     if (douceur) doc.startViewTransition?.(() => flushSync(() => setZoome(zoomVoulu.current)));
     else setZoome(doitZoomer);
   }, [doitZoomer]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -570,6 +592,17 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     return <Etiquette key={j.id} j={j} v={v} absent={!!s && !s.connecte && !s.robot} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} reaction={reactions[j.id]} />;
   };
   const cotes = !zoome && !!(gauche || droite);
+  // Zoom automatique du tapis : activé ou non d'un toucher (bouton du tapis, menu ou Réglages). Un petit mot le confirme.
+  const [avisZoom, setAvisZoom] = useState(0);
+  useEffect(() => {
+    if (!avisZoom) return;
+    const t = window.setTimeout(() => setAvisZoom(0), 1600);
+    return () => window.clearTimeout(t);
+  }, [avisZoom]);
+  const basculerZoom = () => {
+    changerReglages({ zoomTapis: !reglages.zoomTapis });
+    setAvisZoom(Date.now());
+  };
   const trahisonAChoisir = v.phase === 'TRAHISON' && !v.aChoisiTrahison;
   const envoyerReaction = (emoji: string) => {
     setFenetre(null);
@@ -653,6 +686,20 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
       <div className={`milieu ${cotes ? '' : 'sans-cotes'}`}>
         {cotes && <div className="cote">{gauche && siegeDe(gauche)}</div>}
         <section className={`centre tapis-${tapis}`} aria-label={tr('Pli en cours', 'Current trick')}>
+          <button
+            type="button"
+            className={`bouton-zoom-tapis ${reglages.zoomTapis ? 'actif' : ''}`}
+            onClick={basculerZoom}
+            aria-pressed={reglages.zoomTapis}
+            aria-label={reglages.zoomTapis ? tr('Zoom automatique activé : le désactiver', 'Auto zoom on: turn it off') : tr('Zoom automatique désactivé : l’activer', 'Auto zoom off: turn it on')}
+          >
+            <IconeZoom actif={reglages.zoomTapis} />
+          </button>
+          {avisZoom > 0 && (
+            <span className="avis-zoom" role="status" key={avisZoom}>
+              {reglages.zoomTapis ? tr('Zoom automatique activé', 'Auto zoom on') : tr('Zoom automatique désactivé', 'Auto zoom off')}
+            </span>
+          )}
           {zoome && boutonDernier}
           <div className="centre-tete">
             {pliAffiche ? (
@@ -767,6 +814,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               <button type="button" className="moi-compact-nom" onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
                 <strong>{moi.nom}</strong>
                 {v.monAnnonce !== null ? <Jetons plis={moi.plis} annonce={v.monAnnonce} /> : <span className="etiquette-compte">{moi.plis}/?</span>}
+                <Butin ids={moi.butin} compact />
                 {aMoi && <span className="votre-tour">{tr('Votre tour', 'Your turn')}</span>}
               </button>
             )}
@@ -903,6 +951,9 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           <button type="button" className="large bouton-menu-musique" onClick={basculerMusique} aria-pressed={musiqueActive}>
             <IconeMusique active={musiqueActive} />
             {musiqueActive ? tr('Musique : activée', 'Music: on') : tr('Musique : coupée', 'Music: off')}
+          </button>
+          <button type="button" className="large" onClick={basculerZoom} aria-pressed={reglages.zoomTapis}>
+            {reglages.zoomTapis ? tr('Zoom automatique : activé', 'Auto zoom: on') : tr('Zoom automatique : désactivé', 'Auto zoom: off')}
           </button>
           <button type="button" className="large" onClick={() => setFenetre('reglages')}>
             {tr('Réglages', 'Settings')}

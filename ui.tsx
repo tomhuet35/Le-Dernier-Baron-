@@ -109,9 +109,24 @@ export function MiniCarte({ id, onClick, style }: { id: string; onClick?: () => 
   );
 }
 
-/** Le butin d'un joueur : ses cartes en petit éventail. */
-export function Butin({ ids }: { ids: string[] }) {
-  if (!ids.length) return <span className="vide">{tr('Aucun butin', 'No loot')}</span>;
+/** Le butin d'un joueur : ses cartes en petit éventail. `compact` (tapis en grand) : de petites tuiles avec la valeur. */
+export function Butin({ ids, compact }: { ids: string[]; compact?: boolean }) {
+  if (!ids.length) return compact ? null : <span className="vide">{tr('Aucun butin', 'No loot')}</span>;
+  if (compact) {
+    const noms = ids.map((id) => nomCarte(id)).join(', ');
+    return (
+      <span className="butin-tuiles" role="img" aria-label={tr(`Butin : ${noms}`, `Loot: ${noms}`)} title={noms}>
+        {ids.map((id) => {
+          const c = CARTE[id];
+          return (
+            <span key={id} className="tuile" style={{ background: COULEUR_FAMILLE[c.famille ?? 'chat_noir'] }}>
+              {c.valeur}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
   return (
     <span className="butin butin-cartes">
       {ids.map((id, i) => (
