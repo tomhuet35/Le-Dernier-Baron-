@@ -1,4 +1,4 @@
-import { Children, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Children, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { BONUS_BARON_HOMME_DE_MAIN, BONUS_BRAQUAGE } from '../../shared/config';
 import type { DuelPli } from '../../shared/regles';
 import type { CartePosee, VueSalon } from '../../shared/types';
@@ -81,28 +81,9 @@ export function mouvementReduit(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
-/** Couronne dorée dessinée (carte gagnante du pli, podium). */
+/** Couronne dorée (carte gagnante du pli, podium). */
 export function Couronne({ className }: { className?: string }) {
-  const id = useId().replace(/:/g, '');
-  return (
-    <svg className={className} viewBox="0 0 64 46" aria-hidden="true">
-      <defs>
-        <linearGradient id={`or-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff0bf" />
-          <stop offset="0.5" stopColor="#e7b95c" />
-          <stop offset="1" stopColor="#9a6821" />
-        </linearGradient>
-      </defs>
-      <path d="M8 35 L4 12 L19 23 L32 6 L45 23 L60 12 L56 35 Z" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2.4" strokeLinejoin="round" />
-      <rect x="7" y="34" width="50" height="8" rx="2.5" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2.4" />
-      <circle cx="4" cy="11" r="3.6" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2" />
-      <circle cx="32" cy="5" r="3.8" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2" />
-      <circle cx="60" cy="11" r="3.6" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2" />
-      <circle cx="32" cy="27" r="4.2" fill="#c0281f" stroke="#3a2410" strokeWidth="1.6" />
-      <circle cx="18.5" cy="30" r="2.6" fill="#2f7d4f" stroke="#3a2410" strokeWidth="1.3" />
-      <circle cx="45.5" cy="30" r="2.6" fill="#2f7d4f" stroke="#3a2410" strokeWidth="1.3" />
-    </svg>
-  );
+  return <img className={className} src="/cartes/couronne.webp" alt="" width={360} height={257} draggable={false} aria-hidden="true" />;
 }
 
 /** Petite carte de butin : l'illustration et sa valeur bien lisible. */

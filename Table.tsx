@@ -299,10 +299,10 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
 
   useEffect(() => setSelection(null), [v.phase, v.nuit, v.main.length, v.tourId]);
 
-  // Distribution au début de chaque nuit (et au début de la partie) : le son, et les cartes qui volent du tapis vers
-  // chaque joueur, une par une et tour par tour. La révélation de l'événement attend la fin de la distribution.
+  // Distribution au début de chaque nuit (et au début de la partie) : le son, puis les cartes qui volent du tapis vers
+  // chaque joueur, une par une et tour par tour. S'il y a un événement, sa révélation passe d'abord (on en a besoin
+  // pour annoncer) ; la distribution suit. En attendant, ma main reste cachée.
   const nuitPrecedente = useRef<number | null>(null);
-  const finDonne = useRef(0);
   const [donne, setDonne] = useState<{ nuit: number; vols: VolDonne[] | null; mesArrivees: number[] } | null>(null);
   useEffect(() => {
     const avant = nuitPrecedente.current;
@@ -311,32 +311,27 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     const debutPartie = v.nuit === 1 && v.phase === 'ANNONCES' && v.joueurs.every((j) => !j.aAnnonce) && (avant === null || avant > 1);
     if (!((avant !== null && v.nuit > avant) || debutPartie)) return;
     jouerEffet('distribution');
-    if (mouvementReduit()) return;
-    finDonne.current = Date.now() + dureeDonne(v.nuit, v.joueurs.length);
-    setDonne({ nuit: v.nuit, vols: null, mesArrivees: [] });
+    if (!mouvementReduit()) setDonne({ nuit: v.nuit, vols: null, mesArrivees: [] });
   }, [v.nuit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Révélation de l'événement : la carte tourbillonne au centre de l'écran pendant 5 secondes.
   const [revelation, setRevelation] = useState<string | null>(null);
   const dejaVu = useRef<string | null>(null);
-  const minuteursRevelation = useRef<number[]>([]);
-  useEffect(() => () => minuteursRevelation.current.forEach((t) => window.clearTimeout(t)), []);
   useEffect(() => {
     if (!v.evenementId || v.phase !== 'ANNONCES') return;
     const cle = `${v.nuit}-${v.evenementId}`;
     if (dejaVu.current === cle) return;
     dejaVu.current = cle;
-    const id = v.evenementId;
-    const attente = Math.max(0, finDonne.current - Date.now());
+    setRevelation(v.evenementId);
+    jouerEffet('evenement');
     // Puis le son propre à l'événement, quand son nom apparaît.
     const sonEvenement = v.evenement ? SON_EVENEMENT[v.evenement] : undefined;
-    const plus = (ms: number, f: () => void) => minuteursRevelation.current.push(window.setTimeout(f, ms));
-    plus(attente, () => {
-      setRevelation(id);
-      jouerEffet('evenement');
-    });
-    if (sonEvenement) plus(attente + 1800, () => jouerEffet(sonEvenement));
-    plus(attente + 5000, () => setRevelation((r) => (r === id ? null : r)));
+    const s = sonEvenement ? window.setTimeout(() => jouerEffet(sonEvenement), 1800) : 0;
+    const t = window.setTimeout(() => setRevelation(null), 5000);
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(s);
+    };
   }, [v.nuit, v.evenementId, v.phase]);
 
   const nom = (id: string | null | undefined) => v.joueurs.find((j) => j.id === id)?.nom ?? '?';
@@ -435,8 +430,9 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   }, [ramassageLance, ramassage?.cle]);
 
   // Distribution : d'où partent les cartes (le tapis) et où elles arrivent (chaque joueur, et chaque carte de ma main).
+  // Elle part dès que la révélation de l'événement est refermée.
   useLayoutEffect(() => {
-    if (!donne || donne.vols) return;
+    if (!donne || donne.vols || revelation) return;
     const plateau = plateauRef.current;
     const tapisEl = plateau?.querySelector('.centre-table');
     if (!plateau || !tapisEl) {
@@ -472,7 +468,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
       }
     }
     setDonne((d) => (d && d.nuit === donne.nuit ? { ...d, vols, mesArrivees } : d));
-  }, [donne]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [donne, revelation]); // eslint-disable-line react-hooks/exhaustive-deps
   const donneLancee = !!donne?.vols;
   useEffect(() => {
     if (!donneLancee) return;
@@ -825,9 +821,10 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           {main.map((c, i) => {
             const d = i - (main.length - 1) / 2;
             const arrivee = donne?.vols ? donne.mesArrivees[i] : undefined;
+            const enAttente = !!donne && !donne.vols;
             const style = { '--r': `${d * 4}deg`, '--y': `${d * d * 2.2}px`, zIndex: i + 1, ...(arrivee !== undefined ? { animationDelay: `${Math.round(arrivee)}ms` } : {}) } as React.CSSProperties;
             return (
-              <div key={c.id} className={`eventail-carte ${selection === c.id ? 'levee' : ''} ${arrivee !== undefined ? 'distribuee' : ''}`} style={style}>
+              <div key={c.id} className={`eventail-carte ${selection === c.id ? 'levee' : ''} ${arrivee !== undefined ? 'distribuee' : ''} ${enAttente ? 'a-distribuer' : ''}`} style={style}>
                 <CarteImg
                   id={c.id}
                   etat={selection === c.id ? 'choisie' : v.phase === 'PLI' && monTour ? (c.jouable ? 'jouable' : 'grisee') : undefined}

@@ -1130,7 +1130,7 @@ button.trahison:hover:not(:disabled) { background: #7c4cbc; border-color: #c4a6f
 .pli-pile .pli-carte.gagnante-pli .carte.gagnante .carte-bouton { box-shadow: 0 0 0 3px var(--or-vif), 0 0 24px 5px rgba(255, 214, 120, 0.55), 0 10px 18px rgba(0, 0, 0, 0.5); animation: halo-gagnant 1.4s ease-in-out 0.3s infinite alternate; }
 @keyframes halo-gagnant { to { box-shadow: 0 0 0 3px #ffe08a, 0 0 36px 11px rgba(255, 214, 120, 0.72), 0 10px 18px rgba(0, 0, 0, 0.5); } }
 .pli-carte.perdante-pli .carte-bouton img { filter: brightness(0.66) saturate(0.8); transition: filter 0.35s; }
-.couronne-pli { position: absolute; z-index: 3; top: 0; right: 3%; width: 42%; max-width: 64px; height: auto; translate: 0 -55%; rotate: 15deg; pointer-events: none; filter: drop-shadow(0 0 6px rgba(255, 214, 120, 0.75)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.75)); animation: couronne-pose 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.3s both; }
+.couronne-pli { position: absolute; z-index: 3; top: 0; right: 3%; width: 44%; max-width: 68px; height: auto; translate: 0 -55%; rotate: 15deg; pointer-events: none; filter: drop-shadow(0 0 6px rgba(255, 214, 120, 0.75)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.75)); animation: couronne-pose 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.3s both; }
 @keyframes couronne-pose { 0% { opacity: 0; translate: 0 -170%; scale: 1.7; rotate: -12deg; } 100% { opacity: 1; translate: 0 -55%; scale: 1; rotate: 15deg; } }
 /* Pli ramassé : les cartes glissent vers le gagnant en rapetissant. */
 .pli-pile .pli-carte.ramassee { animation: ramasser 0.6s cubic-bezier(0.55, 0, 0.75, 0.4) both; }
@@ -1188,6 +1188,7 @@ button.mini-carte img { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.55), 0 4px 1
   100% { opacity: 0; translate: var(--dx) var(--dy); rotate: var(--rot); scale: var(--e); }
 }
 .eventail-carte.distribuee { animation: carte-arrive 0.3s ease-out backwards; }
+.eventail-carte.a-distribuer { opacity: 0; }
 @keyframes carte-arrive { from { opacity: 0; scale: 0.72; } }
 
 /* ---------- Récap de fin de nuit : tampons et points qui défilent ---------- */
@@ -1213,7 +1214,7 @@ button.mini-carte img { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.55), 0 4px 1
 
 /* ---------- Podium : couronne dessinée et paillettes d'or ---------- */
 .podium-couronne { top: -44px; width: 58px; margin-left: -29px; font-size: 0; }
-.podium-couronne svg { display: block; width: 100%; height: auto; filter: drop-shadow(0 0 10px rgba(255, 214, 120, 0.85)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.75)); }
+.podium-couronne img { display: block; width: 100%; height: auto; filter: drop-shadow(0 0 10px rgba(255, 214, 120, 0.85)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.75)); }
 .paillettes { position: absolute; left: 50%; top: -18px; width: 0; height: 0; pointer-events: none; }
 .paillettes i { position: absolute; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; background: radial-gradient(circle, #fff6d2 0, #e7b95c 55%, rgba(231, 185, 92, 0) 72%); opacity: 0; animation: paillette 1.15s ease-out 2.8s both; }
 .paillettes i:nth-child(3n) { width: 5px; height: 5px; animation-delay: 2.9s; }
