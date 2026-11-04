@@ -1066,7 +1066,6 @@ body[data-tuto='tapis'] .centre { animation: tuto-halo 1.3s ease-in-out infinite
 .etiquette-joueur .avatar img { border-width: 1px; }
 .etiquette-joueur .bulle-reaction { font-size: 24px; }
 .etiquette-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.etiquette-compte { flex: none; font-weight: 700; color: var(--or-vif); font-variant-numeric: tabular-nums; }
 @media (min-width: 700px) {
   .etiquettes { gap: 8px 12px; margin-bottom: -18px; }
   .etiquette-joueur { height: 38px; font-size: 14px; padding-right: 12px; }
@@ -1085,7 +1084,6 @@ body[data-tuto='tapis'] .centre { animation: tuto-halo 1.3s ease-in-out infinite
 .moi-compact { position: relative; display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 2px; }
 .moi-compact-nom { display: inline-flex; align-items: center; gap: 7px; min-width: 0; min-height: 0; height: 36px; padding: 0 4px; border: none; background: none; color: var(--creme); white-space: nowrap; }
 .moi-compact-nom strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 15.5px; }
-.moi-compact-nom .etiquette-compte { font-size: 15px; }
 .moi-compact-nom .votre-tour { font-size: 11px; padding: 2px 8px; }
 .moi-compact .minuteur { flex: 1 1 80px; min-width: 64px; }
 .moi-compact .bulle-reaction { left: 26px; bottom: 60%; }
@@ -1141,26 +1139,20 @@ button.trahison:hover:not(:disabled) { background: #7c4cbc; border-color: #c4a6f
   100% { translate: var(--dx) var(--dy); scale: 0.16; opacity: 0.15; }
 }
 
-/* ---------- Jetons de casino : plis gagnés, emplacements de l'annonce, plis en trop ---------- */
-.jetons { --t: 13px; display: inline-flex; align-items: center; vertical-align: middle; padding: 1px 0; }
-.jeton { position: relative; flex: none; width: var(--t); height: var(--t); border-radius: 50%; }
-.jeton + .jeton { margin-left: calc(var(--t) * -0.16); }
-.jeton.plein { background: radial-gradient(circle closest-side, #b8281d 0 50%, #f6e7c4 51% 59%, #b8281d 60% 68%, transparent 69%), repeating-conic-gradient(#f6e7c4 0 18deg, #b8281d 18deg 45deg); box-shadow: 0 0 0 1px #e7c27a, 0 1px 3px rgba(0, 0, 0, 0.75); }
-.jeton.noir { background: radial-gradient(circle closest-side, #1d1714 0 50%, #c9b48a 51% 59%, #1d1714 60% 68%, transparent 69%), repeating-conic-gradient(#c9b48a 0 18deg, #1d1714 18deg 45deg); box-shadow: 0 0 0 1.5px #e2483b, 0 1px 3px rgba(0, 0, 0, 0.75); }
-.jeton.vide { border: 1.5px dashed rgba(231, 194, 122, 0.8); background: rgba(0, 0, 0, 0.28); }
-.jeton.zero { width: auto; min-width: calc(var(--t) + 2px); padding: 0 3px; border: 1.5px dashed rgba(231, 194, 122, 0.8); border-radius: 99px; background: rgba(0, 0, 0, 0.28); color: var(--or-vif); font-size: calc(var(--t) * 0.7); font-weight: 700; line-height: calc(var(--t) - 3px); text-align: center; }
-.jetons.juste .jeton.plein { box-shadow: 0 0 0 1px #ffe08a, 0 0 7px rgba(255, 214, 120, 0.85); }
-.jeton.nouveau { animation: jeton-pose 0.55s cubic-bezier(0.3, 1.7, 0.5, 1) both; }
-@keyframes jeton-pose { 0% { opacity: 0; translate: 0 -16px; scale: 1.7; } 55% { opacity: 1; } 100% { opacity: 1; translate: 0 0; scale: 1; } }
-.siege-jetons { display: flex; justify-content: center; min-height: 18px; }
-.siege-jetons .jetons { --t: 15px; }
-.moi-stats .jetons { --t: 15px; }
+/* ---------- Plis gagnés / annonce (« 1/2 ») : vert quand l'annonce est atteinte, rouge quand il y a des plis en trop ---------- */
+.compte { display: inline-block; flex: none; font-weight: 700; color: var(--or-vif); font-variant-numeric: tabular-nums; transition: color 0.3s; }
+.compte.juste { color: #93d27a; }
+.compte.depasse { color: #f08a7e; }
+.compte.nouveau { animation: compte-pli 0.55s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes compte-pli { 0% { scale: 1; } 35% { scale: 1.45; } 100% { scale: 1; } }
+.siege-compte { display: flex; justify-content: center; }
+.siege-compte .compte { font-size: 13.5px; }
+.moi-stats .compte { font-size: 13.5px; }
 .moi-stats .sep { margin-left: 2px; }
-.moi-compact .jetons { --t: 17px; }
-.etiquette-joueur .jetons { --t: 14px; }
+.moi-compact .compte { font-size: 15.5px; }
+.etiquette-joueur .compte { font-size: 13px; }
 @media (min-width: 700px) {
-  .siege-jetons .jetons { --t: 16px; }
-  .etiquette-joueur .jetons { --t: 16px; }
+  .siege-compte .compte, .etiquette-joueur .compte { font-size: 15px; }
 }
 
 /* ---------- Butin en mini-cartes (éventail) ---------- */
@@ -1197,7 +1189,7 @@ button.mini-carte img { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.55), 0 4px 1
 .recap-ligne.ma-ligne { border-color: var(--or); background: #2b1d12; }
 .recap-qui { display: grid; gap: 5px; justify-items: start; min-width: 0; }
 .recap-qui strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
-.recap-qui .jetons { --t: 15px; }
+.recap-qui .compte { font-size: 15px; }
 .recap-points { display: grid; justify-items: end; min-width: 62px; }
 .recap-points strong { font-family: var(--titre); font-weight: 400; font-size: 24px; line-height: 1; color: var(--or-vif); font-variant-numeric: tabular-nums; }
 .recap-points strong.negatif { color: #f08a7e; }
@@ -1221,10 +1213,10 @@ button.mini-carte img { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.55), 0 4px 1
 @keyframes paillette { 0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(0.4); } 18% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--l) * -1)) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .recap-ligne, .tampon, .jeton.nouveau, .eventail-carte.distribuee, .couronne-pli, .pli-pile .pli-carte.gagnante-pli .carte.gagnante .carte-bouton, .paillettes i { animation: none !important; }
+  .recap-ligne, .tampon, .compte.nouveau, .eventail-carte.distribuee, .couronne-pli, .pli-pile .pli-carte.gagnante-pli .carte.gagnante .carte-bouton, .paillettes i { animation: none !important; }
 }
 
-/* Étiquettes du tapis en grand : le nom, puis les jetons et le butin. */
+/* Étiquettes du tapis en grand : le nom, puis plis / annonce et le butin. */
 .etiquette-joueur { height: auto; min-height: 38px; padding: 3px 10px 3px 3px; border-radius: 22px; max-width: 48%; }
 .etiquette-texte { display: grid; gap: 3px; min-width: 0; justify-items: start; }
 .etiquette-ligne { display: inline-flex; align-items: center; gap: 5px; min-height: 15px; }

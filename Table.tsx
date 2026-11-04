@@ -18,7 +18,7 @@ import { EN, pluriel, titreNiveau, tr } from './traduction';
 import { useMasques } from './Moderation';
 import { nomTapis } from './Profil';
 import { duelDuPli, type DuelPli } from '../../shared/regles';
-import { Avatar, Butin, CarteImg, Chat, Couronne, Duel, Fenetre, IconeMusique, Jetons, MiniCarte, SON_EVENEMENT, Zoom, jouerEffet, mouvementReduit, sonDeCarte, useCompteur, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Couronne, Duel, Fenetre, IconeMusique, Compte, MiniCarte, SON_EVENEMENT, Zoom, jouerEffet, mouvementReduit, sonDeCarte, useCompteur, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -145,9 +145,9 @@ function Etiquette({ j, v, absent, fraction, avatar, onProfil, reaction }: { j: 
         <span className="etiquette-nom">{j.nom}</span>
         <span className="etiquette-ligne">
           {j.annonce !== null ? (
-            <Jetons plis={j.plis} annonce={j.annonce} />
+            <Compte plis={j.plis} annonce={j.annonce} />
           ) : (
-            <span className="etiquette-compte">
+            <span className="compte">
               {j.plis}/{annonce}
             </span>
           )}
@@ -813,7 +813,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
             ) : (
               <button type="button" className="moi-compact-nom" onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
                 <strong>{moi.nom}</strong>
-                {v.monAnnonce !== null ? <Jetons plis={moi.plis} annonce={v.monAnnonce} /> : <span className="etiquette-compte">{moi.plis}/?</span>}
+                {v.monAnnonce !== null ? <Compte plis={moi.plis} annonce={v.monAnnonce} /> : <span className="compte">{moi.plis}/?</span>}
                 <Butin ids={moi.butin} compact />
                 {aMoi && <span className="votre-tour">{tr('Votre tour', 'Your turn')}</span>}
               </button>
@@ -852,7 +852,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               <div className="moi-stats">
                 {v.monAnnonce !== null ? (
                   <>
-                    <Jetons plis={moi.plis} annonce={v.monAnnonce} /> <span className="sep">·</span>{' '}
+                    <Compte plis={moi.plis} annonce={v.monAnnonce} /> <span className="sep">·</span>{' '}
                   </>
                 ) : (
                   `${tr('Pas encore annoncé', 'No bid yet')} · `
@@ -1082,8 +1082,8 @@ function Siege(props: {
       </div>
       {j.annonce !== null ? (
         <>
-          <div className="siege-infos siege-jetons">
-            <Jetons plis={j.plis} annonce={j.annonce} />
+          <div className="siege-infos siege-compte">
+            <Compte plis={j.plis} annonce={j.annonce} />
           </div>
           <div className="siege-infos discret">{j.score} pts</div>
         </>
@@ -1262,7 +1262,7 @@ function Consigne(props: {
   }
 }
 
-/** Une ligne du récap de nuit : jetons, tampon « Réussi » / « Raté », points de la nuit et total qui défilent. */
+/** Une ligne du récap de nuit : plis / annonce, tampon « Réussi » / « Raté », points de la nuit et total qui défilent. */
 function LigneRecap({ s, i, total, nom, moi }: { s: ScoreNuit; i: number; total: number; nom: string; moi: boolean }) {
   const signe = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const delai = 420 + i * 240;
@@ -1272,7 +1272,7 @@ function LigneRecap({ s, i, total, nom, moi }: { s: ScoreNuit; i: number; total:
     <li className={`recap-ligne ${moi ? 'ma-ligne' : ''} ${s.reussie ? 'reussie' : 'ratee'}`} style={{ '--i': i } as React.CSSProperties}>
       <div className="recap-qui">
         <strong>{nom}</strong>
-        <Jetons plis={s.plis} annonce={s.annonce} />
+        <Compte plis={s.plis} annonce={s.annonce} />
       </div>
       <span className={`tampon ${s.reussie ? 'reussi' : 'rate'}`}>{s.reussie ? tr('Réussi', 'Made') : tr('Raté', 'Missed')}</span>
       <div className="recap-points">

@@ -137,33 +137,26 @@ export function Butin({ ids, compact }: { ids: string[]; compact?: boolean }) {
 }
 
 /**
- * Plis gagnés en jetons de casino ; les plis encore à gagner pour réussir l'annonce en emplacements pointillés ;
- * les plis gagnés en trop (au-delà de l'annonce) en jetons noirs. Annonce 0 : un emplacement « 0 ».
+ * Plis gagnés / plis annoncés, par exemple « 1/2 ». En vert quand l'annonce est pile atteinte, en rouge quand il y a
+ * des plis en trop. Le nombre grossit un instant quand un pli est gagné.
  */
-export function Jetons({ plis, annonce, className }: { plis: number; annonce: number | null; className?: string }) {
+export function Compte({ plis, annonce, className }: { plis: number; annonce: number | null; className?: string }) {
   const avant = useRef(plis);
-  const [nouveauxDes, setNouveauxDes] = useState<number | null>(null);
+  const [nouveau, setNouveau] = useState(false);
   useEffect(() => {
     const a = avant.current;
     avant.current = plis;
     if (plis <= a || mouvementReduit()) return;
-    setNouveauxDes(a);
-    const t = window.setTimeout(() => setNouveauxDes(null), 700);
+    setNouveau(true);
+    const t = window.setTimeout(() => setNouveau(false), 600);
     return () => window.clearTimeout(t);
   }, [plis]);
   if (annonce === null) return null;
-  const n = Math.max(plis, annonce);
   const etat = plis > annonce ? 'depasse' : plis === annonce ? 'juste' : '';
   const libelle = `${pluriel(plis, 'pli gagné', 'trick won', 'plis gagnés', 'tricks won')} ${tr(`sur ${annonce} annoncé${annonce > 1 ? 's' : ''}`, `of ${annonce} bid`)}`;
   return (
-    <span className={`jetons ${etat} ${className ?? ''}`} role="img" aria-label={libelle} title={libelle}>
-      {n === 0 ? (
-        <span className="jeton zero">0</span>
-      ) : (
-        Array.from({ length: n }, (_, i) => (
-          <span key={i} className={`jeton ${i < plis ? (i < annonce ? 'plein' : 'noir') : 'vide'} ${nouveauxDes !== null && i >= nouveauxDes && i < plis ? 'nouveau' : ''}`} />
-        ))
-      )}
+    <span className={`compte ${etat} ${nouveau ? 'nouveau' : ''} ${className ?? ''}`} aria-label={libelle} title={libelle}>
+      {plis}/{annonce}
     </span>
   );
 }
