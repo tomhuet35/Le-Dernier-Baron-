@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { CARTE } from '../../shared/cartes';
 import { TAPIS_PAR_DEFAUT, tapisGagnes, type IdTapis } from '../../shared/niveaux';
 import { DELAI_REACTION_MS, REACTIONS } from '../../shared/config';
@@ -112,6 +113,53 @@ function BulleReaction({ r }: { r?: Reaction }) {
     <span key={r.n} className="bulle-reaction" aria-label={tr(`Réaction ${r.emoji}`, `Reaction ${r.emoji}`)}>
       {r.emoji}
     </span>
+  );
+}
+
+/** Tapis en grand : un adversaire devient une petite étiquette au bord du tapis (avatar, nom, plis gagnés / annonce). */
+function Etiquette({ j, v, absent, fraction, avatar, onProfil, reaction }: { j: VueJoueur; v: Vue; absent: boolean; fraction: number | null; avatar: number; onProfil: (id: string) => void; reaction?: Reaction }) {
+  const minute = j.attendu && v.phase !== 'FIN_DE_NUIT' && v.phase !== 'FIN_DE_PARTIE';
+  const annonce = j.annonce ?? '?';
+  return (
+    <button
+      type="button"
+      className={`etiquette-joueur ${v.tourId === j.id && v.phase === 'PLI' ? 'son-tour' : ''} ${absent ? 'absent' : ''}`}
+      onClick={() => onProfil(j.id)}
+      aria-label={tr(`${j.nom} : ${j.plis} pli gagné sur ${annonce} annoncé`, `${j.nom}: ${j.plis} trick won of ${annonce} bid`)}
+    >
+      <span className="etiquette-avatar">
+        <Avatar n={avatar} fraction={minute ? fraction : null} />
+        <BulleReaction r={reaction} />
+      </span>
+      <span className="etiquette-nom">{j.nom}</span>
+      <span className="etiquette-compte">
+        {j.plis}/{annonce}
+      </span>
+    </button>
+  );
+}
+
+/** Tapis en grand : le bouton « Jouer » (ou les deux valeurs du Croupier) prend la place de mon nom quand j'ai choisi une carte. */
+function ActionsJouer({ selection, agir, envoi }: { selection: string; agir: (a: ActionSansJoueur) => void; envoi: boolean }) {
+  if (CARTE[selection].speciale === 'croupier') {
+    return (
+      <div className="actions-jouer">
+        <button type="button" className="principal" disabled={envoi} onClick={() => agir({ type: 'JOUER', carteId: selection, valeurCroupier: 11 })}>
+          {tr('Jouer à 11', 'Play as 11')}
+        </button>
+        <button type="button" className="principal" disabled={envoi} onClick={() => agir({ type: 'JOUER', carteId: selection, valeurCroupier: 0 })}>
+          {tr('Jouer à 0', 'Play as 0')}
+        </button>
+      </div>
+    );
+  }
+  const nomSel = nomCarte(selection);
+  return (
+    <div className="actions-jouer">
+      <button type="button" className="principal" disabled={envoi} onClick={() => agir({ type: 'JOUER', carteId: selection })}>
+        {tr(`Jouer ${nomSel}`, `Play ${nomSel}`)}
+      </button>
+    </div>
   );
 }
 
@@ -228,6 +276,9 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     return () => obs.disconnect();
   }, []);
   const [fenetre, setFenetre] = useState<'scores' | 'regles' | 'menu' | 'journal' | 'quitter' | 'reglages' | null>(null);
+  // Discussion ouverte depuis le menu ⋯ (tapis en grand), et messages non lus pour la pastille du menu.
+  const [ouvrirChat, setOuvrirChat] = useState(0);
+  const [nonLus, setNonLus] = useState(0);
   const [envoi, setEnvoi] = useState(false);
   const [fiche, setFiche] = useState<string | null>(null);
   const [musiqueActive, basculerMusique] = useMusique();
@@ -287,7 +338,28 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   // Son de carte : chaque fois qu'une nouvelle carte arrive sur le tapis (la mienne ou celle d'un autre joueur),
   // plus le son de sa famille (Billets, Diamants, Lames, Lingots, Chat noir) ou de la carte spéciale.
   const cartesPli = pliAffiche ? pliAffiche.cartes : v.pli;
-  const disposition = surOrdi ? dispositionPli(v.joueurs.length, cartesPli.length, tailleTable, ZOOM_CARTES[reglages.cartes]) : null;
+
+  // Tapis en grand : dès la première carte du pli, la table s'agrandit et les boutons se rangent dans le menu ⋯.
+  // Au début de chaque pli (tapis vide), et quand c'est à moi de choisir un butin à voler, la vue normale revient.
+  const doitZoomer = reglages.zoomTapis && cartesPli.length > 0 && (v.phase === 'PLI' || v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && v.vol?.voleurId !== v.moi));
+  const [zoome, setZoome] = useState(doitZoomer);
+  const zoomVoulu = useRef(doitZoomer);
+  zoomVoulu.current = doitZoomer;
+  useEffect(() => {
+    if (doitZoomer === zoome) return;
+    // Passage en douceur (le tapis grandit) quand le navigateur sait le faire ; sinon, tout de suite.
+    const doc = document as Document & { startViewTransition?: (maj: () => void) => unknown };
+    const douceur = typeof doc.startViewTransition === 'function' && document.visibilityState === 'visible' && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (douceur) doc.startViewTransition?.(() => flushSync(() => setZoome(zoomVoulu.current)));
+    else setZoome(doitZoomer);
+  }, [doitZoomer]); // eslint-disable-line react-hooks/exhaustive-deps
+  // La place du pli change de taille : on la remesure avant l'affichage, pour poser les cartes tout de suite à la bonne taille.
+  useLayoutEffect(() => {
+    const el = tableRef.current;
+    if (el) setTailleTable((t) => (t && t.l === el.clientWidth && t.h === el.clientHeight ? t : { l: el.clientWidth, h: el.clientHeight }));
+  }, [zoome]);
+  // Sur le tapis en grand, les cartes du pli s'étalent côte à côte (comme sur ordinateur), aussi grandes que possible.
+  const disposition = surOrdi || zoome ? dispositionPli(v.joueurs.length, cartesPli.length, tailleTable, ZOOM_CARTES[reglages.cartes] * (zoome ? 1.25 : 1)) : null;
   const cartesSurTapis = cartesPli.map((p) => p.carteId).join('|');
   // Le pli ramassé : la vue en grand se referme d'elle-même.
   useEffect(() => {
@@ -385,6 +457,25 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const siegeDe = (j: VueJoueur) => (
     <Siege key={j.id} j={j} v={v} salon={salon} estHote={estHote} appel={appel} nom={nom} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} reaction={reactions[j.id]} />
   );
+  const etiquetteDe = (j: VueJoueur) => {
+    const s = salon.joueurs.find((x) => x.id === j.id);
+    return <Etiquette key={j.id} j={j} v={v} absent={!!s && !s.connecte && !s.robot} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} reaction={reactions[j.id]} />;
+  };
+  const cotes = !zoome && !!(gauche || droite);
+  const trahisonAChoisir = v.phase === 'TRAHISON' && !v.aChoisiTrahison;
+  const envoyerReaction = (emoji: string) => {
+    setFenetre(null);
+    void appel('reaction', { emoji });
+  };
+  const boutonDernier = dernierRamasse && (
+    <button type="button" className={`bouton-dernier-pli ${zoome ? 'compact' : ''}`} onClick={() => setVueDernier(true)} aria-label={tr('Revoir le dernier pli', 'See the last trick')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+        <path d="M4 4v4.5h4.5" />
+      </svg>
+      {!zoome && tr('Dernier pli', 'Last trick')}
+    </button>
+  );
   // Cartes plus grandes (Réglages) : elles se recouvrent un peu plus, pour que la main tienne toujours dans la largeur de l'écran.
   const chevauchement = (main.length > 6 ? -0.56 : -0.42) - (ZOOM_CARTES[reglages.cartes] - 1) * 0.4;
   // Largeur de l'éventail en largeurs de carte, rotation comprise (les cartes tournent autour d'un point situé 1,4 hauteur
@@ -397,7 +488,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const chute = { px: dMax * dMax * 2.2, k: 0.5 * Math.sin(angleMax) + 0.6 * (1 - Math.cos(angleMax)) };
 
   return (
-    <div className="plateau">
+    <div className={`plateau ${zoome ? 'zoome' : ''}`}>
       <Particules />
       <header className="barre">
         <div className="nuit">
@@ -418,26 +509,43 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           <div className="evenement vide-evenement">{v.nuit === 1 || v.nuit === v.nbNuits ? tr('Pas d’événement cette nuit', 'No event tonight') : ''}</div>
         )}
         <div className="barre-boutons">
-          <button type="button" className="bouton-icone" onClick={() => setFenetre('scores')} aria-label="Scores">
-            <img src="/cartes/icone-scores.webp" alt="" draggable={false} />
-            <span className="libelle">Scores</span>
-          </button>
-          <button type="button" className="bouton-icone" onClick={() => setFenetre('regles')} aria-label={tr('Règles', 'Rules')}>
-            <img src="/cartes/icone-regles.webp" alt="" draggable={false} />
-            <span className="libelle">{tr('Règles', 'Rules')}</span>
-          </button>
-          <Chat salon={salon} appel={appel} enLigne />
-          <button type="button" className="bouton-icone bouton-icone-seule" onClick={() => setFenetre('menu')} aria-label="Menu">
+          {!zoome && (
+            <>
+              <button type="button" className="bouton-icone" onClick={() => setFenetre('scores')} aria-label="Scores">
+                <img src="/cartes/icone-scores.webp" alt="" draggable={false} />
+                <span className="libelle">Scores</span>
+              </button>
+              <button type="button" className="bouton-icone" onClick={() => setFenetre('regles')} aria-label={tr('Règles', 'Rules')}>
+                <img src="/cartes/icone-regles.webp" alt="" draggable={false} />
+                <span className="libelle">{tr('Règles', 'Rules')}</span>
+              </button>
+            </>
+          )}
+          <Chat salon={salon} appel={appel} enLigne cache={zoome} ouvrir={ouvrirChat} onNonLus={setNonLus} />
+          <button
+            type="button"
+            className="bouton-icone bouton-icone-seule"
+            onClick={() => setFenetre('menu')}
+            aria-label={zoome && nonLus > 0 ? `Menu, ${pluriel(nonLus, 'nouveau message', 'new message', 'nouveaux messages')}` : 'Menu'}
+          >
             <IconeImage nom="menu" repli="⋯" />
+            {zoome && nonLus > 0 && <span className="pastille-menu">{nonLus}</span>}
           </button>
         </div>
       </header>
 
-      {haut.length > 0 && <div className="rangee-haut">{haut.map(siegeDe)}</div>}
+      {zoome ? (
+        <div className="etiquettes" aria-label={tr('Adversaires', 'Opponents')}>
+          {autres.map(etiquetteDe)}
+        </div>
+      ) : (
+        haut.length > 0 && <div className="rangee-haut">{haut.map(siegeDe)}</div>
+      )}
 
-      <div className={`milieu ${gauche || droite ? '' : 'sans-cotes'}`}>
-        {(gauche || droite) && <div className="cote">{gauche && siegeDe(gauche)}</div>}
+      <div className={`milieu ${cotes ? '' : 'sans-cotes'}`}>
+        {cotes && <div className="cote">{gauche && siegeDe(gauche)}</div>}
         <section className={`centre tapis-${tapis}`} aria-label={tr('Pli en cours', 'Current trick')}>
+          {zoome && boutonDernier}
           <div className="centre-tete">
             {pliAffiche ? (
               <span>
@@ -499,16 +607,8 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               })}
               {!pliAffiche && v.pli.length === 0 && <div className="pli-vide">{tr('Le pli est vide', 'The trick is empty')}</div>}
             </div>
-            {dernierRamasse && (
-              <button type="button" className="bouton-dernier-pli" onClick={() => setVueDernier(true)} aria-label={tr('Revoir le dernier pli', 'See the last trick')}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M4 12a8 8 0 1 0 2.4-5.7" />
-                  <path d="M4 4v4.5h4.5" />
-                </svg>
-                {tr('Dernier pli', 'Last trick')}
-              </button>
-            )}
-            {surOrdi && cartesPli.length > 0 && (
+            {!zoome && boutonDernier}
+            {surOrdi && !zoome && cartesPli.length > 0 && (
               <button type="button" className="pli-loupe" onClick={() => setVuePli(true)} aria-label={tr('Voir le pli en grand', 'See the trick in big')}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="10.5" cy="10.5" r="6.5" />
@@ -517,36 +617,41 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               </button>
             )}
           </div>
-          <ol className="centre-journal" aria-label={tr('Dernières actions', 'Latest actions')}>
-            {v.journal
-              .slice(-2)
-              .reverse()
-              .map((e, i) => (
-                <li key={e.n} style={{ opacity: 1 - i * 0.35 }}>
-                  {EN ? (e.en ?? e.texte) : e.texte}
-                </li>
-              ))}
-          </ol>
+          {!zoome && (
+            <ol className="centre-journal" aria-label={tr('Dernières actions', 'Latest actions')}>
+              {v.journal
+                .slice(-2)
+                .reverse()
+                .map((e, i) => (
+                  <li key={e.n} style={{ opacity: 1 - i * 0.35 }}>
+                    {EN ? (e.en ?? e.texte) : e.texte}
+                  </li>
+                ))}
+            </ol>
+          )}
         </section>
-        {(gauche || droite) && <div className="cote">{droite && siegeDe(droite)}</div>}
+        {cotes && <div className="cote">{droite && siegeDe(droite)}</div>}
       </div>
 
       <section className={`ma-zone ${aMoi ? 'a-moi' : ''}`} aria-label={tr('Ta place', 'Your seat')}>
-        <div className={`consigne ${aMoi ? 'a-toi' : ''}`} aria-live="polite">
-          <Consigne v={v} selection={selection} agir={agir} nom={nom} droiteNom={voisinDroite.nom} attenteTexte={attenteTexte} envoi={envoi} />
-        </div>
-        <div className="moi-bandeau">
-          <button type="button" className="bouton-avatar" onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
-            <Avatar n={avatarDe(v.moi)} grand fraction={aMoi ? fraction : null} />
-            <BulleReaction r={reactions[v.moi]} />
-          </button>
-          <div className="moi-texte">
-            <div className="moi-nom">
-              <strong>{moi.nom}</strong>
-              {monCompte && <BadgeNiveau niveau={monCompte.niveau} />}
-              {aMoi && <span className="votre-tour">{tr('Votre tour', 'Your turn')}</span>}
-              {v.premierId === v.moi && PHASES_DEBUT.includes(v.phase) && <span className="badge or">{tr('Tu commences', 'You start')}</span>}
-            </div>
+        {!zoome && (
+          <div className={`consigne ${aMoi ? 'a-toi' : ''} ${trahisonAChoisir ? 'trahison' : ''}`} aria-live="polite">
+            <Consigne v={v} selection={selection} agir={agir} nom={nom} droiteNom={voisinDroite.nom} attenteTexte={attenteTexte} envoi={envoi} />
+          </div>
+        )}
+        {zoome ? (
+          <div className="moi-compact">
+            {monTour && v.phase === 'PLI' && selection ? (
+              <ActionsJouer selection={selection} agir={agir} envoi={envoi} />
+            ) : (
+              <button type="button" className="moi-compact-nom" onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
+                <strong>{moi.nom}</strong>
+                <span className="etiquette-compte" title={tr('Plis gagnés / annonce', 'Tricks won / bid')}>
+                  {moi.plis}/{v.monAnnonce ?? '?'}
+                </span>
+                {aMoi && <span className="votre-tour">{tr('Votre tour', 'Your turn')}</span>}
+              </button>
+            )}
             {aMoi && fraction !== null && (
               <div className={`minuteur ${fraction < 0.25 ? 'urgent' : ''}`}>
                 <div className="minuteur-barre" role="progressbar" aria-label={tr('Temps restant', 'Time left')} aria-valuemin={0} aria-valuemax={30} aria-valuenow={secondes ?? 0}>
@@ -555,15 +660,39 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
                 <small>{secondes} s</small>
               </div>
             )}
-            <div className="moi-stats">
-              {v.monAnnonce !== null ? tr(`Annonce ${v.monAnnonce}`, `Bid ${v.monAnnonce}`) : tr('Pas encore annoncé', 'No bid yet')} · {pluriel(moi.plis, 'pli', 'trick')} · {moi.score} pts
-            </div>
-            {v.choixAllies && <ChoixAllie v={v} id={v.moi} nom={nom} />}
-            <Butin ids={moi.butin} />
+            <BulleReaction r={reactions[v.moi]} />
           </div>
-          {!salon.tutoriel && <BoutonReactions appel={appel} />}
-        </div>
-        <div className="eventail" style={{ '--chev': chevauchement, '--etendue': etendue.toFixed(3), '--debord': debord.toFixed(3), '--chute-px': `${chute.px.toFixed(1)}px`, '--chute-k': chute.k.toFixed(3) } as React.CSSProperties} aria-label={tr('Ta main', 'Your hand')}>
+        ) : (
+          <div className="moi-bandeau">
+            <button type="button" className="bouton-avatar" onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
+              <Avatar n={avatarDe(v.moi)} grand fraction={aMoi ? fraction : null} />
+              <BulleReaction r={reactions[v.moi]} />
+            </button>
+            <div className="moi-texte">
+              <div className="moi-nom">
+                <strong>{moi.nom}</strong>
+                {monCompte && <BadgeNiveau niveau={monCompte.niveau} />}
+                {aMoi && <span className="votre-tour">{tr('Votre tour', 'Your turn')}</span>}
+                {v.premierId === v.moi && PHASES_DEBUT.includes(v.phase) && <span className="badge or">{tr('Tu commences', 'You start')}</span>}
+              </div>
+              {aMoi && fraction !== null && (
+                <div className={`minuteur ${fraction < 0.25 ? 'urgent' : ''}`}>
+                  <div className="minuteur-barre" role="progressbar" aria-label={tr('Temps restant', 'Time left')} aria-valuemin={0} aria-valuemax={30} aria-valuenow={secondes ?? 0}>
+                    <span style={{ width: `${fraction * 100}%` }} />
+                  </div>
+                  <small>{secondes} s</small>
+                </div>
+              )}
+              <div className="moi-stats">
+                {v.monAnnonce !== null ? tr(`Annonce ${v.monAnnonce}`, `Bid ${v.monAnnonce}`) : tr('Pas encore annoncé', 'No bid yet')} · {pluriel(moi.plis, 'pli', 'trick')} · {moi.score} pts
+              </div>
+              {v.choixAllies && <ChoixAllie v={v} id={v.moi} nom={nom} />}
+              <Butin ids={moi.butin} />
+            </div>
+            {!salon.tutoriel && <BoutonReactions appel={appel} />}
+          </div>
+        )}
+        <div className={`eventail ${trahisonAChoisir ? 'trahison' : ''}`} style={{ '--chev': chevauchement, '--etendue': etendue.toFixed(3), '--debord': debord.toFixed(3), '--chute-px': `${chute.px.toFixed(1)}px`, '--chute-k': chute.k.toFixed(3) } as React.CSSProperties} aria-label={tr('Ta main', 'Your hand')}>
           {main.map((c, i) => {
             const d = i - (main.length - 1) / 2;
             const style = { '--r': `${d * 4}deg`, '--y': `${d * d * 2.2}px`, zIndex: i + 1 } as React.CSSProperties;
@@ -596,6 +725,37 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
       )}
       {fenetre === 'menu' && (
         <Fenetre titre="Menu" onFermer={() => setFenetre(null)}>
+          <div className="menu-raccourcis">
+            <button type="button" className="menu-raccourci" onClick={() => setFenetre('scores')}>
+              <img src="/cartes/icone-scores.webp" alt="" draggable={false} />
+              Scores
+            </button>
+            <button type="button" className="menu-raccourci" onClick={() => setFenetre('regles')}>
+              <img src="/cartes/icone-regles.webp" alt="" draggable={false} />
+              {tr('Règles', 'Rules')}
+            </button>
+            <button
+              type="button"
+              className="menu-raccourci"
+              onClick={() => {
+                setFenetre(null);
+                setOuvrirChat((n) => n + 1);
+              }}
+            >
+              <img src="/cartes/icone-chat.webp" alt="" draggable={false} />
+              {tr('Discussion', 'Chat')}
+              {nonLus > 0 && <span className="pastille-menu">{nonLus}</span>}
+            </button>
+          </div>
+          {!salon.tutoriel && (
+            <div className="menu-reactions" role="group" aria-label={tr('Réactions', 'Reactions')}>
+              {REACTIONS.map((e) => (
+                <button key={e} type="button" onClick={() => envoyerReaction(e)} aria-label={tr(`Réagir ${e}`, `React ${e}`)}>
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
           <button type="button" className="large" onClick={() => setFenetre('journal')}>
             {tr('Journal de la partie', 'Game log')}
           </button>
@@ -771,8 +931,8 @@ function Consigne(props: {
             {tr(`choisis une carte de ta main à passer à ${props.droiteNom}, ton voisin de droite.`, `choose a card from your hand to pass to ${props.droiteNom}, on your right.`)}
           </p>
           {selection && (
-            <button type="button" className="principal" disabled={envoi} onClick={() => agir({ type: 'TRAHISON', carteId: selection })}>
-              {tr(`Passer ${nomSel}`, `Pass ${nomSel}`)}
+            <button type="button" className="trahison" disabled={envoi} onClick={() => agir({ type: 'TRAHISON', carteId: selection })}>
+              {tr(`Donner ${nomSel} à ${props.droiteNom} →`, `Give ${nomSel} to ${props.droiteNom} →`)}
             </button>
           )}
         </>

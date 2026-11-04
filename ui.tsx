@@ -230,7 +230,11 @@ export function useMinuteur(restant: number | null, duree: number): number | nul
 }
 
 /** Discussion entre les joueurs : bouton avec le nombre de messages non lus. */
-export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel; enLigne?: boolean }) {
+/**
+ * Discussion de la table. `cache` : le bouton est rangé (tapis en grand) ; `ouvrir` : chaque nouvelle valeur ouvre la
+ * discussion (depuis le menu ⋯) ; `onNonLus` : nombre de messages non lus, pour la pastille du menu.
+ */
+export function Chat({ salon, appel, enLigne, cache, ouvrir, onNonLus }: { salon: VueSalon; appel: Appel; enLigne?: boolean; cache?: boolean; ouvrir?: number; onNonLus?: (n: number) => void }) {
   const [ouvert, setOuvert] = useState(false);
   const [texte, setTexte] = useState('');
   const [vu, setVu] = useState(0);
@@ -244,6 +248,12 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
   const humain = (id: string) => salon.joueurs.some((j) => j.id === id && !j.bot);
   const dernier = messages.length ? messages[messages.length - 1].n : 0;
   const nonLus = ouvert ? 0 : messages.filter((m) => m.n > vu && m.auteurId !== salon.moi).length;
+  useEffect(() => {
+    if (ouvrir) setOuvert(true);
+  }, [ouvrir]);
+  useEffect(() => {
+    onNonLus?.(nonLus);
+  }, [nonLus]); // eslint-disable-line react-hooks/exhaustive-deps
   // Petite bulle sonore quand un autre joueur écrit (pas au chargement).
   const dernierEntendu = useRef<number | null>(null);
   useEffect(() => {
@@ -265,16 +275,18 @@ export function Chat({ salon, appel, enLigne }: { salon: VueSalon; appel: Appel;
   };
   return (
     <>
-      <button
-        type="button"
-        className={`chat-bouton ${enLigne ? 'en-ligne' : ''}`}
-        onClick={() => setOuvert(!ouvert)}
-        aria-label={ouvert ? tr('Fermer la discussion', 'Close chat') : tr('Ouvrir la discussion', 'Open chat')}
-      >
-        <img src="/cartes/icone-chat.webp" alt="" draggable={false} />
-        {enLigne && <span className="libelle">{tr('Discussion', 'Chat')}</span>}
-        {nonLus > 0 && <span className="chat-pastille">{nonLus}</span>}
-      </button>
+      {!cache && (
+        <button
+          type="button"
+          className={`chat-bouton ${enLigne ? 'en-ligne' : ''}`}
+          onClick={() => setOuvert(!ouvert)}
+          aria-label={ouvert ? tr('Fermer la discussion', 'Close chat') : tr('Ouvrir la discussion', 'Open chat')}
+        >
+          <img src="/cartes/icone-chat.webp" alt="" draggable={false} />
+          {enLigne && <span className="libelle">{tr('Discussion', 'Chat')}</span>}
+          {nonLus > 0 && <span className="chat-pastille">{nonLus}</span>}
+        </button>
+      )}
       {ouvert && (
         <div className={`chat-panneau ${enLigne ? 'haut' : ''}`} role="dialog" aria-label={tr('Discussion', 'Chat')}>
           <div className="chat-tete">

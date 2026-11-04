@@ -1,5 +1,5 @@
 /**
- * Réglages du joueur, gardés sur ce téléphone (ou cet ordinateur) : volumes, vitesse des ordinateurs, taille des cartes.
+ * Réglages du joueur, gardés sur ce téléphone (ou cet ordinateur) : volumes, vitesse des ordinateurs, taille des cartes, tapis en grand.
  * Aucun import ici : la musique (ui.tsx) lit ces réglages dès le chargement de la page.
  */
 export type Vitesse = 'lente' | 'normale' | 'rapide';
@@ -12,10 +12,12 @@ export interface Reglages {
   effets: number;
   vitesse: Vitesse;
   cartes: TailleCartes;
+  /** Le tapis s'agrandit pendant le pli (et revient à la vue normale au début de chaque pli). */
+  zoomTapis: boolean;
 }
 
 const CLE = 'ldb-reglages';
-const DEFAUT: Reglages = { musique: 100, effets: 100, vitesse: 'normale', cartes: 'normale' };
+const DEFAUT: Reglages = { musique: 100, effets: 100, vitesse: 'normale', cartes: 'normale', zoomTapis: true };
 const borne = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : d);
 
 function charger(): Reglages {
@@ -26,6 +28,7 @@ function charger(): Reglages {
       effets: borne(brut.effets, DEFAUT.effets),
       vitesse: brut.vitesse === 'lente' || brut.vitesse === 'rapide' ? brut.vitesse : 'normale',
       cartes: brut.cartes === 'grande' || brut.cartes === 'tres_grande' ? brut.cartes : 'normale',
+      zoomTapis: brut.zoomTapis !== false,
     };
   } catch {
     return { ...DEFAUT };

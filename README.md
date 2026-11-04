@@ -28,6 +28,8 @@ Bon à savoir sur l'offre gratuite de Render :
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Facultatives. Clés des notifications d'invitation. Sans elles, le serveur les crée une fois et les garde dans Firestore (collection `parametres`). |
 | `GARDER_EVEILLE` | `non` désactive le réveil automatique du site toutes les 10 minutes. |
 
+Pendant le pli, le tapis s'agrandit et les boutons se rangent dans le menu ⋯ ; il revient à la vue normale au début de chaque pli (Réglages → Tapis en grand pour le désactiver).
+
 Le jeu est en français et en anglais : il suit la langue du téléphone, et le bouton 🌐 de l'accueil (ou Réglages → Langue) permet de changer. Les signalements de joueurs sont gardés 6 mois dans Firestore (collection `signalements`).
 
 Le jeu s'installe comme une application (bouton « Installer le jeu » sur Android et ordinateur ; sur iPhone et iPad : Partager → « Sur l'écran d'accueil »). Les notifications d'invitation demandent un compte, et sur iPhone ou iPad, iOS 16.4 ou plus récent avec le jeu installé sur l'écran d'accueil.

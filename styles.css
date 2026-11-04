@@ -11,6 +11,8 @@
   --rouge: #8e1c14;
   --rouge-vif: #b8281d;
   --vert: #7fb36a;
+  --violet: #6b3fa0;
+  --violet-vif: #a47de3;
   --titre: 'Limelight', 'Didot', Georgia, serif;
   --texte: 'Libre Franklin', 'Helvetica Neue', Arial, sans-serif;
   color-scheme: dark;
@@ -1037,3 +1039,73 @@ body[data-tuto='tapis'] .centre { animation: tuto-halo 1.3s ease-in-out infinite
 .revanche-joueurs li { padding: 3px 10px; border-radius: 99px; border: 1px solid var(--filet); font-size: 12.5px; color: var(--creme-doux); }
 .revanche-joueurs li.oui { border-color: var(--vert); color: var(--creme); background: rgba(127, 179, 106, 0.15); }
 .historique li.abandon { opacity: 0.7; border-style: dashed; }
+
+/* ---------- Tapis en grand pendant le pli ---------- */
+/* Le tapis et ma place glissent vers leur nouvelle taille (navigateurs qui savent faire une transition de vue). */
+.plateau .centre { view-transition-name: tapis; }
+.plateau .ma-zone { view-transition-name: ma-zone; }
+::view-transition-group(tapis), ::view-transition-group(ma-zone) { animation-duration: 0.45s; animation-timing-function: cubic-bezier(0.25, 0.8, 0.3, 1); }
+::view-transition-old(tapis), ::view-transition-new(tapis), ::view-transition-old(ma-zone), ::view-transition-new(ma-zone) { height: 100%; object-fit: fill; animation-duration: 0.45s; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.3s; }
+
+/* Barre du haut : la nuit, l'événement (avec sa carte et son effet) et le menu ⋯. */
+.plateau.zoome .evenement small { display: block; }
+.plateau.zoome .evenement { min-height: 44px; }
+.plateau.zoome .bouton-icone-seule { position: relative; }
+.pastille-menu { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--or-vif); color: var(--nuit); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6); pointer-events: none; }
+
+/* Adversaires : petites étiquettes posées sur le bord du tapis. */
+.etiquettes { position: relative; z-index: 6; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px 6px; margin-bottom: -16px; padding: 0 4px; }
+.etiquette-joueur { position: relative; display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 46%; height: 32px; min-height: 0; padding: 0 9px 0 2px; border-radius: 99px; border: 1px solid rgba(231, 194, 122, 0.45); background: rgba(22, 16, 12, 0.94); color: var(--creme); font-size: 12.5px; line-height: 1; box-shadow: 0 3px 9px rgba(0, 0, 0, 0.6); transition: border-color 0.2s, box-shadow 0.2s; }
+.etiquette-joueur.son-tour { border-color: var(--or-vif); box-shadow: 0 0 0 1px var(--or-vif), 0 0 14px rgba(231, 194, 122, 0.5); }
+.etiquette-joueur.son-tour .etiquette-nom { color: var(--or-vif); }
+.etiquette-joueur.absent { opacity: 0.6; }
+.etiquette-avatar { position: relative; flex: none; }
+.etiquette-joueur .avatar { --taille: 28px; padding: 2px; box-shadow: none; }
+.etiquette-joueur .avatar img { border-width: 1px; }
+.etiquette-joueur .bulle-reaction { font-size: 24px; }
+.etiquette-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.etiquette-compte { flex: none; font-weight: 700; color: var(--or-vif); font-variant-numeric: tabular-nums; }
+@media (min-width: 700px) {
+  .etiquettes { gap: 8px 12px; margin-bottom: -18px; }
+  .etiquette-joueur { height: 38px; font-size: 14px; padding-right: 12px; }
+  .etiquette-joueur .avatar { --taille: 34px; }
+}
+
+/* Le tapis prend toute la place libre ; les cartes du pli s'étalent en grand. */
+.plateau.zoome .milieu { flex: 1 1 auto; min-height: 0; grid-template-columns: minmax(0, 1fr); }
+.plateau.zoome .milieu > .centre { position: relative; align-self: stretch; grid-template-rows: auto minmax(0, 1fr); align-content: stretch; padding-top: 12px; }
+.plateau.zoome .centre-tete { max-width: calc(100% - 84px); }
+.plateau.zoome .centre-table { min-height: 170px; }
+.bouton-dernier-pli.compact { left: auto; right: 4px; top: 8px; bottom: auto; width: 34px; height: 34px; padding: 0; justify-content: center; }
+.bouton-dernier-pli.compact svg { width: 17px; height: 17px; }
+
+/* Ma place : une seule ligne (nom, plis / annonce, minuteur), puis ma main. Le bouton « Jouer » prend la place du nom. */
+.moi-compact { position: relative; display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 2px; }
+.moi-compact-nom { display: inline-flex; align-items: center; gap: 7px; min-width: 0; min-height: 0; height: 36px; padding: 0 4px; border: none; background: none; color: var(--creme); white-space: nowrap; }
+.moi-compact-nom strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 15.5px; }
+.moi-compact-nom .etiquette-compte { font-size: 15px; }
+.moi-compact-nom .votre-tour { font-size: 11px; padding: 2px 8px; }
+.moi-compact .minuteur { flex: 1 1 80px; min-width: 64px; }
+.moi-compact .bulle-reaction { left: 26px; bottom: 60%; }
+.actions-jouer { display: flex; gap: 6px; flex: 2 1 auto; min-width: 0; }
+.actions-jouer button { flex: 1 1 0; min-width: 0; min-height: 40px; padding: 4px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 900px) {
+  .ma-zone .moi-compact { grid-row: 1; grid-column: 1; }
+}
+
+/* Menu ⋯ : Scores, Règles, Discussion et réactions, rangés là pendant le pli. */
+.menu-raccourcis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.menu-raccourci { position: relative; display: grid; justify-items: center; gap: 4px; min-height: 0; padding: 8px 4px 10px; font-size: 13px; }
+.menu-raccourci img { width: 44px; height: 44px; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55)); }
+.menu-raccourci .pastille-menu { top: 4px; right: auto; left: calc(50% + 12px); }
+.menu-reactions { display: flex; gap: 6px; }
+.menu-reactions button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0; font-size: 22px; line-height: 1; }
+
+/* Trahison : une couleur à part (violet) pour donner une carte, à ne pas confondre avec « Jouer ». */
+button.trahison { background: var(--violet); border-color: var(--violet-vif); color: #f7f0ff; font-weight: 600; }
+button.trahison:hover:not(:disabled) { background: #7c4cbc; border-color: #c4a6f2; }
+.consigne.trahison, .ma-zone .consigne.trahison { border-color: var(--violet-vif); background: rgba(44, 25, 66, 0.95); }
+.consigne.trahison strong { color: #cfb5f7; }
+.ma-zone.a-moi:has(.consigne.trahison) { border-color: var(--violet-vif); box-shadow: 0 0 26px rgba(164, 125, 227, 0.28); }
+.eventail.trahison .carte.choisie .carte-bouton { box-shadow: 0 0 0 3px var(--violet-vif), 0 0 18px rgba(164, 125, 227, 0.65), 0 10px 20px rgba(0, 0, 0, 0.7); }

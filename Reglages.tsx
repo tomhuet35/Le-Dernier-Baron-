@@ -20,6 +20,10 @@ const TAILLES: [TailleCartes, string][] = [
   ['grande', tr('Grande', 'Large')],
   ['tres_grande', tr('Très grande', 'Extra large')],
 ];
+const ZOOM_TAPIS: ['oui' | 'non', string][] = [
+  ['oui', tr('Activé', 'On')],
+  ['non', tr('Désactivé', 'Off')],
+];
 const LANGUES: [Langue, string][] = [
   ['fr', 'Français'],
   ['en', 'English'],
@@ -186,7 +190,7 @@ function SectionAppli({ avecCompte }: { avecCompte: boolean }) {
   );
 }
 
-/** Réglages : son, vitesse des ordinateurs, taille des cartes, application et notifications. */
+/** Réglages : son, vitesse des ordinateurs, taille des cartes, tapis en grand, application et notifications. */
 export function FenetreReglages({ onFermer, enPartie, avecCompte = false }: { onFermer: () => void; enPartie?: boolean; avecCompte?: boolean }) {
   const r = useReglages();
   const [sonActif, basculerSon] = useMusique();
@@ -223,6 +227,16 @@ export function FenetreReglages({ onFermer, enPartie, avecCompte = false }: { on
             ? tr('Ta main et les cartes du pli changent tout de suite.', 'Your hand and the trick cards change right away.')
             : tr('Pour ta main et les cartes du pli, pendant les parties.', 'For your hand and the trick cards, during games.')}{' '}
           {tr('Sur un petit téléphone, la table défile un peu en « Grande » et « Très grande ».', 'On a small phone, the table scrolls a little in “Large” and “Extra large”.')}
+        </p>
+      </section>
+      <section className="reglages-bloc">
+        <h3 className="profil-sous-titre">{tr('Tapis en grand', 'Big table')}</h3>
+        <Segments libelle={tr('Tapis en grand', 'Big table')} valeur={r.zoomTapis ? 'oui' : 'non'} options={ZOOM_TAPIS} onChoix={(v) => changerReglages({ zoomTapis: v === 'oui' })} />
+        <p className="discret">
+          {tr(
+            'Dès la première carte du pli, le tapis s’agrandit et les boutons se rangent dans ⋯. Au début de chaque pli, la table revient à la vue normale.',
+            'From the first card of each trick, the table grows and the buttons tuck into ⋯. At the start of each trick, the table goes back to the normal view.',
+          )}
         </p>
       </section>
       {!enPartie && <SectionAppli avecCompte={avecCompte} />}
