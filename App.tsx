@@ -490,8 +490,8 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
           {enLigne ? tr(`${enLigne.joueurs} en ligne`, `${enLigne.joueurs} online`) : '…'}
         </p>
         <BoutonLangue />
-        <button type="button" className="bouton-menu" onClick={() => setFenetre('menu')} aria-label={tr('Menu : profil, amis, règles et réglages', 'Menu: profile, friends, rules and settings')}>
-          <IconeImage nom="menu" repli="⋯" className="bouton-menu-icone" />
+        <button type="button" className="bouton-menu bouton-texte-menu" onClick={() => setFenetre('menu')} aria-label={tr('Menu : profil, amis, règles et réglages', 'Menu: profile, friends, rules and settings')}>
+          <span className="texte-menu">Menu</span>
           {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
         </button>
       </div>

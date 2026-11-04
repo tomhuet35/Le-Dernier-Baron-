@@ -1109,3 +1109,16 @@ button.trahison:hover:not(:disabled) { background: #7c4cbc; border-color: #c4a6f
 .consigne.trahison strong { color: #cfb5f7; }
 .ma-zone.a-moi:has(.consigne.trahison) { border-color: var(--violet-vif); box-shadow: 0 0 26px rgba(164, 125, 227, 0.28); }
 .eventail.trahison .carte.choisie .carte-bouton { box-shadow: 0 0 0 3px var(--violet-vif), 0 0 18px rgba(164, 125, 227, 0.65), 0 10px 20px rgba(0, 0, 0, 0.7); }
+
+/* Bouton « Menu » écrit avec la police du jeu (à la place de l'icône aux trois points) */
+.bouton-texte-menu { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: auto; min-height: 0; border: 1px solid var(--or); background: rgba(33, 23, 17, 0.9); color: var(--or); filter: none; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); }
+.texte-menu { font-family: var(--titre); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1; color: var(--or-vif); }
+.bouton-texte-menu:hover:not(:disabled) { border-color: var(--or-vif); }
+.plateau .bouton-texte-menu { height: 44px; padding: 0 12px; border-radius: 8px; }
+.plateau .bouton-texte-menu .texte-menu { font-size: 15px; }
+.bouton-menu.bouton-texte-menu { height: 40px; padding: 0 16px; border-radius: 99px; }
+.bouton-menu.bouton-texte-menu .texte-menu { font-size: 15px; }
+@media (max-width: 479px) {
+  .plateau .bouton-texte-menu { height: 40px; padding: 0 8px; }
+  .plateau .bouton-texte-menu .texte-menu { font-size: 13px; letter-spacing: 0.05em; }
+}

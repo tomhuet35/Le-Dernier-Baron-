@@ -17,7 +17,7 @@ import { EN, pluriel, titreNiveau, tr } from './traduction';
 import { useMasques } from './Moderation';
 import { nomTapis } from './Profil';
 import { duelDuPli, type DuelPli } from '../../shared/regles';
-import { Avatar, Butin, CarteImg, Chat, Duel, Fenetre, IconeImage, IconeMusique, Pastille, SON_EVENEMENT, Zoom, jouerEffet, sonDeCarte, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Duel, Fenetre, IconeMusique, Pastille, SON_EVENEMENT, Zoom, jouerEffet, sonDeCarte, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -524,11 +524,11 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           <Chat salon={salon} appel={appel} enLigne cache={zoome} ouvrir={ouvrirChat} onNonLus={setNonLus} />
           <button
             type="button"
-            className="bouton-icone bouton-icone-seule"
+            className="bouton-icone bouton-icone-seule bouton-texte-menu"
             onClick={() => setFenetre('menu')}
             aria-label={zoome && nonLus > 0 ? `Menu, ${pluriel(nonLus, 'nouveau message', 'new message', 'nouveaux messages')}` : 'Menu'}
           >
-            <IconeImage nom="menu" repli="⋯" />
+            <span className="texte-menu">Menu</span>
             {zoome && nonLus > 0 && <span className="pastille-menu">{nonLus}</span>}
           </button>
         </div>
