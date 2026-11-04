@@ -4,7 +4,7 @@ import { flushSync } from 'react-dom';
 import { CARTE } from '../../shared/cartes';
 import { TAPIS_PAR_DEFAUT, tapisGagnes, type IdTapis } from '../../shared/niveaux';
 import { DELAI_REACTION_MS, REACTIONS } from '../../shared/config';
-import type { Action, Reaction, Vue, VueJoueur, VueSalon } from '../../shared/types';
+import type { Action, CartePosee, Reaction, ScoreNuit, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import { socket } from './socket';
 import type { Appel } from './App';
 import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
@@ -17,7 +17,7 @@ import { EN, pluriel, titreNiveau, tr } from './traduction';
 import { useMasques } from './Moderation';
 import { nomTapis } from './Profil';
 import { duelDuPli, type DuelPli } from '../../shared/regles';
-import { Avatar, Butin, CarteImg, Chat, Duel, Fenetre, IconeMusique, Pastille, SON_EVENEMENT, Zoom, jouerEffet, sonDeCarte, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Couronne, Duel, Fenetre, IconeMusique, Jetons, MiniCarte, SON_EVENEMENT, Zoom, jouerEffet, mouvementReduit, sonDeCarte, useCompteur, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -68,6 +68,14 @@ function dispositionPli(nJoueurs: number, nCartes: number, t: { l: number; h: nu
   });
   return { larg, positions };
 }
+
+/** Pli ramassé : les cartes glissent vers le gagnant (durée totale, cartes décalées comprises). */
+const DUREE_RAMASSAGE_MS = 820;
+/** Distribution : une carte met ce temps à voler du tapis vers un joueur ; les cartes partent l'une après l'autre. */
+const VOL_DONNE_MS = 440;
+const pasDonne = (nuit: number, nJoueurs: number) => Math.min(90, Math.max(24, 1100 / Math.max(1, nuit * nJoueurs)));
+const dureeDonne = (nuit: number, nJoueurs: number) => (nuit * nJoueurs - 1) * pasDonne(nuit, nJoueurs) + VOL_DONNE_MS + 80;
+type VolDonne = { x: number; y: number; dx: number; dy: number; echelle: number; rot: number; delai: number };
 
 /** Ordinateur (souris, grand écran) : le pli s'étale en grand sur le tapis. Téléphone et tablette gardent la pile. */
 const REQUETE_ORDI = '(min-width: 900px) and (hover: hover) and (pointer: fine)';
@@ -123,6 +131,7 @@ function Etiquette({ j, v, absent, fraction, avatar, onProfil, reaction }: { j: 
   return (
     <button
       type="button"
+      data-joueur={j.id}
       className={`etiquette-joueur ${v.tourId === j.id && v.phase === 'PLI' ? 'son-tour' : ''} ${absent ? 'absent' : ''}`}
       onClick={() => onProfil(j.id)}
       aria-label={tr(`${j.nom} : ${j.plis} pli gagné sur ${annonce} annoncé`, `${j.nom}: ${j.plis} trick won of ${annonce} bid`)}
@@ -132,9 +141,13 @@ function Etiquette({ j, v, absent, fraction, avatar, onProfil, reaction }: { j: 
         <BulleReaction r={reaction} />
       </span>
       <span className="etiquette-nom">{j.nom}</span>
-      <span className="etiquette-compte">
-        {j.plis}/{annonce}
-      </span>
+      {j.annonce !== null ? (
+        <Jetons plis={j.plis} annonce={j.annonce} />
+      ) : (
+        <span className="etiquette-compte">
+          {j.plis}/{annonce}
+        </span>
+      )}
     </button>
   );
 }
@@ -286,24 +299,44 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
 
   useEffect(() => setSelection(null), [v.phase, v.nuit, v.main.length, v.tourId]);
 
+  // Distribution au début de chaque nuit (et au début de la partie) : le son, et les cartes qui volent du tapis vers
+  // chaque joueur, une par une et tour par tour. La révélation de l'événement attend la fin de la distribution.
+  const nuitPrecedente = useRef<number | null>(null);
+  const finDonne = useRef(0);
+  const [donne, setDonne] = useState<{ nuit: number; vols: VolDonne[] | null; mesArrivees: number[] } | null>(null);
+  useEffect(() => {
+    const avant = nuitPrecedente.current;
+    nuitPrecedente.current = v.nuit;
+    // Début de partie (ou revanche, qui repart à la nuit 1) : on distribue aussi.
+    const debutPartie = v.nuit === 1 && v.phase === 'ANNONCES' && v.joueurs.every((j) => !j.aAnnonce) && (avant === null || avant > 1);
+    if (!((avant !== null && v.nuit > avant) || debutPartie)) return;
+    jouerEffet('distribution');
+    if (mouvementReduit()) return;
+    finDonne.current = Date.now() + dureeDonne(v.nuit, v.joueurs.length);
+    setDonne({ nuit: v.nuit, vols: null, mesArrivees: [] });
+  }, [v.nuit]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Révélation de l'événement : la carte tourbillonne au centre de l'écran pendant 5 secondes.
   const [revelation, setRevelation] = useState<string | null>(null);
   const dejaVu = useRef<string | null>(null);
+  const minuteursRevelation = useRef<number[]>([]);
+  useEffect(() => () => minuteursRevelation.current.forEach((t) => window.clearTimeout(t)), []);
   useEffect(() => {
     if (!v.evenementId || v.phase !== 'ANNONCES') return;
     const cle = `${v.nuit}-${v.evenementId}`;
     if (dejaVu.current === cle) return;
     dejaVu.current = cle;
-    setRevelation(v.evenementId);
-    jouerEffet('evenement');
+    const id = v.evenementId;
+    const attente = Math.max(0, finDonne.current - Date.now());
     // Puis le son propre à l'événement, quand son nom apparaît.
     const sonEvenement = v.evenement ? SON_EVENEMENT[v.evenement] : undefined;
-    const s = sonEvenement ? window.setTimeout(() => jouerEffet(sonEvenement), 1800) : 0;
-    const t = window.setTimeout(() => setRevelation(null), 5000);
-    return () => {
-      window.clearTimeout(t);
-      window.clearTimeout(s);
-    };
+    const plus = (ms: number, f: () => void) => minuteursRevelation.current.push(window.setTimeout(f, ms));
+    plus(attente, () => {
+      setRevelation(id);
+      jouerEffet('evenement');
+    });
+    if (sonEvenement) plus(attente + 1800, () => jouerEffet(sonEvenement));
+    plus(attente + 5000, () => setRevelation((r) => (r === id ? null : r)));
   }, [v.nuit, v.evenementId, v.phase]);
 
   const nom = (id: string | null | undefined) => v.joueurs.find((j) => j.id === id)?.nom ?? '?';
@@ -339,17 +372,34 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   // plus le son de sa famille (Billets, Diamants, Lames, Lingots, Chat noir) ou de la carte spéciale.
   const cartesPli = pliAffiche ? pliAffiche.cartes : v.pli;
 
+  // Pli ramassé : les cartes glissent vers le gagnant avant de disparaître. Calculé pendant l'affichage, pour que les
+  // cartes restent à leur place sans clignoter au moment où le serveur passe au pli suivant.
+  type Ramassage = { cle: string; cartes: CartePosee[]; gagnantId: string; deltas: Record<string, { x: number; y: number }> | null };
+  const clePliAffiche = pliAffiche ? `${v.nuit}|${pliAffiche.gagnantId}|${pliAffiche.cartes.map((c) => c.carteId).join(',')}` : null;
+  const [pliVu, setPliVu] = useState<Omit<Ramassage, 'deltas'> | null>(null);
+  const [ramassage, setRamassage] = useState<Ramassage | null>(null);
+  if (pliAffiche && clePliAffiche && pliVu?.cle !== clePliAffiche) setPliVu({ cle: clePliAffiche, cartes: pliAffiche.cartes, gagnantId: pliAffiche.gagnantId });
+  if (!pliAffiche && pliVu) {
+    setPliVu(null);
+    if (v.pli.length === 0 && !mouvementReduit()) setRamassage({ ...pliVu, deltas: null });
+  }
+  if (ramassage && v.pli.length > 0) setRamassage(null);
+  const cartesVues = ramassage ? ramassage.cartes : cartesPli;
+  const gagnantVu = ramassage ? ramassage.gagnantId : (pliAffiche?.gagnantId ?? null);
+
   // Tapis en grand : dès la première carte du pli, la table s'agrandit et les boutons se rangent dans le menu ⋯.
-  // Au début de chaque pli (tapis vide), et quand c'est à moi de choisir un butin à voler, la vue normale revient.
-  const doitZoomer = reglages.zoomTapis && cartesPli.length > 0 && (v.phase === 'PLI' || v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && v.vol?.voleurId !== v.moi));
-  const [zoome, setZoome] = useState(doitZoomer);
+  // Au début de chaque pli (tapis vide, une fois les cartes ramassées), et quand c'est à moi de choisir un butin
+  // à voler, la vue normale revient.
+  const phaseZoom = v.phase === 'PLI' || v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && v.vol?.voleurId !== v.moi);
+  const [zoome, setZoome] = useState(() => reglages.zoomTapis && cartesPli.length > 0 && phaseZoom);
+  const doitZoomer = reglages.zoomTapis && ((cartesPli.length > 0 && phaseZoom) || (!!ramassage && zoome));
   const zoomVoulu = useRef(doitZoomer);
   zoomVoulu.current = doitZoomer;
   useEffect(() => {
     if (doitZoomer === zoome) return;
     // Passage en douceur (le tapis grandit) quand le navigateur sait le faire ; sinon, tout de suite.
     const doc = document as Document & { startViewTransition?: (maj: () => void) => unknown };
-    const douceur = typeof doc.startViewTransition === 'function' && document.visibilityState === 'visible' && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const douceur = typeof doc.startViewTransition === 'function' && document.visibilityState === 'visible' && !mouvementReduit();
     if (douceur) doc.startViewTransition?.(() => flushSync(() => setZoome(zoomVoulu.current)));
     else setZoome(doitZoomer);
   }, [doitZoomer]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -359,7 +409,77 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     if (el) setTailleTable((t) => (t && t.l === el.clientWidth && t.h === el.clientHeight ? t : { l: el.clientWidth, h: el.clientHeight }));
   }, [zoome]);
   // Sur le tapis en grand, les cartes du pli s'étalent côte à côte (comme sur ordinateur), aussi grandes que possible.
-  const disposition = surOrdi || zoome ? dispositionPli(v.joueurs.length, cartesPli.length, tailleTable, ZOOM_CARTES[reglages.cartes] * (zoome ? 1.25 : 1)) : null;
+  const disposition = surOrdi || zoome ? dispositionPli(v.joueurs.length, cartesVues.length, tailleTable, ZOOM_CARTES[reglages.cartes] * (zoome ? 1.25 : 1)) : null;
+
+  // Ramassage : où est le gagnant (son siège, son étiquette ou ma place) par rapport à chaque carte ?
+  const plateauRef = useRef<HTMLDivElement | null>(null);
+  const refsCartesPli = useRef(new Map<string, HTMLElement>());
+  const cibleJoueur = (id: string) => plateauRef.current?.querySelector<HTMLElement>(`[data-joueur="${CSS.escape(id)}"]`) ?? null;
+  useLayoutEffect(() => {
+    if (!ramassage || ramassage.deltas) return;
+    const rc = cibleJoueur(ramassage.gagnantId)?.getBoundingClientRect();
+    const deltas: Record<string, { x: number; y: number }> = {};
+    for (const p of ramassage.cartes) {
+      const el = refsCartesPli.current.get(p.carteId);
+      if (!el || !rc) continue;
+      const r = el.getBoundingClientRect();
+      deltas[p.carteId] = { x: rc.left + rc.width / 2 - (r.left + r.width / 2), y: rc.top + rc.height / 2 - (r.top + r.height / 2) };
+    }
+    setRamassage((x) => (x && x.cle === ramassage.cle ? { ...x, deltas } : x));
+  }, [ramassage]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ramassageLance = !!ramassage?.deltas;
+  useEffect(() => {
+    if (!ramassageLance) return;
+    const t = window.setTimeout(() => setRamassage(null), DUREE_RAMASSAGE_MS);
+    return () => window.clearTimeout(t);
+  }, [ramassageLance, ramassage?.cle]);
+
+  // Distribution : d'où partent les cartes (le tapis) et où elles arrivent (chaque joueur, et chaque carte de ma main).
+  useLayoutEffect(() => {
+    if (!donne || donne.vols) return;
+    const plateau = plateauRef.current;
+    const tapisEl = plateau?.querySelector('.centre-table');
+    if (!plateau || !tapisEl) {
+      setDonne(null);
+      return;
+    }
+    const o = tapisEl.getBoundingClientRect();
+    const ox = o.left + o.width / 2;
+    const oy = o.top + o.height / 2;
+    const premier = Math.max(0, v.joueurs.findIndex((j) => j.id === v.premierId));
+    const ordre = [...v.joueurs.slice(premier), ...v.joueurs.slice(0, premier)];
+    const pas = pasDonne(v.nuit, v.joueurs.length);
+    const mesCartes = [...plateau.querySelectorAll<HTMLElement>('.eventail-carte')];
+    const vols: VolDonne[] = [];
+    const mesArrivees: number[] = [];
+    let k = 0;
+    for (let tour = 0; tour < v.nuit; tour++) {
+      for (const j of ordre) {
+        const delai = k * pas;
+        k += 1;
+        let r: DOMRect | undefined;
+        let echelle = 0.45;
+        if (j.id === v.moi) {
+          r = (mesCartes[tour] ?? plateau.querySelector('.eventail'))?.getBoundingClientRect();
+          if (r) echelle = Math.min(2.4, Math.max(0.6, Math.min(r.width, r.height / 1.5) / 44));
+          mesArrivees[tour] = delai + VOL_DONNE_MS * 0.8;
+        } else {
+          const el = cibleJoueur(j.id);
+          r = (el?.querySelector('.siege-dos') ?? el)?.getBoundingClientRect();
+        }
+        if (!r) continue;
+        vols.push({ x: ox, y: oy, dx: r.left + r.width / 2 - ox, dy: r.top + r.height / 2 - oy, echelle, rot: ((k * 37) % 30) - 15, delai });
+      }
+    }
+    setDonne((d) => (d && d.nuit === donne.nuit ? { ...d, vols, mesArrivees } : d));
+  }, [donne]); // eslint-disable-line react-hooks/exhaustive-deps
+  const donneLancee = !!donne?.vols;
+  useEffect(() => {
+    if (!donneLancee) return;
+    const t = window.setTimeout(() => setDonne(null), dureeDonne(v.nuit, v.joueurs.length) + 150);
+    return () => window.clearTimeout(t);
+  }, [donneLancee]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const cartesSurTapis = cartesPli.map((p) => p.carteId).join('|');
   // Le pli ramassé : la vue en grand se referme d'elle-même.
   useEffect(() => {
@@ -384,14 +504,6 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
       if (son) jouerEffet(son);
     }
   }, [cartesSurTapis]);
-
-  // Distribution des cartes au début de chaque nuit (pas au chargement de la page).
-  const nuitPrecedente = useRef<number | null>(null);
-  useEffect(() => {
-    const avant = nuitPrecedente.current;
-    nuitPrecedente.current = v.nuit;
-    if (avant !== null && v.nuit > avant) jouerEffet('distribution');
-  }, [v.nuit]);
 
   // « À toi de jouer » : petit carillon quand vient mon tour de poser une carte.
   const tourPrecedent = useRef<boolean | null>(null);
@@ -488,7 +600,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const chute = { px: dMax * dMax * 2.2, k: 0.5 * Math.sin(angleMax) + 0.6 * (1 - Math.cos(angleMax)) };
 
   return (
-    <div className={`plateau ${zoome ? 'zoome' : ''}`}>
+    <div className={`plateau ${zoome ? 'zoome' : ''}`} ref={plateauRef}>
       <Particules />
       <header className="barre">
         <div className="nuit">
@@ -585,19 +697,31 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               <path d="M57 174.5 A86 86 0 0 1 25.5 57" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" markerEnd="url(#pointe)" />
             </svg>
             <div className={`pli-pile ${disposition ? 'disposee' : ''}`}>
-              {cartesPli.map((p, i) => {
+              {cartesVues.map((p, i) => {
                 // Cartes étalées côte à côte, légèrement de travers, comme sur une vraie table.
                 const pos = disposition?.positions[i];
+                const gagnante = !!gagnantVu && p.joueurId === gagnantVu;
+                const d = ramassage?.deltas?.[p.carteId];
                 const style = {
                   '--r': `${(i % 2 ? 1 : -1) * (1 + (i % 3) * 0.7)}deg`,
                   '--x': `${((i * 37) % 13) - 6}px`,
-                  zIndex: i + 1,
+                  // La carte gagnante passe au-dessus des autres pour être vue en entier.
+                  zIndex: gagnante ? 40 : i + 1,
                   ...(pos ? { left: pos.x, top: pos.y } : {}),
+                  ...(ramassageLance ? { '--dx': `${d?.x ?? 0}px`, '--dy': `${d?.y ?? 0}px`, animationDelay: `${gagnante ? 170 : i * 40}ms` } : {}),
                 } as React.CSSProperties;
-                const gagnante = !!pliAffiche && p.joueurId === pliAffiche.gagnantId;
                 return (
-                  <div key={p.carteId} className={`pli-carte ${gagnante ? 'gagnante-pli' : ''}`} style={style}>
+                  <div
+                    key={p.carteId}
+                    ref={(el) => {
+                      if (el) refsCartesPli.current.set(p.carteId, el);
+                      else refsCartesPli.current.delete(p.carteId);
+                    }}
+                    className={`pli-carte ${gagnante ? 'gagnante-pli' : gagnantVu ? 'perdante-pli' : ''} ${ramassageLance ? 'ramassee' : ''}`}
+                    style={style}
+                  >
                     <CarteImg id={p.carteId} taille="pli" etat={gagnante ? 'gagnante' : undefined} onToucher={surOrdi ? () => setVuePli(true) : undefined} onZoom={setZoom} />
+                    {gagnante && <Couronne className="couronne-pli" />}
                     <span className="pli-nom" title={p.joueurId === v.moi ? tr('Toi', 'You') : nom(p.joueurId)}>
                       {p.joueurId === v.moi ? tr('Toi', 'You') : nom(p.joueurId)}
                       {p.valeurCroupier !== undefined ? ` · ${p.valeurCroupier}` : ''}
@@ -605,7 +729,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
                   </div>
                 );
               })}
-              {!pliAffiche && v.pli.length === 0 && <div className="pli-vide">{tr('Le pli est vide', 'The trick is empty')}</div>}
+              {!pliAffiche && !ramassage && v.pli.length === 0 && <div className="pli-vide">{tr('Le pli est vide', 'The trick is empty')}</div>}
             </div>
             {!zoome && boutonDernier}
             {surOrdi && !zoome && cartesPli.length > 0 && (
@@ -640,15 +764,13 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           </div>
         )}
         {zoome ? (
-          <div className="moi-compact">
+          <div className="moi-compact" data-joueur={v.moi}>
             {monTour && v.phase === 'PLI' && selection ? (
               <ActionsJouer selection={selection} agir={agir} envoi={envoi} />
             ) : (
               <button type="button" className="moi-compact-nom" onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
                 <strong>{moi.nom}</strong>
-                <span className="etiquette-compte" title={tr('Plis gagnés / annonce', 'Tricks won / bid')}>
-                  {moi.plis}/{v.monAnnonce ?? '?'}
-                </span>
+                {v.monAnnonce !== null ? <Jetons plis={moi.plis} annonce={v.monAnnonce} /> : <span className="etiquette-compte">{moi.plis}/?</span>}
                 {aMoi && <span className="votre-tour">{tr('Votre tour', 'Your turn')}</span>}
               </button>
             )}
@@ -664,7 +786,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           </div>
         ) : (
           <div className="moi-bandeau">
-            <button type="button" className="bouton-avatar" onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
+            <button type="button" className="bouton-avatar" data-joueur={v.moi} onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
               <Avatar n={avatarDe(v.moi)} grand fraction={aMoi ? fraction : null} />
               <BulleReaction r={reactions[v.moi]} />
             </button>
@@ -684,7 +806,14 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
                 </div>
               )}
               <div className="moi-stats">
-                {v.monAnnonce !== null ? tr(`Annonce ${v.monAnnonce}`, `Bid ${v.monAnnonce}`) : tr('Pas encore annoncé', 'No bid yet')} · {pluriel(moi.plis, 'pli', 'trick')} · {moi.score} pts
+                {v.monAnnonce !== null ? (
+                  <>
+                    <Jetons plis={moi.plis} annonce={v.monAnnonce} /> <span className="sep">·</span>{' '}
+                  </>
+                ) : (
+                  `${tr('Pas encore annoncé', 'No bid yet')} · `
+                )}
+                {moi.score} pts
               </div>
               {v.choixAllies && <ChoixAllie v={v} id={v.moi} nom={nom} />}
               <Butin ids={moi.butin} />
@@ -695,9 +824,10 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
         <div className={`eventail ${trahisonAChoisir ? 'trahison' : ''}`} style={{ '--chev': chevauchement, '--etendue': etendue.toFixed(3), '--debord': debord.toFixed(3), '--chute-px': `${chute.px.toFixed(1)}px`, '--chute-k': chute.k.toFixed(3) } as React.CSSProperties} aria-label={tr('Ta main', 'Your hand')}>
           {main.map((c, i) => {
             const d = i - (main.length - 1) / 2;
-            const style = { '--r': `${d * 4}deg`, '--y': `${d * d * 2.2}px`, zIndex: i + 1 } as React.CSSProperties;
+            const arrivee = donne?.vols ? donne.mesArrivees[i] : undefined;
+            const style = { '--r': `${d * 4}deg`, '--y': `${d * d * 2.2}px`, zIndex: i + 1, ...(arrivee !== undefined ? { animationDelay: `${Math.round(arrivee)}ms` } : {}) } as React.CSSProperties;
             return (
-              <div key={c.id} className={`eventail-carte ${selection === c.id ? 'levee' : ''}`} style={style}>
+              <div key={c.id} className={`eventail-carte ${selection === c.id ? 'levee' : ''} ${arrivee !== undefined ? 'distribuee' : ''}`} style={style}>
                 <CarteImg
                   id={c.id}
                   etat={selection === c.id ? 'choisie' : v.phase === 'PLI' && monTour ? (c.jouable ? 'jouable' : 'grisee') : undefined}
@@ -711,6 +841,20 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
         </div>
       </section>
 
+      {donne?.vols && (
+        <div className="donne" aria-hidden="true">
+          {donne.vols.map((c, i) => (
+            <img
+              key={i}
+              src="/dos.webp"
+              alt=""
+              draggable={false}
+              className="donne-carte"
+              style={{ left: c.x, top: c.y, '--dx': `${c.dx}px`, '--dy': `${c.dy}px`, '--e': c.echelle, '--rot': `${c.rot}deg`, animationDelay: `${Math.round(c.delai)}ms` } as React.CSSProperties}
+            />
+          ))}
+        </div>
+      )}
       {v.phase === 'FIN_DE_NUIT' && <RecapNuit v={v} nom={nom} estHote={estHote} agir={agir} secondes={secondes} />}
       {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} salon={salon} estHote={estHote} appel={appel} quitter={quitter} nom={nom} tapis={tapis} poserTapis={poserTapis} />}
       {fenetre === 'scores' && (
@@ -861,7 +1005,7 @@ function Siege(props: {
   const nb = Math.min(j.nbCartes, 8);
   const minute = j.attendu && v.phase !== 'FIN_DE_NUIT' && v.phase !== 'FIN_DE_PARTIE';
   return (
-    <article className={`siege ${minute ? 'attendu' : ''} ${v.tourId === j.id ? 'son-tour' : ''}`}>
+    <article data-joueur={j.id} className={`siege ${minute ? 'attendu' : ''} ${v.tourId === j.id ? 'son-tour' : ''}`}>
       <div className="siege-dos" aria-hidden="true">
         {Array.from({ length: nb }, (_, i) => (
           <img key={i} src="/dos.webp" alt="" style={{ '--r': `${(i - (nb - 1) / 2) * 8}deg` } as React.CSSProperties} />
@@ -888,10 +1032,21 @@ function Siege(props: {
           </span>
         )}
       </div>
-      <div className="siege-infos">{j.annonce !== null ? tr(`Annonce ${j.annonce}`, `Bid ${j.annonce}`) : j.aAnnonce ? tr('A annoncé', 'Has bid') : tr('Annonce…', 'Bidding…')}</div>
-      <div className="siege-infos discret">
-        {pluriel(j.plis, 'pli', 'trick')} · {j.score} pts
-      </div>
+      {j.annonce !== null ? (
+        <>
+          <div className="siege-infos siege-jetons">
+            <Jetons plis={j.plis} annonce={j.annonce} />
+          </div>
+          <div className="siege-infos discret">{j.score} pts</div>
+        </>
+      ) : (
+        <>
+          <div className="siege-infos">{j.aAnnonce ? tr('A annoncé', 'Has bid') : tr('Annonce…', 'Bidding…')}</div>
+          <div className="siege-infos discret">
+            {pluriel(j.plis, 'pli', 'trick')} · {j.score} pts
+          </div>
+        </>
+      )}
       {((j.id === v.premierId && PHASES_DEBUT.includes(v.phase)) || (s && !s.connecte && !s.robot) || s?.abandon) && (
         <div className="badges">
           {j.id === v.premierId && PHASES_DEBUT.includes(v.phase) && <span className="badge or">{tr('Commence', 'Starts')}</span>}
@@ -1040,7 +1195,7 @@ function Consigne(props: {
               <div key={j.id} className="cible">
                 <span>{j.nom}</span>
                 {j.butin.map((id) => (
-                  <Pastille key={id} id={id} onClick={() => agir({ type: 'VOLER', cibleId: j.id, carteId: id })} />
+                  <MiniCarte key={id} id={id} onClick={() => agir({ type: 'VOLER', cibleId: j.id, carteId: id })} />
                 ))}
               </div>
             ))}
@@ -1059,45 +1214,44 @@ function Consigne(props: {
   }
 }
 
+/** Une ligne du récap de nuit : jetons, tampon « Réussi » / « Raté », points de la nuit et total qui défilent. */
+function LigneRecap({ s, i, total, nom, moi }: { s: ScoreNuit; i: number; total: number; nom: string; moi: boolean }) {
+  const signe = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  const delai = 420 + i * 240;
+  const points = useCompteur(s.total, 0, delai + 120);
+  const cumul = useCompteur(total, total - s.total, delai + 120);
+  return (
+    <li className={`recap-ligne ${moi ? 'ma-ligne' : ''} ${s.reussie ? 'reussie' : 'ratee'}`} style={{ '--i': i } as React.CSSProperties}>
+      <div className="recap-qui">
+        <strong>{nom}</strong>
+        <Jetons plis={s.plis} annonce={s.annonce} />
+      </div>
+      <span className={`tampon ${s.reussie ? 'reussi' : 'rate'}`}>{s.reussie ? tr('Réussi', 'Made') : tr('Raté', 'Missed')}</span>
+      <div className="recap-points">
+        <strong className={s.total < 0 ? 'negatif' : ''}>{signe(points)}</strong>
+        <small>
+          {tr('Total', 'Total')} {cumul}
+        </small>
+      </div>
+      <p className="recap-detail">
+        {tr(`${s.plis} pli${s.plis > 1 ? 's' : ''} sur ${s.annonce}`, `${s.plis} of ${s.annonce} trick${s.annonce === 1 ? '' : 's'}`)} · {tr('Annonce', 'Bid')} {signe(s.pointsAnnonce)} · {tr('Butin', 'Loot')} {signe(s.pointsButin)}
+        {s.bonus !== 0 && ` · Bonus ${signe(s.bonus)}`}
+      </p>
+    </li>
+  );
+}
+
 function RecapNuit({ v, nom, estHote, agir, secondes }: { v: Vue; nom: (id: string) => string; estHote: boolean; agir: (a: ActionSansJoueur) => void; secondes: number | null }) {
   const bilan = v.bilans[v.bilans.length - 1];
   const totaux = Object.fromEntries(v.joueurs.map((j) => [j.id, j.score]));
-  const signe = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   return (
     <Fenetre titre={tr(`Fin de la nuit ${bilan.nuit}`, `End of night ${bilan.nuit}`)} large>
       {bilan.evenement && <p className="discret">{tr(`Événement : ${NOM_EVENEMENT[bilan.evenement]}`, `Event: ${NOM_EVENEMENT[bilan.evenement]}`)}</p>}
-      <div className="defile">
-        <table className="tableau">
-          <thead>
-            <tr>
-              <th>{tr('Joueur', 'Player')}</th>
-              <th title={tr('Plis gagnés / plis annoncés', 'Tricks won / tricks bid')}>{tr('Plis', 'Tricks')}</th>
-              <th>{tr('Annonce', 'Bid')}</th>
-              <th>{tr('Butin', 'Loot')}</th>
-              <th>Bonus</th>
-              <th>{tr('Nuit', 'Night')}</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bilan.scores.map((s) => (
-              <tr key={s.joueurId} className={s.joueurId === v.moi ? 'ma-ligne' : ''}>
-                <td className="nom-court">{nom(s.joueurId)}</td>
-                <td className={s.reussie ? 'reussi' : 'rate'}>
-                  {s.plis}/{s.annonce}
-                </td>
-                <td>{signe(s.pointsAnnonce)}</td>
-                <td>{signe(s.pointsButin)}</td>
-                <td>{signe(s.bonus)}</td>
-                <td>
-                  <strong>{signe(s.total)}</strong>
-                </td>
-                <td>{totaux[s.joueurId]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ol className="recap-nuit">
+        {bilan.scores.map((s, i) => (
+          <LigneRecap key={s.joueurId} s={s} i={i} total={totaux[s.joueurId]} nom={nom(s.joueurId)} moi={s.joueurId === v.moi} />
+        ))}
+      </ol>
       {v.pret ? (
         <p className="attente">{v.attente.length ? tr(`En attente de ${v.attente.map(nom).join(', ')}.`, `Waiting for ${v.attente.map(nom).join(', ')}.`) : ''}</p>
       ) : (
@@ -1174,7 +1328,7 @@ function FinDePartie(props: {
   return (
     <Fenetre titre={tr('Fin de la partie', 'Game over')} large>
       <div className={`fin-partie ${passe ? 'passe' : ''}`}>
-        <Podium classement={classement} rangDe={rangDe} avatarDe={avatarDe} nom={nom} moi={v.moi} onPasser={passer} />
+        <Podium classement={classement} rangDe={rangDe} avatarDe={avatarDe} nom={nom} moi={v.moi} passe={passe} onPasser={passer} />
         <div className="fin-revelation">
           {jeSuisBaron && <p className="victoire-moi">{tr('Tu es le Dernier Baron !', 'You are the Last Baron!')}</p>}
           <p className="dernier-baron">
@@ -1301,15 +1455,24 @@ function FinDePartie(props: {
 }
 
 /** Podium du classement final (2e à gauche, 1er au centre, 3e à droite), qui monte marche par marche. */
+/** Arrivée de chaque marche du podium (même rythme que styles.css : 3e, 2e, puis le Dernier Baron). */
+const ARRIVEE_PODIUM_MS: Record<number, number> = { 3: 620, 2: 1220, 1: 2070 };
+
+function ScorePodium({ score, place, passe }: { score: number; place: number; passe: boolean }) {
+  const valeur = useCompteur(score, 0, ARRIVEE_PODIUM_MS[place] ?? 600, 800, !passe);
+  return <small>{passe ? score : valeur} pts</small>;
+}
+
 function Podium(props: {
   classement: VueJoueur[];
   rangDe: (j: VueJoueur) => number;
   avatarDe: (id: string) => number;
   nom: (id: string) => string;
   moi: string;
+  passe: boolean;
   onPasser: () => void;
 }) {
-  const { classement, rangDe, avatarDe, nom, moi, onPasser } = props;
+  const { classement, rangDe, avatarDe, nom, moi, passe, onPasser } = props;
   const top = classement.slice(0, 3);
   const ordre = top.length === 3 ? [top[1], top[0], top[2]] : top.length === 2 ? [top[1], top[0]] : top;
   return (
@@ -1327,10 +1490,21 @@ function Podium(props: {
           return (
             <div key={j.id} className={`podium-place place-${place} ${rang === 1 ? 'baron' : ''} ${j.id === moi ? 'moi' : ''}`}>
               <div className="podium-joueur">
-                {rang === 1 && <span className="podium-couronne">♛</span>}
+                {rang === 1 && (
+                  <span className="podium-couronne">
+                    <Couronne />
+                  </span>
+                )}
+                {rang === 1 && (
+                  <span className="paillettes" aria-hidden="true">
+                    {Array.from({ length: 14 }, (_, k) => (
+                      <i key={k} style={{ '--a': `${k * (360 / 14)}deg`, '--l': `${46 + (k % 3) * 16}px` } as React.CSSProperties} />
+                    ))}
+                  </span>
+                )}
                 <img src={`/cartes/avatar-${avatarDe(j.id)}.webp`} alt="" draggable={false} />
                 <strong>{nom(j.id)}</strong>
-                <small>{j.score} pts</small>
+                <ScorePodium score={j.score} place={place} passe={passe} />
               </div>
               <div className="podium-marche">
                 <span>{rang}</span>

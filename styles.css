@@ -951,6 +951,7 @@ body:has(.voile .fenetre .fermer) .tuto-bulle { display: none; }
 @keyframes tuto-halo { 0%, 100% { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.85), 0 0 14px rgba(231, 194, 122, 0.35); } 50% { box-shadow: 0 0 0 4px rgba(231, 194, 122, 1), 0 0 26px rgba(231, 194, 122, 0.7); } }
 body[data-tuto='annonce'] .choix-annonce button:not(:disabled),
 body[data-tuto='vol'] .consigne .pastille,
+body[data-tuto='vol'] .consigne .mini-carte img,
 body[data-tuto='main'] .eventail .carte.jouable .carte-bouton { animation: tuto-halo 1.3s ease-in-out infinite; }
 body[data-tuto='main'] .eventail { border-radius: 14px; animation: tuto-halo 1.3s ease-in-out infinite; }
 body[data-tuto='tapis'] .centre { animation: tuto-halo 1.3s ease-in-out infinite; }
@@ -1121,4 +1122,103 @@ button.trahison:hover:not(:disabled) { background: #7c4cbc; border-color: #c4a6f
 @media (max-width: 479px) {
   .plateau .bouton-texte-menu { height: 40px; padding: 0 8px; }
   .plateau .bouton-texte-menu .texte-menu { font-size: 13px; letter-spacing: 0.05em; }
+}
+
+/* ---------- Carte gagnante du pli : halo doré, couronne, les autres cartes s'effacent ---------- */
+.pli-pile .pli-carte { transition: left 0.3s ease, top 0.3s ease, translate 0.3s ease, scale 0.3s ease; }
+.pli-carte.gagnante-pli { scale: 1.05; }
+.pli-pile .pli-carte.gagnante-pli .carte.gagnante .carte-bouton { box-shadow: 0 0 0 3px var(--or-vif), 0 0 24px 5px rgba(255, 214, 120, 0.55), 0 10px 18px rgba(0, 0, 0, 0.5); animation: halo-gagnant 1.4s ease-in-out 0.3s infinite alternate; }
+@keyframes halo-gagnant { to { box-shadow: 0 0 0 3px #ffe08a, 0 0 36px 11px rgba(255, 214, 120, 0.72), 0 10px 18px rgba(0, 0, 0, 0.5); } }
+.pli-carte.perdante-pli .carte-bouton img { filter: brightness(0.66) saturate(0.8); transition: filter 0.35s; }
+.couronne-pli { position: absolute; z-index: 3; top: 0; right: 3%; width: 42%; max-width: 64px; height: auto; translate: 0 -55%; rotate: 15deg; pointer-events: none; filter: drop-shadow(0 0 6px rgba(255, 214, 120, 0.75)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.75)); animation: couronne-pose 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.3s both; }
+@keyframes couronne-pose { 0% { opacity: 0; translate: 0 -170%; scale: 1.7; rotate: -12deg; } 100% { opacity: 1; translate: 0 -55%; scale: 1; rotate: 15deg; } }
+/* Pli ramassé : les cartes glissent vers le gagnant en rapetissant. */
+.pli-pile .pli-carte.ramassee { animation: ramasser 0.6s cubic-bezier(0.55, 0, 0.75, 0.4) both; }
+.pli-carte.ramassee .couronne-pli { animation: none; opacity: 0; transition: opacity 0.2s; }
+@keyframes ramasser {
+  0% { translate: 0 0; scale: 1; opacity: 1; }
+  22% { translate: calc(var(--dx) * -0.04) calc(var(--dy) * -0.04 - 8px); scale: 1.04; opacity: 1; }
+  100% { translate: var(--dx) var(--dy); scale: 0.16; opacity: 0.15; }
+}
+
+/* ---------- Jetons de casino : plis gagnés, emplacements de l'annonce, plis en trop ---------- */
+.jetons { --t: 13px; display: inline-flex; align-items: center; vertical-align: middle; padding: 1px 0; }
+.jeton { position: relative; flex: none; width: var(--t); height: var(--t); border-radius: 50%; }
+.jeton + .jeton { margin-left: calc(var(--t) * -0.16); }
+.jeton.plein { background: radial-gradient(circle closest-side, #b8281d 0 50%, #f6e7c4 51% 59%, #b8281d 60% 68%, transparent 69%), repeating-conic-gradient(#f6e7c4 0 18deg, #b8281d 18deg 45deg); box-shadow: 0 0 0 1px #e7c27a, 0 1px 3px rgba(0, 0, 0, 0.75); }
+.jeton.noir { background: radial-gradient(circle closest-side, #1d1714 0 50%, #c9b48a 51% 59%, #1d1714 60% 68%, transparent 69%), repeating-conic-gradient(#c9b48a 0 18deg, #1d1714 18deg 45deg); box-shadow: 0 0 0 1.5px #e2483b, 0 1px 3px rgba(0, 0, 0, 0.75); }
+.jeton.vide { border: 1.5px dashed rgba(231, 194, 122, 0.8); background: rgba(0, 0, 0, 0.28); }
+.jeton.zero { width: auto; min-width: calc(var(--t) + 2px); padding: 0 3px; border: 1.5px dashed rgba(231, 194, 122, 0.8); border-radius: 99px; background: rgba(0, 0, 0, 0.28); color: var(--or-vif); font-size: calc(var(--t) * 0.7); font-weight: 700; line-height: calc(var(--t) - 3px); text-align: center; }
+.jetons.juste .jeton.plein { box-shadow: 0 0 0 1px #ffe08a, 0 0 7px rgba(255, 214, 120, 0.85); }
+.jeton.nouveau { animation: jeton-pose 0.55s cubic-bezier(0.3, 1.7, 0.5, 1) both; }
+@keyframes jeton-pose { 0% { opacity: 0; translate: 0 -16px; scale: 1.7; } 55% { opacity: 1; } 100% { opacity: 1; translate: 0 0; scale: 1; } }
+.siege-jetons { display: flex; justify-content: center; min-height: 18px; }
+.siege-jetons .jetons { --t: 15px; }
+.moi-stats .jetons { --t: 15px; }
+.moi-stats .sep { margin-left: 2px; }
+.moi-compact .jetons { --t: 17px; }
+.etiquette-joueur .jetons { --t: 14px; }
+@media (min-width: 700px) {
+  .siege-jetons .jetons { --t: 16px; }
+  .etiquette-joueur .jetons { --t: 16px; }
+}
+
+/* ---------- Butin en mini-cartes (éventail) ---------- */
+.butin-cartes { display: inline-flex; flex-wrap: nowrap; align-items: flex-end; gap: 0; padding: 4px 3px 3px; }
+.mini-carte { --m: 24px; position: relative; display: inline-block; flex: none; width: var(--m); min-height: 0; padding: 0; border: none; border-radius: 0; background: none; rotate: var(--r, 0deg); transform-origin: 50% 90%; }
+.butin-cartes .mini-carte + .mini-carte { margin-left: calc(var(--m) * -0.36); }
+.mini-carte img { display: block; width: 100%; aspect-ratio: 2 / 3; border-radius: calc(var(--m) * 0.09); box-shadow: -1px 2px 4px rgba(0, 0, 0, 0.65); }
+.mini-carte-valeur { position: absolute; right: -4px; bottom: -3px; min-width: calc(var(--m) * 0.62); height: calc(var(--m) * 0.62); padding: 0 2px; border-radius: 99px; border: 1px solid rgba(255, 240, 210, 0.85); color: #fff8ea; font-size: max(10px, calc(var(--m) * 0.42)); font-weight: 700; line-height: calc(var(--m) * 0.62 - 2px); text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.65); }
+.moi-texte .mini-carte { --m: 26px; }
+.siege .butin-cartes { justify-content: center; }
+@media (min-width: 700px) {
+  .mini-carte { --m: 28px; }
+}
+button.mini-carte { --m: 46px; margin: 2px 4px 4px 0; transition: translate 0.15s; }
+button.mini-carte:hover:not(:disabled), button.mini-carte:focus-visible { translate: 0 -4px; }
+button.mini-carte img { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.55), 0 4px 10px rgba(0, 0, 0, 0.6); }
+
+/* ---------- Distribution : les cartes volent du tapis vers chaque joueur ---------- */
+.donne { position: fixed; inset: 0; z-index: 28; pointer-events: none; overflow: hidden; }
+.donne-carte { position: absolute; width: 44px; aspect-ratio: 2 / 3; margin: -33px 0 0 -22px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6); opacity: 0; animation: donner 0.44s cubic-bezier(0.25, 0.75, 0.35, 1) both; }
+@keyframes donner {
+  0% { opacity: 0; translate: 0 0; rotate: 0deg; scale: 0.85; }
+  12% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; translate: var(--dx) var(--dy); rotate: var(--rot); scale: var(--e); }
+}
+.eventail-carte.distribuee { animation: carte-arrive 0.3s ease-out backwards; }
+@keyframes carte-arrive { from { opacity: 0; scale: 0.72; } }
+
+/* ---------- Récap de fin de nuit : tampons et points qui défilent ---------- */
+.recap-nuit { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.recap-ligne { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: 12px; row-gap: 3px; padding: 9px 12px 8px; border-radius: 12px; border: 1px solid var(--filet); background: var(--nuit-3); animation: monter 0.4s ease-out calc(var(--i) * 0.24s) both; }
+.recap-ligne.ma-ligne { border-color: var(--or); background: #2b1d12; }
+.recap-qui { display: grid; gap: 5px; justify-items: start; min-width: 0; }
+.recap-qui strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.recap-qui .jetons { --t: 15px; }
+.recap-points { display: grid; justify-items: end; min-width: 62px; }
+.recap-points strong { font-family: var(--titre); font-weight: 400; font-size: 24px; line-height: 1; color: var(--or-vif); font-variant-numeric: tabular-nums; }
+.recap-points strong.negatif { color: #f08a7e; }
+.recap-points small { margin-top: 2px; font-size: 12px; color: var(--creme-doux); font-variant-numeric: tabular-nums; }
+.recap-detail { grid-column: 1 / -1; margin: 1px 0 0; font-size: 12px; line-height: 1.35; color: var(--creme-doux); }
+.tampon { padding: 3px 8px 2px; border: 2.5px solid currentColor; border-radius: 6px; font-family: var(--titre); font-size: 14px; line-height: 1.1; letter-spacing: 0.1em; text-transform: uppercase; rotate: -10deg; opacity: 0.92; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3); animation: tamponner 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) calc(0.42s + var(--i) * 0.24s) both; }
+.tampon.reussi { color: #93d27a; background: rgba(127, 179, 106, 0.1); }
+.tampon.rate { color: #ef6b5e; background: rgba(226, 72, 59, 0.1); }
+@keyframes tamponner { 0% { opacity: 0; scale: 2.8; rotate: -24deg; } 55% { opacity: 1; scale: 0.9; rotate: -8deg; } 78% { scale: 1.05; } 100% { opacity: 0.92; scale: 1; rotate: -10deg; } }
+@media (min-width: 700px) {
+  .tampon { font-size: 16px; }
+  .recap-points strong { font-size: 28px; }
+}
+
+/* ---------- Podium : couronne dessinée et paillettes d'or ---------- */
+.podium-couronne { top: -44px; width: 58px; margin-left: -29px; font-size: 0; }
+.podium-couronne svg { display: block; width: 100%; height: auto; filter: drop-shadow(0 0 10px rgba(255, 214, 120, 0.85)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.75)); }
+.paillettes { position: absolute; left: 50%; top: -18px; width: 0; height: 0; pointer-events: none; }
+.paillettes i { position: absolute; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; background: radial-gradient(circle, #fff6d2 0, #e7b95c 55%, rgba(231, 185, 92, 0) 72%); opacity: 0; animation: paillette 1.15s ease-out 2.8s both; }
+.paillettes i:nth-child(3n) { width: 5px; height: 5px; animation-delay: 2.9s; }
+@keyframes paillette { 0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(0.4); } 18% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--l) * -1)) scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .recap-ligne, .tampon, .jeton.nouveau, .eventail-carte.distribuee, .couronne-pli, .pli-pile .pli-carte.gagnante-pli .carte.gagnante .carte-bouton, .paillettes i { animation: none !important; }
 }

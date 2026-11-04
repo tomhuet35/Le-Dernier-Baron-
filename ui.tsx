@@ -1,4 +1,4 @@
-import { Children, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Children, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { BONUS_BARON_HOMME_DE_MAIN, BONUS_BRAQUAGE } from '../../shared/config';
 import type { DuelPli } from '../../shared/regles';
 import type { CartePosee, VueSalon } from '../../shared/types';
@@ -6,7 +6,7 @@ import type { Appel } from './App';
 import { CARTE } from '../../shared/cartes';
 import { COULEUR_FAMILLE, infoCarte, NOM_FAMILLE, nomCarte } from './textes';
 import { abonnerReglages, lireReglages } from './reglages';
-import { EN, tr } from './traduction';
+import { EN, pluriel, tr } from './traduction';
 import { ActionsModeration, useMasques } from './Moderation';
 
 /** Une carte : toucher pour sélectionner, appui long pour l'afficher en grand. */
@@ -76,15 +76,121 @@ export function Pastille({ id, onClick, choisie }: { id: string; onClick?: () =>
   );
 }
 
+/** Le joueur a demandé moins d'animations (réglage du téléphone). */
+export function mouvementReduit(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Couronne dorée dessinée (carte gagnante du pli, podium). */
+export function Couronne({ className }: { className?: string }) {
+  const id = useId().replace(/:/g, '');
+  return (
+    <svg className={className} viewBox="0 0 64 46" aria-hidden="true">
+      <defs>
+        <linearGradient id={`or-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff0bf" />
+          <stop offset="0.5" stopColor="#e7b95c" />
+          <stop offset="1" stopColor="#9a6821" />
+        </linearGradient>
+      </defs>
+      <path d="M8 35 L4 12 L19 23 L32 6 L45 23 L60 12 L56 35 Z" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2.4" strokeLinejoin="round" />
+      <rect x="7" y="34" width="50" height="8" rx="2.5" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2.4" />
+      <circle cx="4" cy="11" r="3.6" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2" />
+      <circle cx="32" cy="5" r="3.8" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2" />
+      <circle cx="60" cy="11" r="3.6" fill={`url(#or-${id})`} stroke="#3a2410" strokeWidth="2" />
+      <circle cx="32" cy="27" r="4.2" fill="#c0281f" stroke="#3a2410" strokeWidth="1.6" />
+      <circle cx="18.5" cy="30" r="2.6" fill="#2f7d4f" stroke="#3a2410" strokeWidth="1.3" />
+      <circle cx="45.5" cy="30" r="2.6" fill="#2f7d4f" stroke="#3a2410" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+/** Petite carte de butin : l'illustration et sa valeur bien lisible. */
+export function MiniCarte({ id, onClick, style }: { id: string; onClick?: () => void; style?: CSSProperties }) {
+  const c = CARTE[id];
+  const info = infoCarte(id);
+  const contenu = (
+    <>
+      <img src={info.image} alt="" draggable={false} />
+      <span className="mini-carte-valeur" style={{ background: COULEUR_FAMILLE[c.famille ?? 'chat_noir'] }}>
+        {c.valeur}
+      </span>
+    </>
+  );
+  return onClick ? (
+    <button type="button" className="mini-carte" style={style} onClick={onClick} aria-label={nomCarte(id)}>
+      {contenu}
+    </button>
+  ) : (
+    <span className="mini-carte" style={style} role="img" aria-label={nomCarte(id)} title={nomCarte(id)}>
+      {contenu}
+    </span>
+  );
+}
+
+/** Le butin d'un joueur : ses cartes en petit éventail. */
 export function Butin({ ids }: { ids: string[] }) {
   if (!ids.length) return <span className="vide">{tr('Aucun butin', 'No loot')}</span>;
   return (
-    <span className="butin">
-      {ids.map((id) => (
-        <Pastille key={id} id={id} />
+    <span className="butin butin-cartes">
+      {ids.map((id, i) => (
+        <MiniCarte key={id} id={id} style={{ '--r': `${(i - (ids.length - 1) / 2) * 7}deg` } as CSSProperties} />
       ))}
     </span>
   );
+}
+
+/**
+ * Plis gagnés en jetons de casino ; les plis encore à gagner pour réussir l'annonce en emplacements pointillés ;
+ * les plis gagnés en trop (au-delà de l'annonce) en jetons noirs. Annonce 0 : un emplacement « 0 ».
+ */
+export function Jetons({ plis, annonce, className }: { plis: number; annonce: number | null; className?: string }) {
+  const avant = useRef(plis);
+  const [nouveauxDes, setNouveauxDes] = useState<number | null>(null);
+  useEffect(() => {
+    const a = avant.current;
+    avant.current = plis;
+    if (plis <= a || mouvementReduit()) return;
+    setNouveauxDes(a);
+    const t = window.setTimeout(() => setNouveauxDes(null), 700);
+    return () => window.clearTimeout(t);
+  }, [plis]);
+  if (annonce === null) return null;
+  const n = Math.max(plis, annonce);
+  const etat = plis > annonce ? 'depasse' : plis === annonce ? 'juste' : '';
+  const libelle = `${pluriel(plis, 'pli gagné', 'trick won', 'plis gagnés', 'tricks won')} ${tr(`sur ${annonce} annoncé${annonce > 1 ? 's' : ''}`, `of ${annonce} bid`)}`;
+  return (
+    <span className={`jetons ${etat} ${className ?? ''}`} role="img" aria-label={libelle} title={libelle}>
+      {n === 0 ? (
+        <span className="jeton zero">0</span>
+      ) : (
+        Array.from({ length: n }, (_, i) => (
+          <span key={i} className={`jeton ${i < plis ? (i < annonce ? 'plein' : 'noir') : 'vide'} ${nouveauxDes !== null && i >= nouveauxDes && i < plis ? 'nouveau' : ''}`} />
+        ))
+      )}
+    </span>
+  );
+}
+
+/** Nombre qui défile jusqu'à sa valeur (récap de nuit, podium). Sans animation si le joueur l'a demandé. */
+export function useCompteur(fin: number, depart: number, delaiMs: number, dureeMs = 750, actif = true): number {
+  const [valeur, setValeur] = useState(() => (actif && !mouvementReduit() ? depart : fin));
+  useEffect(() => {
+    if (!actif || mouvementReduit()) {
+      setValeur(fin);
+      return;
+    }
+    let image = 0;
+    const t0 = performance.now() + delaiMs;
+    const pas = (t: number) => {
+      const k = Math.min(1, Math.max(0, (t - t0) / dureeMs));
+      setValeur(Math.round(depart + (fin - depart) * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) image = requestAnimationFrame(pas);
+    };
+    image = requestAnimationFrame(pas);
+    return () => cancelAnimationFrame(image);
+  }, [fin, depart, delaiMs, dureeMs, actif]);
+  return valeur;
 }
 
 /**
