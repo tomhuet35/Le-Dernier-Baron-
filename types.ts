@@ -201,6 +201,37 @@ export interface CompteJoueurVue {
   niveau: number;
   titre: string;
   victoires: number;
+  /** Place sur le podium du classement de la semaine : couronne d'or (1), d'argent (2) ou de bronze (3). */
+  couronne?: Rang;
+}
+
+/** Place sur le podium du classement de la semaine. */
+export type Rang = 1 | 2 | 3;
+
+/** Une ligne du classement de la semaine (jamais d'adresse e-mail ni d'identifiant de compte). */
+export interface EntreeClassementVue {
+  rang: number;
+  /** Pseudo du compte (null s'il est choquant : affiché « Joueur »). */
+  nom: string | null;
+  avatar: number;
+  niveau: number;
+  score: number;
+  /** C'est le joueur qui regarde le classement. */
+  moi?: boolean;
+}
+
+export interface VueClassement {
+  semaine: { cle: string; debut: number; fin: number; entrees: EntreeClassementVue[]; moi: EntreeClassementVue | null; total: number };
+  precedente: { cle: string; debut: number; fin: number; entrees: EntreeClassementVue[] } | null;
+}
+
+/** Bannière de l'accueil : le premier de la semaine (ou de la semaine dernière tant que personne n'a encore joué). */
+export interface MeneurSemaine {
+  nom: string | null;
+  avatar: number;
+  niveau: number;
+  score: number;
+  semaine: 'courante' | 'precedente';
 }
 
 /** Ce que la partie terminée a rapporté au compte d'un joueur. */
@@ -257,6 +288,8 @@ export type ProfilPublic =
       historique: EntreeHistorique[];
       /** Lien avec le joueur qui regarde la fiche (null s'il n'est pas connecté à un compte). */
       relation: 'moi' | 'ami' | 'demande_envoyee' | 'demande_recue' | 'aucune' | null;
+      /** Place au classement de la semaine (null : pas encore de score cette semaine). */
+      semaine?: { rang: number; score: number } | null;
     };
 
 export type StatutAmi = 'en_ligne' | 'en_partie' | 'hors_ligne';
@@ -274,6 +307,10 @@ export interface AmiVue {
   avecMoi: boolean;
   /** Hors ligne, mais joignable : il a activé les notifications d'invitation. */
   notifiable?: boolean;
+  /** Couronne du classement de la semaine. */
+  couronne?: Rang;
+  /** En pleine partie : on peut la regarder en direct. */
+  regardable?: boolean;
 }
 
 export interface ListeAmis {
@@ -304,6 +341,8 @@ export interface ProfilCompte {
   historique: EntreeHistorique[];
   /** Tapis de jeu posé sur la table (toujours un tapis débloqué). */
   tapis: IdTapis;
+  /** Place au classement de la semaine (null : pas encore de score cette semaine). */
+  semaine?: { rang: number; score: number } | null;
 }
 
 export interface VueSalon {
@@ -333,6 +372,10 @@ export interface VueSalon {
   revanche?: { votants: string[]; finDans: number } | null;
   /** Mon chat est coupé pour toute la table (après des signalements). */
   chatCoupe?: boolean;
+  /** Je regarde la partie d'un ami, sans jouer : la table est vue depuis sa place, sans aucune carte cachée. */
+  spectateur?: { ami: string };
+  /** Les amis qui regardent la partie en direct (pseudos), visibles des joueurs. */
+  spectateurs?: string[];
 }
 
 /** Réaction rapide d'un joueur, affichée quelques secondes au-dessus de son avatar. */

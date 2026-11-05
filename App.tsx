@@ -3,7 +3,7 @@ import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
 import { NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, TRANCHES_EN } from '../../shared/langue';
 import { changerLangue, EN, LANGUE, pluriel, tr } from './traduction';
-import type { Invitation, ListeAmis, ProfilCompte, ProfilPublic, VueSalon } from '../../shared/types';
+import type { Invitation, ListeAmis, MeneurSemaine, ProfilCompte, ProfilPublic, VueClassement, VueSalon } from '../../shared/types';
 import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
 import {
@@ -26,7 +26,8 @@ import { configServeur, ecouterServiceWorker, rattacherNotifications, useInstall
 import { tutorielDejaVu } from './Tutoriel';
 import { FenetreSignalementGlobale } from './Moderation';
 import { AVATARS } from './textes';
-import { BoutonMusique, Chat, Defilant, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
+import { BoutonMusique, Chat, Couronne, CouronneRang, Defilant, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
+import { BanniereBaron, FenetreClassement } from './Classement';
 
 type Reponse = {
   ok: boolean;
@@ -38,15 +39,18 @@ type Reponse = {
   joueurId?: string;
   profil?: ProfilCompte | ProfilPublic | null;
   liste?: ListeAmis | null;
+  classement?: VueClassement;
 };
 export type Appel = (evenement: string, data?: unknown) => Promise<Reponse>;
-export type EnLigne = { joueurs: number; enAttente: number };
+export type EnLigne = { joueurs: number; enAttente: number; baron?: MeneurSemaine | null };
 
 /** Ce dont les écrans ont besoin pour les amis. */
 export interface EtatAmis {
   liste: ListeAmis | null;
   recharger: () => void;
   inviter: (code: string) => void;
+  /** Regarder en direct la partie d'un ami (depuis l'accueil). */
+  regarder?: (code: string) => Promise<boolean>;
 }
 
 /** Envoi au serveur sans message d'erreur à l'écran (pour les échanges automatiques du compte). */
@@ -80,6 +84,8 @@ const salonDansAdresse = () => new URLSearchParams(location.search).get('salon')
 
 export function App() {
   const [salon, setSalon] = useState<VueSalon | null>(null);
+  const salonRef = useRef<VueSalon | null>(null);
+  salonRef.current = salon;
   const [connecte, setConnecte] = useState(socket.connected);
   const [message, setMessage] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -95,6 +101,12 @@ export function App() {
   useEffect(() => {
     const reprendre = () => {
       setConnecte(true);
+      // Je regardais la partie d'un ami : la connexion a été coupée, on revient à l'accueil.
+      const regarde = salonRef.current?.spectateur;
+      if (regarde) {
+        setSalon(null);
+        setInfo(tr(`Connexion perdue : tu ne regardes plus la partie de ${regarde.ami}.`, `Connection lost: you are no longer watching ${regarde.ami}’s game.`));
+      }
       const brut = lire(CLE_SESSION);
       if (!brut) return setReprise(false);
       try {
@@ -114,10 +126,14 @@ export function App() {
       oublier();
       setMessage(tr("L'hôte t'a retiré du salon.", 'The host removed you from the room.'));
     };
-    // Revanche lancée sans moi (je ne l'avais pas acceptée) : retour à l'accueil.
-    const surSorti = () => {
+    // Revanche lancée sans moi (je ne l'avais pas acceptée), ou fin de la partie que je regardais : retour à l'accueil.
+    const surSorti = (d?: { raison?: string }) => {
       oublier();
-      setInfo(tr('La revanche a commencé sans toi.', 'The rematch started without you.'));
+      setInfo(
+        d?.raison === 'regarder_fin'
+          ? tr('La partie que tu regardais est terminée.', 'The game you were watching has ended.')
+          : tr('La revanche a commencé sans toi.', 'The rematch started without you.'),
+      );
     };
     socket.on('sorti', surSorti);
     socket.on('connect', reprendre);
@@ -183,7 +199,7 @@ export function App() {
       return;
     }
     const s = salonRef.current;
-    if (s && !s.publique && (s.hoteId === s.moi || s.tutoriel)) socket.emit('vitesse', { vitesse });
+    if (s && !s.publique && !s.spectateur && (s.hoteId === s.moi || s.tutoriel)) socket.emit('vitesse', { vitesse });
   }, [vitesse]);
 
   const quitter = async () => {
@@ -307,8 +323,6 @@ export function App() {
   }, [invitations.length]);
 
   const pseudo = () => (lire(CLE_NOM) || profil?.nom || tr('Joueur', 'Player')).slice(0, 16);
-  const salonRef = useRef<VueSalon | null>(null);
-  salonRef.current = salon;
   const inviter = useCallback(
     async (code: string) => {
       const s = salonRef.current;
@@ -321,6 +335,18 @@ export function App() {
     },
     [appel, profil?.nom],
   );
+  // Regarder un ami jouer : le salon d'attente éventuel est quitté, et rien n'est gardé pour la reconnexion automatique.
+  const regarder = useCallback(
+    async (code: string) => {
+      const r = await appel('regarder', { code });
+      if (r.ok) {
+        ecrire(CLE_SESSION, null);
+        history.replaceState(null, '', '/');
+      }
+      return r.ok;
+    },
+    [appel],
+  );
   const rejoindreInvitation = async (inv: Invitation) => {
     setInvitations((l) => l.filter((x) => x.id !== inv.id));
     await appel('rejoindre', { code: inv.code, nom: pseudo() });
@@ -328,7 +354,7 @@ export function App() {
   // Fonctions stables : sinon chaque nouvelle liste relancerait un chargement, sans fin.
   const rechargerAmis = useCallback(() => void chargerAmis(), [chargerAmis]);
   const inviterAmi = useCallback((c: string) => void inviter(c), [inviter]);
-  const amis: EtatAmis = useMemo(() => ({ liste: listeAmis, recharger: rechargerAmis, inviter: inviterAmi }), [listeAmis, rechargerAmis, inviterAmi]);
+  const amis: EtatAmis = useMemo(() => ({ liste: listeAmis, recharger: rechargerAmis, inviter: inviterAmi, regarder }), [listeAmis, rechargerAmis, inviterAmi, regarder]);
   const enPartie = !!salon?.partie && salon.partie.phase !== 'FIN_DE_PARTIE';
 
   // Son de lancement : quand on passe du salon (ou d'une fin de partie) à une nouvelle partie,
@@ -370,6 +396,7 @@ export function App() {
 
   let ecran;
   if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} tapis={tapisActif(profil?.tapis, profil?.xp ?? 0)} poserTapis={poserTapis} />;
+  else if (salon?.spectateur) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
   else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} amis={amis} />;
   else if (reprise) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
   else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} />;
@@ -416,7 +443,7 @@ export function App() {
 
 function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; amis: EtatAmis }) {
   const [vue, setVue] = useState<'menu' | 'jouer'>(salonDansAdresse() ? 'jouer' : 'menu');
-  const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'regles' | 'reglages' | 'connexion' | 'inscription' | null>(null);
+  const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'classement' | 'regles' | 'reglages' | 'connexion' | 'inscription' | null>(null);
   const [intro, setIntro] = useState<string | undefined>(undefined);
   const [musiqueActive, basculerMusique] = useMusique();
   const demandes = amis.liste?.recues.length ?? 0;
@@ -461,12 +488,19 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
               <IconeMusique active={musiqueActive} />
               <span>{tr('Réglages', 'Settings')}</span>
             </button>
+            {compte.actif && (
+              <button type="button" className="menu-entree menu-entree-large" onClick={() => setFenetre('classement')}>
+                <Couronne className="menu-icone menu-icone-couronne" />
+                <span>{tr('Classement de la semaine', 'Weekly ranking')}</span>
+              </button>
+            )}
           </div>
           {!compte.actif && <p className="discret">{tr('Les comptes joueurs ne sont pas activés sur ce serveur.', 'Player accounts are not enabled on this server.')}</p>}
         </Fenetre>
       )}
       {fenetre === 'profil' && <FenetreProfil compte={compte} appel={appel} onFermer={fermer} />}
-      {fenetre === 'amis' && <FenetreAmis liste={amis.liste} appel={appel} recharger={amis.recharger} inviter={amis.inviter} onFermer={fermer} />}
+      {fenetre === 'amis' && <FenetreAmis liste={amis.liste} appel={appel} recharger={amis.recharger} inviter={amis.inviter} regarder={amis.regarder} onFermer={fermer} />}
+      {fenetre === 'classement' && <FenetreClassement appel={appel} onFermer={fermer} connecte={!!compte.profil} />}
       {fenetre === 'regles' && <FenetreRegles onFermer={fermer} />}
       {fenetre === 'reglages' && <FenetreReglages onFermer={fermer} avecCompte={!!compte.profil} />}
       {(fenetre === 'connexion' || fenetre === 'inscription') && compte.module && (
@@ -499,6 +533,7 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
         <img src="/cartes/logo.webp" alt="Le Dernier Baron" width={900} height={450} />
       </h1>
       <p className="accroche">{tr('Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.', 'Eight nights. One crown. A trick-taking game for 3 to 6 players.')}</p>
+      {compte.actif && enLigne && <BanniereBaron baron={enLigne.baron ?? null} onOuvrir={() => setFenetre('classement')} />}
       {estWeekendXpDouble() && (
         <div className="bandeau-xp" role="status">
           <span className="bandeau-xp-badge">XP ×2</span>
@@ -766,6 +801,7 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
                   {j.nom}
                   {j.id === salon.moi && tr(' (toi)', ' (you)')}
                 </span>
+                <CouronneRang rang={j.compte?.couronne} />
               </button>
               <span className="badges">
                 {j.compte && <BadgeNiveau niveau={j.compte.niveau} titre={j.compte.titre} />}

@@ -51,3 +51,20 @@ export function vuePourJoueur(e: EtatPartie, joueurId: string): Vue {
     pret: !!e.prets[joueurId],
   };
 }
+
+/**
+ * Vue d'un spectateur (un ami qui regarde la partie en direct), depuis la place du joueur qu'il suit.
+ * Il ne voit que ce que toute la table voit : aucune main, pas même celle de son ami, ni annonce avant qu'elles
+ * soient révélées, ni carte passée pendant la Trahison, ni allié choisi en secret.
+ */
+export function vueSpectateur(e: EtatPartie, joueurId: string): Vue {
+  const v = vuePourJoueur(e, joueurId);
+  return {
+    ...v,
+    main: [],
+    joueurs: v.joueurs.map((j) => ({ ...j, annonce: e.annoncesRevelees ? j.annonce : null })),
+    monAnnonce: e.annoncesRevelees ? v.monAnnonce : null,
+    maCarteTrahison: null,
+    monAllie: v.choixAllies ? v.monAllie : null,
+  };
+}

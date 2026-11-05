@@ -7,7 +7,7 @@ import { DELAI_REACTION_MS, REACTIONS } from '../../shared/config';
 import type { Action, CartePosee, Reaction, ScoreNuit, Vue, VueJoueur, VueSalon } from '../../shared/types';
 import { socket } from './socket';
 import type { Appel } from './App';
-import { BadgeNiveau, BarreXp, detailXp, FicheJoueur } from './Profil';
+import { BadgeNiveau, BarreXp, detailXp, FicheJoueur, IconeOeil } from './Profil';
 import { ReglesIllustrees } from './Regles';
 import { FinTutoriel, Tutoriel } from './Tutoriel';
 import { FenetreReglages, useReglages } from './Reglages';
@@ -18,7 +18,7 @@ import { EN, pluriel, titreNiveau, tr } from './traduction';
 import { useMasques } from './Moderation';
 import { nomTapis } from './Profil';
 import { duelDuPli, type DuelPli } from '../../shared/regles';
-import { Avatar, Butin, CarteImg, Chat, Couronne, Duel, Fenetre, IconeMusique, Compte, MiniCarte, SON_EVENEMENT, Zoom, jouerEffet, mouvementReduit, sonDeCarte, useCompteur, useMinuteur, useMusique } from './ui';
+import { Avatar, Butin, CarteImg, Chat, Couronne, CouronneRang, Duel, Fenetre, IconeMusique, Compte, MiniCarte, SON_EVENEMENT, Zoom, jouerEffet, mouvementReduit, sonDeCarte, useCompteur, useMinuteur, useMusique } from './ui';
 
 type ActionSansJoueur = { [K in Action['type']]: Omit<Extract<Action, { type: K }>, 'joueurId'> }[Action['type']];
 
@@ -126,7 +126,7 @@ function BulleReaction({ r }: { r?: Reaction }) {
 }
 
 /** Tapis en grand : un adversaire devient une petite étiquette au bord du tapis (avatar, nom, plis gagnés / annonce). */
-function Etiquette({ j, v, absent, fraction, avatar, onProfil, reaction }: { j: VueJoueur; v: Vue; absent: boolean; fraction: number | null; avatar: number; onProfil: (id: string) => void; reaction?: Reaction }) {
+function Etiquette({ j, v, absent, fraction, avatar, onProfil, reaction, couronne }: { j: VueJoueur; v: Vue; absent: boolean; fraction: number | null; avatar: number; onProfil: (id: string) => void; reaction?: Reaction; couronne?: number }) {
   const minute = j.attendu && v.phase !== 'FIN_DE_NUIT' && v.phase !== 'FIN_DE_PARTIE';
   const annonce = j.annonce ?? '?';
   return (
@@ -142,7 +142,10 @@ function Etiquette({ j, v, absent, fraction, avatar, onProfil, reaction }: { j: 
         <BulleReaction r={reaction} />
       </span>
       <span className="etiquette-texte">
-        <span className="etiquette-nom">{j.nom}</span>
+        <span className="etiquette-nom">
+          {j.nom}
+          <CouronneRang rang={couronne} />
+        </span>
         <span className="etiquette-ligne">
           {j.annonce !== null ? (
             <Compte plis={j.plis} annonce={j.annonce} />
@@ -285,7 +288,10 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const { salon, appel, quitter, tapis = TAPIS_PAR_DEFAUT, poserTapis } = props;
   const v = salon.partie as Vue;
   const moi = v.joueurs.find((j) => j.id === v.moi) as VueJoueur;
-  const estHote = salon.hoteId === v.moi && !salon.publique;
+  // Ami qui regarde la partie : il est assis « à côté » du joueur suivi (v.moi), sans ses cartes ni aucune action.
+  const spectateur = !!salon.spectateur;
+  const estMoi = (id: string | null | undefined) => !spectateur && id === v.moi;
+  const estHote = !spectateur && salon.hoteId === v.moi && !salon.publique;
   const [selection, setSelection] = useState<string | null>(null);
   const [zoom, setZoom] = useState<string | null>(null);
   const [vuePli, setVuePli] = useState(false);
@@ -336,6 +342,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   // Révélation de l'événement : la carte tourbillonne au centre de l'écran pendant 5 secondes.
   const [revelation, setRevelation] = useState<string | null>(null);
   const dejaVu = useRef<string | null>(null);
+  const sonRevelation = useRef(0);
   useEffect(() => {
     if (!v.evenementId || v.phase !== 'ANNONCES') return;
     const cle = `${v.nuit}-${v.evenementId}`;
@@ -345,19 +352,23 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     jouerEffet('evenement');
     // Puis le son propre à l'événement, quand son nom apparaît.
     const sonEvenement = v.evenement ? SON_EVENEMENT[v.evenement] : undefined;
-    const s = sonEvenement ? window.setTimeout(() => jouerEffet(sonEvenement), 1800) : 0;
-    const t = window.setTimeout(() => setRevelation(null), 5000);
-    return () => {
-      window.clearTimeout(t);
-      window.clearTimeout(s);
-    };
+    window.clearTimeout(sonRevelation.current);
+    if (sonEvenement) sonRevelation.current = window.setTimeout(() => jouerEffet(sonEvenement), 1800);
   }, [v.nuit, v.evenementId, v.phase]);
+  useEffect(() => () => window.clearTimeout(sonRevelation.current), []);
+  // La révélation se referme 5 secondes après son ouverture, même si la phase change entre-temps (annonces très
+  // rapides, ou un ami qui regarde) : sinon elle resterait posée, invisible, et la distribution n'aurait jamais lieu.
+  useEffect(() => {
+    if (!revelation) return;
+    const t = window.setTimeout(() => setRevelation(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [revelation]);
 
   const nom = (id: string | null | undefined) => v.joueurs.find((j) => j.id === id)?.nom ?? '?';
   const monCompte = salon.joueurs.find((j) => j.id === v.moi)?.compte ?? null;
   const avatarDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.avatar ?? 1;
   const agir = async (action: ActionSansJoueur) => {
-    if (envoi) return;
+    if (envoi || spectateur) return;
     setEnvoi(true);
     await appel('action', action);
     setEnvoi(false);
@@ -373,7 +384,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const haut = ['haut-gauche', 'haut', 'haut-droite'].filter((p) => parPlace[p]).map((p) => parPlace[p]);
   const gauche = parPlace.gauche;
   const droite = parPlace.droite;
-  const attendus = v.attente.filter((id) => id !== v.moi).map(nom);
+  const attendus = v.attente.filter((id) => spectateur || id !== v.moi).map(nom);
   const attenteTexte = attendus.length ? tr(`En attente de ${attendus.join(', ')}.`, `Waiting for ${attendus.join(', ')}.`) : '';
   const monTour = v.tourId === v.moi;
   const aMoi = v.attente.includes(v.moi) && v.phase !== 'FIN_DE_NUIT' && v.phase !== 'FIN_DE_PARTIE';
@@ -404,7 +415,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   // Tapis en grand : dès la première carte du pli, la table s'agrandit et les boutons se rangent dans le menu ⋯.
   // Au début de chaque pli (tapis vide, une fois les cartes ramassées), et quand c'est à moi de choisir un butin
   // à voler, la vue normale revient.
-  const phaseZoom = v.phase === 'PLI' || v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && v.vol?.voleurId !== v.moi);
+  const phaseZoom = v.phase === 'PLI' || v.phase === 'FIN_DE_PLI' || (v.phase === 'VOL' && (spectateur || v.vol?.voleurId !== v.moi));
   const [zoome, setZoome] = useState(() => reglages.zoomTapis && cartesPli.length > 0 && phaseZoom);
   const doitZoomer = reglages.zoomTapis && ((cartesPli.length > 0 && phaseZoom) || (!!ramassage && zoome));
   const zoomVoulu = useRef(doitZoomer);
@@ -525,7 +536,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
 
   // « À toi de jouer » : petit carillon quand vient mon tour de poser une carte.
   const tourPrecedent = useRef<boolean | null>(null);
-  const aJouer = monTour && v.phase === 'PLI';
+  const aJouer = !spectateur && monTour && v.phase === 'PLI';
   useEffect(() => {
     const avant = tourPrecedent.current;
     tourPrecedent.current = aJouer;
@@ -534,8 +545,8 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
 
   // Les 5 dernières secondes de mon temps : tic-tac.
   useEffect(() => {
-    if (aMoi && secondes !== null && secondes > 0 && secondes <= 5) jouerEffet('tic');
-  }, [secondes, aMoi]);
+    if (!spectateur && aMoi && secondes !== null && secondes > 0 && secondes <= 5) jouerEffet('tic');
+  }, [secondes, aMoi, spectateur]);
 
   // Phases : vol terminé, fin de nuit (annonce réussie ou ratée).
   const phasePrecedente = useRef<string | null>(null);
@@ -580,6 +591,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   }, [cleDernierPli]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toucherCarte = (id: string, jouable: boolean) => {
+    if (spectateur) return setZoom(id);
     if (v.phase === 'TRAHISON' && !v.aChoisiTrahison) return setSelection(id);
     if (v.phase === 'PLI' && monTour && jouable) return setSelection(selection === id ? null : id);
     setZoom(id);
@@ -589,7 +601,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   );
   const etiquetteDe = (j: VueJoueur) => {
     const s = salon.joueurs.find((x) => x.id === j.id);
-    return <Etiquette key={j.id} j={j} v={v} absent={!!s && !s.connecte && !s.robot} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} reaction={reactions[j.id]} />;
+    return <Etiquette key={j.id} j={j} v={v} absent={!!s && !s.connecte && !s.robot} fraction={fraction} avatar={avatarDe(j.id)} onProfil={setFiche} reaction={reactions[j.id]} couronne={s?.compte?.couronne} />;
   };
   const cotes = !zoome && !!(gauche || droite);
   // Zoom automatique du tapis : activé ou non d'un toucher (bouton du tapis, menu ou Réglages). Un petit mot le confirme.
@@ -603,7 +615,18 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     changerReglages({ zoomTapis: !reglages.zoomTapis });
     setAvisZoom(Date.now());
   };
-  const trahisonAChoisir = v.phase === 'TRAHISON' && !v.aChoisiTrahison;
+  const trahisonAChoisir = !spectateur && v.phase === 'TRAHISON' && !v.aChoisiTrahison;
+  // Le spectateur voit le dos des cartes de son ami (leur nombre, comme pour tout le monde).
+  const nbDos = spectateur ? Math.min(moi.nbCartes, 8) : 0;
+  const nbMain = spectateur ? nbDos : main.length;
+  // Spectateurs de la partie (amis des joueurs) : une petite pastille « œil » sur le tapis, leurs noms d'un toucher.
+  const spectateurs = !spectateur ? (salon.spectateurs ?? []) : [];
+  const [voirSpectateurs, setVoirSpectateurs] = useState(false);
+  useEffect(() => {
+    if (!voirSpectateurs) return;
+    const t = window.setTimeout(() => setVoirSpectateurs(false), 3500);
+    return () => window.clearTimeout(t);
+  }, [voirSpectateurs]);
   const envoyerReaction = (emoji: string) => {
     setFenetre(null);
     void appel('reaction', { emoji });
@@ -618,18 +641,18 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     </button>
   );
   // Cartes plus grandes (Réglages) : elles se recouvrent un peu plus, pour que la main tienne toujours dans la largeur de l'écran.
-  const chevauchement = (main.length > 6 ? -0.56 : -0.42) - (ZOOM_CARTES[reglages.cartes] - 1) * 0.4;
+  const chevauchement = (nbMain > 6 ? -0.56 : -0.42) - (ZOOM_CARTES[reglages.cartes] - 1) * 0.4;
   // Largeur de l'éventail en largeurs de carte, rotation comprise (les cartes tournent autour d'un point situé 1,4 hauteur
   // sous leur haut) : la main ne dépasse jamais de l'écran, même à 8 cartes ou en « très grande » taille.
-  const angleMax = ((Math.max(0, main.length - 1) / 2) * 4 * Math.PI) / 180;
+  const angleMax = ((Math.max(0, nbMain - 1) / 2) * 4 * Math.PI) / 180;
   const debord = 0.5 * Math.cos(angleMax) + 2.1 * Math.sin(angleMax) - 0.5; // ce que la carte du bord dépasse, de chaque côté
-  const etendue = 1 + Math.max(0, main.length - 1) * (1 + chevauchement) + 2 * debord;
+  const etendue = 1 + Math.max(0, nbMain - 1) * (1 + chevauchement) + 2 * debord;
   // Les cartes du bord descendent (courbe de l'éventail et rotation) : place gardée sous la main pour qu'elles ne soient pas coupées.
-  const dMax = Math.max(0, main.length - 1) / 2;
+  const dMax = Math.max(0, nbMain - 1) / 2;
   const chute = { px: dMax * dMax * 2.2, k: 0.5 * Math.sin(angleMax) + 0.6 * (1 - Math.cos(angleMax)) };
 
   return (
-    <div className={`plateau ${zoome ? 'zoome' : ''}`} ref={plateauRef}>
+    <div className={`plateau ${zoome ? 'zoome' : ''} ${spectateur ? 'regarde' : ''}`} ref={plateauRef}>
       <Particules />
       <header className="barre">
         <div className="nuit">
@@ -701,10 +724,28 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
             </span>
           )}
           {zoome && boutonDernier}
+          {spectateurs.length > 0 && (
+            <button
+              type="button"
+              className="spectateurs-pastille"
+              onClick={() => setVoirSpectateurs((x) => !x)}
+              title={spectateurs.join(', ')}
+              aria-label={tr(`${pluriel(spectateurs.length, 'spectateur', 'spectator')} : ${spectateurs.join(', ')}`, `${pluriel(spectateurs.length, 'spectateur', 'spectator')}: ${spectateurs.join(', ')}`)}
+            >
+              <IconeOeil />
+              <span>{spectateurs.length}</span>
+            </button>
+          )}
+          {voirSpectateurs && spectateurs.length > 0 && (
+            <span className="spectateurs-liste" role="status">
+              {tr('Regardent la partie : ', 'Watching: ')}
+              <strong>{spectateurs.join(', ')}</strong>
+            </span>
+          )}
           <div className="centre-tete">
             {pliAffiche ? (
               <span>
-                <strong>{pliAffiche.gagnantId === v.moi ? tr('Tu remportes', 'You win') : tr(`${nom(pliAffiche.gagnantId)} remporte`, `${nom(pliAffiche.gagnantId)} wins`)}</strong>
+                <strong>{estMoi(pliAffiche.gagnantId) ? tr('Tu remportes', 'You win') : tr(`${nom(pliAffiche.gagnantId)} remporte`, `${nom(pliAffiche.gagnantId)} wins`)}</strong>
                 {tr(' le pli', ' the trick')}
                 {pliAffiche.braquage ? tr(' : Braquage !', ': Stick-up!') : ''}
               </span>
@@ -718,10 +759,10 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
                 <span>{tr('Pas encore de famille demandée', 'No suit led yet')}</span>
               )
             ) : v.phase === 'PLI' ? (
-              <span>{v.ouvreurId === v.moi ? tr('Tu ouvres le pli', 'You lead the trick') : tr(`${nom(v.ouvreurId)} ouvre le pli`, `${nom(v.ouvreurId)} leads the trick`)}</span>
+              <span>{estMoi(v.ouvreurId) ? tr('Tu ouvres le pli', 'You lead the trick') : tr(`${nom(v.ouvreurId)} ouvre le pli`, `${nom(v.ouvreurId)} leads the trick`)}</span>
             ) : PHASES_DEBUT.includes(v.phase) ? (
               <span>
-                {pluriel(v.nuit, 'pli', 'trick')} · {v.premierId === v.moi ? tr('tu commences', 'you start') : tr(`${nom(v.premierId)} commence`, `${nom(v.premierId)} starts`)}
+                {pluriel(v.nuit, 'pli', 'trick')} · {estMoi(v.premierId) ? tr('tu commences', 'you start') : tr(`${nom(v.premierId)} commence`, `${nom(v.premierId)} starts`)}
               </span>
             ) : (
               <span>
@@ -765,8 +806,8 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
                   >
                     <CarteImg id={p.carteId} taille="pli" etat={gagnante ? 'gagnante' : undefined} onToucher={surOrdi ? () => setVuePli(true) : undefined} onZoom={setZoom} />
                     {gagnante && <Couronne className="couronne-pli" />}
-                    <span className="pli-nom" title={p.joueurId === v.moi ? tr('Toi', 'You') : nom(p.joueurId)}>
-                      {p.joueurId === v.moi ? tr('Toi', 'You') : nom(p.joueurId)}
+                    <span className="pli-nom" title={estMoi(p.joueurId) ? tr('Toi', 'You') : nom(p.joueurId)}>
+                      {estMoi(p.joueurId) ? tr('Toi', 'You') : nom(p.joueurId)}
                       {p.valeurCroupier !== undefined ? ` · ${p.valeurCroupier}` : ''}
                     </span>
                   </div>
@@ -800,22 +841,51 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
         {cotes && <div className="cote">{droite && siegeDe(droite)}</div>}
       </div>
 
-      <section className={`ma-zone ${aMoi ? 'a-moi' : ''}`} aria-label={tr('Ta place', 'Your seat')}>
-        {!zoome && (
-          <div className={`consigne ${aMoi ? 'a-toi' : ''} ${trahisonAChoisir ? 'trahison' : ''}`} aria-live="polite">
-            <Consigne v={v} selection={selection} agir={agir} nom={nom} droiteNom={voisinDroite.nom} attenteTexte={attenteTexte} envoi={envoi} />
-          </div>
-        )}
+      <section className={`ma-zone ${aMoi ? 'a-moi' : ''}`} aria-label={spectateur ? tr(`Place de ${moi.nom}`, `${moi.nom}’s seat`) : tr('Ta place', 'Your seat')}>
+        {!zoome &&
+          (spectateur ? (
+            <div className="consigne bandeau-spectateur" aria-live="polite">
+              <p>
+                <IconeOeil />
+                <span>
+                  {EN ? (
+                    <>
+                      You are watching <strong>{moi.nom}</strong>’s game.
+                    </>
+                  ) : (
+                    <>
+                      Tu regardes la partie de <strong>{moi.nom}</strong>.
+                    </>
+                  )}{' '}
+                  <ConsigneSpectateur v={v} nom={nom} attenteTexte={attenteTexte} />
+                </span>
+              </p>
+              <button type="button" className="petit" onClick={quitter}>
+                {tr('Arrêter', 'Stop')}
+              </button>
+            </div>
+          ) : (
+            <div className={`consigne ${aMoi ? 'a-toi' : ''} ${trahisonAChoisir ? 'trahison' : ''}`} aria-live="polite">
+              <Consigne v={v} selection={selection} agir={agir} nom={nom} droiteNom={voisinDroite.nom} attenteTexte={attenteTexte} envoi={envoi} />
+            </div>
+          ))}
         {zoome ? (
           <div className="moi-compact" data-joueur={v.moi}>
-            {monTour && v.phase === 'PLI' && selection ? (
+            {!spectateur && monTour && v.phase === 'PLI' && selection ? (
               <ActionsJouer selection={selection} agir={agir} envoi={envoi} />
             ) : (
-              <button type="button" className="moi-compact-nom" onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
+              <button
+                type="button"
+                className="moi-compact-nom"
+                onClick={() => setFiche(v.moi)}
+                aria-label={spectateur ? tr(`Voir le profil de ${moi.nom}`, `View ${moi.nom}’s profile`) : tr('Voir mon profil', 'View my profile')}
+              >
+                {spectateur && <IconeOeil className="oeil-compact" />}
                 <strong>{moi.nom}</strong>
+                <CouronneRang rang={monCompte?.couronne} />
                 {v.monAnnonce !== null ? <Compte plis={moi.plis} annonce={v.monAnnonce} /> : <span className="compte">{moi.plis}/?</span>}
                 <Butin ids={moi.butin} compact />
-                {aMoi && <span className="votre-tour">{tr('Votre tour', 'Your turn')}</span>}
+                {aMoi && <span className="votre-tour">{spectateur ? tr('À son tour', 'Their turn') : tr('Votre tour', 'Your turn')}</span>}
               </button>
             )}
             {aMoi && fraction !== null && (
@@ -830,16 +900,23 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           </div>
         ) : (
           <div className="moi-bandeau">
-            <button type="button" className="bouton-avatar" data-joueur={v.moi} onClick={() => setFiche(v.moi)} aria-label={tr('Voir mon profil', 'View my profile')}>
+            <button
+              type="button"
+              className="bouton-avatar"
+              data-joueur={v.moi}
+              onClick={() => setFiche(v.moi)}
+              aria-label={spectateur ? tr(`Voir le profil de ${moi.nom}`, `View ${moi.nom}’s profile`) : tr('Voir mon profil', 'View my profile')}
+            >
               <Avatar n={avatarDe(v.moi)} grand fraction={aMoi ? fraction : null} />
               <BulleReaction r={reactions[v.moi]} />
             </button>
             <div className="moi-texte">
               <div className="moi-nom">
                 <strong>{moi.nom}</strong>
+                <CouronneRang rang={monCompte?.couronne} />
                 {monCompte && <BadgeNiveau niveau={monCompte.niveau} />}
-                {aMoi && <span className="votre-tour">{tr('Votre tour', 'Your turn')}</span>}
-                {v.premierId === v.moi && PHASES_DEBUT.includes(v.phase) && <span className="badge or">{tr('Tu commences', 'You start')}</span>}
+                {aMoi && <span className="votre-tour">{spectateur ? tr('À son tour', 'Their turn') : tr('Votre tour', 'Your turn')}</span>}
+                {v.premierId === v.moi && PHASES_DEBUT.includes(v.phase) && <span className="badge or">{spectateur ? tr('Commence', 'Starts') : tr('Tu commences', 'You start')}</span>}
               </div>
               {aMoi && fraction !== null && (
                 <div className={`minuteur ${fraction < 0.25 ? 'urgent' : ''}`}>
@@ -854,18 +931,36 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
                   <>
                     <Compte plis={moi.plis} annonce={v.monAnnonce} /> <span className="sep">·</span>{' '}
                   </>
+                ) : spectateur ? (
+                  `${moi.aAnnonce ? tr('A annoncé', 'Has bid') : tr('Annonce…', 'Bidding…')} · `
                 ) : (
                   `${tr('Pas encore annoncé', 'No bid yet')} · `
                 )}
                 {moi.score} pts
               </div>
-              {v.choixAllies && <ChoixAllie v={v} id={v.moi} nom={nom} />}
+              {v.choixAllies && <ChoixAllie v={v} id={v.moi} nom={nom} toi={spectateur ? null : v.moi} />}
               <Butin ids={moi.butin} />
             </div>
-            {!salon.tutoriel && <BoutonReactions appel={appel} />}
+            {!salon.tutoriel && !spectateur && <BoutonReactions appel={appel} />}
           </div>
         )}
-        <div className={`eventail ${trahisonAChoisir ? 'trahison' : ''}`} style={{ '--chev': chevauchement, '--etendue': etendue.toFixed(3), '--debord': debord.toFixed(3), '--chute-px': `${chute.px.toFixed(1)}px`, '--chute-k': chute.k.toFixed(3) } as React.CSSProperties} aria-label={tr('Ta main', 'Your hand')}>
+        <div
+          className={`eventail ${trahisonAChoisir ? 'trahison' : ''} ${spectateur ? 'dos' : ''}`}
+          style={{ '--chev': chevauchement, '--etendue': etendue.toFixed(3), '--debord': debord.toFixed(3), '--chute-px': `${chute.px.toFixed(1)}px`, '--chute-k': chute.k.toFixed(3) } as React.CSSProperties}
+          aria-label={spectateur ? tr(`Main de ${moi.nom} (cachée)`, `${moi.nom}’s hand (hidden)`) : tr('Ta main', 'Your hand')}
+        >
+          {/* Le spectateur ne voit que le dos des cartes de son ami. */}
+          {Array.from({ length: nbDos }, (_, i) => {
+            const d = i - (nbDos - 1) / 2;
+            const arrivee = donne?.vols ? donne.mesArrivees[i] : undefined;
+            const enAttente = !!donne && !donne.vols;
+            const style = { '--r': `${d * 4}deg`, '--y': `${d * d * 2.2}px`, zIndex: i + 1, ...(arrivee !== undefined ? { animationDelay: `${Math.round(arrivee)}ms` } : {}) } as React.CSSProperties;
+            return (
+              <div key={i} className={`eventail-carte eventail-dos ${arrivee !== undefined ? 'distribuee' : ''} ${enAttente ? 'a-distribuer' : ''}`} style={style}>
+                <img src="/dos.webp" alt="" draggable={false} />
+              </div>
+            );
+          })}
           {main.map((c, i) => {
             const d = i - (main.length - 1) / 2;
             const arrivee = donne?.vols ? donne.mesArrivees[i] : undefined;
@@ -882,7 +977,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               </div>
             );
           })}
-          {main.length === 0 && <p className="discret">{tr('Plus de carte en main.', 'No cards left in hand.')}</p>}
+          {nbMain === 0 && <p className="discret">{spectateur ? tr(`${moi.nom} n’a plus de carte en main.`, `${moi.nom} has no cards left.`) : tr('Plus de carte en main.', 'No cards left in hand.')}</p>}
         </div>
       </section>
 
@@ -900,8 +995,8 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           ))}
         </div>
       )}
-      {v.phase === 'FIN_DE_NUIT' && <RecapNuit v={v} nom={nom} estHote={estHote} agir={agir} secondes={secondes} />}
-      {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} salon={salon} estHote={estHote} appel={appel} quitter={quitter} nom={nom} tapis={tapis} poserTapis={poserTapis} />}
+      {v.phase === 'FIN_DE_NUIT' && <RecapNuit v={v} nom={nom} estHote={estHote} agir={agir} secondes={secondes} spectateur={spectateur} />}
+      {v.phase === 'FIN_DE_PARTIE' && <FinDePartie v={v} salon={salon} estHote={estHote} appel={appel} quitter={quitter} nom={nom} tapis={tapis} poserTapis={poserTapis} spectateur={spectateur} />}
       {fenetre === 'scores' && (
         <Fenetre titre="Scores" onFermer={() => setFenetre(null)} large>
           <TableauScores v={v} />
@@ -936,7 +1031,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               {nonLus > 0 && <span className="pastille-menu">{nonLus}</span>}
             </button>
           </div>
-          {!salon.tutoriel && (
+          {!salon.tutoriel && !spectateur && (
             <div className="menu-reactions" role="group" aria-label={tr('Réactions', 'Reactions')}>
               {REACTIONS.map((e) => (
                 <button key={e} type="button" onClick={() => envoyerReaction(e)} aria-label={tr(`Réagir ${e}`, `React ${e}`)}>
@@ -958,9 +1053,15 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           <button type="button" className="large" onClick={() => setFenetre('reglages')}>
             {tr('Réglages', 'Settings')}
           </button>
-          <button type="button" className="large danger" onClick={() => setFenetre('quitter')}>
-            {tr('Quitter la partie', 'Leave the game')}
-          </button>
+          {spectateur ? (
+            <button type="button" className="large danger" onClick={quitter}>
+              {tr('Arrêter de regarder', 'Stop watching')}
+            </button>
+          ) : (
+            <button type="button" className="large danger" onClick={() => setFenetre('quitter')}>
+              {tr('Quitter la partie', 'Leave the game')}
+            </button>
+          )}
         </Fenetre>
       )}
       {fenetre === 'reglages' && <FenetreReglages onFermer={() => setFenetre(null)} enPartie />}
@@ -997,24 +1098,24 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
         </Fenetre>
       )}
       {vuePli && cartesPli.length > 0 && (
-        <VuePli cartes={cartesPli} gagnantId={pliAffiche?.gagnantId ?? null} nom={(id) => (id === v.moi ? tr('Toi', 'You') : nom(id))} onCarte={setZoom} onFermer={() => setVuePli(false)} />
+        <VuePli cartes={cartesPli} gagnantId={pliAffiche?.gagnantId ?? null} nom={(id) => (estMoi(id) ? tr('Toi', 'You') : nom(id))} onCarte={setZoom} onFermer={() => setVuePli(false)} />
       )}
       {vueDernier && dernierRamasse && (
         <VuePli
           cartes={dernierRamasse.cartes}
           gagnantId={dernierRamasse.gagnantId}
           titre={
-            dernierRamasse.gagnantId === v.moi
+            estMoi(dernierRamasse.gagnantId)
               ? tr('Dernier pli · tu l’as remporté', 'Last trick · you won it')
               : tr(`Dernier pli · remporté par ${nom(dernierRamasse.gagnantId)}`, `Last trick · won by ${nom(dernierRamasse.gagnantId)}`)
           }
-          nom={(id) => (id === v.moi ? tr('Toi', 'You') : nom(id))}
+          nom={(id) => (estMoi(id) ? tr('Toi', 'You') : nom(id))}
           onCarte={setZoom}
           onFermer={() => setVueDernier(false)}
         />
       )}
       {zoom && <Zoom id={zoom} onFermer={() => setZoom(null)} />}
-      {fiche && <FicheJoueur joueurId={fiche} salonCode={salon.code} moi={fiche === v.moi} appel={appel} onFermer={() => setFiche(null)} />}
+      {fiche && <FicheJoueur joueurId={fiche} salonCode={spectateur ? undefined : salon.code} moi={!spectateur && fiche === v.moi} appel={appel} onFermer={() => setFiche(null)} />}
       {salon.tutoriel && <Tutoriel v={v} pliAffiche={pliAffiche} revelation={!!revelation} nom={nom} />}
       {duel && <Duel duel={duel} nom={nom} />}
       {revelation && v.evenement && (
@@ -1068,12 +1169,13 @@ function Siege(props: {
       </button>
       <div className="siege-nom">
         <span className={`point ${s?.connecte || s?.robot ? 'en-ligne' : 'hors-ligne'}`} title={s?.connecte ? tr('En ligne', 'Online') : tr('Hors ligne', 'Offline')} />
-        {j.id === salon.hoteId && (
-          <span className="couronne-hote" title={tr('Hôte', 'Host')}>
-            ♛
+        {j.id === salon.hoteId && !salon.publique && (
+          <span className="couronne-hote" title={tr('Hôte', 'Host')} aria-label={tr('Hôte', 'Host')}>
+            ★
           </span>
         )}
         <span className="siege-nom-texte">{j.nom}</span>
+        <CouronneRang rang={s?.compte?.couronne} />
         {s?.robot && (
           <span title={tr('Joué par l’ordinateur', 'Played by the computer')} aria-label={tr('Joué par l’ordinateur', 'Played by the computer')}>
             🤖
@@ -1102,7 +1204,7 @@ function Siege(props: {
           {s?.abandon && <span className="badge rouge">{tr('A quitté', 'Left')}</span>}
         </div>
       )}
-      {v.choixAllies && <ChoixAllie v={v} id={j.id} nom={nom} />}
+      {v.choixAllies && <ChoixAllie v={v} id={j.id} nom={nom} toi={salon.spectateur ? null : v.moi} />}
       {j.butin.length > 0 && <Butin ids={j.butin} />}
       {estHote && s && !s.connecte && (
         <button type="button" className="petit" onClick={() => appel('remplacer', { joueurId: j.id, actif: !s.robot })}>
@@ -1111,6 +1213,28 @@ function Siege(props: {
       )}
     </article>
   );
+}
+
+/** Ce qui se passe à la table, en une phrase, pour l'ami qui regarde. */
+function ConsigneSpectateur({ v, nom, attenteTexte }: { v: Vue; nom: (id: string | null | undefined) => string; attenteTexte: string }) {
+  switch (v.phase) {
+    case 'TRAHISON':
+      return <>{tr('Trahison : chacun passe une carte à son voisin de droite.', 'Betrayal: everyone passes a card to the player on their right.')} {attenteTexte}</>;
+    case 'ANNONCES':
+      return <>{tr('Annonces en cours.', 'Bidding in progress.')} {attenteTexte}</>;
+    case 'ALLIANCE':
+      return <>{tr('Alliance : chacun choisit un allié en secret.', 'Alliance: everyone secretly chooses an ally.')} {attenteTexte}</>;
+    case 'PLI':
+      return <>{tr(`Au tour de ${nom(v.tourId)}.`, `${nom(v.tourId)}’s turn.`)}</>;
+    case 'VOL': {
+      const source = v.vol?.source === 'baron' ? 'Baron' : 'Pickpocket';
+      return <>{tr(`${nom(v.vol?.voleurId)} choisit un butin à voler (${source})…`, `${nom(v.vol?.voleurId)} is choosing loot to steal (${source})…`)}</>;
+    }
+    case 'FIN_DE_PLI':
+      return <>{tr('Fin du pli.', 'End of the trick.')}</>;
+    default:
+      return <>{attenteTexte}</>;
+  }
 }
 
 function Consigne(props: {
@@ -1289,7 +1413,7 @@ function LigneRecap({ s, i, total, nom, moi }: { s: ScoreNuit; i: number; total:
   );
 }
 
-function RecapNuit({ v, nom, estHote, agir, secondes }: { v: Vue; nom: (id: string) => string; estHote: boolean; agir: (a: ActionSansJoueur) => void; secondes: number | null }) {
+function RecapNuit({ v, nom, estHote, agir, secondes, spectateur }: { v: Vue; nom: (id: string) => string; estHote: boolean; agir: (a: ActionSansJoueur) => void; secondes: number | null; spectateur?: boolean }) {
   const bilan = v.bilans[v.bilans.length - 1];
   const totaux = Object.fromEntries(v.joueurs.map((j) => [j.id, j.score]));
   return (
@@ -1300,7 +1424,7 @@ function RecapNuit({ v, nom, estHote, agir, secondes }: { v: Vue; nom: (id: stri
           <LigneRecap key={s.joueurId} s={s} i={i} total={totaux[s.joueurId]} nom={nom(s.joueurId)} moi={s.joueurId === v.moi} />
         ))}
       </ol>
-      {v.pret ? (
+      {v.pret || spectateur ? (
         <p className="attente">{v.attente.length ? tr(`En attente de ${v.attente.map(nom).join(', ')}.`, `Waiting for ${v.attente.map(nom).join(', ')}.`) : ''}</p>
       ) : (
         <button type="button" className="principal large" onClick={() => agir({ type: 'CONTINUER' })}>
@@ -1326,17 +1450,18 @@ function FinDePartie(props: {
   nom: (id: string) => string;
   tapis: IdTapis;
   poserTapis?: (id: IdTapis) => Promise<boolean>;
+  spectateur?: boolean;
 }) {
-  const { v, salon, estHote, appel, quitter, nom, tapis, poserTapis } = props;
+  const { v, salon, estHote, appel, quitter, nom, tapis, poserTapis, spectateur } = props;
   const classement = [...v.joueurs].sort((a, b) => b.score - a.score);
   const max = classement[0].score;
   const barons = classement.filter((j) => j.score === max);
-  const jeSuisBaron = barons.some((j) => j.id === v.moi);
+  const jeSuisBaron = !spectateur && barons.some((j) => j.id === v.moi);
   const [voirScores, setVoirScores] = useState(false);
   const enr = salon.enregistrement;
   const compteDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.compte ?? null;
   const avatarDe = (id: string) => salon.joueurs.find((j) => j.id === id)?.avatar ?? 1;
-  const monBilan = enr?.bilans[v.moi];
+  const monBilan = spectateur ? undefined : enr?.bilans[v.moi];
   const rangDe = (j: VueJoueur) => classement.findIndex((x) => x.score === j.score) + 1;
 
   // Classement final animé : 3e, puis 2e, roulement de tambour et le Dernier Baron couronné. Un toucher passe l'animation.
@@ -1397,6 +1522,7 @@ function FinDePartie(props: {
                   <span className="fin-joueur">
                     <span className="fin-nom">
                       {nom(j.id)}
+                      <CouronneRang rang={compte?.couronne} />
                       {niveau !== undefined && <BadgeNiveau niveau={niveau} />}
                       {salon.joueurs.find((x) => x.id === j.id)?.abandon && <span className="badge rouge">{tr('A quitté', 'Left')}</span>}
                     </span>
@@ -1459,7 +1585,7 @@ function FinDePartie(props: {
             </p>
           )}
           {enr?.etat === 'erreur' && <p className="discret">{tr('Certaines victoires n’ont pas pu être enregistrées.', 'Some wins could not be saved.')}</p>}
-          {salon.comptesActifs && !compteDe(v.moi) && enr?.etat !== 'test' && enr?.etat !== 'solo' && (
+          {salon.comptesActifs && !spectateur && !compteDe(v.moi) && enr?.etat !== 'test' && enr?.etat !== 'solo' && (
             <p className="discret">{tr('Crée un compte depuis l’accueil pour garder tes victoires et monter de niveau.', 'Create an account from the home screen to keep your wins and level up.')}</p>
           )}
           {voirScores ? (
@@ -1469,9 +1595,13 @@ function FinDePartie(props: {
               {tr('Voir le détail des nuits', 'See night-by-night scores')}
             </button>
           )}
-          {salon.publique && !salon.tutoriel && <Revanche salon={salon} appel={appel} nom={nom} />}
+          {salon.publique && !salon.tutoriel && !spectateur && <Revanche salon={salon} appel={appel} nom={nom} />}
           <div className="rangee">
-            {salon.tutoriel ? (
+            {spectateur ? (
+              <button type="button" className="principal" onClick={quitter}>
+                {tr('Arrêter de regarder', 'Stop watching')}
+              </button>
+            ) : salon.tutoriel ? (
               <>
                 <FinTutoriel />
                 <button type="button" className="principal" onClick={() => appel('jouer_public', { nom: nom(v.moi) })}>
@@ -1492,9 +1622,11 @@ function FinDePartie(props: {
             ) : (
               <p className="attente">{tr("L'hôte peut relancer une partie.", 'The host can start a new game.')}</p>
             )}
-            <button type="button" onClick={quitter}>
-              {tr('Quitter', 'Leave')}
-            </button>
+            {!spectateur && (
+              <button type="button" onClick={quitter}>
+                {tr('Quitter', 'Leave')}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1610,13 +1742,13 @@ function TableauScores({ v }: { v: Vue }) {
 }
 
 /** Après l'Alliance, montre à tous qui a choisi qui, et les alliances formées. */
-function ChoixAllie({ v, id, nom }: { v: Vue; id: string; nom: (id: string | null | undefined) => string }) {
+function ChoixAllie({ v, id, nom, toi }: { v: Vue; id: string; nom: (id: string | null | undefined) => string; toi: string | null }) {
   const choix = v.choixAllies?.[id] ?? null;
   const allie = v.alliances.some(([a, b]) => (a === id || b === id) && (a === choix || b === choix));
   return (
     <div className={`choix-allie ${allie ? 'allie' : ''}`}>
       {allie ? tr('🤝 Allié avec ', '🤝 Allied with ') : tr('A choisi ', 'Chose ')}
-      <strong>{choix ? (choix === v.moi ? tr('toi', 'you') : nom(choix)) : tr('personne', 'nobody')}</strong>
+      <strong>{choix ? (choix === toi ? tr('toi', 'you') : nom(choix)) : tr('personne', 'nobody')}</strong>
     </div>
   );
 }

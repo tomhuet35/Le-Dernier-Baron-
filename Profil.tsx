@@ -8,7 +8,7 @@ import type { Utilisateur } from './connexion';
 import { DESCRIPTION_NIVEAU_BOT_EN, DESCRIPTION_STYLE_BOT_EN, NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, NOM_TAPIS_EN } from '../../shared/langue';
 import { EN, LOCALE, pluriel as plurielTr, titreNiveau, tr } from './traduction';
 import { ActionsModeration } from './Moderation';
-import { Defilant, Fenetre, IconeImage } from './ui';
+import { CouronneRang, Defilant, Fenetre, IconeImage } from './ui';
 
 export type ModuleConnexion = typeof import('./connexion');
 
@@ -425,6 +425,7 @@ export function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte;
         </div>
       </div>
       <BarreXp xp={p.xp} />
+      <LigneSemaine semaine={p.semaine ?? null} moi />
       <div className="stats-grille">
         {stats.map(([valeur, libelle]) => (
           <div key={libelle} className="stat">
@@ -509,7 +510,10 @@ export function FicheJoueur(props: { joueurId?: string; code?: string; statut?: 
         <div className="fiche-tete">
           <img className="fiche-avatar" src={`/cartes/avatar-${profil.avatar}.webp`} alt="" />
           <div>
-            <strong>{profil.nom}</strong>
+            <strong>
+              {profil.nom}
+              {profil.type === 'compte' && <CouronneRang rang={profil.semaine?.rang} />}
+            </strong>
             {profil.type === 'compte' && <span className="titre-niveau">{titreNiveau(progression(profil.xp).niveau)}</span>}
             {statut && <span className="discret">{statut}</span>}
             {profil.type === 'bot' && <span className="discret">{tr('🤖 Joueur ordinateur', '🤖 Computer player')}</span>}
@@ -547,6 +551,7 @@ export function FicheJoueur(props: { joueurId?: string; code?: string; statut?: 
       {profil?.type === 'compte' && (
         <>
           <BarreXp xp={profil.xp} />
+          {profil.semaine && <LigneSemaine semaine={profil.semaine} />}
           <div className="stats-grille">
             {grilleStats(profil).map(([valeur, libelle]) => (
               <div key={libelle} className="stat">
@@ -564,6 +569,26 @@ export function FicheJoueur(props: { joueurId?: string; code?: string; statut?: 
         </>
       )}
     </Fenetre>
+  );
+}
+
+/** « Classement de la semaine : 2e · 156 pts », avec la couronne pour les 3 premiers. */
+function LigneSemaine({ semaine, moi }: { semaine: { rang: number; score: number } | null; moi?: boolean }) {
+  if (!semaine) {
+    if (!moi) return null;
+    return (
+      <p className="ligne-semaine vide">
+        {tr('Pas encore classé cette semaine : termine une partie avec au moins 2 joueurs humains.', 'Not ranked this week yet: finish a game with at least 2 human players.')}
+      </p>
+    );
+  }
+  return (
+    <p className={`ligne-semaine ${semaine.rang <= 3 ? `podium rang-${semaine.rang}` : ''}`}>
+      <CouronneRang rang={semaine.rang} />
+      <span>
+        {tr('Classement de la semaine :', 'Weekly ranking:')} <strong>{rangTexte(semaine.rang)}</strong> · {semaine.score} pts
+      </span>
+    </p>
   );
 }
 
@@ -626,6 +651,16 @@ const TEXTE_STATUT: Record<StatutAmi, string> = EN
 /** Ami qu'on peut inviter maintenant : en ligne, ou hors ligne avec les notifications activées. */
 const invitable = (a: AmiVue) => a.statut === 'en_ligne' || (a.statut === 'hors_ligne' && !!a.notifiable);
 
+/** Petit œil dessiné (bouton « Regarder »). */
+export function IconeOeil({ className }: { className?: string }) {
+  return (
+    <svg className={`icone-oeil ${className ?? ''}`} viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+      <path d="M12 5C6.5 5 2.7 9.2 1.5 12c1.2 2.8 5 7 10.5 7s9.3-4.2 10.5-7C21.3 9.2 17.5 5 12 5Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3.6" fill="currentColor" />
+    </svg>
+  );
+}
+
 function LigneAmi({ ami, onVoir, children }: { ami: AmiVue; onVoir?: () => void; children?: React.ReactNode }) {
   return (
     <li className={`ligne-ami statut-${ami.statut}`}>
@@ -636,7 +671,7 @@ function LigneAmi({ ami, onVoir, children }: { ami: AmiVue; onVoir?: () => void;
         </span>
         <span className="ligne-ami-texte">
           <strong>
-            {ami.nom} <BadgeNiveau niveau={ami.niveau} />
+            {ami.nom} <CouronneRang rang={ami.couronne} /> <BadgeNiveau niveau={ami.niveau} />
           </strong>
           <small>
             {TEXTE_STATUT[ami.statut]}
@@ -655,9 +690,20 @@ export function FenetreAmis(props: {
   appel: Appel;
   recharger: () => void;
   inviter: (code: string) => void;
+  /** Regarder en direct un ami qui joue (seulement depuis l'accueil). */
+  regarder?: (code: string) => Promise<boolean>;
   onFermer: () => void;
 }) {
-  const { liste, appel, recharger, inviter } = props;
+  const { liste, appel, recharger, inviter, regarder } = props;
+  const [regardEnCours, setRegardEnCours] = useState<string | null>(null);
+  const lancerRegard = async (a: AmiVue) => {
+    if (!regarder || regardEnCours) return;
+    setRegardEnCours(a.code);
+    const ok = await regarder(a.code);
+    setRegardEnCours(null);
+    if (ok) props.onFermer();
+    else recharger();
+  };
   const [code, setCode] = useState('');
   const [copie, setCopie] = useState(false);
   const [aRetirer, setARetirer] = useState<string | null>(null);
@@ -762,6 +808,18 @@ export function FenetreAmis(props: {
                       </>
                     ) : (
                       <>
+                        {regarder && a.regardable ? (
+                          <button
+                            type="button"
+                            className="petit principal bouton-regarder"
+                            disabled={regardEnCours !== null}
+                            title={tr(`Regarder la partie de ${a.nom} en direct`, `Watch ${a.nom}’s game live`)}
+                            onClick={() => void lancerRegard(a)}
+                          >
+                            <IconeOeil />
+                            {tr('Regarder', 'Watch')}
+                          </button>
+                        ) : (
                         <button
                           type="button"
                           className="petit principal bouton-inviter"
@@ -778,6 +836,7 @@ export function FenetreAmis(props: {
                           <IconeImage nom="invitation" repli="✉️" className="icone-mini" />
                           {tr('Inviter', 'Invite')}
                         </button>
+                        )}
                         <button type="button" className="petit fermer-ami" aria-label={tr(`Retirer ${a.nom} de mes amis`, `Remove ${a.nom} from my friends`)} onClick={() => setARetirer(a.code)}>
                           ×
                         </button>
@@ -807,6 +866,11 @@ export function FenetreAmis(props: {
               'Touche un ami pour voir son profil, même s’il est hors ligne. « Inviter » ouvre une partie privée si tu n’en as pas encore, puis envoie l’invitation à ton ami : dans le jeu s’il est en ligne, par notification s’il est hors ligne et les a activées (🔔).',
               '“Invite” opens a private game if you don’t have one yet, then sends the invitation: in the game if your friend is online, or by notification if they are offline and have turned notifications on (🔔). Tap a friend to see their profile, even offline.',
             )}
+            {regarder &&
+              tr(
+                ' Quand un ami est en pleine partie, « Regarder » te place à côté de lui pour suivre la partie en direct : tu vois la table comme tout le monde, jamais les cartes en main.',
+                ' When a friend is in the middle of a game, “Watch” lets you follow it live from their seat: you see the table like everyone else, never the cards in hand.',
+              )}
           </p>
         </>
       )}

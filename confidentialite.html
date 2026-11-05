@@ -84,7 +84,7 @@
       <header>
         <img src="/cartes/logo.webp" alt="Le Dernier Baron" width="900" height="450" />
         <h1>Confidentialité et mentions légales</h1>
-        <p class="maj">Dernière mise à jour : 24 octobre 2026</p>
+        <p class="maj">Dernière mise à jour : 5 novembre 2026</p>
       </header>
 
       <div class="resume">
@@ -132,6 +132,7 @@
           <li><strong>Profil de jeu :</strong> ton pseudo, ton code ami, ton personnage et ton tapis préférés, la langue du jeu, ta date d’inscription.</li>
           <li><strong>Progression :</strong> parties jouées et quittées, victoires, nuits gagnées, annonces réussies, meilleur score, expérience et niveau, et l’historique de tes dernières parties (date, nombre de joueurs, pseudos des adversaires, score, classement).</li>
           <li><strong>Amis :</strong> ta liste d’amis et les demandes d’ami envoyées ou reçues.</li>
+          <li><strong>Classement de la semaine :</strong> ton meilleur score de la semaine dans les parties qui comptent (au moins 2 joueurs humains), avec ton pseudo, ton personnage, ton niveau et la date de ce score.</li>
           <li><strong>Notifications (si tu les actives) :</strong> l’adresse d’abonnement que ton navigateur nous donne pour t’envoyer une notification quand un ami t’invite.</li>
         </ul>
         <h3>Si un joueur est signalé</h3>
@@ -171,9 +172,19 @@
           <strong>Les autres joueurs</strong> voient seulement ton pseudo, ton personnage, ton niveau et tes statistiques de jeu.
           Ton adresse e-mail n’est jamais montrée à personne. Les signalements ne sont jamais montrés aux joueurs.
         </p>
+        <p>
+          <strong>Le classement de la semaine</strong> est public : tous les joueurs y voient le pseudo, le personnage, le niveau et
+          le meilleur score de la semaine des joueurs classés (un pseudo inapproprié y est remplacé par « Joueur »), et les 3 premiers
+          portent une couronne à côté de leur nom pendant les parties.
+        </p>
+        <p>
+          <strong>Tes amis peuvent regarder tes parties en direct.</strong> Ils voient alors la table comme tous les joueurs : les
+          cartes posées, les annonces une fois révélées, les scores et le chat, mais jamais les cartes que tu as en main. Les joueurs
+          de la table voient le pseudo de ceux qui regardent.
+        </p>
         <p><strong>Nos prestataires techniques</strong>, qui traitent les données uniquement pour notre compte :</p>
         <ul>
-          <li><strong>Google Firebase</strong> (Authentication et Cloud Firestore), fourni par Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irlande : comptes, sauvegarde de la progression et signalements.</li>
+          <li><strong>Google Firebase</strong> (Authentication et Cloud Firestore), fourni par Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irlande : comptes, sauvegarde de la progression, classement de la semaine et signalements.</li>
           <li><strong>Render</strong>, Render Services, Inc., aux États-Unis : hébergement du jeu.</li>
           <li><strong>Le service de notification de ton navigateur</strong> (Apple, Google ou Mozilla selon ton appareil), seulement si tu actives les notifications : il transmet l’invitation jusqu’à ton appareil.</li>
         </ul>
@@ -190,6 +201,7 @@
         <ul>
           <li><strong>Compte et progression :</strong> tant que ton compte existe. Quand tu le supprimes, tout est effacé tout de suite, et tu disparais de la liste d’amis des autres joueurs.</li>
           <li><strong>Notifications :</strong> jusqu’à ce que tu les désactives, que tu supprimes ton compte ou que ton navigateur nous indique que l’abonnement n’est plus valable.</li>
+          <li><strong>Classement de la semaine :</strong> 8 semaines, puis il est supprimé automatiquement. Tu en disparais aussi tout de suite si tu supprimes ton compte.</li>
           <li><strong>Signalements :</strong> 6 mois, puis ils sont supprimés automatiquement.</li>
           <li><strong>Partie, chat et réactions :</strong> seulement le temps de la partie, dans la mémoire du serveur.</li>
           <li><strong>Si le jeu s’arrête,</strong> toutes les données des comptes sont supprimées.</li>
@@ -260,7 +272,7 @@
       <header>
         <img src="/cartes/logo.webp" alt="Le Dernier Baron" width="900" height="450" />
         <h1>Privacy and legal notice</h1>
-        <p class="maj">Last updated: 24 October 2026</p>
+        <p class="maj">Last updated: 5 November 2026</p>
       </header>
 
       <div class="resume">
@@ -307,6 +319,7 @@
           <li><strong>Game profile:</strong> your nickname, friend code, favourite character and felt, game language and sign-up date.</li>
           <li><strong>Progress:</strong> games played and left, wins, nights won, bids made, best score, experience and level, and the history of your latest games (date, number of players, opponents’ nicknames, score, ranking).</li>
           <li><strong>Friends:</strong> your friends list and friend requests sent or received.</li>
+          <li><strong>Weekly ranking:</strong> your best score of the week in games that count (at least 2 human players), with your nickname, character, level and the date of that score.</li>
           <li><strong>Notifications (if you turn them on):</strong> the subscription address your browser gives us so we can notify you when a friend invites you.</li>
         </ul>
         <h3>If a player is reported</h3>
@@ -345,9 +358,19 @@
           <strong>Other players</strong> only see your nickname, character, level and game statistics. Your e-mail address is never
           shown to anyone. Reports are never shown to players.
         </p>
+        <p>
+          <strong>The weekly ranking</strong> is public: every player can see the nickname, character, level and best score of the
+          week of ranked players (an inappropriate nickname is replaced with “Player”), and the top 3 wear a crown next to their name
+          during games.
+        </p>
+        <p>
+          <strong>Your friends can watch your games live.</strong> They then see the table like every player does: the cards played,
+          the bids once revealed, the scores and the chat, but never the cards in your hand. Players at the table see the nicknames
+          of those watching.
+        </p>
         <p><strong>Our technical providers</strong>, who process data only on our behalf:</p>
         <ul>
-          <li><strong>Google Firebase</strong> (Authentication and Cloud Firestore), provided by Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland: accounts, saved progress and reports.</li>
+          <li><strong>Google Firebase</strong> (Authentication and Cloud Firestore), provided by Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland: accounts, saved progress, weekly ranking and reports.</li>
           <li><strong>Render</strong>, Render Services, Inc., in the United States: game hosting.</li>
           <li><strong>Your browser’s notification service</strong> (Apple, Google or Mozilla depending on your device), only if you turn notifications on: it delivers the invitation to your device.</li>
         </ul>
@@ -363,6 +386,7 @@
         <ul>
           <li><strong>Account and progress:</strong> as long as your account exists. When you delete it, everything is erased at once, and you disappear from other players’ friends lists.</li>
           <li><strong>Notifications:</strong> until you turn them off, delete your account, or your browser tells us the subscription is no longer valid.</li>
+          <li><strong>Weekly ranking:</strong> 8 weeks, then it is deleted automatically. You also disappear from it at once if you delete your account.</li>
           <li><strong>Reports:</strong> 6 months, then they are deleted automatically.</li>
           <li><strong>Game, chat and reactions:</strong> only for the duration of the game, in the server’s memory.</li>
           <li><strong>If the game shuts down,</strong> all account data is deleted.</li>

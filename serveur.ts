@@ -44,7 +44,8 @@ import type {
   StatutAmi,
   VueSalon,
 } from '../shared/types';
-import { vuePourJoueur } from '../shared/vue';
+import { vuePourJoueur, vueSpectateur } from '../shared/vue';
+import { creerClassement } from './classement';
 import { profilDe, relationEntre, type Identite, type ResultatDemande, type ServiceComptes, type StatsCompte } from './comptes';
 import type { ServiceNotifications } from './notifications';
 
@@ -95,7 +96,19 @@ interface Salon {
   signalements: Map<string, Set<string>>;
   /** Numéro de la partie jouée dans ce salon (change à chaque nouvelle partie ou revanche). */
   numeroPartie: number;
+  /** Amis qui regardent la partie en direct (par téléphone), chacun depuis la place de l'ami qu'il suit. */
+  spectateurs: Map<string, Spectateur>;
 }
+
+interface Spectateur {
+  nom: string;
+  uid: string;
+  /** Place suivie (celle de l'ami). */
+  joueurId: string;
+}
+
+/** Spectateurs au plus par table. */
+const MAX_SPECTATEURS = 10;
 
 /** Réglage « Vitesse des ordinateurs » : lente, normale ou rapide. */
 const VITESSES: Record<string, number> = { lente: 1.8, normale: 1, rapide: 0.55 };
@@ -122,6 +135,8 @@ export interface OptionsServeur {
   contact?: string | null;
   /** Temps laissé pour accepter la revanche (millisecondes, remplaçable pour les tests). */
   delaiRevanche?: number;
+  /** Heure du serveur pour le classement de la semaine (remplaçable pour les tests). */
+  horloge?: () => number;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -143,6 +158,21 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const io = new Server(http, { cors: { origin: '*' } });
   const salons = new Map<string, Salon>();
   const socketsVersJoueur = new Map<string, { code: string; joueurId: string }>();
+  /** Téléphones qui regardent une partie : code du salon regardé. */
+  const spectateursParSocket = new Map<string, string>();
+  // Classement de la semaine (meilleurs scores) : seulement avec les comptes joueurs.
+  const classement = comptes ? creerClassement(comptes.classements, options.horloge ?? Date.now) : null;
+  if (classement) {
+    void classement
+      .charger()
+      .then(() => diffuserEnLigne())
+      .catch((e) => console.error('Classement de la semaine illisible :', e));
+  }
+  /** Couronne d'un compte (pour l'ajouter à son résumé). */
+  const couronne = (uid: string | null | undefined) => {
+    const r = classement?.couronneDe(uid);
+    return r ? { couronne: r } : {};
+  };
   // Amis : téléphones connectés par compte, et amis de chaque compte en ligne (pour prévenir de leur présence).
   const socketsParUid = new Map<string, Set<string>>();
   const amisParUid = new Map<string, Set<string>>();
@@ -228,6 +258,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       muets: new Set(),
       signalements: new Map(),
       numeroPartie: 0,
+      spectateurs: new Map(),
     };
     salons.set(salon.code, salon);
     return salon;
@@ -267,7 +298,20 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     if (salon.depart) clearTimeout(salon.depart.minuterie);
     if (salon.revanche) clearTimeout(salon.revanche.minuterie);
     salons.delete(salon.code);
+    // Les amis qui regardaient retournent à l'accueil.
+    for (const sid of [...salon.spectateurs.keys()]) retirerSpectateur(sid, 'fin');
     diffuserEnLigne();
+  }
+
+  /** Un spectateur arrête de regarder (il quitte, se déconnecte, ou la partie qu'il suivait n'existe plus). */
+  function retirerSpectateur(socketId: string, raison?: 'fin') {
+    const code = spectateursParSocket.get(socketId);
+    if (!code) return;
+    spectateursParSocket.delete(socketId);
+    const salon = salons.get(code);
+    salon?.spectateurs.delete(socketId);
+    if (raison) io.to(socketId).emit('sorti', { raison: 'regarder_fin' });
+    if (salon && salons.has(code)) diffuser(salon);
   }
 
   /** Partie publique : lancement automatique après l'attente, les places libres sont prises par des bots. */
@@ -300,9 +344,13 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const resumeEnLigne = () => ({
     joueurs: io.engine.clientsCount,
     enAttente: [...salons.values()].filter((s) => s.publique && !s.partie).reduce((n, s) => n + humains(s).length, 0),
+    // Bannière de l'accueil : le premier du classement de la semaine.
+    baron: classement?.meneur() ?? null,
   });
 
-  function vueSalon(salon: Salon, joueurId: string): VueSalon {
+  /** Ce que voit un joueur de la table (ou, avec spectateur, un ami qui regarde depuis la place de ce joueur). */
+  function vueSalon(salon: Salon, joueurId: string, spectateur?: Spectateur): VueSalon {
+    const suivi = spectateur ? salon.joueurs.find((j) => j.id === spectateur.joueurId) : undefined;
     return {
       code: salon.code,
       moi: joueurId,
@@ -315,13 +363,15 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         robot: j.robot,
         bot: j.bot,
         avatar: j.avatar,
-        compte: j.compte,
+        compte: j.compte ? { ...j.compte, ...couronne(j.uid) } : null,
         ...(j.abandon ? { abandon: true } : {}),
       })),
-      partie: salon.partie ? vuePourJoueur(salon.partie, joueurId) : null,
+      partie: salon.partie ? (spectateur ? vueSpectateur(salon.partie, joueurId) : vuePourJoueur(salon.partie, joueurId)) : null,
       messages: salon.messages,
       revanche: salon.revanche ? { votants: [...salon.revanche.votes], finDans: Math.max(0, salon.revanche.fin - Date.now()) } : null,
-      ...(salon.muets.has(joueurId) ? { chatCoupe: true } : {}),
+      ...(!spectateur && salon.muets.has(joueurId) ? { chatCoupe: true } : {}),
+      ...(spectateur ? { spectateur: { ami: suivi?.nom ?? '?' } } : {}),
+      ...(salon.spectateurs.size ? { spectateurs: [...salon.spectateurs.values()].map((sp) => sp.nom) } : {}),
       tempsRestant: salon.echeance ? Math.max(0, salon.echeance.fin - Date.now()) : null,
       dureeTour,
       publique: salon.publique,
@@ -336,6 +386,20 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   function diffuser(salon: Salon) {
     salon.derniereActivite = Date.now();
     for (const j of salon.joueurs) if (j.socketId) io.to(j.socketId).emit('salon', vueSalon(salon, j.id));
+    for (const [sid, sp] of salon.spectateurs) {
+      // L'ami suivi a quitté la table (revanche sans lui) : le spectateur retourne à l'accueil.
+      if (!salon.joueurs.some((j) => j.id === sp.joueurId)) {
+        salon.spectateurs.delete(sid);
+        spectateursParSocket.delete(sid);
+        io.to(sid).emit('sorti', { raison: 'regarder_fin' });
+        continue;
+      }
+      io.to(sid).emit('salon', vueSalon(salon, sp.joueurId, sp));
+    }
+  }
+  /** Toutes les tables (couronnes du classement changées, nouvelle semaine). */
+  function diffuserTout() {
+    for (const salon of salons.values()) if (salon.joueurs.some((j) => j.socketId) || salon.spectateurs.size) diffuser(salon);
   }
 
   function appliquer(salon: Salon, action: Action): Reponse {
@@ -357,6 +421,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     compteurReactions += 1;
     const reaction: Reaction = { n: compteurReactions, joueurId, emoji };
     for (const j of salon.joueurs) if (j.socketId) io.to(j.socketId).emit('reaction', reaction);
+    for (const sid of salon.spectateurs.keys()) io.to(sid).emit('reaction', reaction);
   }
   /** De temps en temps, un joueur ordinateur réagit au pli qui vient de se terminer, comme le ferait un humain. */
   function reactionsDesBots(salon: Salon) {
@@ -376,6 +441,20 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     }
     if (pli.cartes.some((c) => speciale(c) === 'baron') && pli.cartes.some((c) => speciale(c) === 'homme_de_main')) plus(pli.gagnantId, '🔥', 0.6, 600);
     else plus(pli.gagnantId, Math.random() < 0.5 ? '🔥' : '👍', 0.12, 700);
+  }
+
+  /** La partie en cours d'un compte (jamais le tutoriel), pour la regarder en direct. */
+  /** La partie que joue un ami (pas une partie qu'il a quittée, ni une place reprise par l'ordinateur), pour la regarder. */
+  function partieEnCoursDe(uid: string): { salon: Salon; joueur: JoueurSalon } | null {
+    let repli: { salon: Salon; joueur: JoueurSalon } | null = null;
+    for (const salon of salons.values()) {
+      if (!salon.partie || salon.partie.phase === 'FIN_DE_PARTIE' || salon.tutoriel) continue;
+      const joueur = salon.joueurs.find((j) => j.uid === uid && !j.bot && !j.abandon && !j.robot);
+      if (!joueur) continue;
+      if (joueur.socketId) return { salon, joueur };
+      repli ??= { salon, joueur }; // déconnecté depuis quelques secondes : il va sans doute revenir
+    }
+    return repli;
   }
 
   function statutDe(uid: string): StatutAmi {
@@ -415,6 +494,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         statut: statutDe(u),
         avecMoi: !!salon?.joueurs.some((j) => j.uid === u),
         notifiable: !!notifications && st.push.length > 0,
+        ...couronne(u),
+        ...(!salon?.joueurs.some((j) => j.uid === u) && partieEnCoursDe(u) ? { regardable: true } : {}),
       };
     };
     const rang: Record<StatutAmi, number> = { en_ligne: 0, en_partie: 1, hors_ligne: 2 };
@@ -440,6 +521,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     const niveau = niveauDepuisXp(stats?.xp ?? 0);
     return { niveau, titre: titreNiveau(niveau), victoires: stats?.victoires ?? 0 };
   };
+  /** Profil envoyé au joueur, avec sa place au classement de la semaine. */
+  const profilComplet = (id: Identite, stats: StatsCompte | null) => ({ ...profilDe(id, stats), semaine: classement?.rangDe(id.uid) ?? null });
 
   /** Range les victoires, nuits gagnées et l'expérience de chaque joueur connecté à son compte. */
   function enregistrerPartie(salon: Salon) {
@@ -455,6 +538,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     }
     const avecCompte = salon.joueurs.filter((j) => j.uid && !j.bot);
     const bilans: Record<string, BilanCompte> = {};
+    let podiumChange = false;
     salon.enregistrement = { etat: avecCompte.length ? 'en_cours' : 'fait', bilans };
     if (!avecCompte.length) return;
     const date = Date.now();
@@ -488,6 +572,16 @@ export function demarrerServeur(options: OptionsServeur = {}) {
             ...(r.abandon ? { abandon: true } : {}),
           };
           j.compte = resumeCompte(stats);
+          // Classement de la semaine : le score compte s'il bat son meilleur score de la semaine (pas en cas d'abandon).
+          if (classement && !r.abandon) {
+            const note = await classement
+              .noter(j.uid, { nom: stats.nom || j.nom, avatar: j.avatar, niveau, score: r.score })
+              .catch((e) => {
+                console.error(`Classement non enregistré pour ${j.nom} :`, e);
+                return { ameliore: false, podiumChange: false };
+              });
+            if (note.podiumChange) podiumChange = true;
+          }
           return true;
         } catch (e) {
           console.error(`Victoires non enregistrées pour ${j.nom} :`, e);
@@ -496,6 +590,11 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       }),
     )
       .then((reussites) => {
+        // Nouveau podium de la semaine : les couronnes changent sur toutes les tables, et la bannière de l'accueil.
+        if (podiumChange) {
+          diffuserTout();
+          diffuserEnLigne();
+        }
         if (salon.partie !== p) return; // une nouvelle partie a déjà commencé
         salon.enregistrement = { etat: reussites.every(Boolean) ? 'fait' : 'erreur', bilans };
         diffuser(salon);
@@ -856,7 +955,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         lierCompte(c.salon, c.joueur);
         diffuser(c.salon);
       }
-      repondre(rappel, { ok: true, profil: profilDe(id, stats) });
+      repondre(rappel, { ok: true, profil: profilComplet(id, stats) });
     });
 
     socket.on('profil', async (_data: unknown, rappel?: Rappel) => {
@@ -865,7 +964,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       try {
         const stats = await comptes.lire(id.uid);
         resume = resumeCompte(stats);
-        repondre(rappel, { ok: true, profil: profilDe(id, stats) });
+        repondre(rappel, { ok: true, profil: profilComplet(id, stats) });
       } catch (e) {
         console.error('Lecture du compte impossible :', e);
         repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment.', 'Your profile is unavailable right now.') });
@@ -890,7 +989,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         const stats = await comptes.choisirTapis(id.uid, data.tapis);
         if (!stats) return repondre(rappel, { ok: false, erreur: L('Ce tapis se débloque plus tard : continue de jouer pour monter de niveau.', 'This felt unlocks later: keep playing to level up.') });
         resume = resumeCompte(stats);
-        repondre(rappel, { ok: true, profil: profilDe(id, stats) });
+        repondre(rappel, { ok: true, profil: profilComplet(id, stats) });
       } catch (e) {
         console.error('Choix du tapis impossible :', e);
         repondre(rappel, { ok: false, erreur: L('Le tapis n’a pas pu être changé, réessaie plus tard.', 'The felt could not be changed, try again later.') });
@@ -902,10 +1001,12 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const uid = identite.uid;
       try {
         await comptes.supprimer(uid);
+        await classement?.retirer(uid);
       } catch (e) {
         console.error('Suppression du compte impossible :', e);
         return repondre(rappel, { ok: false, erreur: L('La suppression a échoué, réessaie plus tard.', 'Deletion failed, try again later.') });
       }
+      diffuserEnLigne();
       const amisAvant = amisParUid.get(uid) ?? new Set<string>();
       oublierPresence();
       identite = null;
@@ -927,6 +1028,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     /** Quitte le salon actuel : avant la partie la place est libérée ; pendant une partie publique, l'ordinateur prend le relais. */
     function quitterSalonActuel() {
+      retirerSpectateur(socket.id);
       const c = contexte();
       if (!c) return;
       const { salon, joueur } = c;
@@ -957,7 +1059,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     }
 
     socket.on('quitter', (_data: unknown, rappel?: Rappel) => {
-      quitterSalonActuel();
+      quitterSalonActuel(); // ou arrête de regarder la partie d'un ami
       repondre(rappel, { ok: true });
     });
 
@@ -999,9 +1101,10 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     /** Fiche d'un joueur de la table : statistiques de son compte, ou niveau et style d'un bot. */
     socket.on('profil_joueur', async (data: { joueurId?: string } = {}, rappel?: Rappel) => {
-      const c = contexte();
-      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
-      const j = c.salon.joueurs.find((x) => x.id === data?.joueurId);
+      // Joueur de la table, ou ami qui regarde la partie.
+      const salonVu = contexte()?.salon ?? salons.get(spectateursParSocket.get(socket.id) ?? '');
+      if (!salonVu) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
+      const j = salonVu.joueurs.find((x) => x.id === data?.joueurId);
       if (!j) return repondre(rappel, { ok: false, erreur: L('Joueur introuvable.', 'Player not found.') });
       let profil: ProfilPublic;
       if (j.bot) profil = { type: 'bot', nom: j.nom, avatar: j.avatar, niveau: j.bot.niveau, style: j.bot.style };
@@ -1023,6 +1126,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
             annoncesReussies: stats?.annoncesReussies ?? 0,
             meilleurScore: stats?.meilleurScore ?? null,
             historique: (stats?.historique ?? []).slice(0, 5),
+            semaine: classement?.rangDe(j.uid) ?? null,
           };
         } catch (e) {
           console.error('Lecture du profil impossible :', e);
@@ -1193,8 +1297,56 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     socket.on('disconnect', () => {
       oublierPresence();
+      retirerSpectateur(socket.id);
       detacher(socket.id);
       diffuserEnLigne();
+    });
+
+    // ---------- Classement de la semaine ----------
+    socket.on('classement', async (_data: unknown, rappel?: Rappel) => {
+      if (!classement) return repondre(rappel, { ok: false, erreur: L('Le classement demande les comptes joueurs, qui ne sont pas activés sur ce serveur.', 'The ranking needs player accounts, which are not enabled on this server.') });
+      try {
+        repondre(rappel, { ok: true, classement: await classement.vue(identite?.uid ?? null) });
+      } catch (e) {
+        console.error('Classement indisponible :', e);
+        repondre(rappel, { ok: false, erreur: L('Classement indisponible pour le moment.', 'Ranking unavailable right now.') });
+      }
+    });
+
+    // ---------- Regarder un ami jouer en direct ----------
+    let dernierRegard = 0;
+    socket.on('regarder', async (data: { code?: string } = {}, rappel?: Rappel) => {
+      const a = avecCompte(rappel);
+      if (!a) return;
+      const maintenant = Date.now();
+      if (maintenant - dernierRegard < 1000) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      dernierRegard = maintenant;
+      const ami = await uidDuCode(data?.code, rappel);
+      if (!ami) return;
+      const moi = await a.comptes.lire(a.uid).catch(() => null);
+      if (!(amisParUid.get(a.uid)?.has(ami) || moi?.amis.includes(ami))) {
+        return repondre(rappel, { ok: false, erreur: L('Ce joueur n’est pas dans tes amis.', 'This player is not in your friends.') });
+      }
+      const trouve = partieEnCoursDe(ami);
+      if (!trouve) return repondre(rappel, { ok: false, erreur: L('Ton ami n’est pas en train de jouer.', 'Your friend is not playing right now.') });
+      const c = contexte();
+      if (c?.salon === trouve.salon) return repondre(rappel, { ok: false, erreur: L('Tu joues déjà à cette table.', 'You are already playing at this table.') });
+      if (c?.salon.partie && c.salon.partie.phase !== 'FIN_DE_PARTIE') {
+        return repondre(rappel, { ok: false, erreur: L('Termine d’abord ta partie pour regarder celle de ton ami.', 'Finish your game first to watch your friend’s.') });
+      }
+      if (trouve.salon.spectateurs.size >= MAX_SPECTATEURS && !trouve.salon.spectateurs.has(socket.id)) {
+        return repondre(rappel, { ok: false, erreur: L('Il y a déjà beaucoup de spectateurs à cette table.', 'There are already many spectators at this table.') });
+      }
+      quitterSalonActuel(); // salon d'attente quitté, et la partie regardée jusque-là
+      const brut = moi?.nom || identite?.nom || L('Joueur', 'Player');
+      const nom = trouve.salon.publique && !pseudoAcceptable(brut) ? L('Joueur', 'Player') : brut.slice(0, 16);
+      trouve.salon.spectateurs.set(socket.id, { nom, uid: a.uid, joueurId: trouve.joueur.id });
+      spectateursParSocket.set(socket.id, trouve.salon.code);
+      if (trouve.salon.partie) {
+        trouve.salon.partie = ajouterAuJournal(trouve.salon.partie, `${nom} regarde la partie.`, `${nom} is watching the game.`);
+      }
+      repondre(rappel, { ok: true });
+      diffuser(trouve.salon);
     });
 
     // ---------- Amis ----------
@@ -1283,6 +1435,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
           annoncesReussies: stats.annoncesReussies,
           meilleurScore: stats.meilleurScore,
           historique: stats.historique.slice(0, 5),
+          semaine: classement?.rangDe(autre) ?? null,
         };
         repondre(rappel, { ok: true, profil });
       } catch (e) {
@@ -1299,7 +1452,9 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     socket.on('ajouter_ami_joueur', async (data: { joueurId?: string } = {}, rappel?: Rappel) => {
       if (!avecCompte(rappel)) return;
-      const j = contexte()?.salon.joueurs.find((x) => x.id === data?.joueurId);
+      // Aussi depuis la partie d'un ami que l'on regarde.
+      const salonVu = contexte()?.salon ?? salons.get(spectateursParSocket.get(socket.id) ?? '');
+      const j = salonVu?.joueurs.find((x) => x.id === data?.joueurId);
       if (!j?.uid) return repondre(rappel, { ok: false, erreur: L('Ce joueur n’a pas de compte.', 'This player has no account.') });
       await demander(j.uid, rappel);
     });
@@ -1415,14 +1570,22 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     });
   });
 
-  // Signalements de plus de 6 mois : supprimés au démarrage, puis chaque jour.
-  const purger = () => void comptes?.purgerSignalements().catch((e) => console.error('Ménage des signalements impossible :', e));
+  // Signalements de plus de 6 mois et classements de plus de 8 semaines : supprimés au démarrage, puis chaque jour.
+  const purger = () => {
+    void comptes?.purgerSignalements().catch((e) => console.error('Ménage des signalements impossible :', e));
+    void classement?.purger().catch((e) => console.error('Ménage des classements impossible :', e));
+  };
   if (comptes) purger();
   const purgeQuotidienne = setInterval(purger, 24 * 60 * 60 * 1000);
   purgeQuotidienne.unref();
 
   // Ménage : salons privés abandonnés depuis 3 heures, parties publiques sans aucun humain connecté depuis 2 minutes.
   const menage = setInterval(() => {
+    // Lundi 0 h (heure de Paris) : nouvelle semaine, les couronnes sont remises en jeu.
+    if (classement?.verifierSemaine()) {
+      diffuserTout();
+      diffuserEnLigne();
+    }
     const maintenant = Date.now();
     for (const s of [...salons.values()]) {
       const humainConnecte = s.joueurs.some((j) => j.socketId);

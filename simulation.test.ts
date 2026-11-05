@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
 import { actionRobot, NIVEAUX_BOT, STYLES_BOT, type ProfilBot } from '../shared/robot';
 import { suivant } from '../shared/rng';
-import { vuePourJoueur } from '../shared/vue';
+import { vuePourJoueur, vueSpectateur } from '../shared/vue';
 import type { EtatPartie } from '../shared/types';
 
 /** Joue des parties complètes entre robots et vérifie les invariants à chaque étape. */
 describe('Parties simulées', () => {
-  it('40 parties de 3 à 6 joueurs vont au bout, sans fuite d’information', () => {
+  it('40 parties de 3 à 6 joueurs vont au bout, sans fuite d’information (ni pour les joueurs ni pour les spectateurs)', () => {
     for (let g = 0; g < 40; g++) {
       const nb = 3 + (g % 4);
       const joueurs = Array.from({ length: nb }, (_, i) => ({ id: `j${i}`, nom: `Joueur ${i}` }));
@@ -33,6 +33,17 @@ describe('Parties simulées', () => {
             if (!e.annoncesRevelees) expect(vue.joueurs.find((x) => x.id === k.id)?.annonce).toBeNull();
           }
           if (e.phase === 'ALLIANCE') expect(texte).not.toContain('choixAlliance');
+          // Un ami qui regarde depuis cette place ne voit aucune main, pas même celle de son ami, ni rien de secret.
+          const spect = vueSpectateur(e, j.id);
+          const texteSpect = JSON.stringify(spect);
+          for (const k of joueurs) for (const c of e.mains[k.id]) expect(texteSpect.includes(`"${c}"`)).toBe(false);
+          expect(spect.main).toEqual([]);
+          expect(spect.maCarteTrahison).toBeNull();
+          if (!e.annoncesRevelees) {
+            expect(spect.monAnnonce).toBeNull();
+            expect(spect.joueurs.every((x) => x.annonce === null)).toBe(true);
+          }
+          if (!spect.choixAllies) expect(spect.monAllie).toBeNull();
         }
         if (e.phase === 'FIN_DE_PLI') {
           const r = appliquerAction(e, { type: 'SUITE' });

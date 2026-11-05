@@ -191,7 +191,7 @@ button.pastille { padding: 6px 10px; font-size: 14px; min-height: 40px; }
 .voile { position: fixed; inset: 0; z-index: 20; background: rgba(8, 5, 3, 0.78); display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
 .fenetre { width: min(100%, 460px); max-height: 100%; overflow: auto; background: var(--nuit-2); border: 1px solid var(--or); border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); }
 .fenetre.large { width: min(100%, 640px); }
-.fenetre-tete { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 6px; position: sticky; top: 0; background: var(--nuit-2); }
+.fenetre-tete { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 6px; position: sticky; top: 0; z-index: 5; background: var(--nuit-2); }
 .fenetre-tete h2 { font-size: 24px; color: var(--or); }
 .fenetre-corps { padding: 6px 16px 18px; display: grid; gap: 12px; }
 .fermer { background: none; border: none; font-size: 28px; line-height: 1; min-height: 40px; padding: 0 6px; }
@@ -1244,3 +1244,101 @@ button.mini-carte img { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.55), 0 4px 1
 .plateau.zoome .avis-zoom { left: 44px; top: 8px; }
 .avis-zoom { position: absolute; left: 30px; top: 0;  z-index: 21; padding: 5px 10px; border-radius: 99px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.94); color: var(--creme); font-size: 12.5px; white-space: nowrap; pointer-events: none; animation: avis-zoom 1.6s ease both; }
 @keyframes avis-zoom { 0% { opacity: 0; translate: -6px 0; } 12% { opacity: 1; translate: 0 0; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ----- Classement de la semaine : couronnes d'or, d'argent et de bronze à côté du nom des 3 premiers ----- */
+.couronne-rang { display: inline-block; flex: none; width: auto; height: 1.05em; margin: 0 0.12em; vertical-align: -0.16em; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65)); }
+.siege-nom .couronne-rang { height: 13px; margin: 0; }
+.etiquette-nom .couronne-rang { height: 12px; margin: 0 0 0 3px; vertical-align: -1px; }
+.moi-nom .couronne-rang { height: 17px; margin: 0; }
+.moi-compact-nom .couronne-rang { height: 15px; margin: 0 -2px; }
+.lobby-nom .couronne-rang { height: 16px; margin-left: 5px; }
+.fin-nom .couronne-rang { height: 16px; margin: 0; }
+.fiche-tete strong .couronne-rang { height: 20px; margin-left: 6px; vertical-align: -2px; }
+.ligne-ami-texte strong .couronne-rang { height: 15px; margin: 0; }
+.couronne-hote { color: var(--or-vif); font-size: 12px; line-height: 1; }
+@keyframes couronne-flotte { 50% { transform: translateY(-3px) rotate(-3deg); } }
+
+/* Bannière de l'accueil : le Baron de la semaine */
+.banniere-baron { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; width: min(100%, 460px); min-height: 0; margin: 0 auto; padding: 9px 12px 9px 10px; border-radius: 14px; border: 1px solid var(--or-vif); background: radial-gradient(120% 160% at 0% 50%, rgba(231, 194, 122, 0.24), rgba(231, 194, 122, 0) 55%), linear-gradient(90deg, #2e1b0e, #1b120c); box-shadow: 0 0 18px rgba(231, 194, 122, 0.22), inset 0 1px 0 rgba(255, 240, 200, 0.08); color: var(--creme); text-align: left; animation: briller 3.2s ease-in-out infinite; }
+.banniere-baron:hover:not(:disabled) { border-color: #f5dfa8; }
+.banniere-couronne { width: 58px; height: auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6)); animation: couronne-flotte 3.2s ease-in-out infinite; }
+.banniere-texte { display: grid; gap: 4px; min-width: 0; }
+.banniere-texte small { font-family: var(--titre); font-size: 14px; line-height: 1.1; color: var(--or-vif); letter-spacing: 0.04em; }
+.banniere-joueur { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.banniere-joueur img { width: 30px; height: 30px; flex: none; border-radius: 50%; border: 1px solid var(--or); object-fit: cover; }
+.banniere-joueur strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
+.banniere-score { flex: none; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--filet); background: rgba(0, 0, 0, 0.35); color: var(--or-vif); font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.banniere-appel { font-size: 14.5px; font-weight: 600; line-height: 1.3; }
+.banniere-fleche { font-size: 28px; line-height: 1; color: var(--or); }
+.banniere-baron.vide { animation: none; border-color: rgba(231, 194, 122, 0.55); box-shadow: none; }
+.banniere-baron.vide .banniere-couronne { animation: none; opacity: 0.8; }
+
+/* Entrée « Classement » du menu de l'accueil (toute la largeur) */
+.menu-entree.menu-entree-large { grid-column: 1 / -1; grid-template-columns: auto auto; justify-content: center; align-items: center; gap: 12px; padding: 10px 12px; border-color: rgba(231, 194, 122, 0.55); background: linear-gradient(180deg, #36241a, var(--nuit-3)); }
+.menu-icone.menu-icone-couronne { width: 58px; height: 42px; }
+
+/* Fenêtre du classement */
+.semaine-dates { text-align: center; font-size: 13px; color: var(--creme-doux); }
+.semaine-dates strong { color: var(--or-vif); font-weight: 600; }
+.semaine-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; margin-top: 22px; }
+.semaine-podium.n-1 { grid-template-columns: minmax(0, 210px); justify-content: center; }
+.semaine-podium.n-2 { grid-template-columns: repeat(2, minmax(0, 210px)); justify-content: center; }
+.semaine-place { position: relative; display: grid; justify-items: center; gap: 3px; min-width: 0; padding: 28px 6px 10px; border-radius: 12px 12px 8px 8px; border: 1px solid var(--filet); background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.25)); text-align: center; }
+.semaine-place.place-1 { padding-top: 40px; padding-bottom: 14px; border-color: var(--or-vif); background: linear-gradient(180deg, rgba(231, 194, 122, 0.22), rgba(0, 0, 0, 0.25)); box-shadow: 0 0 22px rgba(231, 194, 122, 0.25); }
+.semaine-place.place-2 { border-color: #a9adb6; }
+.semaine-place.place-3 { border-color: #a8704a; }
+.semaine-place.moi { outline: 2px solid var(--or); outline-offset: 2px; }
+.semaine-couronne { position: absolute; top: -19px; left: 50%; width: 56px; height: auto; translate: -50% 0; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6)); }
+.place-1 .semaine-couronne { top: -26px; width: 76px; animation: couronne-flotte 3.2s ease-in-out infinite; }
+.semaine-avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid var(--filet); }
+.place-1 .semaine-avatar { width: 64px; height: 64px; border-color: var(--or-vif); }
+.place-2 .semaine-avatar { border-color: #c9ccd3; }
+.place-3 .semaine-avatar { border-color: #c08356; }
+.semaine-place strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.semaine-place .semaine-score { font-family: var(--titre); font-size: clamp(16px, 4.6vw, 20px); line-height: 1.1; color: var(--or-vif); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.place-1 .semaine-score { font-size: clamp(18px, 5.3vw, 24px); }
+.semaine-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.semaine-liste li { display: grid; grid-template-columns: 28px auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--filet); background: var(--nuit-3); font-variant-numeric: tabular-nums; }
+.semaine-liste li.moi { border-color: var(--or); background: #33221a; }
+.semaine-rang { font-family: var(--titre); font-size: 17px; color: var(--or); text-align: center; }
+.semaine-liste .mini-avatar { margin-right: 0; }
+.semaine-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.semaine-nom small { color: var(--creme-doux); font-size: 12px; }
+.semaine-liste .semaine-score { min-width: 40px; text-align: right; color: var(--or-vif); font-size: 15px; }
+.semaine-moi { padding: 8px 12px; border-radius: 10px; border: 1px dashed var(--or); text-align: center; font-size: 14px; }
+.semaine-moi strong { color: var(--or-vif); }
+.semaine-astuce { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--filet); background: rgba(231, 194, 122, 0.08); font-size: 13.5px; text-align: center; }
+.semaine-regles { font-size: 12.5px; line-height: 1.45; }
+.semaine-vide { display: grid; justify-items: center; gap: 8px; padding: 12px 8px 4px; text-align: center; }
+.semaine-vide-couronne { width: 96px; height: auto; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6)); animation: couronne-flotte 3.2s ease-in-out infinite; }
+
+/* Profil : la place au classement de la semaine */
+.ligne-semaine { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--filet); background: var(--nuit-3); font-size: 14px; }
+.ligne-semaine strong { color: var(--or-vif); }
+.ligne-semaine.podium { border-color: var(--or); background: linear-gradient(90deg, rgba(231, 194, 122, 0.16), rgba(0, 0, 0, 0)); }
+.ligne-semaine .couronne-rang { height: 22px; margin: 0; }
+.ligne-semaine.vide { color: var(--creme-doux); font-size: 13px; }
+
+/* ----- Regarder un ami jouer en direct ----- */
+.icone-oeil { flex: none; width: 18px; height: 18px; }
+button.bouton-regarder { display: inline-flex; align-items: center; gap: 6px; background: rgba(231, 194, 122, 0.14); border-color: var(--or-vif); color: var(--or-vif); font-weight: 700; }
+button.bouton-regarder:hover:not(:disabled) { background: rgba(231, 194, 122, 0.24); }
+/* Le spectateur : un bandeau à la place des consignes, le dos des cartes de son ami */
+.ma-zone .consigne.bandeau-spectateur { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; border-color: rgba(231, 194, 122, 0.6); background: linear-gradient(90deg, rgba(231, 194, 122, 0.15), rgba(33, 23, 17, 0.92) 65%); }
+.bandeau-spectateur p { display: flex; align-items: flex-start; gap: 8px; }
+.bandeau-spectateur .icone-oeil { margin-top: 1px; color: var(--or-vif); }
+.bandeau-spectateur strong { color: var(--or-vif); }
+.bandeau-spectateur button { flex: none; }
+.eventail-dos img { display: block; width: var(--lc); aspect-ratio: 2 / 3; border-radius: 7px; object-fit: cover; box-shadow: -3px 4px 10px rgba(0, 0, 0, 0.6); pointer-events: none; user-select: none; -webkit-user-select: none; }
+.oeil-compact { width: 17px; height: 17px; color: var(--or-vif); }
+.chat-lecture { padding: 10px 12px; border-top: 1px solid var(--filet); font-size: 12.5px; text-align: center; }
+/* Les joueurs voient qui les regarde : une petite pastille « œil » au coin du tapis */
+.spectateurs-pastille { position: absolute; right: calc(var(--cadre, 20px) * -0.75); bottom: calc(var(--cadre, 20px) * -0.75); z-index: 20; display: inline-flex; align-items: center; gap: 5px; min-height: 0; height: 30px; padding: 0 10px 0 8px; border-radius: 99px; border: 1px solid rgba(231, 194, 122, 0.6); background: rgba(22, 16, 12, 0.86); color: var(--or-vif); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); }
+.spectateurs-pastille .icone-oeil { width: 16px; height: 16px; }
+.spectateurs-liste { position: absolute; right: calc(var(--cadre, 20px) * -0.5); bottom: calc(var(--cadre, 20px) * -0.75 + 36px); z-index: 21; max-width: min(80vw, 320px); padding: 6px 10px; border-radius: 10px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.95); color: var(--creme); font-size: 12.5px; line-height: 1.35; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); }
+.spectateurs-liste strong { color: var(--or-vif); }
+.plateau.zoome .spectateurs-pastille { right: 4px; bottom: 6px; }
+.plateau.zoome .spectateurs-liste { right: 4px; bottom: 42px; }
+@media (prefers-reduced-motion: reduce) {
+  .banniere-baron, .banniere-couronne, .semaine-couronne, .semaine-vide-couronne { animation: none !important; }
+}

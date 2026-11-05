@@ -81,9 +81,23 @@ export function mouvementReduit(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
-/** Couronne dorée (carte gagnante du pli, podium). */
-export function Couronne({ className }: { className?: string }) {
-  return <img className={className} src="/cartes/couronne.webp" alt="" width={360} height={257} draggable={false} aria-hidden="true" />;
+const IMAGE_COURONNE: Record<1 | 2 | 3, string> = { 1: '/cartes/couronne.webp', 2: '/cartes/couronne-argent.webp', 3: '/cartes/couronne-bronze.webp' };
+
+/** Couronne d'or (carte gagnante du pli, podium), ou d'argent et de bronze (classement de la semaine). */
+export function Couronne({ className, rang = 1 }: { className?: string; rang?: 1 | 2 | 3 }) {
+  return <img className={className} src={IMAGE_COURONNE[rang]} alt="" width={360} height={257} draggable={false} aria-hidden="true" />;
+}
+
+const TITRE_COURONNE: Record<1 | 2 | 3, string> = {
+  1: tr('1er du classement de la semaine', '1st in this week’s ranking'),
+  2: tr('2e du classement de la semaine', '2nd in this week’s ranking'),
+  3: tr('3e du classement de la semaine', '3rd in this week’s ranking'),
+};
+
+/** Petite couronne à côté du nom des 3 premiers du classement de la semaine (or, argent, bronze). */
+export function CouronneRang({ rang, className }: { rang?: number | null; className?: string }) {
+  if (rang !== 1 && rang !== 2 && rang !== 3) return null;
+  return <img className={`couronne-rang rang-${rang} ${className ?? ''}`} src={IMAGE_COURONNE[rang]} alt={TITRE_COURONNE[rang]} title={TITRE_COURONNE[rang]} width={360} height={257} draggable={false} />;
 }
 
 /** Petite carte de butin : l'illustration et sa valeur bien lisible. */
@@ -393,8 +407,9 @@ export function Chat({ salon, appel, enLigne, cache, ouvrir, onNonLus }: { salon
           <div className="chat-messages">
             {tous.length === 0 && <p className="discret">{tr('Pas encore de message. Dis bonjour à la table !', 'No messages yet. Say hello to the table!')}</p>}
             {messages.map((m) => {
-              const moi = m.auteurId === salon.moi;
-              const peutAgir = !moi && humain(m.auteurId);
+              // Spectateur : il ne fait pas partie de la table, aucun message n'est le sien.
+              const moi = !salon.spectateur && m.auteurId === salon.moi;
+              const peutAgir = !moi && !salon.spectateur && humain(m.auteurId);
               return (
                 <div key={m.n} className={`chat-message ${moi ? 'moi' : ''}`}>
                   <p>
@@ -420,18 +435,22 @@ export function Chat({ salon, appel, enLigne, cache, ouvrir, onNonLus }: { salon
             {caches > 0 && <p className="discret chat-caches">{tr(`${caches} message${caches > 1 ? 's' : ''} masqué${caches > 1 ? 's' : ''} (chat coupé)`, `${caches} hidden message${caches > 1 ? 's' : ''} (muted)`)}</p>}
             <div ref={fin} />
           </div>
-          <form
-            className="chat-saisie"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void envoyer();
-            }}
-          >
-            <input id="chat-texte" value={texte} maxLength={200} placeholder={tr('Écris un message…', 'Write a message…')} autoComplete="off" onChange={(e) => setTexte(e.target.value)} />
-            <button type="submit" className="principal" disabled={!texte.trim()}>
-              {tr('Envoyer', 'Send')}
-            </button>
-          </form>
+          {salon.spectateur ? (
+            <p className="discret chat-lecture">{tr('Tu regardes la partie : tu peux lire la discussion, sans écrire.', 'You are watching: you can read the chat, but not write.')}</p>
+          ) : (
+            <form
+              className="chat-saisie"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void envoyer();
+              }}
+            >
+              <input id="chat-texte" value={texte} maxLength={200} placeholder={tr('Écris un message…', 'Write a message…')} autoComplete="off" onChange={(e) => setTexte(e.target.value)} />
+              <button type="submit" className="principal" disabled={!texte.trim()}>
+                {tr('Envoyer', 'Send')}
+              </button>
+            </form>
+          )}
         </div>
       )}
     </>

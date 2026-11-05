@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { estLangue, type Langue } from '../shared/langue';
 import { estTapis, niveauDepuisXp, tapisActif, tapisDebloque, TAPIS_PAR_DEFAUT, type IdTapis, type ResultatJoueur } from '../shared/niveaux';
 import type { EntreeHistorique, ProfilCompte } from '../shared/types';
+import { normaliserEntree, stockageClassementMemoire, type EntreeClassement, type StockageClassement } from './classement';
 
 export interface ConfigWeb {
   apiKey: string;
@@ -106,6 +107,8 @@ export interface Stockage {
   /** Signalements de joueurs : ajout, et suppression des plus anciens. */
   ajouterSignalement?(s: Signalement): Promise<void>;
   purgerSignalements?(avant: number): Promise<number>;
+  /** Classements de la semaine (collection « classements »). */
+  classements?: StockageClassement;
 }
 
 export type RelationAmi = 'ami' | 'demande_envoyee' | 'demande_recue' | 'aucune';
@@ -142,6 +145,8 @@ export interface ServiceComptes {
   signaler(s: Signalement): Promise<void>;
   /** Supprime les signalements de plus de 6 mois ; renvoie le nombre supprimé. */
   purgerSignalements(maintenant?: number): Promise<number>;
+  /** Classements de la semaine (meilleurs scores). */
+  classements: StockageClassement;
 }
 
 export const MAX_AMIS = 100;
@@ -302,6 +307,7 @@ export function creerServiceComptes(parties: {
   const parametresMemoire = new Map<string, unknown>();
   const signalementsMemoire: Signalement[] = [];
   return {
+    classements: stockage.classements ?? stockageClassementMemoire(),
     configWeb: parties.configWeb,
     emulateurAuth: parties.emulateurAuth ?? null,
     verifier: (jeton) => authentification.verifier(jeton),
@@ -444,12 +450,13 @@ export function creerServiceComptes(parties: {
   };
 }
 
-export function stockageMemoire(): Stockage & { donnees: Map<string, StatsCompte>; signalements: Signalement[] } {
+export function stockageMemoire(): Stockage & { donnees: Map<string, StatsCompte>; signalements: Signalement[]; classements: ReturnType<typeof stockageClassementMemoire> } {
   const donnees = new Map<string, StatsCompte>();
   const signalements: Signalement[] = [];
   return {
     donnees,
     signalements,
+    classements: stockageClassementMemoire(),
     ajouterSignalement: async (s) => {
       signalements.push(structuredClone(s));
     },
@@ -604,7 +611,7 @@ export async function comptesDepuisEnvironnement(env: NodeJS.ProcessEnv = proces
     let stockage: Stockage;
     if (env.COMPTES_STOCKAGE === 'memoire') stockage = stockageMemoire();
     else {
-      const { getFirestore } = await import('firebase-admin/firestore');
+      const { getFirestore, FieldPath, FieldValue } = await import('firebase-admin/firestore');
       const db = getFirestore(app);
       db.settings({ ignoreUndefinedProperties: true });
       const doc = (uid: string) => db.collection('comptes').doc(uid);
@@ -658,6 +665,41 @@ export async function comptesDepuisEnvironnement(env: NodeJS.ProcessEnv = proces
           vieux.docs.forEach((d) => lot.delete(d.ref));
           await lot.commit();
           return vieux.size;
+        },
+        // Un document par semaine : { debut, fin, scores: { uid: { nom, avatar, niveau, score, date } } }.
+        classements: {
+          lireClassement: async (cle) => {
+            const snap = await db.collection('classements').doc(cle).get();
+            if (!snap.exists) return null;
+            const scores = snap.data()?.scores;
+            if (!scores || typeof scores !== 'object') return {};
+            const res: Record<string, EntreeClassement> = {};
+            for (const [uid, brut] of Object.entries(scores as Record<string, unknown>)) {
+              const e = normaliserEntree(brut);
+              if (e) res[uid] = e;
+            }
+            return res;
+          },
+          noterClassement: async (semaine, uid, entree) => {
+            await db.collection('classements').doc(semaine.cle).set({ debut: semaine.debut, fin: semaine.fin, scores: { [uid]: entree } }, { merge: true });
+          },
+          retirerDuClassement: async (cles, uid) => {
+            for (const cle of cles) {
+              await db
+                .collection('classements')
+                .doc(cle)
+                .update(new FieldPath('scores', uid), FieldValue.delete())
+                .catch(() => undefined); // semaine sans document : rien à retirer
+            }
+          },
+          purgerClassements: async (avant) => {
+            const vieux = await db.collection('classements').where('debut', '<', avant).limit(50).get();
+            if (vieux.empty) return 0;
+            const lot = db.batch();
+            vieux.docs.forEach((d) => lot.delete(d.ref));
+            await lot.commit();
+            return vieux.size;
+          },
         },
       };
     }

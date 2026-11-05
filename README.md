@@ -32,6 +32,10 @@ Pendant le pli, le tapis s'agrandit et les boutons se rangent dans le menu ⋯ ;
 
 Le jeu est en français et en anglais : il suit la langue du téléphone, et le bouton 🌐 de l'accueil (ou Réglages → Langue) permet de changer. Les signalements de joueurs sont gardés 6 mois dans Firestore (collection `signalements`).
 
+**Classement de la semaine** (avec les comptes joueurs) : chaque joueur y garde son meilleur score de la semaine, dans les parties jouées jusqu'au bout avec au moins 2 joueurs humains. Il repart à zéro le lundi à 0 h (heure de Paris). Les 3 premiers portent la couronne d'or, d'argent ou de bronze à côté de leur nom, partout dans le jeu, et la bannière de l'accueil montre le premier (le gagnant de la semaine précédente tant que personne n'a encore joué). Les scores sont gardés 8 semaines dans Firestore (collection `classements`, créée toute seule).
+
+**Regarder un ami jouer** : dans la liste d'amis, le bouton « Regarder » apparaît quand un ami est en pleine partie (sauf le tutoriel). Le spectateur suit la partie depuis la place de son ami, sans jamais recevoir de carte en main ni les annonces avant leur révélation ; il lit le chat sans écrire. Les joueurs voient qui regarde (pastille 👁 sur le tapis), 10 spectateurs au plus par table.
+
 Le jeu s'installe comme une application (bouton « Installer le jeu » sur Android et ordinateur ; sur iPhone et iPad : Partager → « Sur l'écran d'accueil »). Les notifications d'invitation demandent un compte, et sur iPhone ou iPad, iOS 16.4 ou plus récent avec le jeu installé sur l'écran d'accueil.
 
 ## Jouer sur le même Wi-Fi, sans mise en ligne
@@ -66,14 +70,14 @@ Organisation du code :
 - `shared/` : le moteur de jeu, pur et sans entrée ni sortie.
   - `regles.ts` : famille demandée, cartes jouables, gagnant du pli, butin, score.
   - `moteur.ts` : la machine à états (phases TRAHISON, ANNONCES, ALLIANCE, PLI, VOL, FIN_DE_PLI, FIN_DE_NUIT, FIN_DE_PARTIE).
-  - `vue.ts` : `vuePourJoueur`, ce que chaque joueur a le droit de voir.
+  - `vue.ts` : `vuePourJoueur`, ce que chaque joueur a le droit de voir, et `vueSpectateur`, ce que voit un ami qui regarde (rien de caché).
   - `config.ts` : les points, les bonus et les **arbitrages** des cas que la règle papier ne précise pas. C'est le fichier à modifier pour changer une règle.
   - `cartes.ts` : les 72 cartes, générées à partir de `cartes.json`.
   - `robot.ts` : le joueur automatique.
-- `server/` : le serveur Node.js et Socket.IO (salons à code, reconnexion, robots, enchaînement automatique des plis).
+- `server/` : le serveur Node.js et Socket.IO (salons à code, reconnexion, robots, enchaînement automatique des plis). `classement.ts` tient le classement de la semaine.
 - `client/` : l'interface React, pensée d'abord pour le téléphone. Les illustrations sont dans `client/public/cartes/`.
 - `tests/` : les tests Vitest.
 
 Principes de sécurité du jeu : le serveur détient seul l'état complet et vérifie chaque action. Chaque joueur ne reçoit que sa propre main : les mains adverses, les annonces non révélées et les choix secrets (Trahison, Alliance) ne quittent jamais le serveur. Les tests vérifient ce point à chaque étape de parties simulées.
 
-Les parties sont gardées en mémoire, sans base de données. Un salon abandonné est supprimé au bout de 3 heures.
+Les parties sont gardées en mémoire, sans base de données (seuls les comptes et le classement sont dans Firestore). Un salon abandonné est supprimé au bout de 3 heures.
