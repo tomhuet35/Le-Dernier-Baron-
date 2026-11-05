@@ -210,6 +210,19 @@ export function FenetreReglages({ onFermer, enPartie, avecCompte = false }: { on
         <Curseur id="vol-effets" libelle={tr('Effets sonores', 'Sound effects')} valeur={r.effets} desactive={!sonActif} onChange={(v) => changerReglages({ effets: v })} onFin={() => jouerEffet('carte')} />
       </section>
       <section className="reglages-bloc">
+        <h3 className="profil-sous-titre">{tr('Vibration à ton tour', 'Vibrate on your turn')}</h3>
+        <Segments
+          libelle={tr('Vibration à ton tour', 'Vibrate on your turn')}
+          valeur={r.vibration ? 'oui' : 'non'}
+          options={ZOOM_TAPIS}
+          onChoix={(v) => {
+            changerReglages({ vibration: v === 'oui' });
+            if (v === 'oui') navigator.vibrate?.([40, 50, 40]);
+          }}
+        />
+        <p className="discret">{tr('Le téléphone vibre quand c’est à toi de jouer (sur Android : l’iPhone et l’iPad ne permettent pas aux sites de vibrer).', 'Your phone vibrates when it’s your turn (on Android: iPhone and iPad don’t let websites vibrate).')}</p>
+      </section>
+      <section className="reglages-bloc">
         <h3 className="profil-sous-titre">{tr('Vitesse des ordinateurs', 'Computer speed')}</h3>
         <Segments libelle={tr('Vitesse des ordinateurs', 'Computer speed')} valeur={r.vitesse} options={VITESSES} onChoix={(v) => changerReglages({ vitesse: v })} />
         <p className="discret">{tr('Dans tes parties privées et le tutoriel. Les parties en ligne gardent la vitesse normale.', 'In your private games and the tutorial. Online games keep the normal speed.')}</p>

@@ -94,7 +94,10 @@ export function trierMain<T extends { id: string }>(main: T[]): T[] {
   return [...main].sort((a, b) => cle(a.id) - cle(b.id));
 }
 
-/** Les 6 personnages que les joueurs peuvent incarner (images cartes/avatar-1.webp à avatar-6.webp). */
+/**
+ * Les personnages que les joueurs peuvent incarner (images cartes/avatar-1.webp à avatar-9.webp) : les 6 premiers pour
+ * tout le monde, les 3 suivants se gagnent à la roulette du jour.
+ */
 export const AVATARS = EN
-  ? ['The Godfather', 'The Singer', 'The Detective', 'The Croupier', 'The Smuggler', 'The Boxer']
-  : ['Le Parrain', 'La Chanteuse', 'Le Détective', 'Le Croupier', 'La Contrebandière', 'Le Boxeur'];
+  ? ['The Godfather', 'The Singer', 'The Detective', 'The Croupier', 'The Smuggler', 'The Boxer', 'The Dancer', 'The Reporter', 'The Bartender']
+  : ['Le Parrain', 'La Chanteuse', 'Le Détective', 'Le Croupier', 'La Contrebandière', 'Le Boxeur', 'La Danseuse', 'La Journaliste', 'Le Barman'];

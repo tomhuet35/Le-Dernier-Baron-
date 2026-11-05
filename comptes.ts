@@ -10,6 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { estLangue, type Langue } from '../shared/langue';
 import { estTapis, niveauDepuisXp, tapisActif, tapisDebloque, TAPIS_PAR_DEFAUT, type IdTapis, type ResultatJoueur } from '../shared/niveaux';
+import { gainDeCase, PERSONNAGES_ROULETTE, type GainRoulette } from '../shared/roulette';
 import type { EntreeHistorique, ProfilCompte } from '../shared/types';
 import { normaliserEntree, stockageClassementMemoire, type EntreeClassement, type StockageClassement } from './classement';
 
@@ -55,6 +56,10 @@ export interface StatsCompte {
   langue: Langue;
   /** Badge « Créateur » : membre de l'équipe qui a fait le jeu (affiché sur son profil). */
   createur?: boolean;
+  /** Personnages gagnés à la roulette du jour (numéros d'avatar). */
+  personnages?: number[];
+  /** Dernier jour (heure de Paris, « 2026-11-05 ») où la roulette a été tournée. */
+  roulette?: string;
 }
 
 /** Signalement d'un joueur par un autre (gardé 6 mois pour vérification). */
@@ -138,6 +143,8 @@ export interface ServiceComptes {
   choisirTapis(uid: string, tapis: IdTapis): Promise<StatsCompte | null>;
   /** Donne le badge « Créateur » au compte (null si le compte n'existe pas). */
   donnerBadgeCreateur(uid: string): Promise<StatsCompte | null>;
+  /** Roulette du jour : applique la case tirée ; « deja » si elle a déjà été tournée ce jour-là, null sans compte. */
+  tournerRoulette(uid: string, jour: string, tirage: number): Promise<{ stats: StatsCompte; gain: GainRoulette; xpAvant: number } | 'deja' | null>;
   /** Ajoute (ou rafraîchit) l'abonnement aux notifications d'un appareil ; les plus anciens partent au-delà de 5. */
   abonnerPush(uid: string, abonnement: Omit<AbonnementPush, 'depuis'>): Promise<StatsCompte | null>;
   /** Retire des abonnements (désactivés par le joueur, ou expirés). */
@@ -249,6 +256,8 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
     abandons: nombre(d.abandons),
     langue: estLangue(d.langue) ? d.langue : 'fr',
     ...(d.createur === true ? { createur: true } : {}),
+    ...(Array.isArray(d.personnages) ? { personnages: PERSONNAGES_ROULETTE.filter((p) => (d.personnages as unknown[]).includes(p)) } : {}),
+    ...(typeof d.roulette === 'string' ? { roulette: d.roulette } : {}),
   };
 }
 
@@ -300,6 +309,7 @@ export function profilDe(identite: Identite, stats: StatsCompte | null): ProfilC
     historique: stats?.historique ?? [],
     tapis: tapisActif(stats?.tapis, stats?.xp ?? 0),
     ...(stats?.createur ? { createur: true } : {}),
+    personnages: stats?.personnages ?? [],
   };
 }
 
@@ -419,6 +429,26 @@ export function creerServiceComptes(parties: {
     donnerBadgeCreateur: async (uid) => {
       if (!(await stockage.lire(uid))) return null;
       return stockage.modifier(uid, (avant) => ({ ...(avant ?? statsVides('', Date.now())), createur: true }));
+    },
+    tournerRoulette: async (uid, jour, tirage) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel) return null;
+      if (actuel.roulette === jour) return 'deja';
+      // La transaction peut être rejouée : le gain est recalculé à chaque fois, et rien n'est donné deux fois le même jour.
+      const res: { gain: GainRoulette | null; xpAvant: number } = { gain: null, xpAvant: actuel.xp };
+      const stats = await stockage.modifier(uid, (avant) => {
+        const base = avant ?? actuel;
+        res.gain = null;
+        if (base.roulette === jour) return base;
+        const perso = base.personnages ?? [];
+        const gain = gainDeCase(tirage, perso);
+        res.gain = gain;
+        res.xpAvant = base.xp;
+        return gain.type === 'xp'
+          ? { ...base, roulette: jour, xp: base.xp + gain.xp, majLe: Date.now() }
+          : { ...base, roulette: jour, personnages: [...perso, gain.avatar], majLe: Date.now() };
+      });
+      return res.gain ? { stats, gain: res.gain, xpAvant: res.xpAvant } : 'deja';
     },
     abonnerPush: async (uid, abonnement) => {
       if (!(await stockage.lire(uid))) return null;

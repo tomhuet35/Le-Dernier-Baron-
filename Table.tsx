@@ -11,7 +11,7 @@ import { BadgeNiveau, BarreXp, detailXp, FicheJoueur, IconeOeil } from './Profil
 import { ReglesIllustrees } from './Regles';
 import { FinTutoriel, Tutoriel } from './Tutoriel';
 import { FenetreReglages, useReglages } from './Reglages';
-import { changerReglages } from './reglages';
+import { changerReglages, lireReglages } from './reglages';
 import type { TailleCartes } from './reglages';
 import { EFFET_EVENEMENT, NOM_EVENEMENT, NOM_FAMILLE, infoCarte, nomCarte, trierMain } from './textes';
 import { EN, pluriel, titreNiveau, tr } from './traduction';
@@ -543,6 +543,21 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
     if (avant === false && aJouer) jouerEffet('tour');
   }, [aJouer]);
 
+  // À moi de jouer : un liseré doré entoure l'écran, et le téléphone vibre brièvement (si le réglage le permet).
+  const aMoiAvant = useRef<boolean | null>(null);
+  const aAgir = aMoi && !spectateur;
+  useEffect(() => {
+    const avant = aMoiAvant.current;
+    aMoiAvant.current = aAgir;
+    if (avant === false && aAgir && lireReglages().vibration) {
+      try {
+        navigator.vibrate?.([40, 50, 40]);
+      } catch {
+        /* vibration indisponible */
+      }
+    }
+  }, [aAgir]);
+
   // Les 5 dernières secondes de mon temps : tic-tac.
   useEffect(() => {
     if (!spectateur && aMoi && secondes !== null && secondes > 0 && secondes <= 5) jouerEffet('tic');
@@ -697,6 +712,8 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
           </button>
         </div>
       </header>
+
+      <MiniClassement v={v} avatarDe={avatarDe} moiId={v.moi} onOuvrir={() => setFenetre('scores')} />
 
       {zoome ? (
         <div className="etiquettes" aria-label={tr('Adversaires', 'Opponents')}>
@@ -981,6 +998,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
         </div>
       </section>
 
+      {aAgir && <div className="lisere-tour" aria-hidden="true" />}
       {donne?.vols && (
         <div className="donne" aria-hidden="true">
           {donne.vols.map((c, i) => (
@@ -1133,6 +1151,41 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Mini-classement en direct, en haut de l'écran : les personnages dans l'ordre des points. Après chaque nuit (à partir de
+ * la 2e), une petite flèche verte ou rouge montre qui a gagné ou perdu des places. Un toucher ouvre les scores.
+ */
+function MiniClassement({ v, avatarDe, moiId, onOuvrir }: { v: Vue; avatarDe: (id: string) => number; moiId: string; onOuvrir: () => void }) {
+  const siege = (id: string) => v.joueurs.findIndex((j) => j.id === id);
+  const ordre = [...v.joueurs].sort((a, b) => b.score - a.score || siege(a.id) - siege(b.id));
+  const rang = (score: number, scores: number[]) => 1 + scores.filter((s) => s > score).length;
+  const scores = v.joueurs.map((j) => j.score);
+  const dernier = v.bilans.length >= 2 ? v.bilans[v.bilans.length - 1] : null;
+  const avant = (id: string, score: number) => score - (dernier?.scores.find((s) => s.joueurId === id)?.total ?? 0);
+  const scoresAvant = v.joueurs.map((j) => avant(j.id, j.score));
+  const resume = ordre.map((j) => `${rang(j.score, scores)}. ${j.nom} ${j.score} pts`).join(', ');
+  return (
+    <button type="button" className="mini-classement" onClick={onOuvrir} aria-label={tr(`Classement : ${resume}. Voir les scores`, `Ranking: ${resume}. See scores`)}>
+      {ordre.map((j) => {
+        const r = rang(j.score, scores);
+        const ecart = dernier ? rang(avant(j.id, j.score), scoresAvant) - r : 0;
+        return (
+          <span key={j.id} className={`mini-place ${r === 1 ? 'premier' : ''} ${j.id === moiId ? 'moi' : ''}`} title={`${j.nom} · ${j.score} pts`}>
+            <span className="mini-rang">{r}</span>
+            <img src={`/cartes/avatar-${avatarDe(j.id)}.webp`} alt="" draggable={false} />
+            <span className="mini-pts">{j.score}</span>
+            {ecart !== 0 && (
+              <span key={`${v.bilans.length}-${ecart}`} className={`mini-fleche ${ecart > 0 ? 'monte' : 'descend'}`}>
+                {ecart > 0 ? '▲' : '▼'}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </button>
   );
 }
 

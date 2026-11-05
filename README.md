@@ -34,6 +34,8 @@ Le jeu est en français et en anglais : il suit la langue du téléphone, et Ré
 
 **Classement de la semaine** (avec les comptes joueurs) : chaque joueur y garde son meilleur score de la semaine, dans les parties jouées jusqu'au bout avec au moins 2 joueurs humains. Il repart à zéro le lundi à 0 h (heure de Paris). Les 3 premiers portent la couronne d'or, d'argent ou de bronze à côté de leur nom, partout dans le jeu, et la bannière de l'accueil montre le premier (le gagnant de la semaine précédente tant que personne n'a encore joué). Les scores sont gardés 8 semaines dans Firestore (collection `classements`, créée toute seule).
 
+**Roulette du jour** (avec un compte) : un tour gratuit par jour (il revient à minuit, heure de Paris), depuis l'accueil. Huit cases : de l'XP, ou un personnage à gagner — la Danseuse, puis la Journaliste, puis le Barman (chacun une seule fois, ensuite la case devient un gros lot de 200 XP). Les personnages gagnés se choisissent dans le salon ; le serveur refuse les autres.
+
 **Regarder un ami jouer** : dans la liste d'amis, le bouton « Regarder » apparaît quand un ami est en pleine partie (sauf le tutoriel). Le spectateur suit la partie depuis la place de son ami, sans jamais recevoir de carte en main ni les annonces avant leur révélation ; il lit le chat sans écrire. Les joueurs voient qui regarde (pastille 👁 sur le tapis), 10 spectateurs au plus par table.
 
 Le jeu s'installe comme une application (bouton « Installer le jeu » sur Android et ordinateur ; sur iPhone et iPad : Partager → « Sur l'écran d'accueil »). Les notifications d'invitation demandent un compte, et sur iPhone ou iPad, iOS 16.4 ou plus récent avec le jeu installé sur l'écran d'accueil.

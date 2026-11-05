@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
+import { MAX_JOUEURS, MIN_JOUEURS, NB_AVATARS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
 import { NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, TRANCHES_EN } from '../../shared/langue';
 import { EN, pluriel, tr } from './traduction';
@@ -29,6 +29,8 @@ import { FenetreSignalementGlobale } from './Moderation';
 import { AVATARS } from './textes';
 import { BoutonMusique, Chat, Couronne, CouronneRang, Defilant, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
 import { BanniereBaron, FenetreClassement } from './Classement';
+import { BoutonRoulette, FenetreRoulette } from './RouletteDuJour';
+import type { GainRoulette } from '../../shared/roulette';
 
 type Reponse = {
   ok: boolean;
@@ -41,6 +43,7 @@ type Reponse = {
   profil?: ProfilCompte | ProfilPublic | null;
   liste?: ListeAmis | null;
   classement?: VueClassement;
+  roulette?: { case: number; gain: GainRoulette; niveauAvant: number; niveau: number };
 };
 export type Appel = (evenement: string, data?: unknown) => Promise<Reponse>;
 export type EnLigne = { joueurs: number; enAttente: number; baron?: MeneurSemaine | null };
@@ -444,7 +447,7 @@ export function App() {
 
 function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; amis: EtatAmis }) {
   const [vue, setVue] = useState<'menu' | 'jouer'>(salonDansAdresse() ? 'jouer' : 'menu');
-  const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'classement' | 'regles' | 'reglages' | 'connexion' | 'inscription' | null>(null);
+  const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'classement' | 'roulette' | 'regles' | 'reglages' | 'connexion' | 'inscription' | null>(null);
   const [intro, setIntro] = useState<string | undefined>(undefined);
   const [musiqueActive, basculerMusique] = useMusique();
   const demandes = amis.liste?.recues.length ?? 0;
@@ -453,7 +456,7 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
     setIntro(undefined);
   };
   /** Profil et Amis demandent un compte : sinon on propose de se connecter. */
-  const ouvrirAvecCompte = (cible: 'profil' | 'amis', texte: string) => {
+  const ouvrirAvecCompte = (cible: 'profil' | 'amis' | 'roulette', texte: string) => {
     if (compte.utilisateur && compte.profil) return setFenetre(cible);
     if (!compte.actif) return setFenetre(null);
     setIntro(texte);
@@ -502,6 +505,7 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
       {fenetre === 'profil' && <FenetreProfil compte={compte} appel={appel} onFermer={fermer} />}
       {fenetre === 'amis' && <FenetreAmis liste={amis.liste} appel={appel} recharger={amis.recharger} inviter={amis.inviter} regarder={amis.regarder} onFermer={fermer} />}
       {fenetre === 'classement' && <FenetreClassement appel={appel} onFermer={fermer} connecte={!!compte.profil} />}
+      {fenetre === 'roulette' && <FenetreRoulette compte={compte} appel={appel} onFermer={fermer} />}
       {fenetre === 'regles' && <FenetreRegles onFermer={fermer} />}
       {fenetre === 'reglages' && <FenetreReglages onFermer={fermer} avecCompte={!!compte.profil} />}
       {(fenetre === 'connexion' || fenetre === 'inscription') && compte.module && (
@@ -560,6 +564,12 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
       >
         {tr('Jouer', 'Play')}
       </button>
+      <BoutonRoulette
+        compte={compte}
+        onOuvrir={() =>
+          ouvrirAvecCompte('roulette', tr('Crée un compte (gratuit) pour tourner la roulette chaque jour et gagner de nouveaux personnages.', 'Create a free account to spin the wheel every day and win new characters.'))
+        }
+      />
       {!tutorielDejaVu() && (
         <button type="button" className="lien-tutoriel" onClick={() => void appel('tutoriel', { nom: (lire(CLE_NOM) || compte.profil?.nom || tr('Joueur', 'Player')).slice(0, 16) })}>
           {tr('Nouveau ? ', 'New? ')}
@@ -760,18 +770,21 @@ function Lobby({ salon, appel, quitter, compte, amis }: { salon: VueSalon; appel
             const n = i + 1;
             const pris = salon.joueurs.find((j) => j.avatar === n);
             const lemien = pris?.id === salon.moi;
+            // Personnages de la roulette du jour : verrouillés tant qu'on ne les a pas gagnés.
+            const verrouille = n > NB_AVATARS && !(compte.profil?.personnages ?? []).includes(n) && !lemien;
             return (
               <button
                 key={n}
                 type="button"
-                className={`avatar-choix ${lemien ? 'choisi' : ''}`}
-                disabled={!!pris && !lemien}
+                className={`avatar-choix ${lemien ? 'choisi' : ''} ${verrouille ? 'verrouille' : ''}`}
+                disabled={(!!pris && !lemien) || verrouille}
                 aria-pressed={lemien}
+                aria-label={verrouille ? tr(`${nomPerso} : à gagner à la roulette du jour`, `${nomPerso}: win it on the daily wheel`) : undefined}
                 onClick={() => appel('avatar', { avatar: n })}
               >
                 <img src={`/cartes/avatar-${n}.webp`} alt="" />
                 <span>{nomPerso}</span>
-                {pris && !lemien && <small>{pris.nom}</small>}
+                {verrouille ? <small className="avatar-verrou">{tr('🔒 Roulette du jour', '🔒 Daily wheel')}</small> : pris && !lemien && <small>{pris.nom}</small>}
               </button>
             );
           })}

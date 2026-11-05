@@ -29,6 +29,7 @@ import { filtrerMessage, pseudoAcceptable } from '../shared/moderation';
 import { CARTE } from '../shared/cartes';
 import { ajouterAuJournal, appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
 import { estTapis, estWeekendXpDouble, niveauDepuisXp, resultatsPartie, titreNiveau, trancheNiveau } from '../shared/niveaux';
+import { CASES_ROULETTE, jourParis, lendemainParis, PERSONNAGES_ROULETTE } from '../shared/roulette';
 import { actionRobot, NIVEAUX_BOT, PRENOMS_BOTS, profilAleatoire, profilPourTranche, PROFIL_REMPLACANT, STYLES_BOT } from '../shared/robot';
 import type {
   Action,
@@ -141,6 +142,8 @@ export interface OptionsServeur {
   horloge?: () => number;
   /** Fin de la distribution du badge « Créateur » (remplaçable pour les tests). */
   finBadgeCreateur?: number;
+  /** Case tirée à la roulette du jour (remplaçable pour les tests ; au hasard sinon). */
+  tirageRoulette?: () => number;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -526,7 +529,15 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     return { niveau, titre: titreNiveau(niveau), victoires: stats?.victoires ?? 0 };
   };
   /** Profil envoyé au joueur, avec sa place au classement de la semaine. */
-  const profilComplet = (id: Identite, stats: StatsCompte | null) => ({ ...profilDe(id, stats), semaine: classement?.rangDe(id.uid) ?? null });
+  const profilComplet = (id: Identite, stats: StatsCompte | null) => {
+    const t = Date.now();
+    return {
+      ...profilDe(id, stats),
+      semaine: classement?.rangDe(id.uid) ?? null,
+      // Roulette du jour déjà tournée aujourd'hui (heure de Paris) : elle revient à minuit.
+      rouletteProchaine: stats?.roulette === jourParis(t) ? lendemainParis(t) : null,
+    };
+  };
 
   /** Range les victoires, nuits gagnées et l'expérience de chaque joueur connecté à son compte. */
   function enregistrerPartie(salon: Salon) {
@@ -983,6 +994,35 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       repondre(rappel, { ok: true });
     });
 
+    // Roulette du jour : un tour par jour (heure de Paris) ; le serveur tire la case.
+    let derniereRoulette = 0;
+    socket.on('roulette', async (_data: unknown, rappel?: Rappel) => {
+      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: L('Connecte-toi à ton compte pour tourner la roulette.', 'Sign in to your account to spin the wheel.') });
+      if (Date.now() - derniereRoulette < 1500) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      derniereRoulette = Date.now();
+      const id = identite;
+      const tirage = options.tirageRoulette ? options.tirageRoulette() % CASES_ROULETTE.length : randomInt(CASES_ROULETTE.length);
+      try {
+        const r = await comptes.tournerRoulette(id.uid, jourParis(Date.now()), tirage);
+        if (r === null) return repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment.', 'Your profile is unavailable right now.') });
+        if (r === 'deja') return repondre(rappel, { ok: false, erreur: L('Tu as déjà tourné la roulette aujourd’hui : reviens demain !', 'You have already spun the wheel today: come back tomorrow!') });
+        resume = resumeCompte(r.stats);
+        const ctx = contexte();
+        if (ctx && !ctx.salon.partie && ctx.joueur.uid === id.uid) {
+          ctx.joueur.compte = { ...resume };
+          diffuser(ctx.salon);
+        }
+        repondre(rappel, {
+          ok: true,
+          roulette: { case: tirage, gain: r.gain, niveauAvant: niveauDepuisXp(r.xpAvant), niveau: niveauDepuisXp(r.stats.xp) },
+          profil: profilComplet(id, r.stats),
+        });
+      } catch (e) {
+        console.error('Roulette impossible :', e);
+        repondre(rappel, { ok: false, erreur: L('La roulette est indisponible pour le moment, réessaie plus tard.', 'The wheel is unavailable right now, try again later.') });
+      }
+    });
+
     // Badge « Créateur » : récupéré depuis l'accueil par l'équipe du jeu, jusqu'à la date prévue.
     let dernierBadge = 0;
     socket.on('badge_createur', async (_data: unknown, rappel?: Rappel) => {
@@ -1201,11 +1241,21 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       repondre(rappel, r.ok ? r : { ok: false, erreur: traduireErreurMoteur(r.erreur, langue) });
     });
 
-    socket.on('avatar', (data: { avatar?: number } = {}, rappel?: Rappel) => {
-      const c = contexte();
-      if (!c) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
+    socket.on('avatar', async (data: { avatar?: number } = {}, rappel?: Rappel) => {
+      const c0 = contexte();
+      if (!c0) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
       const n = Number(data?.avatar);
-      if (!Number.isInteger(n) || n < 1 || n > NB_AVATARS) return repondre(rappel, { ok: false, erreur: L('Personnage inconnu.', 'Unknown character.') });
+      const aGagner = PERSONNAGES_ROULETTE.includes(n);
+      if (!Number.isInteger(n) || n < 1 || (n > NB_AVATARS && !aGagner)) return repondre(rappel, { ok: false, erreur: L('Personnage inconnu.', 'Unknown character.') });
+      // Personnages de la roulette du jour : seulement pour ceux qui les ont gagnés.
+      if (aGagner) {
+        const stats = comptes && identite ? await comptes.lire(identite.uid).catch(() => null) : null;
+        if (!stats?.personnages?.includes(n)) {
+          return repondre(rappel, { ok: false, erreur: L('Ce personnage se gagne à la roulette du jour.', 'This character is won on the daily wheel.') });
+        }
+      }
+      const c = contexte();
+      if (!c || c.salon !== c0.salon) return repondre(rappel, { ok: false, erreur: L('Tu ne fais partie d’aucun salon.', 'You are not in any room.') });
       if (c.salon.joueurs.some((j) => j.id !== c.joueur.id && j.avatar === n)) return repondre(rappel, { ok: false, erreur: L('Ce personnage est déjà pris.', 'This character is already taken.') });
       c.joueur.avatar = n;
       diffuser(c.salon);

@@ -347,6 +347,10 @@ export interface ProfilCompte {
   semaine?: { rang: number; score: number } | null;
   /** Badge « Créateur » (équipe du jeu). */
   createur?: boolean;
+  /** Personnages gagnés à la roulette du jour (numéros d'avatar). */
+  personnages?: number[];
+  /** Roulette du jour déjà tournée : instant où elle redevient disponible (null : disponible maintenant). */
+  rouletteProchaine?: number | null;
 }
 
 export interface VueSalon {

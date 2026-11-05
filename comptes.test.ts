@@ -16,6 +16,7 @@ import {
 import { creerNotifications } from '../server/notifications';
 import { demarrerServeur } from '../server/serveur';
 import { badgeCreateurOuvert } from '../shared/config';
+import { gainDeCase, jourParis, lendemainParis, XP_GROS_LOT } from '../shared/roulette';
 import { estWeekendXpDouble, niveauDepuisXp, progression, resultatsPartie, tapisActif, tapisGagnes, titreNiveau, trancheNiveau, xpPourNiveau, XP_NUIT, XP_PARTIE, XP_VICTOIRE } from '../shared/niveaux';
 import { actionRobot } from '../shared/robot';
 import type { BilanNuit, Invitation, ListeAmis, ScoreNuit, VueSalon } from '../shared/types';
@@ -228,6 +229,46 @@ function jouerJusquALaFin(sockets: Socket[]) {
   );
 }
 
+describe('Roulette du jour', () => {
+  it('change de jour à minuit, heure de Paris (heure d’hiver comme d’été)', () => {
+    expect(jourParis(Date.UTC(2026, 10, 5, 22, 59))).toBe('2026-11-05'); // 23 h 59 à Paris
+    expect(jourParis(Date.UTC(2026, 10, 5, 23, 0))).toBe('2026-11-06'); // minuit
+    expect(lendemainParis(Date.UTC(2026, 10, 5, 12, 0))).toBe(Date.UTC(2026, 10, 5, 23, 0));
+    expect(lendemainParis(Date.UTC(2026, 6, 14, 10, 0))).toBe(Date.UTC(2026, 6, 14, 22, 0));
+    // Nuits du changement d'heure : minuit tombe encore à l'ancienne heure.
+    expect(lendemainParis(Date.UTC(2026, 2, 28, 12, 0))).toBe(Date.UTC(2026, 2, 28, 23, 0));
+    expect(lendemainParis(Date.UTC(2026, 9, 24, 12, 0))).toBe(Date.UTC(2026, 9, 24, 22, 0));
+    expect(lendemainParis(Date.UTC(2026, 9, 25, 12, 0))).toBe(Date.UTC(2026, 9, 25, 23, 0));
+  });
+
+  it('fait gagner la Danseuse, puis la Journaliste, puis le Barman, puis le gros lot', () => {
+    expect(gainDeCase(3, [])).toEqual({ type: 'personnage', avatar: 7 });
+    expect(gainDeCase(3, [7])).toEqual({ type: 'personnage', avatar: 8 });
+    expect(gainDeCase(3, [7, 8])).toEqual({ type: 'personnage', avatar: 9 });
+    expect(gainDeCase(3, [7, 8, 9])).toEqual({ type: 'xp', xp: XP_GROS_LOT });
+    expect(gainDeCase(5, [])).toEqual({ type: 'xp', xp: 100 });
+  });
+
+  it('ne se tourne qu’une fois par jour, et garde les personnages gagnés', async () => {
+    const svc = creerServiceComptes({ configWeb: { apiKey: 'cle', authDomain: 'test.firebaseapp.com', projectId: 'test' }, authentification: authentificationTest({}), stockage: stockageMemoire() });
+    await svc.preparer('uid-r', 'Roulette');
+    const t1 = await svc.tournerRoulette('uid-r', '2026-11-05', 3);
+    expect(t1 !== 'deja' && t1?.gain).toEqual({ type: 'personnage', avatar: 7 });
+    expect(await svc.tournerRoulette('uid-r', '2026-11-05', 1)).toBe('deja');
+    await svc.tournerRoulette('uid-r', '2026-11-06', 3);
+    await svc.tournerRoulette('uid-r', '2026-11-07', 3);
+    const t4 = await svc.tournerRoulette('uid-r', '2026-11-08', 3);
+    expect(t4 !== 'deja' && t4?.gain).toEqual({ type: 'xp', xp: XP_GROS_LOT });
+    const t5 = await svc.tournerRoulette('uid-r', '2026-11-09', 1);
+    expect(t5 !== 'deja' && t5?.gain).toEqual({ type: 'xp', xp: 50 });
+    const stats = await svc.lire('uid-r');
+    expect(stats?.personnages).toEqual([7, 8, 9]);
+    expect(stats?.xp).toBe(XP_GROS_LOT + 50);
+    expect(normaliserStats({ personnages: [9, 7, 42, 'x'], roulette: '2026-11-09' })).toMatchObject({ personnages: [7, 9], roulette: '2026-11-09' });
+    expect(await svc.tournerRoulette('uid-inconnu', '2026-11-05', 1)).toBeNull();
+  });
+});
+
 describe('Badge Créateur', () => {
   it('se récupère jusqu’à la date prévue, puis plus du tout', () => {
     expect(badgeCreateurOuvert(Date.UTC(2026, 10, 6, 22, 59))).toBe(true); // vendredi 6 novembre, 23 h 59 à Paris
@@ -238,6 +279,34 @@ describe('Badge Créateur', () => {
 });
 
 describe('Comptes de bout en bout', () => {
+  it('roulette du jour : un tour par jour, et les personnages gagnés seulement pour leur propriétaire', async () => {
+    const s = connecter();
+    expect((await emettre(s, 'roulette')).ok).toBe(false); // sans compte
+    const id = await emettre(s, 'identifier', { jeton: 'jeton-iris' });
+    expect(id.profil).toMatchObject({ personnages: [], rouletteProchaine: null });
+    const r = await emettre(s, 'roulette');
+    expect(r.ok).toBe(true);
+    expect(r.roulette.case).toBeGreaterThanOrEqual(0);
+    expect(r.profil.rouletteProchaine).toBe(lendemainParis(Date.now()));
+    await new Promise((ok) => setTimeout(ok, 1600));
+    expect((await emettre(s, 'roulette')).erreur).toMatch(/déjà tourné/);
+    // Dans un salon : la Danseuse est refusée tant qu'elle n'est pas gagnée, puis acceptée.
+    await emettre(s, 'creer', { nom: 'Iris' });
+    const gagnee = (await service.lire('uid-iris'))?.personnages?.includes(7);
+    if (!gagnee) expect((await emettre(s, 'avatar', { avatar: 7 })).erreur).toMatch(/roulette du jour/);
+    await service.tournerRoulette('uid-iris', '2099-01-01', 3);
+    expect((await emettre(s, 'avatar', { avatar: 7 })).ok).toBe(true);
+    expect((await emettre(s, 'avatar', { avatar: 10 })).ok).toBe(false);
+    const invite = connecter();
+    await emettre(invite, 'creer', { nom: 'Zoé' });
+    expect((await emettre(invite, 'avatar', { avatar: 8 })).ok).toBe(false);
+    expect((await emettre(invite, 'avatar', { avatar: 3 })).ok).toBe(true);
+    await emettre(s, 'quitter');
+    await emettre(invite, 'quitter');
+    s.close();
+    invite.close();
+  });
+
   it('donne le badge Créateur au compte connecté, et à lui seul', async () => {
     const invite = connecter();
     expect((await emettre(invite, 'badge_createur')).ok).toBe(false);
