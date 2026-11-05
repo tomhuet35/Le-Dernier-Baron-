@@ -532,7 +532,11 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'invitation'
   | 'ami'
   | 'message'
-  | 'arrivee';
+  | 'arrivee'
+  | 'roulette_depart'
+  | 'roulette_tic'
+  | 'roulette_gain'
+  | 'roulette_gros_lot';
 const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
   lancement: { fichier: '/cartes/son-lancement.mp3', volume: 0.55, baisserMusique: true },
@@ -558,6 +562,11 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   // Partie
   distribution: { fichier: '/cartes/son-distribution.mp3', volume: 0.52, baisserMusique: false },
   tour: { fichier: '/cartes/son-tour.mp3', volume: 0.36, baisserMusique: false },
+  // Roulette du jour : l'élan, le clapet à chaque case, puis le gain (XP) ou le gros lot (personnage).
+  roulette_depart: { fichier: '/cartes/son-roulette-depart.mp3', volume: 0.75, baisserMusique: true },
+  roulette_tic: { fichier: '/cartes/son-roulette-tic.mp3', volume: 0.3, baisserMusique: false },
+  roulette_gain: { fichier: '/cartes/son-roulette-gain.mp3', volume: 0.7, baisserMusique: true },
+  roulette_gros_lot: { fichier: '/cartes/son-roulette-gros-lot.mp3', volume: 0.8, baisserMusique: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
   vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },

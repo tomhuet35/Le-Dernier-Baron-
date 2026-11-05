@@ -33,6 +33,43 @@ function useAttente(fin: number | null | undefined): string | null {
 /** La roue : 8 cases rouge sang et noir, filets dorés, le gain écrit dans chaque case (ou le personnage à gagner). */
 function Roue({ cases, rotation, tourne }: { cases: GainRoulette[]; rotation: number; tourne: boolean }) {
   const R = 100;
+  // Le clapet : un « tic » chaque fois qu'une case passe sous la flèche, en suivant la vraie vitesse de la roue.
+  const disque = useRef<SVGSVGElement | null>(null);
+  useEffect(() => {
+    if (!tourne) return;
+    let precedent: number | null = null;
+    let cumul = 0;
+    let caseVue = 0;
+    let dernierTic = 0;
+    let id = 0;
+    const angle = () => {
+      const m = disque.current ? getComputedStyle(disque.current).transform.match(/matrix\(([^)]+)\)/) : null;
+      if (!m) return null;
+      const [a, b] = m[1].split(',').map(Number);
+      return (Math.atan2(b, a) * 180) / Math.PI;
+    };
+    const boucle = (t: number) => {
+      const a = angle();
+      if (a !== null) {
+        if (precedent !== null) {
+          let d = a - precedent;
+          if (d < -180) d += 360;
+          if (d > 180) d -= 360;
+          cumul += Math.max(0, d);
+          const k = Math.floor(cumul / ANGLE);
+          if (k !== caseVue && t - dernierTic > 35) {
+            caseVue = k;
+            dernierTic = t;
+            jouerEffet('roulette_tic');
+          }
+        }
+        precedent = a;
+      }
+      id = window.requestAnimationFrame(boucle);
+    };
+    id = window.requestAnimationFrame(boucle);
+    return () => window.cancelAnimationFrame(id);
+  }, [tourne]);
   const point = (deg: number, r: number) => {
     const a = ((deg - 90) * Math.PI) / 180;
     return [R + r * Math.cos(a), R + r * Math.sin(a)];
@@ -44,6 +81,7 @@ function Roue({ cases, rotation, tourne }: { cases: GainRoulette[]; rotation: nu
         <circle cx="20" cy="13" r="4.5" />
       </svg>
       <svg
+        ref={disque}
         className={`roue-disque ${tourne ? 'tourne' : ''}`}
         viewBox="0 0 200 200"
         style={{ transform: `rotate(${rotation}deg)`, transitionDuration: tourne ? `${DUREE_MS}ms` : '0ms' }}
@@ -146,14 +184,15 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
       setTourne(false);
       setResultat({ gain, niveauAvant, niveau });
       compte.majProfil(r.profil as ProfilCompte);
-      jouerEffet(gain.type === 'personnage' ? 'deblocage' : niveau > niveauAvant ? 'niveau' : 'reussite');
+      jouerEffet(gain.type === 'personnage' ? 'roulette_gros_lot' : 'roulette_gain');
+      if (gain.type === 'xp' && niveau > niveauAvant) minuterie.current = window.setTimeout(() => jouerEffet('niveau'), 1100);
     };
     if (mouvementReduit()) {
       setRotation(cible % 360);
       fin();
       return;
     }
-    jouerEffet('roulement');
+    jouerEffet('roulette_depart');
     setTourne(true);
     // Le navigateur part de l'angle actuel : on repart de 0 pour que chaque tour fasse le même spectacle.
     setRotation(0);
