@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
 import { NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, TRANCHES_EN } from '../../shared/langue';
-import { changerLangue, EN, LANGUE, pluriel, tr } from './traduction';
+import { EN, pluriel, tr } from './traduction';
 import type { Invitation, ListeAmis, MeneurSemaine, ProfilCompte, ProfilPublic, VueClassement, VueSalon } from '../../shared/types';
 import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
@@ -523,7 +523,7 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
           <span className="point en-ligne" aria-hidden="true" />
           {enLigne ? tr(`${enLigne.joueurs} en ligne`, `${enLigne.joueurs} online`) : '…'}
         </p>
-        <BoutonLangue />
+        {compte.actif && enLigne && <BanniereBaron baron={enLigne.baron ?? null} onOuvrir={() => setFenetre('classement')} />}
         <button type="button" className="bouton-menu bouton-texte-menu" onClick={() => setFenetre('menu')} aria-label={tr('Menu : profil, amis, règles et réglages', 'Menu: profile, friends, rules and settings')}>
           <span className="texte-menu">Menu</span>
           {demandes > 0 && <span className="pastille-nombre">{demandes}</span>}
@@ -533,7 +533,6 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
         <img src="/cartes/logo.webp" alt="Le Dernier Baron" width={900} height={450} />
       </h1>
       <p className="accroche">{tr('Huit nuits. Une seule couronne. Jeu de plis pour 3 à 6 joueurs.', 'Eight nights. One crown. A trick-taking game for 3 to 6 players.')}</p>
-      {compte.actif && enLigne && <BanniereBaron baron={enLigne.baron ?? null} onOuvrir={() => setFenetre('classement')} />}
       {estWeekendXpDouble() && (
         <div className="bandeau-xp" role="status">
           <span className="bandeau-xp-badge">XP ×2</span>
@@ -596,22 +595,6 @@ function LienInstallation({ ouvrirReglages }: { ouvrirReglages: () => void }) {
           </>
         )}
       </span>
-    </button>
-  );
-}
-
-/** Accueil : passer du français à l'anglais (et inversement). */
-function BoutonLangue() {
-  const autre = LANGUE === 'fr' ? 'en' : 'fr';
-  return (
-    <button
-      type="button"
-      className="bouton-langue"
-      onClick={() => changerLangue(autre)}
-      aria-label={tr('Play in English', 'Jouer en français')}
-      title={tr('Play in English', 'Jouer en français')}
-    >
-      <span aria-hidden="true">🌐</span> {autre.toUpperCase()}
     </button>
   );
 }

@@ -161,25 +161,29 @@ export function FenetreClassement({ appel, onFermer, connecte }: { appel: Appel;
   );
 }
 
-/** Bannière de l'accueil : le premier de la semaine (touche pour voir tout le classement). */
+/** Haut de l'accueil : petite pastille du Baron de la semaine (touche pour voir tout le classement). */
 export function BanniereBaron({ baron, onOuvrir }: { baron: MeneurSemaine | null; onOuvrir: () => void }) {
+  const titre = baron?.semaine === 'precedente' ? tr('Semaine dernière', 'Last week') : tr('Baron de la semaine', 'Baron of the week');
+  const resume = baron ? `${titre} : ${nomAffiche(baron.nom)}, ${baron.score} pts` : tr('Baron de la semaine : la couronne est à prendre', 'Baron of the week: the crown is up for grabs');
   return (
-    <button type="button" className={`banniere-baron ${baron ? '' : 'vide'}`} onClick={onOuvrir} title={tr('Voir le classement de la semaine', 'See the weekly ranking')}>
+    <button
+      type="button"
+      className={`banniere-baron ${baron ? '' : 'vide'}`}
+      onClick={onOuvrir}
+      aria-label={`${resume}. ${tr('Voir le classement', 'See the ranking')}`}
+      title={tr('Voir le classement de la semaine', 'See the weekly ranking')}
+    >
       <Couronne className="banniere-couronne" />
       <span className="banniere-texte">
-        <small>{baron?.semaine === 'precedente' ? tr('Baron de la semaine dernière', 'Last week’s Baron') : tr('Baron de la semaine', 'Baron of the week')}</small>
+        <small>{titre}</small>
         {baron ? (
-          <span className="banniere-joueur">
-            <img src={`/cartes/avatar-${baron.avatar}.webp`} alt="" draggable={false} />
-            <strong>{nomAffiche(baron.nom)}</strong>
+          <strong>
+            <span className="banniere-nom">{nomAffiche(baron.nom)}</span>
             <span className="banniere-score">{baron.score} pts</span>
-          </span>
+          </strong>
         ) : (
-          <strong className="banniere-appel">{tr('La couronne t’attend : sois le premier !', 'The crown awaits: be the first!')}</strong>
+          <strong>{tr('À prendre !', 'Up for grabs!')}</strong>
         )}
-      </span>
-      <span className="banniere-fleche" aria-hidden="true">
-        ›
       </span>
     </button>
   );

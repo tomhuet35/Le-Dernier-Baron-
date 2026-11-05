@@ -30,7 +30,7 @@ Bon à savoir sur l'offre gratuite de Render :
 
 Pendant le pli, le tapis s'agrandit et les boutons se rangent dans le menu ⋯ ; il revient à la vue normale au début de chaque pli (Réglages → Tapis en grand pour le désactiver).
 
-Le jeu est en français et en anglais : il suit la langue du téléphone, et le bouton 🌐 de l'accueil (ou Réglages → Langue) permet de changer. Les signalements de joueurs sont gardés 6 mois dans Firestore (collection `signalements`).
+Le jeu est en français et en anglais : il suit la langue du téléphone, et Réglages → Langue permet de changer. Les signalements de joueurs sont gardés 6 mois dans Firestore (collection `signalements`).
 
 **Classement de la semaine** (avec les comptes joueurs) : chaque joueur y garde son meilleur score de la semaine, dans les parties jouées jusqu'au bout avec au moins 2 joueurs humains. Il repart à zéro le lundi à 0 h (heure de Paris). Les 3 premiers portent la couronne d'or, d'argent ou de bronze à côté de leur nom, partout dans le jeu, et la bannière de l'accueil montre le premier (le gagnant de la semaine précédente tant que personne n'a encore joué). Les scores sont gardés 8 semaines dans Firestore (collection `classements`, créée toute seule).
 
