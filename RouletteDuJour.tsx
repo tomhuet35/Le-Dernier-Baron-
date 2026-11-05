@@ -8,7 +8,7 @@ import type { ProfilCompte } from '../../shared/types';
 import type { Appel } from './App';
 import type { EtatCompte } from './Profil';
 import { AVATARS } from './textes';
-import { EN, tr } from './traduction';
+import { tr } from './traduction';
 import { Fenetre, jouerEffet, mouvementReduit } from './ui';
 
 const N = CASES_ROULETTE.length;
@@ -111,7 +111,8 @@ function Roue({ cases, rotation, tourne }: { cases: GainRoulette[]; rotation: nu
           const [tx, ty] = point(milieu, 64);
           const perso = c.type === 'personnage';
           const centre = point(milieu, 60);
-          const fond = perso ? '#6b4a12' : i % 2 ? '#141010' : '#8e1c14';
+          // La case du personnage (puis du gros lot) est verte, comme le zéro d'une roulette de casino.
+          const fond = CASES_ROULETTE[i].type === 'personnage' ? '#0f6b3a' : i % 2 ? '#141010' : '#8e1c14';
           return (
             <g key={i}>
               <path d={`M${R} ${R} L${x1} ${y1} A92 92 0 0 1 ${x2} ${y2} Z`} fill={fond} stroke="#e7c27a" strokeWidth="1.2" />
@@ -203,9 +204,6 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
   const nomPerso = (n: number) => AVATARS[n - 1] ?? '';
   return (
     <Fenetre titre={tr('Roulette du jour', 'Daily wheel')} onFermer={tourne ? undefined : onFermer} large>
-      <p className="roulette-intro">
-        {tr('Un tour gratuit chaque jour : de l’XP, ou un nouveau personnage à incarner.', 'One free spin every day: XP, or a new character to play.')}
-      </p>
       <Roue cases={cases} rotation={rotation} tourne={tourne} />
       {resultat ? (
         <div className={`roulette-resultat ${resultat.gain.type === 'personnage' ? 'perso' : ''}`} role="status">
@@ -233,13 +231,6 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
           {tourne ? tr('La roue tourne…', 'Spinning…') : attente ? tr(`Prochain tour dans ${attente}`, `Next spin in ${attente}`) : tr('Tourner la roue', 'Spin the wheel')}
         </button>
       )}
-      {perso.length < 3 && (
-        <p className="discret roulette-regle">
-          {EN
-            ? 'The character square gives the Dancer, then the Reporter, then the Bartender (each one only once). Once you have all three, it becomes a 200 XP jackpot.'
-            : 'La case personnage fait gagner la Danseuse, puis la Journaliste, puis le Barman (chacun une seule fois). Quand tu as les trois, elle devient un gros lot de 200 XP.'}
-        </p>
-      )}
     </Fenetre>
   );
 }
@@ -252,22 +243,23 @@ export function BoutonRoulette({ compte, onOuvrir }: { compte: EtatCompte; onOuv
   return (
     <button type="button" className={`bouton-roulette ${pret ? 'prete' : ''}`} onClick={onOuvrir}>
       <svg className="bouton-roulette-icone" viewBox="0 0 40 40" aria-hidden="true">
-        <circle cx="20" cy="20" r="18" fill="#d2a85a" />
-        <circle cx="20" cy="20" r="15.5" fill="#1b120c" />
-        {Array.from({ length: 8 }, (_, i) => {
+        <circle cx="20" cy="20" r="19.5" fill="#d2a85a" />
+        <circle cx="20" cy="20" r="17" fill="#1b120c" />
+        {CASES_ROULETTE.map((c, i) => {
           const a1 = ((i * 45 - 90) * Math.PI) / 180;
           const a2 = (((i + 1) * 45 - 90) * Math.PI) / 180;
           return (
             <path
               key={i}
-              d={`M20 20 L${20 + 15 * Math.cos(a1)} ${20 + 15 * Math.sin(a1)} A15 15 0 0 1 ${20 + 15 * Math.cos(a2)} ${20 + 15 * Math.sin(a2)} Z`}
-              fill={i % 2 ? '#141010' : '#8e1c14'}
+              d={`M20 20 L${20 + 16.5 * Math.cos(a1)} ${20 + 16.5 * Math.sin(a1)} A16.5 16.5 0 0 1 ${20 + 16.5 * Math.cos(a2)} ${20 + 16.5 * Math.sin(a2)} Z`}
+              fill={c.type === 'personnage' ? '#0f6b3a' : i % 2 ? '#141010' : '#8e1c14'}
               stroke="#e7c27a"
-              strokeWidth="0.8"
+              strokeWidth="0.7"
             />
           );
         })}
-        <circle cx="20" cy="20" r="4.5" fill="#e7c27a" />
+        <circle cx="20" cy="20" r="5.5" fill="#d2a85a" stroke="#5a3d12" strokeWidth="0.8" />
+        <circle cx="20" cy="20" r="2.4" fill="#1b120c" />
       </svg>
       <span className="bouton-roulette-texte">
         <strong>{tr('Roulette du jour', 'Daily wheel')}</strong>
