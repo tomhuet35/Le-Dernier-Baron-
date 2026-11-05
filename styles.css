@@ -1398,3 +1398,41 @@ button.bouton-regarder:hover:not(:disabled) { background: rgba(231, 194, 122, 0.
 /* Personnages à gagner dans le salon */
 .avatar-choix.verrouille img { filter: grayscale(0.85) brightness(0.55); }
 .avatar-choix .avatar-verrou { color: var(--or); }
+
+/* ----- Roulette : animations de gain ----- */
+.roue-case-gagnante { fill: rgba(255, 236, 170, 0.28); stroke: #fff1c4; stroke-width: 3; animation: case-gagnante 0.9s ease-in-out 4 alternate; }
+@keyframes case-gagnante { from { fill: rgba(255, 236, 170, 0); stroke-width: 1; } to { fill: rgba(255, 236, 170, 0.38); stroke-width: 3.5; } }
+.roue-pieces { position: absolute; inset: 0; pointer-events: none; }
+.roue-pieces i { position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6d2, #e7c27a 42%, #a6782a 78%); box-shadow: inset 0 0 0 2px rgba(110, 72, 18, 0.55), 0 2px 6px rgba(0, 0, 0, 0.5); opacity: 0; animation: piece-jaillit 1.15s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+@keyframes piece-jaillit { 0% { opacity: 1; transform: translate(0, 0) scale(0.3) rotate(0); } 60% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--r)); } }
+.roulette-xp-gagne { display: inline-block; animation: xp-eclat 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; text-shadow: 0 0 14px rgba(231, 194, 122, 0.6); font-variant-numeric: tabular-nums; }
+@keyframes xp-eclat { from { transform: scale(0.3); opacity: 0; } }
+
+.celebration { position: fixed; inset: 0; z-index: 45; display: grid; place-content: center; justify-items: center; gap: 14px; padding: 24px; overflow: hidden; text-align: center; background: radial-gradient(60% 50% at 50% 45%, rgba(70, 40, 10, 0.92), rgba(8, 5, 3, 0.97) 75%); animation: apparaitre 0.35s ease-out; cursor: pointer; }
+.celebration-rayons { position: absolute; left: 50%; top: 45%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax; background: repeating-conic-gradient(from 0deg, rgba(231, 194, 122, 0.16) 0deg 9deg, rgba(231, 194, 122, 0) 9deg 22.5deg); mask: radial-gradient(circle, #000 0, rgba(0, 0, 0, 0.6) 18%, transparent 42%); -webkit-mask: radial-gradient(circle, #000 0, rgba(0, 0, 0, 0.6) 18%, transparent 42%); animation: rayons 14s linear infinite; pointer-events: none; }
+@keyframes rayons { to { transform: rotate(360deg); } }
+.celebration-titre { position: relative; max-width: 100%; font-family: var(--titre); font-size: clamp(21px, 6.2vw, 38px); white-space: nowrap; color: var(--or-vif); letter-spacing: 0.04em; text-shadow: 0 0 20px rgba(231, 194, 122, 0.6), 0 3px 8px rgba(0, 0, 0, 0.8); animation: celebration-titre 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.15s both; }
+@keyframes celebration-titre { from { opacity: 0; transform: translateY(-30px) scale(0.6); letter-spacing: 0.4em; } }
+.celebration-medaillon { position: relative; display: grid; place-items: center; width: 170px; height: 170px; border-radius: 50%; background: radial-gradient(circle at 40% 30%, #fff2c6, #d2a85a 45%, #7a5418 85%); box-shadow: 0 0 0 4px rgba(22, 16, 12, 0.9), 0 0 50px 12px rgba(231, 194, 122, 0.55); animation: medaillon 0.9s cubic-bezier(0.25, 1.6, 0.5, 1) 0.35s both; }
+@keyframes medaillon { 0% { opacity: 0; transform: scale(0) rotate(-200deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
+.celebration-medaillon img { width: 152px; height: 152px; border-radius: 50%; object-fit: cover; border: 3px solid #5a3d12; }
+.celebration-xp { display: grid; place-content: center; justify-items: center; gap: 4px; width: 152px; height: 152px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #13703f, #0a3d22); border: 3px solid #5a3d12; font-family: var(--titre); font-weight: 400; font-size: 44px; line-height: 0.9; color: #fff1c4; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
+.celebration-xp small { font-family: var(--texte); font-size: 16px; font-weight: 800; letter-spacing: 0.12em; color: var(--or-vif); }
+.celebration-eclats { position: absolute; inset: 0; pointer-events: none; }
+.celebration-eclats i { position: absolute; left: 50%; top: 50%; width: 6px; height: 18px; margin: -9px 0 0 -3px; border-radius: 3px; background: linear-gradient(#fff6d2, #e7c27a); opacity: 0; transform: rotate(var(--a)) translateY(0); animation: eclat 1.1s ease-out 0.9s both; }
+@keyframes eclat { 0% { opacity: 1; transform: rotate(var(--a)) translateY(-40px) scaleY(0.4); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--l) * -1)) scaleY(1); } }
+.celebration-nom { position: relative; font-family: var(--titre); font-size: clamp(24px, 6.5vw, 34px); color: var(--creme); text-shadow: 0 3px 8px rgba(0, 0, 0, 0.8); animation: celebration-titre 0.6s ease-out 1s both; }
+.celebration-suite { position: relative; margin-top: 8px; font-size: 13px; color: var(--creme-doux); animation: apparaitre 0.5s ease-out 2.2s both; }
+.celebration-pluie { position: absolute; inset: 0; pointer-events: none; }
+.celebration-pluie i { position: absolute; top: -40px; animation-name: pluie-or; animation-timing-function: linear; animation-iteration-count: infinite; }
+.celebration-pluie .piece { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6d2, #e7c27a 42%, #a6782a 78%); box-shadow: inset 0 0 0 2px rgba(110, 72, 18, 0.55); }
+.celebration-pluie .confetti { width: 8px; height: 14px; border-radius: 2px; }
+.celebration-pluie .c0 { background: #e7c27a; }
+.celebration-pluie .c1 { background: #b8281d; }
+.celebration-pluie .c2 { background: #ecd9b4; }
+.celebration-pluie .c3 { background: #13703f; }
+@keyframes pluie-or { 0% { transform: translateY(0) rotate(0); } 100% { transform: translateY(calc(100vh + 80px)) rotate(calc(var(--r) + 540deg)); } }
+@media (prefers-reduced-motion: reduce) {
+  .celebration-rayons, .celebration-pluie, .roue-pieces { display: none; }
+  .celebration-medaillon, .celebration-titre, .celebration-nom, .celebration-eclats i, .roue-case-gagnante, .roulette-xp-gagne { animation: none !important; }
+}

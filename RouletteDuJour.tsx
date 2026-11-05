@@ -2,6 +2,7 @@
  * Roulette du jour : un tour gratuit par jour, pour gagner de l'XP ou un nouveau personnage (la Danseuse, puis la
  * Journaliste, puis le Barman). Le serveur tire la case ; la roue tourne ici jusqu'à elle.
  */
+import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { CASES_ROULETTE, gainDeCase, type GainRoulette } from '../../shared/roulette';
 import type { ProfilCompte } from '../../shared/types';
@@ -9,7 +10,7 @@ import type { Appel } from './App';
 import type { EtatCompte } from './Profil';
 import { AVATARS } from './textes';
 import { tr } from './traduction';
-import { Fenetre, jouerEffet, mouvementReduit } from './ui';
+import { Fenetre, jouerEffet, mouvementReduit, useCompteur } from './ui';
 
 const N = CASES_ROULETTE.length;
 const ANGLE = 360 / N;
@@ -31,7 +32,7 @@ function useAttente(fin: number | null | undefined): string | null {
 }
 
 /** La roue : 8 cases rouge sang et noir, filets dorés, le gain écrit dans chaque case (ou le personnage à gagner). */
-function Roue({ cases, rotation, tourne }: { cases: GainRoulette[]; rotation: number; tourne: boolean }) {
+function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: GainRoulette[]; rotation: number; tourne: boolean; gagnante?: number | null; pieces?: boolean }) {
   const R = 100;
   // Le clapet : un « tic » chaque fois qu'une case passe sous la flèche, en suivant la vraie vitesse de la roue.
   const disque = useRef<SVGSVGElement | null>(null);
@@ -143,6 +144,17 @@ function Roue({ cases, rotation, tourne }: { cases: GainRoulette[]; rotation: nu
             </g>
           );
         })}
+        {/* La case gagnante s'illumine quand la roue s'arrête */}
+        {gagnante !== null && gagnante !== undefined && (
+          <path
+            className="roue-case-gagnante"
+            d={(() => {
+              const [x1, y1] = point(gagnante * ANGLE, 92);
+              const [x2, y2] = point(gagnante * ANGLE + ANGLE, 92);
+              return `M${R} ${R} L${x1} ${y1} A92 92 0 0 1 ${x2} ${y2} Z`;
+            })()}
+          />
+        )}
         {/* Petits rivets dorés sur le bord, comme une vraie roue de casino */}
         {Array.from({ length: N }, (_, i) => {
           const [x, y] = point(i * ANGLE, 96);
@@ -152,6 +164,16 @@ function Roue({ cases, rotation, tourne }: { cases: GainRoulette[]; rotation: nu
         <circle cx={R} cy={R} r="15" fill="#1b120c" />
         <image href="/cartes/couronne.webp" x={R - 12} y={R - 9} width="24" height="17" />
       </svg>
+      {/* Gain d'XP : une gerbe de pièces d'or jaillit de la roue */}
+      {pieces && (
+        <div className="roue-pieces" aria-hidden="true">
+          {Array.from({ length: 12 }, (_, k) => {
+            const a = ((k * 30 + 15) * Math.PI) / 180;
+            const d = 95 + (k % 3) * 28;
+            return <i key={k} style={{ '--dx': `${Math.cos(a) * d}px`, '--dy': `${Math.sin(a) * d - 40}px`, '--r': `${(k * 47) % 360}deg`, animationDelay: `${(k % 4) * 45}ms` } as React.CSSProperties} />;
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -160,7 +182,9 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
   const p = compte.profil;
   const [rotation, setRotation] = useState(0);
   const [tourne, setTourne] = useState(false);
-  const [resultat, setResultat] = useState<{ gain: GainRoulette; niveauAvant: number; niveau: number } | null>(null);
+  const [resultat, setResultat] = useState<{ case: number; gain: GainRoulette; niveauAvant: number; niveau: number; grand: boolean } | null>(null);
+  // Personnage ou gros lot : une grande animation par-dessus l'écran (touche pour la refermer).
+  const [celebration, setCelebration] = useState(false);
   // Les cases affichées pendant le tour : figées au départ (le personnage gagné ne doit pas changer sous la flèche).
   const [figees, setFigees] = useState<GainRoulette[] | null>(null);
   const minuterie = useRef(0);
@@ -181,12 +205,14 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
     // La case tirée s'arrête sous la flèche (en haut), un peu décalée du milieu, après plusieurs tours.
     const decalage = (Math.random() - 0.5) * ANGLE * 0.6;
     const cible = 360 * 6 + (360 - (i * ANGLE + ANGLE / 2)) + decalage;
+    const grand = CASES_ROULETTE[i]?.type === 'personnage'; // le personnage, ou le gros lot une fois tous gagnés
     const fin = () => {
       setTourne(false);
-      setResultat({ gain, niveauAvant, niveau });
+      setResultat({ case: i, gain, niveauAvant, niveau, grand });
+      if (grand) setCelebration(true);
       compte.majProfil(r.profil as ProfilCompte);
-      jouerEffet(gain.type === 'personnage' ? 'roulette_gros_lot' : 'roulette_gain');
-      if (gain.type === 'xp' && niveau > niveauAvant) minuterie.current = window.setTimeout(() => jouerEffet('niveau'), 1100);
+      jouerEffet(grand ? 'roulette_gros_lot' : 'roulette_gain');
+      if (gain.type === 'xp' && niveau > niveauAvant) minuterie.current = window.setTimeout(() => jouerEffet('niveau'), grand ? 2300 : 1100);
     };
     if (mouvementReduit()) {
       setRotation(cible % 360);
@@ -204,7 +230,7 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
   const nomPerso = (n: number) => AVATARS[n - 1] ?? '';
   return (
     <Fenetre titre={tr('Roulette du jour', 'Daily wheel')} onFermer={tourne ? undefined : onFermer} large>
-      <Roue cases={cases} rotation={rotation} tourne={tourne} />
+      <Roue cases={cases} rotation={rotation} tourne={tourne} gagnante={resultat?.case ?? null} pieces={!!resultat && !resultat.grand} />
       {resultat ? (
         <div className={`roulette-resultat ${resultat.gain.type === 'personnage' ? 'perso' : ''}`} role="status">
           {resultat.gain.type === 'personnage' ? (
@@ -217,7 +243,7 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
             </>
           ) : (
             <div>
-              <strong>+{resultat.gain.xp} XP</strong>
+              <CompteurXp xp={resultat.gain.xp} />
               <span>
                 {resultat.niveau > resultat.niveauAvant
                   ? tr(`Niveau ${resultat.niveau} atteint !`, `Level ${resultat.niveau} reached!`)
@@ -231,7 +257,54 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
           {tourne ? tr('La roue tourne…', 'Spinning…') : attente ? tr(`Prochain tour dans ${attente}`, `Next spin in ${attente}`) : tr('Tourner la roue', 'Spin the wheel')}
         </button>
       )}
+      {celebration && resultat && <Celebration gain={resultat.gain} nom={resultat.gain.type === 'personnage' ? nomPerso(resultat.gain.avatar) : ''} onFermer={() => setCelebration(false)} />}
     </Fenetre>
+  );
+}
+
+/** Gain d'XP : le nombre monte jusqu'au gain, avec un petit éclat. */
+function CompteurXp({ xp }: { xp: number }) {
+  const valeur = useCompteur(xp, 0, 120, 900);
+  return <strong className="roulette-xp-gagne">+{valeur} XP</strong>;
+}
+
+/**
+ * Personnage gagné (ou gros lot) : l'écran s'assombrit, des rayons dorés tournent, le personnage (ou le gros lot)
+ * surgit dans un cercle d'or, et une pluie de confettis et de pièces tombe. Un toucher referme.
+ */
+function Celebration({ gain, nom, onFermer }: { gain: GainRoulette; nom: string; onFermer: () => void }) {
+  // Se referme seule après quelques secondes (la fonction est gardée dans une ref : le minuteur ne repart pas à chaque rendu).
+  const fermer = useRef(onFermer);
+  fermer.current = onFermer;
+  useEffect(() => {
+    const t = window.setTimeout(() => fermer.current(), 7000);
+    return () => window.clearTimeout(t);
+  }, []);
+  const perso = gain.type === 'personnage';
+  return (
+    <div className="celebration" role="dialog" aria-label={perso ? tr(`Nouveau personnage : ${nom}`, `New character: ${nom}`) : tr('Gros lot', 'Jackpot')} onClick={onFermer}>
+      <div className="celebration-rayons" aria-hidden="true" />
+      <div className="celebration-pluie" aria-hidden="true">
+        {Array.from({ length: 46 }, (_, k) => (
+          <i
+            key={k}
+            className={k % 3 === 0 ? 'piece' : `confetti c${k % 4}`}
+            style={{ left: `${(k * 37) % 100}%`, animationDelay: `${((k * 71) % 1600) / 1000}s`, animationDuration: `${2.4 + ((k * 13) % 12) / 10}s`, '--r': `${(k * 53) % 360}deg` } as React.CSSProperties}
+          />
+        ))}
+      </div>
+      <p className="celebration-titre">{perso ? tr('Nouveau personnage\u00a0!', 'New character!') : tr('Gros lot\u00a0!', 'Jackpot!')}</p>
+      <div className="celebration-medaillon">
+        <span className="celebration-eclats" aria-hidden="true">
+          {Array.from({ length: 16 }, (_, k) => (
+            <i key={k} style={{ '--a': `${k * 22.5}deg`, '--l': `${92 + (k % 3) * 18}px` } as React.CSSProperties} />
+          ))}
+        </span>
+        {perso ? <img src={`/cartes/avatar-${gain.avatar}.webp`} alt="" /> : <strong className="celebration-xp">+{gain.xp}<small>XP</small></strong>}
+      </div>
+      <p className="celebration-nom">{perso ? nom : tr('Ajoutés à ton expérience', 'Added to your experience')}</p>
+      <span className="celebration-suite">{tr('Touche pour continuer', 'Tap to continue')}</span>
+    </div>
   );
 }
 
