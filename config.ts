@@ -62,3 +62,10 @@ export const HUMAINS_MIN_POUR_COMPTER = 2;
 /** Durées côté serveur (millisecondes). */
 export const DELAI_FIN_DE_PLI_MS = 2400;
 export const DELAI_ROBOT_MS = 900;
+
+/**
+ * Badge « Créateur » (équipe du jeu) : il se récupère depuis l'accueil jusqu'au samedi 7 novembre 2026 à 0 h (heure de
+ * Paris), puis plus personne ne peut l'obtenir. Ceux qui l'ont le gardent, affiché sur leur profil.
+ */
+export const FIN_BADGE_CREATEUR = Date.UTC(2026, 10, 6, 23, 0, 0);
+export const badgeCreateurOuvert = (t: number, fin = FIN_BADGE_CREATEUR) => t < fin;

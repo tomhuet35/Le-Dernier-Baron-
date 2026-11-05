@@ -290,6 +290,8 @@ export type ProfilPublic =
       relation: 'moi' | 'ami' | 'demande_envoyee' | 'demande_recue' | 'aucune' | null;
       /** Place au classement de la semaine (null : pas encore de score cette semaine). */
       semaine?: { rang: number; score: number } | null;
+      /** Badge « Créateur » (équipe du jeu). */
+      createur?: boolean;
     };
 
 export type StatutAmi = 'en_ligne' | 'en_partie' | 'hors_ligne';
@@ -343,6 +345,8 @@ export interface ProfilCompte {
   tapis: IdTapis;
   /** Place au classement de la semaine (null : pas encore de score cette semaine). */
   semaine?: { rang: number; score: number } | null;
+  /** Badge « Créateur » (équipe du jeu). */
+  createur?: boolean;
 }
 
 export interface VueSalon {

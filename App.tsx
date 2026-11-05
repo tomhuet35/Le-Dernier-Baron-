@@ -8,6 +8,7 @@ import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
 import {
   BadgeNiveau,
+  CarteBadgeCreateur,
   CarteCompte,
   FenetreAmis,
   FenetreConnexion,
@@ -565,6 +566,11 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
           <strong>{tr('Apprends à jouer en 3 nuits', 'Learn to play in 3 nights')}</strong> →
         </button>
       )}
+      <CarteBadgeCreateur
+        compte={compte}
+        appel={appel}
+        seConnecter={() => setFenetre('connexion')}
+      />
       <CarteCompte compte={compte} appel={appel} contexte="accueil" pseudo={lire(CLE_NOM) ?? ''} />
       <LienInstallation ouvrirReglages={() => setFenetre('reglages')} />
       <footer className="accueil-pied">

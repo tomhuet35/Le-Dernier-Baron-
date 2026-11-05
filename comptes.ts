@@ -53,6 +53,8 @@ export interface StatsCompte {
   abandons: number;
   /** Langue du jeu sur le dernier appareil utilisé (pour écrire les notifications dans sa langue). */
   langue: Langue;
+  /** Badge « Créateur » : membre de l'équipe qui a fait le jeu (affiché sur son profil). */
+  createur?: boolean;
 }
 
 /** Signalement d'un joueur par un autre (gardé 6 mois pour vérification). */
@@ -134,6 +136,8 @@ export interface ServiceComptes {
   retirerLien(uid: string, autre: string): Promise<Record<string, StatsCompte>>;
   /** Pose un tapis de jeu ; refusé (null) si le niveau du compte ne l'a pas encore débloqué. */
   choisirTapis(uid: string, tapis: IdTapis): Promise<StatsCompte | null>;
+  /** Donne le badge « Créateur » au compte (null si le compte n'existe pas). */
+  donnerBadgeCreateur(uid: string): Promise<StatsCompte | null>;
   /** Ajoute (ou rafraîchit) l'abonnement aux notifications d'un appareil ; les plus anciens partent au-delà de 5. */
   abonnerPush(uid: string, abonnement: Omit<AbonnementPush, 'depuis'>): Promise<StatsCompte | null>;
   /** Retire des abonnements (désactivés par le joueur, ou expirés). */
@@ -244,6 +248,7 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
       : [],
     abandons: nombre(d.abandons),
     langue: estLangue(d.langue) ? d.langue : 'fr',
+    ...(d.createur === true ? { createur: true } : {}),
   };
 }
 
@@ -294,6 +299,7 @@ export function profilDe(identite: Identite, stats: StatsCompte | null): ProfilC
     xp: stats?.xp ?? 0,
     historique: stats?.historique ?? [],
     tapis: tapisActif(stats?.tapis, stats?.xp ?? 0),
+    ...(stats?.createur ? { createur: true } : {}),
   };
 }
 
@@ -409,6 +415,10 @@ export function creerServiceComptes(parties: {
         const base = avant ?? actuel;
         return tapisDebloque(tapis, niveauDepuisXp(base.xp)) ? { ...base, tapis } : base;
       });
+    },
+    donnerBadgeCreateur: async (uid) => {
+      if (!(await stockage.lire(uid))) return null;
+      return stockage.modifier(uid, (avant) => ({ ...(avant ?? statsVides('', Date.now())), createur: true }));
     },
     abonnerPush: async (uid, abonnement) => {
       if (!(await stockage.lire(uid))) return null;

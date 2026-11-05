@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { niveauDepuisXp, progression, TAPIS, XP_NUIT, XP_PARTIE, XP_VICTOIRE, xpPourNiveau, type IdTapis, type Tapis } from '../../shared/niveaux';
 import { DESCRIPTION_NIVEAU_BOT, DESCRIPTION_STYLE_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT } from '../../shared/robot';
 import type { AmiVue, BilanCompte, ListeAmis, ProfilCompte, ProfilPublic, StatutAmi } from '../../shared/types';
+import { badgeCreateurOuvert, FIN_BADGE_CREATEUR } from '../../shared/config';
 import type { Appel } from './App';
 import type { Utilisateur } from './connexion';
 import { DESCRIPTION_NIVEAU_BOT_EN, DESCRIPTION_STYLE_BOT_EN, NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, NOM_TAPIS_EN } from '../../shared/langue';
@@ -424,6 +425,7 @@ export function FenetreProfil({ compte, appel, onFermer }: { compte: EtatCompte;
           {p.email && <small className="discret">{p.email}</small>}
         </div>
       </div>
+      {p.createur && <BadgeCreateur />}
       <BarreXp xp={p.xp} />
       <LigneSemaine semaine={p.semaine ?? null} moi />
       <div className="stats-grille">
@@ -522,6 +524,7 @@ export function FicheJoueur(props: { joueurId?: string; code?: string; statut?: 
           {profil.type === 'compte' && <BadgeNiveau niveau={progression(profil.xp).niveau} grand />}
         </div>
       )}
+      {profil?.type === 'compte' && profil.createur && <BadgeCreateur />}
       {profil?.type === 'invite' && <p>{tr('Ce joueur n’a pas de compte : ses victoires ne sont pas enregistrées.', 'This player has no account: their wins are not recorded.')}</p>}
       {profil?.type === 'bot' && (
         <div className="fiche-bot">
@@ -569,6 +572,55 @@ export function FicheJoueur(props: { joueurId?: string; code?: string; statut?: 
         </>
       )}
     </Fenetre>
+  );
+}
+
+/** Badge « Créateur » : seulement sur le profil des membres de l'équipe qui a fait le jeu. */
+export function BadgeCreateur() {
+  return (
+    <div className="badge-createur">
+      <img src="/cartes/badge-createur.webp" alt={tr('Badge Créateur', 'Creator badge')} width={512} height={512} draggable={false} />
+      <span>
+        <strong>{tr('Créateur du jeu', 'Game creator')}</strong>
+        <small>{tr('Membre de l’équipe qui a créé Le Dernier Baron', 'Member of the team that made Le Dernier Baron')}</small>
+      </span>
+    </div>
+  );
+}
+
+/** Accueil, pendant la courte période prévue : l'équipe du jeu récupère son badge « Créateur » sur son compte. */
+export function CarteBadgeCreateur({ compte, appel, seConnecter }: { compte: EtatCompte; appel: Appel; seConnecter: () => void }) {
+  const [occupe, setOccupe] = useState(false);
+  if (!compte.actif || !badgeCreateurOuvert(Date.now()) || compte.profil?.createur) return null;
+  const jour = new Date(FIN_BADGE_CREATEUR - 1).toLocaleDateString(LOCALE, { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long' });
+  const recuperer = async () => {
+    setOccupe(true);
+    const r = await appel('badge_createur');
+    setOccupe(false);
+    if (r.ok && r.profil) compte.majProfil(r.profil as ProfilCompte);
+  };
+  return (
+    <section className="carte-badge-createur">
+      <img src="/cartes/badge-createur.webp" alt="" width={512} height={512} draggable={false} />
+      <div>
+        <strong>{tr('Badge Créateur', 'Creator badge')}</strong>
+        <p>
+          {tr(
+            `Réservé à l’équipe du jeu : il s’affichera sur ton profil. À récupérer jusqu’au ${jour} à minuit.`,
+            `For the game’s team only: it will show on your profile. Claim it before midnight on ${jour}.`,
+          )}
+        </p>
+        {compte.profil ? (
+          <button type="button" className="petit principal" disabled={occupe} onClick={() => void recuperer()}>
+            {tr('Récupérer le badge', 'Claim the badge')}
+          </button>
+        ) : (
+          <button type="button" className="petit" onClick={seConnecter}>
+            {tr('Se connecter pour le récupérer', 'Sign in to claim it')}
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 

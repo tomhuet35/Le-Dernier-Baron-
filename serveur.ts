@@ -21,6 +21,8 @@ import {
   REACTIONS,
   SIGNALEMENTS_POUR_COUPER,
   TAILLE_PARTIE_PUBLIQUE,
+  badgeCreateurOuvert,
+  FIN_BADGE_CREATEUR,
 } from '../shared/config';
 import { estLangue, selon, traduireErreurMoteur, type Langue } from '../shared/langue';
 import { filtrerMessage, pseudoAcceptable } from '../shared/moderation';
@@ -137,6 +139,8 @@ export interface OptionsServeur {
   delaiRevanche?: number;
   /** Heure du serveur pour le classement de la semaine (remplaçable pour les tests). */
   horloge?: () => number;
+  /** Fin de la distribution du badge « Créateur » (remplaçable pour les tests). */
+  finBadgeCreateur?: number;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -979,6 +983,27 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       repondre(rappel, { ok: true });
     });
 
+    // Badge « Créateur » : récupéré depuis l'accueil par l'équipe du jeu, jusqu'à la date prévue.
+    let dernierBadge = 0;
+    socket.on('badge_createur', async (_data: unknown, rappel?: Rappel) => {
+      if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: L('Connecte-toi à ton compte pour récupérer le badge.', 'Sign in to your account to claim the badge.') });
+      if (!badgeCreateurOuvert(Date.now(), options.finBadgeCreateur ?? FIN_BADGE_CREATEUR)) {
+        return repondre(rappel, { ok: false, erreur: L('Le badge Créateur ne peut plus être récupéré.', 'The Creator badge can no longer be claimed.') });
+      }
+      if (Date.now() - dernierBadge < 1000) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      dernierBadge = Date.now();
+      const id = identite;
+      try {
+        const stats = await comptes.donnerBadgeCreateur(id.uid);
+        if (!stats) return repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment.', 'Your profile is unavailable right now.') });
+        resume = resumeCompte(stats);
+        repondre(rappel, { ok: true, profil: profilComplet(id, stats), message: L('Badge Créateur ajouté à ton profil !', 'Creator badge added to your profile!') });
+      } catch (e) {
+        console.error('Badge Créateur impossible :', e);
+        repondre(rappel, { ok: false, erreur: L('Le badge n’a pas pu être ajouté, réessaie plus tard.', 'The badge could not be added, try again later.') });
+      }
+    });
+
     socket.on('tapis', async (data: { tapis?: unknown } = {}, rappel?: Rappel) => {
       if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: L('Connecte-toi à ton compte.', 'Sign in to your account.') });
       if (!estTapis(data?.tapis)) return repondre(rappel, { ok: false, erreur: L('Tapis inconnu.', 'Unknown felt.') });
@@ -1127,6 +1152,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
             meilleurScore: stats?.meilleurScore ?? null,
             historique: (stats?.historique ?? []).slice(0, 5),
             semaine: classement?.rangDe(j.uid) ?? null,
+            ...(stats?.createur ? { createur: true } : {}),
           };
         } catch (e) {
           console.error('Lecture du profil impossible :', e);
@@ -1436,6 +1462,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
           meilleurScore: stats.meilleurScore,
           historique: stats.historique.slice(0, 5),
           semaine: classement?.rangDe(autre) ?? null,
+          ...(stats.createur ? { createur: true } : {}),
         };
         repondre(rappel, { ok: true, profil });
       } catch (e) {

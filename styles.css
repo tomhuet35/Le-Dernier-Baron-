@@ -1337,3 +1337,15 @@ button.bouton-regarder:hover:not(:disabled) { background: rgba(231, 194, 122, 0.
 @media (prefers-reduced-motion: reduce) {
   .semaine-couronne, .semaine-vide-couronne { animation: none !important; }
 }
+
+/* ----- Badge « Créateur » (équipe du jeu) : sur le profil, et à récupérer depuis l'accueil pendant un jour ----- */
+.badge-createur { display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 8px; border-radius: 12px; border: 1px solid var(--or); background: linear-gradient(90deg, rgba(142, 28, 20, 0.45), rgba(33, 23, 17, 0.6) 70%); }
+.badge-createur img { flex: none; width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6)); }
+.badge-createur span { display: grid; gap: 2px; min-width: 0; }
+.badge-createur strong { font-family: var(--titre); font-weight: 400; font-size: 18px; color: var(--or-vif); }
+.badge-createur small { color: var(--creme-doux); font-size: 13px; line-height: 1.35; }
+.carte-badge-createur { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; width: min(100%, 460px); margin: 0 auto; padding: 10px 14px 12px 10px; border-radius: 14px; border: 1px solid var(--or-vif); background: linear-gradient(90deg, rgba(142, 28, 20, 0.5), rgba(33, 23, 17, 0.92) 75%); box-shadow: 0 0 18px rgba(231, 194, 122, 0.22); }
+.carte-badge-createur img { width: 84px; height: 84px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6)); }
+.carte-badge-createur > div { display: grid; gap: 6px; justify-items: start; min-width: 0; }
+.carte-badge-createur strong { font-family: var(--titre); font-weight: 400; font-size: 18px; color: var(--or-vif); }
+.carte-badge-createur p { font-size: 13px; line-height: 1.4; color: var(--creme); }

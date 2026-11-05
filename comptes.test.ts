@@ -15,6 +15,7 @@ import {
 } from '../server/comptes';
 import { creerNotifications } from '../server/notifications';
 import { demarrerServeur } from '../server/serveur';
+import { badgeCreateurOuvert } from '../shared/config';
 import { estWeekendXpDouble, niveauDepuisXp, progression, resultatsPartie, tapisActif, tapisGagnes, titreNiveau, trancheNiveau, xpPourNiveau, XP_NUIT, XP_PARTIE, XP_VICTOIRE } from '../shared/niveaux';
 import { actionRobot } from '../shared/robot';
 import type { BilanNuit, Invitation, ListeAmis, ScoreNuit, VueSalon } from '../shared/types';
@@ -187,6 +188,7 @@ beforeAll(async () => {
     notifications,
     contact: 'contact@exemple.fr',
     xpDouble: () => xpDoubleActif,
+    finBadgeCreateur: Date.now() + 3_600_000,
   });
 });
 afterAll(async () => {
@@ -226,7 +228,31 @@ function jouerJusquALaFin(sockets: Socket[]) {
   );
 }
 
+describe('Badge Créateur', () => {
+  it('se récupère jusqu’à la date prévue, puis plus du tout', () => {
+    expect(badgeCreateurOuvert(Date.UTC(2026, 10, 6, 22, 59))).toBe(true); // vendredi 6 novembre, 23 h 59 à Paris
+    expect(badgeCreateurOuvert(Date.UTC(2026, 10, 6, 23, 0))).toBe(false); // samedi 7 novembre, 0 h à Paris
+    expect(normaliserStats({ createur: true })?.createur).toBe(true);
+    expect(normaliserStats({ createur: 'oui' })?.createur).toBeUndefined();
+  });
+});
+
 describe('Comptes de bout en bout', () => {
+  it('donne le badge Créateur au compte connecté, et à lui seul', async () => {
+    const invite = connecter();
+    expect((await emettre(invite, 'badge_createur')).ok).toBe(false);
+    invite.close();
+    const s = connecter();
+    expect((await emettre(s, 'identifier', { jeton: 'jeton-alice' })).profil.createur).toBeUndefined();
+    const r = await emettre(s, 'badge_createur');
+    expect(r).toMatchObject({ ok: true, profil: { nom: 'Alice', createur: true } });
+    expect((await emettre(s, 'profil')).profil.createur).toBe(true);
+    s.close();
+    const t = connecter();
+    expect((await emettre(t, 'identifier', { jeton: 'jeton-bruno' })).profil.createur).toBeUndefined();
+    t.close();
+  });
+
   it('publie la configuration web et refuse un jeton inconnu', async () => {
     const config = await fetch(`${url()}/api/config`).then((r) => r.json());
     expect(config.firebase.projectId).toBe('test');
