@@ -1,6 +1,8 @@
 import { io, type Socket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { creerClassement, semaineDe, stockageClassementMemoire } from '../server/classement';
+import { PREFIXE_FICTIF, PROFILS_FICTIFS, scoresFictifs } from '../server/fictifs';
+import { pseudoAcceptable } from '../shared/moderation';
 import { authentificationTest, creerServiceComptes, stockageMemoire } from '../server/comptes';
 import { demarrerServeur } from '../server/serveur';
 import { RECOMPENSES_SEMAINE, xpRecompenseSemaine } from '../shared/niveaux';
@@ -307,5 +309,54 @@ describe('Récompenses du classement de la semaine', () => {
     } finally {
       await srv.fermer();
     }
+  });
+});
+
+// ---------- Joueurs de remplissage du classement ----------
+
+describe('Joueurs fictifs du classement', () => {
+  const s46 = semaineDe(Date.parse('2026-11-12T12:00:00Z'));
+
+  it('ont des pseudos acceptables et des scores qui arrivent au fil de la semaine, toujours les mêmes', () => {
+    expect(PROFILS_FICTIFS.every((p) => pseudoAcceptable(p.nom))).toBe(true);
+    expect(new Set(PROFILS_FICTIFS.map((p) => p.nom.toLowerCase())).size).toBe(PROFILS_FICTIFS.length);
+    // Lundi à l'ouverture : personne n'a encore joué ; ensuite le classement se remplit, sans jamais reculer.
+    expect(scoresFictifs(s46, s46.debut).size).toBe(0);
+    let avant = new Map<string, number>();
+    for (let h = 6; h <= 7 * 24; h += 6) {
+      const m = scoresFictifs(s46, s46.debut + h * 3_600_000);
+      for (const [id, score] of avant) expect(m.get(id)!.score).toBeGreaterThanOrEqual(score);
+      avant = new Map([...m].map(([id, e]) => [id, e.score]));
+    }
+    expect(avant.size).toBeGreaterThanOrEqual(5);
+    expect([...avant.keys()].every((id) => id.startsWith(PREFIXE_FICTIF))).toBe(true);
+    // Recalculé à l'identique (après un redémarrage du serveur, par exemple).
+    expect(scoresFictifs(s46, s46.fin)).toEqual(scoresFictifs(s46, s46.fin));
+    // Toutes les parties sont dans la semaine.
+    for (const e of scoresFictifs(s46, s46.fin).values()) expect(e.date >= s46.debut && e.date < s46.fin).toBe(true);
+  });
+
+  it('se mêlent aux vrais joueurs sans que rien ne les distingue', async () => {
+    let maintenant = s46.fin - 60_000; // dimanche soir
+    const c = creerClassement(stockageClassementMemoire(), () => maintenant, { fictifs: true });
+    await c.noter('uid-vrai', { nom: 'Vrai', avatar: 2, niveau: 4, score: 1000 });
+    const vue = await c.vue('uid-vrai');
+    const fictifs = scoresFictifs(s46, maintenant);
+    expect(vue.semaine.total).toBe(fictifs.size + 1);
+    expect(vue.semaine.entrees[0]).toMatchObject({ rang: 1, nom: 'Vrai', moi: true });
+    expect(c.couronneDe('uid-vrai')).toBe(1);
+    expect(JSON.stringify(vue)).not.toMatch(/fictif|bot|robot/i);
+    expect(vue.semaine.entrees.slice(1).every((e) => Object.keys(e).sort().join() === 'avatar,niveau,nom,rang,score')).toBe(true);
+    // Un vrai joueur moins fort est classé parmi eux.
+    await c.noter('uid-moyen', { nom: 'Moyen', avatar: 3, niveau: 2, score: 0 });
+    const plusForts = [...fictifs.values()].filter((e) => e.score >= 0).length; // à égalité, le premier arrivé passe devant
+    expect(c.rangDe('uid-moyen')?.rang).toBe(2 + plusForts);
+    // La semaine suivante : la semaine dernière reste pleine, et la place pour la récompense compte tout le monde.
+    maintenant = s46.fin + 3_600_000;
+    const suite = await c.vue(null);
+    expect(suite.precedente?.entrees[0]).toMatchObject({ nom: 'Vrai', score: 1000 });
+    expect(suite.precedente!.entrees.length).toBe(Math.min(10, fictifs.size + 2));
+    expect(await c.rangPrecedent('uid-moyen')).toMatchObject({ rang: 2 + plusForts });
+    expect(c.meneur()).not.toBeNull();
   });
 });

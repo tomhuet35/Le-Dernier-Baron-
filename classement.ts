@@ -8,6 +8,7 @@
  */
 import { pseudoAcceptable } from '../shared/moderation';
 import type { EntreeClassementVue, MeneurSemaine, Rang, VueClassement } from '../shared/types';
+import { scoresFictifs } from './fictifs';
 
 export interface EntreeClassement {
   nom: string;
@@ -129,18 +130,24 @@ export interface Classement {
   semaineCourante(): Semaine;
 }
 
-export function creerClassement(stockage: StockageClassement, horloge: () => number = Date.now): Classement {
+export function creerClassement(stockage: StockageClassement, horloge: () => number = Date.now, options: { fictifs?: boolean } = {}): Classement {
   let courante: Tableau = { semaine: semaineDe(horloge()), scores: new Map() };
   let precedente: Tableau | null = null;
   let podium: string[] = [];
+  let minutePodium = -1;
 
-  const trie = (t: Tableau) => [...t.scores.entries()].sort(([, a], [, b]) => avant(a, b));
+  /** Scores de la semaine, avec ceux des joueurs fictifs déjà « joués » à cet instant (s'ils sont activés). */
+  const complet = (t: Tableau, jusqua: number): Map<string, EntreeClassement> => (options.fictifs ? new Map([...scoresFictifs(t.semaine, jusqua), ...t.scores]) : t.scores);
+  const deCetteSemaine = () => complet(courante, horloge());
+  const deLaPrecedente = (t: Tableau) => complet(t, t.semaine.fin);
+  const trie = (scores: Map<string, EntreeClassement>) => [...scores.entries()].sort(([, a], [, b]) => avant(a, b));
   const recalculerPodium = () => {
-    const nouveau = trie(courante)
+    const nouveau = trie(deCetteSemaine())
       .slice(0, 3)
       .map(([uid]) => uid);
     const change = nouveau.join('|') !== podium.join('|');
     podium = nouveau;
+    minutePodium = Math.floor(horloge() / 60_000);
     return change;
   };
   const fusionner = (t: Tableau, lus: Record<string, EntreeClassement> | null) => {
@@ -162,6 +169,7 @@ export function creerClassement(stockage: StockageClassement, horloge: () => num
     precedente = courante.semaine.cle === cleAvant ? courante : null; // une semaine sans aucune partie : on la relira
     courante = { semaine: s, scores: new Map() };
     podium = [];
+    minutePodium = -1;
     return true;
   }
 
@@ -207,6 +215,8 @@ export function creerClassement(stockage: StockageClassement, horloge: () => num
     couronneDe(uid) {
       if (!uid) return null;
       verifierSemaine();
+      // Les scores des joueurs fictifs arrivent au fil de la semaine : le podium est revu chaque minute.
+      if (options.fictifs && Math.floor(horloge() / 60_000) !== minutePodium) recalculerPodium();
       const i = podium.indexOf(uid);
       return i < 0 ? null : ((i + 1) as Rang);
     },
@@ -214,30 +224,31 @@ export function creerClassement(stockage: StockageClassement, horloge: () => num
       verifierSemaine();
       const e = courante.scores.get(uid);
       if (!e) return null;
-      return { rang: 1 + [...courante.scores.values()].filter((x) => avant(x, e) < 0).length, score: e.score };
+      return { rang: 1 + [...deCetteSemaine().values()].filter((x) => avant(x, e) < 0).length, score: e.score };
     },
     async rangPrecedent(uid) {
       verifierSemaine();
       const prec = await precedenteChargee();
       const e = prec?.scores.get(uid);
       if (!prec || !e) return null;
-      return { semaine: prec.semaine, rang: 1 + [...prec.scores.values()].filter((x) => avant(x, e) < 0).length };
+      return { semaine: prec.semaine, rang: 1 + [...deLaPrecedente(prec).values()].filter((x) => avant(x, e) < 0).length };
     },
     meneur() {
       verifierSemaine();
-      const [premier] = trie(courante);
-      const source = premier ? { e: premier[1], semaine: 'courante' as const } : precedente?.semaine.cle === semaineDe(courante.semaine.debut - 1).cle ? { e: trie(precedente)[0]?.[1], semaine: 'precedente' as const } : null;
+      const [premier] = trie(deCetteSemaine());
+      const source = premier ? { e: premier[1], semaine: 'courante' as const } : precedente?.semaine.cle === semaineDe(courante.semaine.debut - 1).cle ? { e: trie(deLaPrecedente(precedente))[0]?.[1], semaine: 'precedente' as const } : null;
       if (!source?.e) return null;
       return { nom: pseudoAcceptable(source.e.nom) ? source.e.nom : null, avatar: source.e.avatar, niveau: source.e.niveau, score: source.e.score, semaine: source.semaine };
     },
     async vue(uid, taille = TAILLE_CLASSEMENT) {
       verifierSemaine();
-      const lignes = trie(courante);
+      const lignes = trie(deCetteSemaine());
       const tous = vueEntrees(lignes, uid);
       const prec = await precedenteChargee().catch(() => null);
+      const lignesPrec = prec ? trie(deLaPrecedente(prec)) : [];
       return {
         semaine: { ...courante.semaine, entrees: tous.slice(0, taille), moi: tous.find((x) => x.moi) ?? null, total: lignes.length },
-        precedente: prec && prec.scores.size ? { ...prec.semaine, entrees: vueEntrees(trie(prec), uid).slice(0, 10) } : null,
+        precedente: prec && lignesPrec.length ? { ...prec.semaine, entrees: vueEntrees(lignesPrec, uid).slice(0, 10) } : null,
       };
     },
     async retirer(uid) {

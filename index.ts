@@ -14,8 +14,10 @@ const comptes = await comptesDepuisEnvironnement(process.env);
 const notifications = await creerNotifications(comptes, process.env);
 // Adresse de contact de la page Confidentialité : réglée sur Render, jamais écrite dans le code public.
 const contact = process.env.CONTACT_EMAIL?.trim() || 'ledernierbaron@gmail.com';
+// Joueurs de remplissage du classement de la semaine : JOUEURS_FICTIFS=non sur Render pour les retirer.
+const joueursFictifs = process.env.JOUEURS_FICTIFS !== 'non';
 
-demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes, notifications, contact }).then(({ port: p }) => {
+demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes, notifications, contact, joueursFictifs }).then(({ port: p }) => {
   console.log(`Le Dernier Baron est en ligne sur http://localhost:${p}`);
   garderEveille();
 });

@@ -145,6 +145,8 @@ export interface OptionsServeur {
   finBadgeCreateur?: number;
   /** Case tirée à la roulette du jour (remplaçable pour les tests ; au hasard sinon). */
   tirageRoulette?: () => number;
+  /** Joueurs de remplissage dans le classement de la semaine (voir fictifs.ts). */
+  joueursFictifs?: boolean;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -169,7 +171,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   /** Téléphones qui regardent une partie : code du salon regardé. */
   const spectateursParSocket = new Map<string, string>();
   // Classement de la semaine (meilleurs scores) : seulement avec les comptes joueurs.
-  const classement = comptes ? creerClassement(comptes.classements, options.horloge ?? Date.now) : null;
+  const classement = comptes ? creerClassement(comptes.classements, options.horloge ?? Date.now, { fictifs: options.joueursFictifs ?? false }) : null;
   if (classement) {
     void classement
       .charger()
