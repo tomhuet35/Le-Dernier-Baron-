@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS, NB_AVATARS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
 import { NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, TRANCHES_EN } from '../../shared/langue';
@@ -31,6 +31,34 @@ import { BoutonMusique, Chat, Couronne, CouronneRang, Defilant, Fenetre, IconeIm
 import { BanniereBaron, CelebrationRecompense, FenetreClassement } from './Classement';
 import { BoutonRoulette, FenetreRoulette } from './RouletteDuJour';
 import type { GainRoulette } from '../../shared/roulette';
+
+/** Salon privé du casino (comptes Créateur) : chargé à part, seulement quand un créateur l'ouvre. */
+const Casino = lazy(() => import('./Casino'));
+
+/** Clé dorée du Salon privé (l'image icone-salon.webp la remplace dès qu'elle est en ligne). */
+function IconeSalon() {
+  const [echec, setEchec] = useState(false);
+  if (!echec) return <img className="menu-icone menu-icone-salon" src="/cartes/icone-salon.webp" alt="" draggable={false} onError={() => setEchec(true)} />;
+  return (
+    <svg className="menu-icone menu-icone-salon" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="cle-or" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff2c6" />
+          <stop offset="0.5" stopColor="#d2a85a" />
+          <stop offset="1" stopColor="#8a6424" />
+        </linearGradient>
+      </defs>
+      <g transform="rotate(-35 32 32)" fill="url(#cle-or)" stroke="#5a3d12" strokeWidth="1.2">
+        <path d="M14 22 L18 14 L22 20 L26 12 L30 20 L34 14 L38 22 Z" />
+        <circle cx="26" cy="31" r="9" />
+        <rect x="24" y="38" width="4.5" height="20" rx="1.5" />
+        <rect x="28" y="49" width="7" height="3.5" />
+        <rect x="28" y="54" width="5" height="3.5" />
+      </g>
+      <circle cx="21.5" cy="34.5" r="3.6" fill="#1b120c" transform="rotate(-35 32 32)" />
+    </svg>
+  );
+}
 
 type Reponse = {
   ok: boolean;
@@ -403,12 +431,26 @@ export function App() {
     [module, pret, utilisateur, profil, chargement, rafraichir, identifier],
   );
 
+  // Salon privé du casino : seulement pour les comptes Créateur, et jamais pendant une partie.
+  const [casinoOuvert, setCasinoOuvert] = useState(false);
+  const quitterCasino = useCallback((m?: string) => {
+    setCasinoOuvert(false);
+    if (m) setMessage(m);
+  }, []);
+  const ouvrirCasino = profil?.createur ? () => setCasinoOuvert(true) : undefined;
+
   let ecran;
   if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} tapis={tapisActif(profil?.tapis, profil?.xp ?? 0)} poserTapis={poserTapis} />;
   else if (salon?.spectateur) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
   else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} amis={amis} />;
   else if (reprise) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
-  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} />;
+  else if (casinoOuvert && profil?.createur)
+    ecran = (
+      <Suspense fallback={<div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>}>
+        <Casino appel={appel} compte={compte} onQuitter={quitterCasino} />
+      </Suspense>
+    );
+  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirCasino={ouvrirCasino} />;
 
   return (
     <>
@@ -451,7 +493,7 @@ export function App() {
   );
 }
 
-function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; amis: EtatAmis }) {
+function Accueil({ appel, compte, enLigne, amis, ouvrirCasino }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; amis: EtatAmis; ouvrirCasino?: () => void }) {
   const [vue, setVue] = useState<'menu' | 'jouer'>(salonDansAdresse() ? 'jouer' : 'menu');
   const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'classement' | 'roulette' | 'regles' | 'reglages' | 'connexion' | 'inscription' | null>(null);
   const [intro, setIntro] = useState<string | undefined>(undefined);
@@ -502,6 +544,19 @@ function Accueil({ appel, compte, enLigne, amis }: { appel: Appel; compte: EtatC
               <button type="button" className="menu-entree menu-entree-large" onClick={() => setFenetre('classement')}>
                 <Couronne className="menu-icone menu-icone-couronne" />
                 <span>{tr('Classement de la semaine', 'Weekly ranking')}</span>
+              </button>
+            )}
+            {ouvrirCasino && (
+              <button
+                type="button"
+                className="menu-entree menu-entree-large menu-entree-salon"
+                onClick={() => {
+                  fermer();
+                  ouvrirCasino();
+                }}
+              >
+                <IconeSalon />
+                <span>{tr('Salon privé', 'Private lounge')}</span>
               </button>
             )}
           </div>

@@ -10,6 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { estLangue, type Langue } from '../shared/langue';
 import { estTapis, niveauDepuisXp, tapisActif, tapisDebloque, TAPIS_PAR_DEFAUT, type IdTapis, type ResultatJoueur } from '../shared/niveaux';
+import { CASES_ROUE_SALON, SOLDE_DEPART, SOLDE_MAX } from '../shared/casino';
 import { gainDeCase, PERSONNAGES_ROULETTE, type GainRoulette } from '../shared/roulette';
 import type { EntreeHistorique, ProfilCompte } from '../shared/types';
 import { normaliserEntree, stockageClassementMemoire, type EntreeClassement, type StockageClassement } from './classement';
@@ -62,6 +63,30 @@ export interface StatsCompte {
   roulette?: string;
   /** Dernière semaine (« 2026-S45 ») dont la récompense du classement a été donnée. */
   recompenseSemaine?: string;
+  /** Salon privé du casino (comptes Créateur) : argent fictif, sans valeur réelle. */
+  casino?: CasinoCompte;
+}
+
+export interface CasinoCompte {
+  solde: number;
+  /** Dernier jour (heure de Paris) où la roulette du salon a été tournée. */
+  roue?: string;
+  /** Premier passage au salon. */
+  depuis: number;
+  plusGrosGain?: number;
+}
+
+/** Relit le casino d'un compte (entiers positifs, solde plafonné). */
+function normaliserCasino(brut: unknown): CasinoCompte | null {
+  if (!brut || typeof brut !== 'object') return null;
+  const c = brut as Record<string, unknown>;
+  const entier = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
+  return {
+    solde: Math.min(SOLDE_MAX, entier(c.solde)),
+    ...(typeof c.roue === 'string' ? { roue: c.roue } : {}),
+    depuis: entier(c.depuis),
+    ...(typeof c.plusGrosGain === 'number' ? { plusGrosGain: entier(c.plusGrosGain) } : {}),
+  };
 }
 
 /** Signalement d'un joueur par un autre (gardé 6 mois pour vérification). */
@@ -149,6 +174,12 @@ export interface ServiceComptes {
   tournerRoulette(uid: string, jour: string, tirage: number): Promise<{ stats: StatsCompte; gain: GainRoulette; xpAvant: number } | 'deja' | null>;
   /** Récompense du classement de la semaine : ajoute l'XP ; « deja » si cette semaine a déjà été récompensée, null sans compte. */
   recompenserSemaine(uid: string, semaine: string, xp: number): Promise<{ stats: StatsCompte; xpAvant: number } | 'deja' | null>;
+  /** Salon privé : ouvre le casino du compte au premier passage (1 000 000 $) ; null sans compte. */
+  entrerCasino(uid: string): Promise<StatsCompte | null>;
+  /** Ajoute (ou retire) de l'argent au casino du compte, sans jamais passer sous zéro ; null sans casino. */
+  mouvementCasino(uid: string, delta: number, plusGrosGain?: number): Promise<StatsCompte | null>;
+  /** Roulette du salon : ajoute le gain de la case ; « deja » si elle a déjà été tournée ce jour-là, null sans casino. */
+  tournerRoueSalon(uid: string, jour: string, tirage: number): Promise<{ stats: StatsCompte; gain: number } | 'deja' | null>;
   /** Ajoute (ou rafraîchit) l'abonnement aux notifications d'un appareil ; les plus anciens partent au-delà de 5. */
   abonnerPush(uid: string, abonnement: Omit<AbonnementPush, 'depuis'>): Promise<StatsCompte | null>;
   /** Retire des abonnements (désactivés par le joueur, ou expirés). */
@@ -263,6 +294,7 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
     ...(Array.isArray(d.personnages) ? { personnages: PERSONNAGES_ROULETTE.filter((p) => (d.personnages as unknown[]).includes(p)) } : {}),
     ...(typeof d.roulette === 'string' ? { roulette: d.roulette } : {}),
     ...(typeof d.recompenseSemaine === 'string' ? { recompenseSemaine: d.recompenseSemaine } : {}),
+    ...(normaliserCasino(d.casino) ? { casino: normaliserCasino(d.casino)! } : {}),
   };
 }
 
@@ -454,6 +486,41 @@ export function creerServiceComptes(parties: {
           : { ...base, roulette: jour, personnages: [...perso, gain.avatar], majLe: Date.now() };
       });
       return res.gain ? { stats, gain: res.gain, xpAvant: res.xpAvant } : 'deja';
+    },
+    entrerCasino: async (uid) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel) return null;
+      if (actuel.casino) return actuel;
+      return stockage.modifier(uid, (avant) => {
+        const base = avant ?? actuel;
+        return base.casino ? base : { ...base, casino: { solde: SOLDE_DEPART, depuis: Date.now() } };
+      });
+    },
+    mouvementCasino: async (uid, delta, plusGrosGain) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel?.casino) return null;
+      return stockage.modifier(uid, (avant) => {
+        const base = avant ?? actuel;
+        const c = base.casino ?? { solde: SOLDE_DEPART, depuis: Date.now() };
+        const record = Math.max(c.plusGrosGain ?? 0, plusGrosGain ?? 0);
+        return { ...base, casino: { ...c, solde: Math.min(SOLDE_MAX, Math.max(0, Math.round(c.solde + delta))), ...(record ? { plusGrosGain: record } : {}) } };
+      });
+    },
+    tournerRoueSalon: async (uid, jour, tirage) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel?.casino) return null;
+      if (actuel.casino.roue === jour) return 'deja';
+      const gain = CASES_ROUE_SALON[tirage] ?? 0;
+      const res = { donne: false };
+      const stats = await stockage.modifier(uid, (avant) => {
+        const base = avant ?? actuel;
+        const c = base.casino ?? { solde: SOLDE_DEPART, depuis: Date.now() };
+        res.donne = false;
+        if (c.roue === jour) return base;
+        res.donne = true;
+        return { ...base, casino: { ...c, roue: jour, solde: Math.min(SOLDE_MAX, c.solde + gain) } };
+      });
+      return res.donne ? { stats, gain } : 'deja';
     },
     recompenserSemaine: async (uid, semaine, xp) => {
       const actuel = await stockage.lire(uid);

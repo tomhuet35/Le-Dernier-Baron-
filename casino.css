@@ -1,0 +1,143 @@
+/* Salon privé du Baron (casino des créateurs) : chargé seulement avec l'écran du casino. */
+
+.cas { position: relative; min-height: 100dvh; }
+.cas::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Le décor du salon (salon-fond.webp) passe devant celui de l'accueil dès qu'il est en ligne. */
+  background:
+    radial-gradient(90% 60% at 50% 30%, rgba(30, 14, 6, 0.25) 0%, rgba(8, 4, 3, 0.9) 100%),
+    url('/cartes/salon-fond.webp') center / cover no-repeat,
+    var(--nuit) url('/cartes/fond-portrait.webp') center / cover no-repeat;
+}
+@media (min-aspect-ratio: 1 / 1) {
+  .cas::before {
+    background:
+      radial-gradient(80% 75% at 50% 40%, rgba(30, 14, 6, 0.25) 0%, rgba(8, 4, 3, 0.9) 100%),
+      url('/cartes/salon-fond-paysage.webp') center / cover no-repeat,
+      var(--nuit) url('/cartes/fond-paysage.webp') center / cover no-repeat;
+  }
+}
+
+.cas-ecran { width: min(100%, 720px); margin: 0 auto; padding: max(10px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom)); display: grid; gap: 14px; align-content: start; }
+.cas-barre { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; min-height: 44px; }
+.cas-barre h1 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 30px); color: var(--or-vif); letter-spacing: 0.04em; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); }
+.cas-retour { justify-self: start; min-height: 38px; padding: 4px 14px 4px 10px; border-radius: 99px; background: rgba(22, 16, 12, 0.8); font-size: 14px; }
+.cas-solde-petit { grid-column: 3; justify-self: end; padding: 6px 12px; border-radius: 99px; border: 1px solid rgba(231, 194, 122, 0.55); background: rgba(22, 16, 12, 0.85); font-family: var(--titre); color: var(--or-vif); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Solde */
+.cas-tresor { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--or); background: linear-gradient(180deg, rgba(60, 1, 7, 0.88), rgba(22, 16, 12, 0.92)); box-shadow: 0 0 0 3px rgba(22, 16, 12, 0.85), 0 12px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 241, 196, 0.12); }
+.cas-tresor-avatar { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 2px solid var(--or-vif); flex: none; }
+.cas-tresor small { display: block; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--creme-doux); }
+.cas-solde { display: block; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 9vw, 44px); line-height: 1.05; color: var(--or-vif); text-shadow: 0 0 18px rgba(231, 194, 122, 0.35); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.cas-bouton-roue { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 16px 8px 8px; border-radius: 99px; border: 1px solid rgba(231, 194, 122, 0.55); background: rgba(22, 16, 12, 0.85); text-align: left; }
+.cas-bouton-roue.prete { border-color: var(--or-vif); box-shadow: 0 0 16px rgba(231, 194, 122, 0.3); }
+.cas-bouton-roue span:not(.pastille-nombre) { display: grid; gap: 1px; }
+.cas-bouton-roue strong { font-size: 15px; }
+.cas-bouton-roue small { color: var(--creme-doux); font-size: 13px; }
+.cas-bouton-roue .pastille-nombre { top: -4px; right: 6px; }
+
+/* Les quatre jeux */
+.cas-jeux { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 700px) { .cas-jeux { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.cas-vignette { position: relative; display: block; padding: 0; overflow: hidden; aspect-ratio: 2 / 2.6; border-radius: 14px; border: 2px solid var(--or); background: var(--nuit-2); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6); }
+.cas-vignette img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s; }
+.cas-vignette:hover:not(:disabled) img { transform: scale(1.04); }
+.cas-vignette-nom { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 8px 9px; background: linear-gradient(transparent, rgba(10, 5, 3, 0.95) 60%); font-family: var(--titre); font-size: clamp(17px, 4.6vw, 21px); color: var(--or-vif); text-shadow: 0 2px 6px #000; }
+.cas-vignette.bientot { opacity: 1; }
+.cas-vignette.bientot img { filter: grayscale(0.7) brightness(0.55); }
+.cas-bientot { position: absolute; top: 10px; right: -30px; rotate: 35deg; width: 120px; padding: 3px 0; background: var(--rouge); border-top: 1px solid var(--or-vif); border-bottom: 1px solid var(--or-vif); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #fff1d0; }
+
+.cas-gros-lot { margin: 0; text-align: center; font-size: 14px; color: var(--creme-doux); }
+.cas-gros-lot strong { color: var(--or-vif); font-family: var(--titre); font-weight: 400; font-size: 17px; }
+
+/* Plus riches */
+.cas-riches { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.88); }
+.cas-riches h2 { margin: 0 0 8px; font-size: 18px; color: var(--or); }
+.cas-riches ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.cas-riches li { display: grid; grid-template-columns: 22px 32px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 9px; background: var(--nuit-3); }
+.cas-riches li.moi { background: #33221a; outline: 1px solid var(--or); }
+.cas-riche-rang { font-family: var(--titre); color: var(--or); text-align: center; }
+.cas-riches img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.cas-riche-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cas-riches li strong { color: var(--or-vif); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cas-mention { margin: 4px 0 0; text-align: center; font-size: 12px; color: var(--creme-doux); opacity: 0.8; }
+
+/* Annonces du salon */
+.cas-annonce { position: fixed; z-index: 30; top: max(10px, env(safe-area-inset-top)); left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 10px; width: min(92vw, 460px); padding: 10px 14px; border-radius: 14px; border: 1px solid var(--or-vif); background: linear-gradient(180deg, #3c0107, #1b0a07); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(231, 194, 122, 0.3); animation: cas-annonce 0.5s cubic-bezier(0.3, 1.5, 0.5, 1); font-size: 14px; }
+.cas-annonce img { width: 34px; height: auto; flex: none; }
+@keyframes cas-annonce { from { opacity: 0; transform: translateY(-30px); } }
+
+/* Montants dans les célébrations */
+.cas-medaillon-gain { font-size: 25px !important; padding: 0 10px; text-align: center; line-height: 1.1; }
+.cas-medaillon-bonus { display: grid; place-items: center; width: 152px; height: 152px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #13703f, #0a3d22); border: 3px solid #5a3d12; }
+.cas-medaillon-bonus .cas-symbole { width: 74px; height: 74px; }
+.cas-medaillon-bonus strong { margin-top: -6px; font-family: var(--titre); font-weight: 400; font-size: 30px; color: #fff1c4; }
+.roue-texte.petit { font-size: 11.5px; }
+
+/* ---------- Machine à sous ---------- */
+.cas-machine-ecran { --case: max(48px, min(calc((100vw - 92px) / 5), calc((100dvh - 470px) / 3), 100px)); }
+.cas-machine { display: grid; justify-items: center; gap: 10px; padding: 0 0 14px; border-radius: 26px 26px 18px 18px; border: 2px solid var(--or); background: linear-gradient(180deg, #4a0b0b 0%, #2a0806 45%, #1a0c08 100%); box-shadow: 0 0 0 4px rgba(22, 16, 12, 0.9), 0 0 0 6px rgba(210, 168, 90, 0.6), 0 20px 50px rgba(0, 0, 0, 0.75); overflow: hidden; }
+
+/* Fronton (en attendant machine-fronton.webp) : arche dorée bordée d'ampoules. */
+.cas-fronton { position: relative; width: 100%; padding: 18px 14px 12px; text-align: center; background: radial-gradient(120% 120% at 50% 100%, #3c0107 0%, #1a0505 70%); border-bottom: 2px solid var(--or); }
+.cas-fronton::before { content: ''; position: absolute; inset: 0; background: repeating-conic-gradient(from -90deg at 50% 120%, rgba(231, 194, 122, 0.12) 0deg 6deg, transparent 6deg 14deg); pointer-events: none; }
+.cas-ampoules { position: absolute; left: 10px; right: 10px; top: 6px; height: 8px; background: radial-gradient(circle, #fff3c4 0 2.5px, transparent 3px) 0 50% / 16px 8px repeat-x; filter: drop-shadow(0 0 4px #ffd774); animation: cas-ampoules 1.2s steps(2) infinite; }
+@keyframes cas-ampoules { 50% { opacity: 0.55; } }
+.cas-fronton h2 { position: relative; margin: 6px 0 0; font-family: var(--titre); font-weight: 400; font-size: clamp(24px, 7vw, 34px); color: var(--or-vif); letter-spacing: 0.04em; text-shadow: 0 0 14px rgba(231, 194, 122, 0.55), 0 3px 0 #3a0a06; }
+.cas-fronton p { position: relative; margin: 4px 0 0; font-size: 13px; color: var(--creme-doux); }
+.cas-fronton p strong { color: #fff1c4; font-family: var(--titre); font-weight: 400; font-size: 17px; }
+
+.cas-fenetre { position: relative; padding: 8px; border-radius: 14px; background: linear-gradient(180deg, #8a6424, #e7c27a 50%, #8a6424); box-shadow: inset 0 0 0 2px rgba(22, 16, 12, 0.8), 0 6px 18px rgba(0, 0, 0, 0.6); }
+.cas-fenetre.gratuit { background: linear-gradient(180deg, #0a3d22, #3fbf7a 50%, #0a3d22); }
+.cas-rouleaux { display: grid; grid-template-columns: repeat(5, var(--case)); gap: 4px; padding: 4px; border-radius: 8px; background: #120806; }
+.cas-rouleau { height: calc(var(--case) * 3); overflow: hidden; border-radius: 6px; background: linear-gradient(180deg, #d9c49b 0%, #f6ead0 18%, #fff8e6 50%, #f6ead0 82%, #d9c49b 100%); box-shadow: inset 0 10px 14px -8px rgba(0, 0, 0, 0.6), inset 0 -10px 14px -8px rgba(0, 0, 0, 0.6); }
+.cas-bande { transition-property: transform; transition-timing-function: cubic-bezier(0.2, 0.05, 0.15, 1.02); will-change: transform; }
+.cas-case { display: grid; place-items: center; height: var(--case); }
+.cas-case .cas-symbole { width: 74%; height: 74%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)); }
+.cas-case.gagnante { background: radial-gradient(circle, rgba(255, 215, 120, 0.85) 0%, rgba(255, 215, 120, 0) 70%); animation: cas-gagnante 0.8s ease-in-out infinite alternate; }
+@keyframes cas-gagnante { to { background-color: rgba(255, 236, 170, 0.25); } }
+.cas-lignes { position: absolute; inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px); pointer-events: none; overflow: visible; }
+.cas-lignes polyline { fill: none; stroke: #ffd774; stroke-width: 0.06; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 0.06px #fff1c4); opacity: 0.9; animation: cas-ligne 0.6s ease-out both; stroke-dasharray: 8; stroke-dashoffset: 8; }
+@keyframes cas-ligne { to { stroke-dashoffset: 0; } }
+
+.cas-resultat { display: grid; justify-items: center; gap: 2px; min-height: 52px; padding: 0 12px; text-align: center; font-size: 13.5px; }
+.cas-resultat .roulette-xp-gagne { font-family: var(--titre); font-weight: 400; font-size: 26px; color: #fff1c4; }
+.cas-gratuits { font-weight: 700; color: #9fe0b8; }
+.cas-erreur { color: #ff9a8a; font-size: 13px; }
+
+.cas-commandes { display: grid; justify-items: center; gap: 10px; width: 100%; padding: 0 14px; }
+.cas-mise { display: grid; grid-template-columns: 46px minmax(0, 170px) 46px; align-items: center; gap: 8px; }
+.cas-mise button { min-height: 46px; padding: 0; border-radius: 50%; font-size: 24px; line-height: 1; background: var(--nuit-3); border-color: var(--or); }
+.cas-mise span { display: grid; justify-items: center; }
+.cas-mise small { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--creme-doux); }
+.cas-mise strong { font-family: var(--titre); font-weight: 400; font-size: 20px; color: var(--or-vif); white-space: nowrap; }
+.cas-tourner {
+  width: min(100%, 320px); min-height: 66px; padding: 8px 20px;
+  font-family: var(--titre); font-size: clamp(20px, 5.8vw, 30px); letter-spacing: 0.08em; text-transform: uppercase; color: #fff1d0; white-space: nowrap;
+  text-shadow: 0 2px 0 #4a0f08, 0 0 14px rgba(231, 194, 122, 0.45);
+  border: 3px solid var(--or-vif); border-radius: 14px;
+  background: radial-gradient(120% 140% at 50% 0%, #c0352a 0%, #8e1c14 55%, #5a0e09 100%);
+  box-shadow: 0 0 0 3px rgba(22, 16, 12, 0.9), 0 0 0 5px var(--or), 0 10px 26px rgba(0, 0, 0, 0.7);
+}
+.cas-tourner:active:not(:disabled) { transform: scale(0.97); }
+.cas-options { display: flex; gap: 10px; }
+.cas-options button { min-height: 36px; padding: 4px 14px; border-radius: 99px; font-size: 13px; background: rgba(22, 16, 12, 0.85); }
+.cas-options button.actif { border-color: var(--or-vif); color: var(--or-vif); }
+
+/* Table des gains */
+.cas-gains { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.cas-gains th { font-size: 12px; color: var(--creme-doux); font-weight: 600; padding: 4px; }
+.cas-gains td { padding: 4px; text-align: center; border-top: 1px solid var(--filet); color: var(--or-vif); font-weight: 600; }
+.cas-gains td:first-child { display: flex; align-items: center; gap: 8px; text-align: left; color: var(--creme); font-weight: 400; }
+.cas-gains .cas-symbole, .cas-gains-note .cas-symbole { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.cas-gains-note { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0 0; font-size: 13px; color: var(--creme-doux); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cas-ampoules, .cas-case.gagnante, .cas-annonce, .cas-lignes polyline { animation: none !important; }
+  .cas-lignes polyline { stroke-dashoffset: 0; }
+}

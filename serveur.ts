@@ -49,6 +49,7 @@ import type {
   VueSalon,
 } from '../shared/types';
 import { vuePourJoueur, vueSpectateur } from '../shared/vue';
+import { creerCasino } from './salonCasino';
 import { creerClassement } from './classement';
 import { profilDe, relationEntre, type Identite, type ResultatDemande, type ServiceComptes, type StatsCompte } from './comptes';
 import type { ServiceNotifications } from './notifications';
@@ -147,6 +148,8 @@ export interface OptionsServeur {
   tirageRoulette?: () => number;
   /** Joueurs de remplissage dans le classement de la semaine (voir fictifs.ts). */
   joueursFictifs?: boolean;
+  /** Salon privé du casino : tirages et regroupement des écritures (remplaçables pour les tests). */
+  casino?: { tirageRoue?: () => number; hasardMachine?: (n: number) => number; delaiEcriture?: number };
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -166,6 +169,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const app = express();
   const http = createServer(app);
   const io = new Server(http, { cors: { origin: '*' } });
+  // Salon privé du casino (comptes Créateur) : seulement avec les comptes joueurs.
+  const casino = comptes ? creerCasino({ io, comptes, horloge: options.horloge, ...options.casino }) : null;
   const salons = new Map<string, Salon>();
   const socketsVersJoueur = new Map<string, { code: string; joueurId: string }>();
   /** Téléphones qui regardent une partie : code du salon regardé. */
@@ -825,6 +830,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     // Compte connecté sur ce téléphone (vérifié par Firebase), rattaché aux places que le joueur occupe.
     let identite: Identite | null = null;
+    casino?.brancher(socket, { identite: () => identite, L });
     let resume: CompteJoueurVue | null = null;
     let derniereIdentification = 0;
     let dernierTapis = 0;
@@ -1712,6 +1718,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         fermer: () =>
           new Promise<void>((fin) => {
             ferme = true;
+            void casino?.vider();
             clearInterval(menage);
             clearInterval(purgeQuotidienne);
             for (const s of salons.values()) {

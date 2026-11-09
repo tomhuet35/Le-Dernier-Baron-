@@ -500,6 +500,8 @@ const VOLUME_MUSIQUE = 0.3;
 const VOLUME_MUSIQUE_BAISSE = 0.08;
 
 export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel_baron' | 'braquage' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge'
+  | 'machine_levier'
+  | 'machine_arret'
   | 'clic'
   | 'selection'
   | 'ouvrir'
@@ -567,6 +569,9 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   roulette_tic: { fichier: '/cartes/son-roulette-tic.mp3', volume: 0.3, baisserMusique: false },
   roulette_gain: { fichier: '/cartes/son-roulette-gain.mp3', volume: 0.7, baisserMusique: true },
   roulette_gros_lot: { fichier: '/cartes/son-roulette-gros-lot.mp3', volume: 0.8, baisserMusique: true },
+  // Machine à sous du Salon privé : le levier (et les rouleaux qui démarrent), puis chaque rouleau qui s'arrête.
+  machine_levier: { fichier: '/cartes/son-machine-levier.mp3', volume: 0.7, baisserMusique: true },
+  machine_arret: { fichier: '/cartes/son-machine-arret.mp3', volume: 0.55, baisserMusique: false },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
   vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },

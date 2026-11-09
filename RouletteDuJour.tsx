@@ -14,10 +14,31 @@ import { Celebration, Fenetre, jouerEffet, mouvementReduit, useCompteur } from '
 
 const N = CASES_ROULETTE.length;
 const ANGLE = 360 / N;
-const DUREE_MS = 4800;
+export const DUREE_ROUE_MS = 4800;
+const DUREE_MS = DUREE_ROUE_MS;
+export const ANGLE_ROUE = ANGLE;
+
+/** Couleurs des cases : rouge sang, noir, et le vert du zéro de casino (case spéciale). */
+export const COULEURS_ROUE = { rouge: '#8e1c14', noir: '#141010', vert: '#0f6b3a' };
+
+/** Une case de la roue : sa couleur, et soit deux lignes de texte (gain), soit un personnage. */
+export interface CaseRoue {
+  fond: string;
+  lignes?: [string, string];
+  avatar?: number;
+  /** Texte plus petit (montants longs). */
+  petit?: boolean;
+}
+
+/** Cases de la roulette du jour : l'XP, ou le personnage à gagner (case verte, puis gros lot). */
+const casesDuJour = (cases: GainRoulette[]): CaseRoue[] =>
+  cases.map((c, i) => ({
+    fond: CASES_ROULETTE[i].type === 'personnage' ? COULEURS_ROUE.vert : i % 2 ? COULEURS_ROUE.noir : COULEURS_ROUE.rouge,
+    ...(c.type === 'personnage' ? { avatar: c.avatar } : { lignes: [`+${c.xp}`, 'XP'] as [string, string] }),
+  }));
 
 /** Temps avant la prochaine roulette, remis à jour chaque minute (« 5 h 12 »). */
-function useAttente(fin: number | null | undefined): string | null {
+export function useAttente(fin: number | null | undefined): string | null {
   const [maintenant, setMaintenant] = useState(() => Date.now());
   useEffect(() => {
     if (!fin) return;
@@ -32,7 +53,7 @@ function useAttente(fin: number | null | undefined): string | null {
 }
 
 /** La roue : 8 cases rouge sang et noir, filets dorés, le gain écrit dans chaque case (ou le personnage à gagner). */
-function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: GainRoulette[]; rotation: number; tourne: boolean; gagnante?: number | null; pieces?: boolean }) {
+export function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: CaseRoue[]; rotation: number; tourne: boolean; gagnante?: number | null; pieces?: boolean }) {
   const R = 100;
   // Le clapet : un « tic » chaque fois qu'une case passe sous la flèche, en suivant la vraie vitesse de la roue.
   const disque = useRef<SVGSVGElement | null>(null);
@@ -95,7 +116,7 @@ function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: GainRoulet
             <stop offset="100%" stopColor="#8a6424" />
           </radialGradient>
           {cases.map((c, i) =>
-            c.type === 'personnage' ? (
+            c.avatar ? (
               <clipPath key={i} id={`roue-perso-${i}`}>
                 <circle cx={point(i * ANGLE + ANGLE / 2, 60)[0]} cy={point(i * ANGLE + ANGLE / 2, 60)[1]} r="17" />
               </clipPath>
@@ -110,14 +131,11 @@ function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: GainRoulet
           const [x2, y2] = point(debut + ANGLE, 92);
           const milieu = debut + ANGLE / 2;
           const [tx, ty] = point(milieu, 64);
-          const perso = c.type === 'personnage';
           const centre = point(milieu, 60);
-          // La case du personnage (puis du gros lot) est verte, comme le zéro d'une roulette de casino.
-          const fond = CASES_ROULETTE[i].type === 'personnage' ? '#0f6b3a' : i % 2 ? '#141010' : '#8e1c14';
           return (
             <g key={i}>
-              <path d={`M${R} ${R} L${x1} ${y1} A92 92 0 0 1 ${x2} ${y2} Z`} fill={fond} stroke="#e7c27a" strokeWidth="1.2" />
-              {perso ? (
+              <path d={`M${R} ${R} L${x1} ${y1} A92 92 0 0 1 ${x2} ${y2} Z`} fill={c.fond} stroke="#e7c27a" strokeWidth="1.2" />
+              {c.avatar ? (
                 <>
                   <image
                     href={`/cartes/avatar-${c.avatar}.webp`}
@@ -132,12 +150,12 @@ function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: GainRoulet
                   <circle cx={centre[0]} cy={centre[1]} r="17" fill="none" stroke="#f6dfa0" strokeWidth="1.6" />
                 </>
               ) : (
-                <text x={tx} y={ty} transform={`rotate(${milieu} ${tx} ${ty})`} className="roue-texte" textAnchor="middle" dominantBaseline="middle">
+                <text x={tx} y={ty} transform={`rotate(${milieu} ${tx} ${ty})`} className={`roue-texte ${c.petit ? 'petit' : ''}`} textAnchor="middle" dominantBaseline="middle">
                   <tspan x={tx} dy="-4">
-                    +{c.xp}
+                    {c.lignes?.[0]}
                   </tspan>
                   <tspan x={tx} dy="13" className="roue-xp">
-                    XP
+                    {c.lignes?.[1]}
                   </tspan>
                 </text>
               )}
@@ -230,7 +248,7 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
   const nomPerso = (n: number) => AVATARS[n - 1] ?? '';
   return (
     <Fenetre titre={tr('Roulette du jour', 'Daily wheel')} onFermer={tourne ? undefined : onFermer} large>
-      <Roue cases={cases} rotation={rotation} tourne={tourne} gagnante={resultat?.case ?? null} pieces={!!resultat && !resultat.grand} />
+      <Roue cases={casesDuJour(cases)} rotation={rotation} tourne={tourne} gagnante={resultat?.case ?? null} pieces={!!resultat && !resultat.grand} />
       {resultat ? (
         <div className={`roulette-resultat ${resultat.gain.type === 'personnage' ? 'perso' : ''}`} role="status">
           {resultat.gain.type === 'personnage' ? (
