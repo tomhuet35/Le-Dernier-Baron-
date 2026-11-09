@@ -317,23 +317,38 @@ describe('Récompenses du classement de la semaine', () => {
 describe('Joueurs fictifs du classement', () => {
   const s46 = semaineDe(Date.parse('2026-11-12T12:00:00Z'));
 
-  it('ont des pseudos acceptables et des scores qui arrivent au fil de la semaine, toujours les mêmes', () => {
+  it('sont 50, là dès le lundi, avec des scores qui montent jusqu’à une répartition de 0 à 380', () => {
+    expect(PROFILS_FICTIFS).toHaveLength(50);
     expect(PROFILS_FICTIFS.every((p) => pseudoAcceptable(p.nom))).toBe(true);
-    expect(new Set(PROFILS_FICTIFS.map((p) => p.nom.toLowerCase())).size).toBe(PROFILS_FICTIFS.length);
-    // Lundi à l'ouverture : personne n'a encore joué ; ensuite le classement se remplit, sans jamais reculer.
-    expect(scoresFictifs(s46, s46.debut).size).toBe(0);
-    let avant = new Map<string, number>();
+    expect(new Set(PROFILS_FICTIFS.map((p) => p.nom.toLowerCase())).size).toBe(50);
+    // Lundi 0 h 30 : tout le monde a déjà un score ; ensuite les scores montent, sans jamais reculer.
+    expect(scoresFictifs(s46, s46.debut + 30 * 60_000).size).toBe(50);
+    let avant = new Map([...scoresFictifs(s46, s46.debut + 30 * 60_000)].map(([id, e]) => [id, e.score]));
+    let montees = 0;
     for (let h = 6; h <= 7 * 24; h += 6) {
       const m = scoresFictifs(s46, s46.debut + h * 3_600_000);
-      for (const [id, score] of avant) expect(m.get(id)!.score).toBeGreaterThanOrEqual(score);
+      for (const [id, score] of avant) {
+        expect(m.get(id)!.score).toBeGreaterThanOrEqual(score);
+        if (m.get(id)!.score > score) montees += 1;
+      }
       avant = new Map([...m].map(([id, e]) => [id, e.score]));
     }
-    expect(avant.size).toBeGreaterThanOrEqual(5);
+    expect(montees).toBeGreaterThan(40);
     expect([...avant.keys()].every((id) => id.startsWith(PREFIXE_FICTIF))).toBe(true);
-    // Recalculé à l'identique (après un redémarrage du serveur, par exemple).
+    // Fin de semaine : scores répartis régulièrement de 0 à 380 (environ un tous les 7,6 points).
+    const finaux = [...scoresFictifs(s46, s46.fin).values()].map((e) => e.score).sort((x, y) => x - y);
+    expect(finaux[0]).toBeLessThanOrEqual(8);
+    expect(finaux[49]).toBeGreaterThanOrEqual(372);
+    expect(finaux[49]).toBeLessThanOrEqual(380);
+    expect(finaux[24]).toBeGreaterThan(170);
+    expect(finaux[24]).toBeLessThan(210);
+    // Recalculé à l'identique (après un redémarrage du serveur, par exemple), et toutes les parties dans la semaine.
     expect(scoresFictifs(s46, s46.fin)).toEqual(scoresFictifs(s46, s46.fin));
-    // Toutes les parties sont dans la semaine.
     for (const e of scoresFictifs(s46, s46.fin).values()) expect(e.date >= s46.debut && e.date < s46.fin).toBe(true);
+    // Une autre semaine : un autre classement.
+    const s47 = semaineDe(s46.fin + 3_600_000);
+    const ordre = (s: typeof s46) => [...scoresFictifs(s, s.fin).values()].sort((x, y) => y.score - x.score).map((e) => e.nom);
+    expect(ordre(s47)).not.toEqual(ordre(s46));
   });
 
   it('se mêlent aux vrais joueurs sans que rien ne les distingue', async () => {
