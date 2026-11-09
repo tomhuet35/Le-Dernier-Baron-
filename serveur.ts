@@ -49,7 +49,7 @@ import type {
   VueSalon,
 } from '../shared/types';
 import { vuePourJoueur, vueSpectateur } from '../shared/vue';
-import { creerCasino } from './salonCasino';
+import { creerCasino, type OptionsCasino } from './salonCasino';
 import { creerClassement } from './classement';
 import { profilDe, relationEntre, type Identite, type ResultatDemande, type ServiceComptes, type StatsCompte } from './comptes';
 import type { ServiceNotifications } from './notifications';
@@ -149,7 +149,7 @@ export interface OptionsServeur {
   /** Joueurs de remplissage dans le classement de la semaine (voir fictifs.ts). */
   joueursFictifs?: boolean;
   /** Salon privé du casino : tirages et regroupement des écritures (remplaçables pour les tests). */
-  casino?: { tirageRoue?: () => number; hasardMachine?: (n: number) => number; delaiEcriture?: number };
+  casino?: Omit<OptionsCasino, 'io' | 'comptes' | 'horloge'>;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';

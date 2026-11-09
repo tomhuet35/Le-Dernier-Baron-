@@ -506,6 +506,7 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'jeton'
   | 'casino_entree'
   | 'casino_annonce'
+  | 'melange'
   | 'clic'
   | 'selection'
   | 'ouvrir'
@@ -582,6 +583,8 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   jeton: { fichier: '/cartes/son-jeton.mp3', volume: 0.45, baisserMusique: false, aLaDemande: true },
   casino_entree: { fichier: '/cartes/son-casino-entree.mp3', volume: 0.6, baisserMusique: true, aLaDemande: true },
   casino_annonce: { fichier: '/cartes/son-casino-annonce.mp3', volume: 0.5, baisserMusique: true, aLaDemande: true },
+  // Blackjack : le sabot qu'on remélange.
+  melange: { fichier: '/cartes/son-melange.mp3', volume: 0.6, baisserMusique: false, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
   vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },
@@ -866,7 +869,7 @@ export function jouerEffet(nom: EffetSonore) {
 
 /** Musique du Salon privé (jazz de cabaret) pendant qu'on est au casino, puis retour à celle du jeu. */
 export function musiqueDuSalon(actif: boolean) {
-  if (actif) musique.preparer(['machine_levier', 'machine_arret', 'machine_pieces', 'jeton', 'casino_entree', 'casino_annonce']);
+  if (actif) musique.preparer(['machine_levier', 'machine_arret', 'machine_pieces', 'jeton', 'casino_entree', 'casino_annonce', 'melange']);
   musique.choisirPiste(actif ? '/cartes/musique-casino.mp3' : '/cartes/musique.mp3');
 }
 

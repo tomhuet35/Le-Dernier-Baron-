@@ -12,6 +12,7 @@
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import {
+  CADEAU_SALON,
   CASES_ROUE_SALON,
   GROS_GAIN_ROUE,
   GROS_LOT_DEPART,
@@ -25,6 +26,8 @@ import {
 import { MISES_MACHINE, TOURS_GRATUITS_MAX, tirerMachine } from '../shared/machineASous';
 import { jourParis, lendemainParis } from '../shared/roulette';
 import type { Identite, ServiceComptes, StatsCompte } from './comptes';
+import { creerTablesBlackjack, type BanqueCasino, type DelaisTables } from './tablesCasino';
+import type { CarteBJ } from '../shared/blackjack';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
 type Rappel = (r: Reponse) => void;
@@ -39,6 +42,11 @@ export interface OptionsCasino {
   hasardMachine?: (n: number) => number;
   /** Regroupement des écritures du solde, en millisecondes. */
   delaiEcriture?: number;
+  /** Fin du cadeau du Baron (remplaçable pour les tests). */
+  finCadeau?: number;
+  /** Blackjack : délais et sabot (remplaçables pour les tests). */
+  delaisTables?: Partial<DelaisTables>;
+  sabotBlackjack?: () => CarteBJ[];
 }
 
 /** Porte-monnaie d'un créateur, tenu en mémoire pendant qu'il joue. */
@@ -50,6 +58,7 @@ interface Porte {
   enAttente: number;
   record: number;
   roue?: string;
+  cadeaux: string[];
   toursGratuits: number;
   miseGratuite: number;
   minuterie: ReturnType<typeof setTimeout> | null;
@@ -70,6 +79,7 @@ export function creerCasino(options: OptionsCasino) {
   const delaiEcriture = options.delaiEcriture ?? 5000;
   const hasardMachine = options.hasardMachine ?? ((n: number) => randomInt(n));
   const tirageRoue = options.tirageRoue ?? (() => randomInt(CASES_ROUE_SALON.length));
+  const finCadeau = options.finCadeau ?? CADEAU_SALON.fin;
 
   const portes = new Map<string, Porte>();
   const createurs = new Map<string, { ok: boolean; t: number }>();
@@ -140,6 +150,28 @@ export function creerCasino(options: OptionsCasino) {
     if (!p.minuterie) p.minuterie = setTimeout(() => void ecrire(uid), delaiEcriture);
   }
 
+  // Le porte-monnaie, vu par les tables de blackjack.
+  const banque: BanqueCasino = {
+    solde: (uid) => portes.get(uid)?.solde ?? 0,
+    debiter: (uid, montant) => {
+      const p = portes.get(uid);
+      if (!p || montant <= 0 || p.solde < montant) return false;
+      mouvement(uid, p, -montant);
+      return true;
+    },
+    crediter: (uid, montant) => {
+      const p = portes.get(uid);
+      if (!p) return void comptes.mouvementCasino(uid, montant).catch((e) => console.error('Casino : gain perdu :', e));
+      mouvement(uid, p, montant);
+      p.record = Math.max(p.record, montant);
+    },
+    joueur: (uid) => {
+      const p = portes.get(uid);
+      return p ? { nom: p.nom, avatar: p.avatar } : null;
+    },
+  };
+  const tables = creerTablesBlackjack({ io, banque, horloge, delais: options.delaisTables, sabot: options.sabotBlackjack });
+
   function vue(uid: string): VueCasino {
     const p = portes.get(uid);
     const t = horloge();
@@ -156,6 +188,8 @@ export function creerCasino(options: OptionsCasino) {
       toursGratuits: p?.toursGratuits ?? 0,
       miseGratuite: p?.miseGratuite ?? 0,
       riches: liste,
+      tables: tables.resume(),
+      cadeau: t < finCadeau && p && !p.cadeaux.includes(CADEAU_SALON.id) ? { montant: CADEAU_SALON.montant, fin: finCadeau } : null,
     };
   }
 
@@ -194,6 +228,7 @@ export function creerCasino(options: OptionsCasino) {
           enAttente: 0,
           record: 0,
           roue: stats.casino?.roue,
+          cadeaux: stats.casino?.cadeaux ?? [],
           toursGratuits: 0,
           miseGratuite: 0,
           minuterie: null,
@@ -209,6 +244,7 @@ export function creerCasino(options: OptionsCasino) {
       return p;
     };
     let dans = false;
+    tables.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
 
     socket.on('casino_entrer', async (_data: unknown, rappel?: Rappel) => {
       const id = await acces(rappel);
@@ -230,6 +266,7 @@ export function creerCasino(options: OptionsCasino) {
 
     socket.on('casino_quitter', async (_data: unknown, rappel?: Rappel) => {
       const id = ctx.identite();
+      tables.sortir(socket.id);
       void socket.leave(SALLE);
       dans = false;
       if (id) await ecrire(id.uid);
@@ -241,6 +278,36 @@ export function creerCasino(options: OptionsCasino) {
       if (!id) return;
       if (!portes.has(id.uid)) return repondre(rappel, INTROUVABLE);
       repondre(rappel, { ok: true, casino: vue(id.uid) });
+    });
+
+    // Cadeau du Baron : une somme à récupérer une seule fois, jusqu'à la date prévue.
+    socket.on('casino_cadeau', async (_data: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      if (horloge() >= finCadeau) return repondre(rappel, { ok: false, erreur: L('Le cadeau n’est plus disponible.', 'The gift is no longer available.') });
+      if (p.occupe) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      p.occupe = true;
+      try {
+        await ecrire(id.uid);
+        const r = await comptes.recupererCadeauCasino(id.uid, CADEAU_SALON.id, CADEAU_SALON.montant);
+        if (r === null) return repondre(rappel, INTROUVABLE);
+        if (r === 'deja') {
+          if (!p.cadeaux.includes(CADEAU_SALON.id)) p.cadeaux.push(CADEAU_SALON.id);
+          return repondre(rappel, { ok: false, erreur: L('Tu as déjà récupéré ce cadeau.', 'You have already claimed this gift.') });
+        }
+        p.solde = r.casino?.solde ?? p.solde + CADEAU_SALON.montant;
+        p.cadeaux = r.casino?.cadeaux ?? [...p.cadeaux, CADEAU_SALON.id];
+        riches.set(id.uid, { nom: p.nom, avatar: p.avatar, solde: p.solde });
+        sauverSalon();
+        repondre(rappel, { ok: true, cadeau: CADEAU_SALON.montant, casino: vue(id.uid) });
+      } catch (e) {
+        console.error('Casino : cadeau impossible :', e);
+        repondre(rappel, { ok: false, erreur: L('Le cadeau est indisponible pour le moment, réessaie plus tard.', 'The gift is unavailable right now, try again later.') });
+      } finally {
+        p.occupe = false;
+      }
     });
 
     socket.on('casino_roue', async (_data: unknown, rappel?: Rappel) => {
@@ -323,6 +390,7 @@ export function creerCasino(options: OptionsCasino) {
 
   /** Écrit tout ce qui attend (arrêt du serveur, tests). */
   async function vider() {
+    tables.fermer();
     await Promise.all([...portes.keys()].map((uid) => ecrire(uid)));
     if (minuterieSalon) {
       clearTimeout(minuterieSalon);

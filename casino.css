@@ -145,3 +145,153 @@
 
 .cas-pied { display: flex; justify-content: center; }
 .cas-case .cas-symbole { width: 84%; height: 84%; }
+
+/* ---------- Cadeau du Baron ---------- */
+.cas-cadeau { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; border: 2px solid var(--or-vif); background: linear-gradient(120deg, #3c0107 0%, #6b1a0a 45%, #3c0107 100%); box-shadow: 0 0 22px rgba(231, 194, 122, 0.35), inset 0 1px 0 rgba(255, 241, 196, 0.2); animation: cas-cadeau-lueur 2.6s ease-in-out infinite; }
+@keyframes cas-cadeau-lueur { 50% { box-shadow: 0 0 34px rgba(231, 194, 122, 0.6), inset 0 1px 0 rgba(255, 241, 196, 0.2); } }
+.cas-cadeau img { width: 54px; height: 54px; object-fit: contain; flex: none; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
+.cas-cadeau > div { display: grid; min-width: 0; flex: 1; }
+.cas-cadeau small { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--creme-doux); }
+.cas-cadeau strong { font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6.4vw, 30px); line-height: 1.05; color: #fff1c4; text-shadow: 0 0 12px rgba(231, 194, 122, 0.5); white-space: nowrap; }
+.cas-cadeau span { font-size: 12px; color: var(--creme-doux); }
+.cas-cadeau-bouton { flex: none; min-height: 44px; padding: 6px 14px; border-radius: 12px; border: 2px solid var(--or-vif); background: radial-gradient(120% 140% at 50% 0%, #c0352a 0%, #8e1c14 60%, #5a0e09 100%); color: #fff1d0; font-weight: 700; }
+
+/* ---------- Liste des tables ---------- */
+.cas-tables { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cas-tables li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--filet); background: var(--nuit-3); }
+.cas-tables-avatars { display: flex; }
+.cas-tables-avatars img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 2px solid var(--nuit-3); }
+.cas-tables-avatars img + img { margin-left: -10px; }
+.cas-tables-noms { display: grid; min-width: 0; }
+.cas-tables-noms small { color: var(--creme-doux); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cas-nouvelle-table { display: grid; justify-items: center; gap: 8px; padding: 12px; border-radius: 12px; border: 1px dashed var(--or); }
+.cas-nouvelle-table .cas-mise { grid-template-columns: 46px 40px 46px; }
+.cas-nouvelle-table .cas-mise strong { text-align: center; font-family: var(--titre); font-size: 24px; color: var(--or-vif); }
+
+/* ---------- Blackjack ---------- */
+.bj-ecran { gap: 10px; }
+.bj-mes-mains .bj-carte { width: min(15vw, 66px); }
+.bj-code { font-family: var(--titre); color: var(--or-vif); letter-spacing: 0.06em; }
+.bj-table {
+  position: relative; width: 100%; max-width: 660px; justify-self: center; aspect-ratio: 1 / 0.86;
+  border-radius: 22px 22px 50% 50% / 22px 22px 34% 34%;
+  background: radial-gradient(70% 60% at 50% 35%, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.35) 100%), #0d5a31 url('/cartes/feutre-casino.webp') center / 220px;
+  box-shadow: inset 0 0 0 3px #d2a85a, inset 0 0 0 5px rgba(22, 16, 12, 0.6), inset 0 0 40px rgba(0, 0, 0, 0.55), 0 0 0 10px #4a1410, 0 0 0 12px #d2a85a, 0 18px 40px rgba(0, 0, 0, 0.7);
+  margin: 12px 0 14px;
+}
+@media (min-width: 700px) { .bj-table { aspect-ratio: 1 / 0.62; } }
+.bj-croupier { position: absolute; top: 3%; left: 50%; translate: -50% 0; display: grid; justify-items: center; gap: 4px; z-index: 2; }
+.bj-croupier-nom { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #f3e6c4; text-shadow: 0 1px 2px #000; }
+.bj-croupier-nom img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--or-vif); }
+.bj-croupier-vide { height: calc(var(--carte, 46px) * 1.4); }
+.bj-sabot { position: absolute; top: 5%; right: 5%; width: 13%; aspect-ratio: 2 / 3; }
+.bj-sabot img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.bj-sabot img:nth-child(1) { rotate: -8deg; translate: -4px 2px; }
+.bj-sabot img:nth-child(2) { rotate: -3deg; translate: -2px 1px; }
+.bj-arc { position: absolute; left: 0; top: 12%; width: 100%; height: auto; pointer-events: none; overflow: visible; }
+@media (min-width: 700px) { .bj-arc { left: 18%; width: 64%; top: 13%; } }
+.bj-arc text { font-family: var(--titre); font-size: 14px; letter-spacing: 0.08em; fill: rgba(243, 214, 138, 0.8); }
+.bj-arc text.petit { font-family: var(--texte); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; fill: rgba(243, 214, 138, 0.55); }
+
+.bj-place { position: absolute; translate: -50% -50%; display: grid; justify-items: center; gap: 3px; width: 21%; z-index: 1; }
+.bj-place-mains { display: flex; gap: 4px; justify-content: center; min-height: calc(var(--petite, 24px) * 1.4); }
+.bj-place-mise { display: flex; align-items: center; gap: 3px; padding: 1px 6px 1px 1px; border-radius: 99px; background: rgba(10, 6, 4, 0.7); font-size: 10.5px; font-weight: 700; color: #fff1c4; white-space: nowrap; }
+.bj-place-mise img { width: 16px; height: 16px; }
+.bj-place-joueur { display: flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 6px 2px 2px; border-radius: 99px; background: rgba(10, 6, 4, 0.82); border: 1px solid rgba(231, 194, 122, 0.35); font-size: 11px; }
+.bj-place-joueur img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: none; }
+.bj-place-joueur span { display: grid; min-width: 0; line-height: 1.05; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bj-place-joueur small { font-size: 9px; color: var(--creme-doux); }
+.bj-place.moi .bj-place-joueur { border-color: var(--or-vif); color: var(--or-vif); }
+.bj-place.joue .bj-place-joueur { box-shadow: 0 0 0 2px var(--or-vif), 0 0 14px rgba(231, 194, 122, 0.8); }
+.bj-place.absent { opacity: 0.55; }
+.bj-place-mise.bilan { padding: 1px 7px; animation: bj-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bj-place-mise.gagne { background: #0f6b3a; color: #e9ffef; box-shadow: 0 0 10px rgba(63, 191, 122, 0.6); }
+.bj-place-mise.perdu { background: #6e1610; color: #ffd9d3; }
+/* Petites mains (les autres places) : pas d'étiquette par-dessus les cartes, le total prend la couleur de l'issue. */
+.bj-main.petite .bj-issue { display: none; }
+.bj-main.petite.issue-gagne .bj-total { background: #0f6b3a; border-color: #9fd6b3; }
+.bj-main.petite.issue-blackjack .bj-total { background: linear-gradient(180deg, #fff1c4, #d2a85a); color: #3a0a06; border-color: #fff1c4; box-shadow: 0 0 10px rgba(255, 215, 120, 0.9); }
+.bj-main.petite.issue-perdu .bj-total, .bj-main.petite.issue-saute .bj-total { background: #6e1610; border-color: #ff9a8a; }
+.bj-main.petite.issue-egalite .bj-total { background: #3a3f47; }
+/* Le total du croupier à droite de ses cartes (le texte du tapis reste lisible). */
+.bj-croupier .bj-main { grid-auto-flow: column; align-items: center; gap: 6px; }
+@media (max-width: 520px) { .bj-arc text.petit { display: none; } .bj-table { --carte: 40px; } }
+.bj-place-pret { position: absolute; right: 2px; top: 0; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: #0f6b3a; font-size: 11px; color: #fff; }
+
+.bj-main { position: relative; display: grid; justify-items: center; gap: 2px; }
+.bj-main.active .bj-cartes { filter: drop-shadow(0 0 6px rgba(255, 215, 120, 0.95)); }
+.bj-cartes { display: flex; }
+.bj-carte { width: var(--carte, 46px); height: auto; aspect-ratio: 5 / 7; flex: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55)); animation: bj-arrivee 0.34s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.bj-carte.petite { width: var(--petite, 24px); }
+.bj-cartes > * + * { margin-left: calc(var(--carte, 46px) * -0.55); }
+.bj-main.petite .bj-cartes > * + * { margin-left: calc(var(--petite, 24px) * -0.5); }
+.bj-carte.dos { border-radius: 4px; object-fit: cover; }
+.bj-carte.retournee { animation: bj-retourne 0.45s ease-out both; }
+@keyframes bj-arrivee { from { opacity: 0; transform: translate(60px, -90px) rotate(-18deg) scale(0.6); } }
+@keyframes bj-retourne { from { transform: rotateY(90deg); } }
+@keyframes bj-pop { from { transform: scale(0.3); opacity: 0; } }
+.bj-carte-fond { fill: #fbf3e1; stroke: #b8935a; stroke-width: 0.8; }
+.bj-carte-filet { fill: none; stroke: #d2a85a; stroke-width: 0.6; }
+.bj-carte .bj-carte-rang { font: 700 9.5px Georgia, serif; }
+.bj-carte .bj-carte-coin { font: 8.5px Georgia, serif; }
+.bj-carte .bj-carte-centre { font: 26px Georgia, serif; }
+.bj-carte .bj-carte-as { font: 22px Georgia, serif; }
+.bj-carte .bj-carte-sym-petit { font: 9px Georgia, serif; }
+.bj-carte .bj-carte-figure { font-family: var(--titre); font-size: 19px; }
+.bj-carte-cadre { fill: #f3e3c0; stroke: #d2a85a; stroke-width: 0.8; }
+.bj-carte-couronne { fill: #d2a85a; stroke: #8a6424; stroke-width: 0.4; }
+.bj-carte-rayon { stroke: #e7c27a; stroke-width: 0.7; opacity: 0.8; }
+.bj-carte.rouge text { fill: #a3231a; }
+.bj-carte.noire text { fill: #141010; }
+.bj-carte.petite .bj-carte-rang { font-size: 11px; }
+.bj-total { padding: 0 6px; border-radius: 99px; background: rgba(10, 6, 4, 0.85); border: 1px solid rgba(231, 194, 122, 0.5); font-size: 11px; font-weight: 700; color: #fff1c4; font-variant-numeric: tabular-nums; }
+.bj-total.saute { background: #6e1610; border-color: #ff9a8a; }
+.bj-total.vingt-et-un { background: #8a6424; border-color: #fff1c4; }
+.bj-issue { position: absolute; top: 30%; left: 50%; translate: -50% 0; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; animation: bj-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); z-index: 3; }
+.bj-issue.blackjack { background: linear-gradient(180deg, #fff1c4, #d2a85a); color: #3a0a06; box-shadow: 0 0 16px rgba(255, 215, 120, 0.9); }
+.bj-issue.gagne { background: #0f6b3a; color: #e9ffef; }
+.bj-issue.egalite { background: #3a3f47; color: #f3f3f3; }
+.bj-issue.perdu, .bj-issue.saute { background: #6e1610; color: #ffd9d3; }
+.bj-main.petite .bj-issue { font-size: 9px; padding: 1px 5px; }
+
+.bj-mes-mains { display: flex; justify-content: center; gap: 18px; --carte: min(15vw, 66px); margin-top: -4px; }
+.bj-commandes { display: grid; justify-items: center; gap: 10px; padding: 12px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.9); }
+.bj-minuteur { width: 100%; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.bj-minuteur span { display: block; height: 100%; background: linear-gradient(90deg, #d2a85a, #fff1c4); transform-origin: left; }
+.bj-minuteur span.presse { background: #c0352a; }
+.bj-jetons { display: flex; gap: 10px; justify-content: center; }
+.bj-jeton { position: relative; width: 58px; height: 58px; min-height: 0; padding: 0; border: none; border-radius: 50%; background: none; }
+.bj-jeton img { width: 100%; height: 100%; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); transition: transform 0.15s; }
+.bj-jeton:active:not(:disabled) img { transform: translateY(-4px) scale(1.05); }
+.bj-jeton span { position: absolute; left: 50%; bottom: -4px; translate: -50% 0; padding: 0 6px; border-radius: 99px; background: rgba(10, 6, 4, 0.9); font-size: 11px; font-weight: 800; color: #fff1c4; }
+.bj-mise-encours { margin: 0; font-size: 14px; color: var(--creme-doux); }
+.bj-mise-encours strong { font-family: var(--titre); font-weight: 400; font-size: 22px; color: var(--or-vif); }
+.bj-boutons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.bj-boutons button { min-height: 42px; padding: 6px 14px; border-radius: 12px; }
+.bj-principal { background: radial-gradient(120% 140% at 50% 0%, #c0352a 0%, #8e1c14 60%, #5a0e09 100%) !important; border-color: var(--or-vif) !important; color: #fff1d0; font-weight: 700; }
+.bj-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.bj-action { display: grid; justify-items: center; min-height: 54px; padding: 6px 4px; border-radius: 12px; border: 2px solid var(--or); font-weight: 800; font-size: 14px; color: #fff1d0; }
+.bj-action small { font-size: 10px; font-weight: 600; color: var(--creme-doux); }
+.bj-action.tirer { background: linear-gradient(180deg, #13703f, #0a3d22); }
+.bj-action.rester { background: linear-gradient(180deg, #a3231a, #5a0e09); }
+.bj-action.doubler { background: linear-gradient(180deg, #8a6424, #4a320c); }
+.bj-action.separer { background: linear-gradient(180deg, #2b2f36, #121418); }
+.bj-assurance { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.bj-assurance p { margin: 0; }
+.bj-attente { margin: 0; color: var(--creme-doux); text-align: center; }
+.bj-bilan { margin: 0; font-family: var(--titre); font-size: 20px; text-align: center; color: var(--creme); animation: bj-pop 0.45s ease-out both; }
+.bj-bilan.gagne { color: #9fe0b8; }
+.bj-bilan.perdu { color: #ff9a8a; }
+.bj-hote { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--creme-doux); }
+.bj-hote button { min-height: 34px; width: 34px; padding: 0; border-radius: 50%; font-size: 18px; }
+.bj-chat { display: grid; gap: 6px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.85); }
+.bj-chat ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
+.bj-chat ul:empty { display: none; }
+.bj-chat li strong { color: var(--or-vif); }
+.bj-chat div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.bj-chat input { min-height: 38px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--filet); background: var(--nuit); color: var(--creme); font: inherit; font-size: 14px; }
+.bj-chat button { min-height: 38px; padding: 4px 12px; border-radius: 10px; font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bj-carte, .bj-carte.retournee, .bj-issue, .bj-place-mise.bilan, .bj-bilan, .cas-cadeau { animation: none !important; }
+}

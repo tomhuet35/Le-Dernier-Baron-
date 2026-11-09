@@ -18,7 +18,9 @@ import {
   type SymboleLigne,
   type SymboleMachine,
 } from '../../shared/machineASous';
+import type { VueTableBJ } from '../../shared/blackjack';
 import type { Appel } from './App';
+import { TableBlackjack } from './CasinoBlackjack';
 import type { EtatCompte } from './Profil';
 import { ANGLE_ROUE, COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRoue } from './RouletteDuJour';
 import { socket } from './socket';
@@ -488,7 +490,97 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
   );
 }
 
-function Salon({ vue, onRoue, onMachine, onQuitter }: { vue: VueCasino; onRoue: () => void; onMachine: () => void; onQuitter: () => void }) {
+/** Cadeau du Baron : la somme à récupérer, et le temps qu'il reste. */
+function BandeauCadeau({ cadeau, onRecuperer }: { cadeau: { montant: number; fin: number }; onRecuperer: () => void }) {
+  const reste = useAttente(cadeau.fin);
+  return (
+    <section className="cas-cadeau">
+      <img src="/cartes/machine-coffre.webp" alt="" />
+      <div>
+        <small>{tr('Cadeau du Baron', 'The Baron’s gift')}</small>
+        <strong>{dollars(cadeau.montant)}</strong>
+        {reste && <span>{tr(`À récupérer : encore ${reste}`, `To claim: ${reste} left`)}</span>}
+      </div>
+      <button type="button" className="cas-cadeau-bouton" onClick={onRecuperer}>
+        {tr('Récupérer', 'Claim')}
+      </button>
+    </section>
+  );
+}
+
+/** Les tables de blackjack ouvertes : en rejoindre une, ou en ouvrir une nouvelle (avec des bots). */
+function FenetreTables({ vue, appel, onTable, onVue, onFermer }: { vue: VueCasino; appel: Appel; onTable: (t: VueTableBJ) => void; onVue: (v: VueCasino) => void; onFermer: () => void }) {
+  const [bots, setBots] = useState(2);
+  const [erreur, setErreur] = useState<string | null>(null);
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      void appel('casino_vue').then((r) => {
+        const casino = (r as unknown as { casino?: VueCasino }).casino;
+        if (r.ok && casino) onVue(casino);
+      });
+    }, 3000);
+    return () => window.clearInterval(t);
+  }, [appel, onVue]);
+  const ouvrir = async (evt: string, data: unknown) => {
+    setErreur(null);
+    const r = (await appel(evt, data)) as { ok: boolean; erreur?: string; table?: VueTableBJ };
+    if (r.ok && r.table) onTable(r.table);
+    else setErreur(r.erreur ?? tr('Table indisponible.', 'Table unavailable.'));
+  };
+  return (
+    <Fenetre titre={tr('Blackjack', 'Blackjack')} onFermer={onFermer}>
+      {vue.tables.length > 0 ? (
+        <ul className="cas-tables">
+          {vue.tables.map((t) => (
+            <li key={t.code}>
+              <span className="cas-tables-avatars">
+                {t.joueurs.map((j, i) => (
+                  <img key={i} src={`/cartes/avatar-${j.avatar}.webp`} alt="" title={j.nom} />
+                ))}
+              </span>
+              <span className="cas-tables-noms">
+                <strong>
+                  {tr('Table', 'Table')} {t.code}
+                </strong>
+                <small>
+                  {t.joueurs
+                    .filter((j) => !j.bot)
+                    .map((j) => j.nom)
+                    .join(', ')}{' '}
+                  · {t.joueurs.length}/{t.max}
+                </small>
+              </span>
+              <button type="button" className="petit" disabled={t.joueurs.length >= t.max} onClick={() => void ouvrir('casino_bj_rejoindre', { code: t.code })}>
+                {tr('Rejoindre', 'Join')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="discret">{tr('Aucune table ouverte pour l’instant.', 'No open table right now.')}</p>
+      )}
+      <div className="cas-nouvelle-table">
+        <span>{tr('Bots à ta table', 'Bots at your table')}</span>
+        <div className="cas-mise">
+          <button type="button" onClick={() => setBots((b) => Math.max(0, b - 1))} disabled={bots === 0} aria-label={tr('Moins de bots', 'Fewer bots')}>
+            −
+          </button>
+          <strong>{bots}</strong>
+          <button type="button" onClick={() => setBots((b) => Math.min(4, b + 1))} disabled={bots === 4} aria-label={tr('Plus de bots', 'More bots')}>
+            +
+          </button>
+        </div>
+        <button type="button" className="principal large" onClick={() => void ouvrir('casino_bj_creer', { bots })}>
+          {tr('Ouvrir une table', 'Open a table')}
+        </button>
+      </div>
+      <p className="discret">{tr('Mises de 1 000 à 250 000 $. Tes amis créateurs voient ta table ici et peuvent s’y asseoir.', 'Bets from $1,000 to $250,000. Your creator friends see your table here and can sit down.')}</p>
+      {erreur && <p className="cas-erreur">{erreur}</p>}
+    </Fenetre>
+  );
+}
+
+function Salon({ vue, onRoue, onMachine, onBlackjack, onCadeau, onQuitter }: { vue: VueCasino; onRoue: () => void; onMachine: () => void; onBlackjack: () => void; onCadeau: () => void; onQuitter: () => void }) {
   const solde = useSoldeAnime(vue.solde);
   const attente = useAttente(vue.roueProchaine);
   return (
@@ -507,6 +599,7 @@ function Salon({ vue, onRoue, onMachine, onQuitter }: { vue: VueCasino; onRoue: 
           <strong className="cas-solde">{dollars(solde)}</strong>
         </div>
       </section>
+      {vue.cadeau && <BandeauCadeau cadeau={vue.cadeau} onRecuperer={onCadeau} />}
       <button type="button" className={`cas-bouton-roue ${attente ? '' : 'prete'}`} onClick={onRoue}>
         <svg className="bouton-roulette-icone" viewBox="0 0 40 40" aria-hidden="true">
           <circle cx="20" cy="20" r="19.5" fill="#d2a85a" />
@@ -527,7 +620,7 @@ function Salon({ vue, onRoue, onMachine, onQuitter }: { vue: VueCasino; onRoue: 
       </button>
       <div className="cas-jeux">
         {JEUX.map((j) => (
-          <Vignette key={j.id} jeu={j} onOuvrir={j.id === 'machine' ? onMachine : undefined} />
+          <Vignette key={j.id} jeu={j} onOuvrir={j.id === 'machine' ? onMachine : j.id === 'blackjack' ? onBlackjack : undefined} />
         ))}
       </div>
       <p className="cas-gros-lot">
@@ -560,8 +653,12 @@ function Salon({ vue, onRoue, onMachine, onQuitter }: { vue: VueCasino; onRoue: 
 
 export default function Casino({ appel, compte, onQuitter }: { appel: Appel; compte: EtatCompte; onQuitter: (message?: string) => void }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machine'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machine' | 'blackjack'>('salon');
   const [roue, setRoue] = useState(false);
+  const [fenetreTables, setFenetreTables] = useState(false);
+  const [table, setTable] = useState<VueTableBJ | null>(null);
+  const tableRef = useRef<string | null>(null);
+  const [cadeau, setCadeau] = useState<number | null>(null);
   const [annonce, setAnnonce] = useState<AnnonceCasino | null>(null);
   const minuterieAnnonce = useRef(0);
   const entreRef = useRef(false);
@@ -578,7 +675,18 @@ export default function Casino({ appel, compte, onQuitter }: { appel: Appel; com
       if (r.ok && r.casino) {
         if (!entreRef.current) jouerEffet('casino_entree');
         entreRef.current = true;
-        return setVue(r.casino);
+        setVue(r.casino);
+        // Retour après une coupure : on reprend sa place à la table.
+        if (tableRef.current) {
+          const t = (await appel('casino_bj_rejoindre', { code: tableRef.current })) as { ok: boolean; table?: VueTableBJ };
+          if (t.ok && t.table) setTable(t.table);
+          else {
+            tableRef.current = null;
+            setTable(null);
+            setEcran('salon');
+          }
+        }
+        return;
       }
       await new Promise((ok) => window.setTimeout(ok, 1200));
     }
@@ -594,6 +702,10 @@ export default function Casino({ appel, compte, onQuitter }: { appel: Appel; com
       minuterieAnnonce.current = window.setTimeout(() => setAnnonce(null), 6000);
     };
     const surGrosLot = (g: number) => setVue((v) => (v ? { ...v, grosLot: g } : v));
+    const surTable = (t: VueTableBJ) => {
+      if (t.code === tableRef.current) setTable(t);
+    };
+    socket.on('casino_bj', surTable);
     // Après une coupure, on revient au salon (le compte se représente d'abord au serveur).
     const surConnexion = () => window.setTimeout(() => void entrer(), 1500);
     socket.on('casino_annonce', surAnnonce);
@@ -602,19 +714,63 @@ export default function Casino({ appel, compte, onQuitter }: { appel: Appel; com
     return () => {
       socket.off('casino_annonce', surAnnonce);
       socket.off('casino_gros_lot', surGrosLot);
+      socket.off('casino_bj', surTable);
       socket.off('connect', surConnexion);
       window.clearTimeout(minuterieAnnonce.current);
       socket.emit('casino_quitter');
     };
   }, [entrer]);
 
+  const allerTable = (t: VueTableBJ) => {
+    tableRef.current = t.code;
+    setTable(t);
+    setFenetreTables(false);
+    setEcran('blackjack');
+  };
+  const quitterTable = async () => {
+    tableRef.current = null;
+    setTable(null);
+    setEcran('salon');
+    await appel('casino_bj_quitter');
+    const r = (await appel('casino_vue')) as { ok: boolean; casino?: VueCasino };
+    if (r.ok && r.casino) setVue(r.casino);
+  };
+  const recupererCadeau = async () => {
+    const r = (await appel('casino_cadeau')) as { ok: boolean; cadeau?: number; casino?: VueCasino };
+    if (!r.ok || !r.casino) return;
+    setVue(r.casino);
+    setCadeau(r.cadeau ?? 0);
+    jouerEffet('roulette_gros_lot');
+  };
+
   let contenu: ReactNode;
   if (!vue) contenu = <div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>;
   else if (ecran === 'machine') contenu = <Machine vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('salon')} />;
-  else contenu = <Salon vue={vue} onRoue={() => setRoue(true)} onMachine={() => setEcran('machine')} onQuitter={() => onQuitter()} />;
+  else if (ecran === 'blackjack' && table) contenu = <TableBlackjack v={table} appel={appel} onQuitter={() => void quitterTable()} />;
+  else
+    contenu = (
+      <Salon
+        vue={vue}
+        onRoue={() => setRoue(true)}
+        onMachine={() => setEcran('machine')}
+        onBlackjack={() => setFenetreTables(true)}
+        onCadeau={() => void recupererCadeau()}
+        onQuitter={() => onQuitter()}
+      />
+    );
   return (
     <div className="cas">
       {contenu}
+      {fenetreTables && vue && <FenetreTables vue={vue} appel={appel} onTable={allerTable} onVue={setVue} onFermer={() => setFenetreTables(false)} />}
+      {cadeau !== null && (
+        <Celebration
+          titre={tr('Cadeau du Baron !', 'The Baron’s gift!')}
+          etiquette={tr(`Cadeau : ${dollars(cadeau)}`, `Gift: ${dollars(cadeau)}`)}
+          medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(cadeau)}</strong>}
+          legende={tr('Ajouté à ton solde', 'Added to your balance')}
+          onFermer={() => setCadeau(null)}
+        />
+      )}
       {annonce && <Annonce annonce={annonce} />}
       {roue && vue && <FenetreRoueSalon vue={vue} appel={appel} onVue={setVue} onFermer={() => setRoue(false)} />}
     </div>

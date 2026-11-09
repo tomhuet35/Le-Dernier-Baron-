@@ -74,6 +74,8 @@ export interface CasinoCompte {
   /** Premier passage au salon. */
   depuis: number;
   plusGrosGain?: number;
+  /** Cadeaux du Baron déjà récupérés (identifiants). */
+  cadeaux?: string[];
 }
 
 /** Relit le casino d'un compte (entiers positifs, solde plafonné). */
@@ -86,6 +88,7 @@ function normaliserCasino(brut: unknown): CasinoCompte | null {
     ...(typeof c.roue === 'string' ? { roue: c.roue } : {}),
     depuis: entier(c.depuis),
     ...(typeof c.plusGrosGain === 'number' ? { plusGrosGain: entier(c.plusGrosGain) } : {}),
+    ...(Array.isArray(c.cadeaux) ? { cadeaux: c.cadeaux.filter((x): x is string => typeof x === 'string').slice(-20) } : {}),
   };
 }
 
@@ -178,6 +181,8 @@ export interface ServiceComptes {
   entrerCasino(uid: string): Promise<StatsCompte | null>;
   /** Ajoute (ou retire) de l'argent au casino du compte, sans jamais passer sous zéro ; null sans casino. */
   mouvementCasino(uid: string, delta: number, plusGrosGain?: number): Promise<StatsCompte | null>;
+  /** Cadeau du Baron : ajoute la somme une seule fois ; « deja » s'il est déjà récupéré, null sans casino. */
+  recupererCadeauCasino(uid: string, id: string, montant: number): Promise<StatsCompte | 'deja' | null>;
   /** Roulette du salon : ajoute le gain de la case ; « deja » si elle a déjà été tournée ce jour-là, null sans casino. */
   tournerRoueSalon(uid: string, jour: string, tirage: number): Promise<{ stats: StatsCompte; gain: number } | 'deja' | null>;
   /** Ajoute (ou rafraîchit) l'abonnement aux notifications d'un appareil ; les plus anciens partent au-delà de 5. */
@@ -505,6 +510,21 @@ export function creerServiceComptes(parties: {
         const record = Math.max(c.plusGrosGain ?? 0, plusGrosGain ?? 0);
         return { ...base, casino: { ...c, solde: Math.min(SOLDE_MAX, Math.max(0, Math.round(c.solde + delta))), ...(record ? { plusGrosGain: record } : {}) } };
       });
+    },
+    recupererCadeauCasino: async (uid, id, montant) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel?.casino) return null;
+      if (actuel.casino.cadeaux?.includes(id)) return 'deja';
+      const res = { donne: false };
+      const stats = await stockage.modifier(uid, (avant) => {
+        const base = avant ?? actuel;
+        const c = base.casino ?? { solde: SOLDE_DEPART, depuis: Date.now() };
+        res.donne = false;
+        if (c.cadeaux?.includes(id)) return base;
+        res.donne = true;
+        return { ...base, casino: { ...c, cadeaux: [...(c.cadeaux ?? []), id], solde: Math.min(SOLDE_MAX, c.solde + montant) } };
+      });
+      return res.donne ? stats : 'deja';
     },
     tournerRoueSalon: async (uid, jour, tirage) => {
       const actuel = await stockage.lire(uid);
