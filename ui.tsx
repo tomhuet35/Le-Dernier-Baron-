@@ -502,6 +502,10 @@ const VOLUME_MUSIQUE_BAISSE = 0.08;
 export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel_baron' | 'braquage' | 'evenement' | 'baron' | 'pickpocket' | 'homme_de_main' | 'croupier' | 'juge'
   | 'machine_levier'
   | 'machine_arret'
+  | 'machine_pieces'
+  | 'jeton'
+  | 'casino_entree'
+  | 'casino_annonce'
   | 'clic'
   | 'selection'
   | 'ouvrir'
@@ -539,7 +543,8 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'roulette_tic'
   | 'roulette_gain'
   | 'roulette_gros_lot';
-const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean }> = {
+/** aLaDemande : sons du Salon privé, téléchargés seulement quand un créateur ouvre le casino. */
+const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean; aLaDemande?: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
   lancement: { fichier: '/cartes/son-lancement.mp3', volume: 0.55, baisserMusique: true },
   carte: { fichier: '/cartes/son-carte.mp3', volume: 0.75, baisserMusique: false },
@@ -570,8 +575,13 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   roulette_gain: { fichier: '/cartes/son-roulette-gain.mp3', volume: 0.7, baisserMusique: true },
   roulette_gros_lot: { fichier: '/cartes/son-roulette-gros-lot.mp3', volume: 0.8, baisserMusique: true },
   // Machine à sous du Salon privé : le levier (et les rouleaux qui démarrent), puis chaque rouleau qui s'arrête.
-  machine_levier: { fichier: '/cartes/son-machine-levier.mp3', volume: 0.7, baisserMusique: true },
-  machine_arret: { fichier: '/cartes/son-machine-arret.mp3', volume: 0.55, baisserMusique: false },
+  machine_levier: { fichier: '/cartes/son-machine-levier.mp3', volume: 0.7, baisserMusique: true, aLaDemande: true },
+  machine_arret: { fichier: '/cartes/son-machine-arret.mp3', volume: 0.55, baisserMusique: false, aLaDemande: true },
+  machine_pieces: { fichier: '/cartes/son-pieces.mp3', volume: 0.6, baisserMusique: false, aLaDemande: true },
+  // Salon privé : la porte du coffre à l'entrée, un jeton posé (changement de mise), les annonces du salon.
+  jeton: { fichier: '/cartes/son-jeton.mp3', volume: 0.45, baisserMusique: false, aLaDemande: true },
+  casino_entree: { fichier: '/cartes/son-casino-entree.mp3', volume: 0.6, baisserMusique: true, aLaDemande: true },
+  casino_annonce: { fichier: '/cartes/son-casino-annonce.mp3', volume: 0.5, baisserMusique: true, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
   vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },
@@ -644,6 +654,9 @@ const musique = (() => {
     /* préférence indisponible : son activé */
   }
   let audio: HTMLAudioElement | null = null;
+  /** Morceau joué : la musique du jeu, ou celle du Salon privé. */
+  let piste = '/cartes/musique.mp3';
+  let changement = 0;
   let contexte: AudioContext | null = null;
   let gainMusique: GainNode | null = null;
   // Volumes choisis dans les Réglages (0 à 1).
@@ -666,7 +679,9 @@ const musique = (() => {
     }
     return donnees.get(nom)!;
   };
-  if (typeof window !== 'undefined') (Object.keys(EFFETS) as EffetSonore[]).forEach(telecharger);
+  const courants = (Object.keys(EFFETS) as EffetSonore[]).filter((n) => !EFFETS[n].aLaDemande);
+  const prepares = new Set<EffetSonore>(courants);
+  if (typeof window !== 'undefined') courants.forEach(telecharger);
 
   const ctx = (): AudioContext | null => {
     if (contexte) return contexte;
@@ -700,7 +715,7 @@ const musique = (() => {
 
   const element = () => {
     if (!audio) {
-      audio = new Audio('/cartes/musique.mp3');
+      audio = new Audio(piste);
       audio.loop = true;
       audio.preload = 'auto';
       audio.volume = VOLUME_MUSIQUE * volMusique();
@@ -727,7 +742,7 @@ const musique = (() => {
     if (document.hidden) return;
     const c = ctx();
     if (c?.state === 'suspended') void c.resume().catch(() => undefined);
-    (Object.keys(EFFETS) as EffetSonore[]).forEach((n) => void decoder(n));
+    prepares.forEach((n) => void decoder(n));
     if (!active) return;
     const a = element();
     if (!a.paused) return;
@@ -789,8 +804,40 @@ const musique = (() => {
     void a.play().catch(() => undefined);
   };
 
+  /** Change de morceau en fondu (le salon du casino a sa propre musique). */
+  const choisirPiste = (fichier: string) => {
+    if (fichier === piste) return;
+    piste = fichier;
+    const a = audio;
+    if (!a) return; // pas encore lancée : elle démarrera directement sur ce morceau
+    const numero = ++changement;
+    const jouait = !a.paused;
+    const c = contexte;
+    if (gainMusique && c) gainMusique.gain.setTargetAtTime(0, c.currentTime, 0.12);
+    else a.volume = 0;
+    window.setTimeout(() => {
+      if (numero !== changement) return;
+      a.src = piste;
+      a.load();
+      if (gainMusique && c) gainMusique.gain.setTargetAtTime(VOLUME_MUSIQUE * volMusique(), c.currentTime + 0.05, 0.4);
+      else a.volume = VOLUME_MUSIQUE * volMusique();
+      if (jouait && active && !document.hidden) void a.play().catch(() => undefined);
+    }, 450);
+  };
+
+  /** Télécharge (et décode dès que le son est débloqué) des sons chargés à la demande. */
+  const preparer = (noms: EffetSonore[]) => {
+    noms.forEach((n) => {
+      prepares.add(n);
+      void telecharger(n);
+      if (contexte) void decoder(n);
+    });
+  };
+
   return {
     active: () => active,
+    choisirPiste,
+    preparer,
     effet,
     basculer: () => {
       active = !active;
@@ -815,6 +862,12 @@ const musique = (() => {
 /** Joue un effet sonore (rien si le son est coupé). */
 export function jouerEffet(nom: EffetSonore) {
   void musique.effet(nom);
+}
+
+/** Musique du Salon privé (jazz de cabaret) pendant qu'on est au casino, puis retour à celle du jeu. */
+export function musiqueDuSalon(actif: boolean) {
+  if (actif) musique.preparer(['machine_levier', 'machine_arret', 'machine_pieces', 'jeton', 'casino_entree', 'casino_annonce']);
+  musique.choisirPiste(actif ? '/cartes/musique-casino.mp3' : '/cartes/musique.mp3');
 }
 
 /** Son des boutons : un clic discret partout, et un son propre à certains boutons (cartes, annonces, fenêtres). */

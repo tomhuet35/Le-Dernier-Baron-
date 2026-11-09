@@ -80,18 +80,17 @@
 .roue-texte.petit { font-size: 11.5px; }
 
 /* ---------- Machine à sous ---------- */
-.cas-machine-ecran { --case: max(48px, min(calc((100vw - 92px) / 5), calc((100dvh - 470px) / 3), 100px)); }
-.cas-machine { display: grid; justify-items: center; gap: 10px; padding: 0 0 14px; border-radius: 26px 26px 18px 18px; border: 2px solid var(--or); background: linear-gradient(180deg, #4a0b0b 0%, #2a0806 45%, #1a0c08 100%); box-shadow: 0 0 0 4px rgba(22, 16, 12, 0.9), 0 0 0 6px rgba(210, 168, 90, 0.6), 0 20px 50px rgba(0, 0, 0, 0.75); overflow: hidden; }
+/* Taille d'une case : la machine entière (fronton, rouleaux, commandes) tient dans l'écran, en largeur comme en hauteur. */
+.cas-machine-ecran { --case: max(48px, min(calc((100vw - 92px) / 5), calc((100dvh - 430px) / 4.7), 100px)); }
+.cas-machine { display: grid; justify-items: center; gap: 10px; width: min(100%, calc(var(--case) * 5 + 110px)); justify-self: center; padding: 0 0 14px; border-radius: 18px; border: 2px solid var(--or); background: linear-gradient(180deg, #4a0b0b 0%, #2a0806 45%, #1a0c08 100%); box-shadow: 0 0 0 4px rgba(22, 16, 12, 0.9), 0 0 0 6px rgba(210, 168, 90, 0.6), 0 20px 50px rgba(0, 0, 0, 0.75); overflow: hidden; }
 
-/* Fronton (en attendant machine-fronton.webp) : arche dorée bordée d'ampoules. */
-.cas-fronton { position: relative; width: 100%; padding: 18px 14px 12px; text-align: center; background: radial-gradient(120% 120% at 50% 100%, #3c0107 0%, #1a0505 70%); border-bottom: 2px solid var(--or); }
-.cas-fronton::before { content: ''; position: absolute; inset: 0; background: repeating-conic-gradient(from -90deg at 50% 120%, rgba(231, 194, 122, 0.12) 0deg 6deg, transparent 6deg 14deg); pointer-events: none; }
-.cas-ampoules { position: absolute; left: 10px; right: 10px; top: 6px; height: 8px; background: radial-gradient(circle, #fff3c4 0 2.5px, transparent 3px) 0 50% / 16px 8px repeat-x; filter: drop-shadow(0 0 4px #ffd774); animation: cas-ampoules 1.2s steps(2) infinite; }
-@keyframes cas-ampoules { 50% { opacity: 0.55; } }
-.cas-fronton h2 { position: relative; margin: 6px 0 0; font-family: var(--titre); font-weight: 400; font-size: clamp(24px, 7vw, 34px); color: var(--or-vif); letter-spacing: 0.04em; text-shadow: 0 0 14px rgba(231, 194, 122, 0.55), 0 3px 0 #3a0a06; }
-.cas-fronton p { position: relative; margin: 4px 0 0; font-size: 13px; color: var(--creme-doux); }
-.cas-fronton p strong { color: #fff1c4; font-family: var(--titre); font-weight: 400; font-size: 17px; }
-
+/* Fronton lumineux : le nom de la machine et le gros lot sont écrits dans le cartouche. */
+.cas-fronton { position: relative; width: calc(100% + 16px); margin: 4px -8px -8px; }
+.cas-fronton img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); }
+.cas-fronton-texte { position: absolute; left: 14%; right: 14%; top: 50%; height: 36%; display: grid; place-content: center; text-align: center; line-height: 1.05; }
+.cas-fronton h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: clamp(15px, 4.8vw, 30px); color: var(--or-vif); letter-spacing: 0.03em; text-shadow: 0 0 12px rgba(231, 194, 122, 0.55), 0 2px 0 #3a0a06; white-space: nowrap; }
+.cas-fronton p { margin: 2px 0 0; font-size: clamp(10px, 2.9vw, 14px); color: var(--creme-doux); white-space: nowrap; }
+.cas-fronton p strong { color: #fff1c4; font-family: var(--titre); font-weight: 400; font-size: 1.2em; }
 .cas-fenetre { position: relative; padding: 8px; border-radius: 14px; background: linear-gradient(180deg, #8a6424, #e7c27a 50%, #8a6424); box-shadow: inset 0 0 0 2px rgba(22, 16, 12, 0.8), 0 6px 18px rgba(0, 0, 0, 0.6); }
 .cas-fenetre.gratuit { background: linear-gradient(180deg, #0a3d22, #3fbf7a 50%, #0a3d22); }
 .cas-rouleaux { display: grid; grid-template-columns: repeat(5, var(--case)); gap: 4px; padding: 4px; border-radius: 8px; background: #120806; }
@@ -111,14 +110,16 @@
 .cas-erreur { color: #ff9a8a; font-size: 13px; }
 
 .cas-commandes { display: grid; justify-items: center; gap: 10px; width: 100%; padding: 0 14px; }
-.cas-mise { display: grid; grid-template-columns: 46px minmax(0, 170px) 46px; align-items: center; gap: 8px; }
+.cas-mise { display: grid; grid-template-columns: 46px minmax(0, 200px) 46px; align-items: center; gap: 8px; }
 .cas-mise button { min-height: 46px; padding: 0; border-radius: 50%; font-size: 24px; line-height: 1; background: var(--nuit-3); border-color: var(--or); }
-.cas-mise span { display: grid; justify-items: center; }
+.cas-mise-valeur { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.cas-mise-valeur > span { display: grid; justify-items: start; }
+.cas-jeton { width: 40px; height: 40px; flex: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55)); }
 .cas-mise small { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--creme-doux); }
 .cas-mise strong { font-family: var(--titre); font-weight: 400; font-size: 20px; color: var(--or-vif); white-space: nowrap; }
 .cas-tourner {
-  width: min(100%, 320px); min-height: 66px; padding: 8px 20px;
-  font-family: var(--titre); font-size: clamp(20px, 5.8vw, 30px); letter-spacing: 0.08em; text-transform: uppercase; color: #fff1d0; white-space: nowrap;
+  width: min(100%, 360px); min-height: 66px; padding: 8px 16px;
+  font-family: var(--titre); font-size: clamp(18px, 5.4vw, 27px); letter-spacing: 0.08em; text-transform: uppercase; color: #fff1d0; white-space: nowrap;
   text-shadow: 0 2px 0 #4a0f08, 0 0 14px rgba(231, 194, 122, 0.45);
   border: 3px solid var(--or-vif); border-radius: 14px;
   background: radial-gradient(120% 140% at 50% 0%, #c0352a 0%, #8e1c14 55%, #5a0e09 100%);
@@ -138,6 +139,9 @@
 .cas-gains-note { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0 0; font-size: 13px; color: var(--creme-doux); }
 
 @media (prefers-reduced-motion: reduce) {
-  .cas-ampoules, .cas-case.gagnante, .cas-annonce, .cas-lignes polyline { animation: none !important; }
+  .cas-case.gagnante, .cas-annonce, .cas-lignes polyline { animation: none !important; }
   .cas-lignes polyline { stroke-dashoffset: 0; }
 }
+
+.cas-pied { display: flex; justify-content: center; }
+.cas-case .cas-symbole { width: 84%; height: 84%; }

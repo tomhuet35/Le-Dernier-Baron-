@@ -8,9 +8,14 @@ export const SOLDE_DEPART = 1_000_000;
 /** Plafond du solde (au-delà, l'argent gagné est perdu). */
 export const SOLDE_MAX = 1_000_000_000_000;
 
-/** Roulette du salon : un tour par jour (heure de Paris), 8 cases de même chance ; la case verte vaut le million. */
-export const CASES_ROUE_SALON = [100_000, 100_000, 100_000, 1_000_000, 100_000, 100_000, 100_000, 100_000];
+/**
+ * Roulette du salon : un tour par jour (heure de Paris), 8 cases de même chance (1 sur 8) ;
+ * la case verte (comme le zéro du casino) vaut le million.
+ */
+export const CASES_ROUE_SALON = [100_000, 25_000, 300_000, 1_000_000, 10_000, 500_000, 50_000, 250_000];
 export const CASE_VERTE_SALON = 3;
+/** À partir de ce gain, la roulette du salon est fêtée en grand et annoncée à tout le salon. */
+export const GROS_GAIN_ROUE = 500_000;
 
 /** Gros lot progressif de la machine à sous : montant de départ, et part de chaque mise qui l'alimente. */
 export const GROS_LOT_DEPART = 1_000_000;

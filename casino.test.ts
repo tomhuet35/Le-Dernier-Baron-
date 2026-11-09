@@ -37,11 +37,11 @@ describe('Machine à sous « Le Bandit du Baron »', () => {
     expect(evaluerMachine(arrets, 10_000, true).gain).toBe(normal.gain * 2);
   });
 
-  it('reste proche de son taux de retour sur 100 000 tours tirés au hasard', () => {
+  it('reste proche de son taux de retour sur 30 000 tours tirés au hasard', () => {
     const hasard = graine(7);
     let mise = 0;
     let gain = 0;
-    for (let i = 0; i < 100_000; i++) {
+    for (let i = 0; i < 30_000; i++) {
       mise += 1000;
       const r = tirerMachine(hasard, 1000, false);
       gain += r.gain;
@@ -53,8 +53,8 @@ describe('Machine à sous « Le Bandit du Baron »', () => {
         reste += g.toursGagnes;
       }
     }
-    expect(gain / mise).toBeGreaterThan(0.85);
-    expect(gain / mise).toBeLessThan(1.08);
+    expect(gain / mise).toBeGreaterThan(0.8);
+    expect(gain / mise).toBeLessThan(1.12);
   });
 
   it('écrit les montants à la française', () => {

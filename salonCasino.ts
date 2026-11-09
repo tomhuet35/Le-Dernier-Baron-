@@ -12,8 +12,8 @@
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import {
-  CASE_VERTE_SALON,
   CASES_ROUE_SALON,
+  GROS_GAIN_ROUE,
   GROS_LOT_DEPART,
   MULTIPLE_GROS_GAIN,
   PART_GROS_LOT,
@@ -260,7 +260,7 @@ export function creerCasino(options: OptionsCasino) {
         p.roue = r.stats.casino?.roue;
         riches.set(id.uid, { nom: p.nom, avatar: p.avatar, solde: p.solde });
         sauverSalon();
-        if (tirage === CASE_VERTE_SALON) annoncer({ nom: p.nom, jeu: 'roue', gain: r.gain });
+        if (r.gain >= GROS_GAIN_ROUE) annoncer({ nom: p.nom, jeu: 'roue', gain: r.gain });
         repondre(rappel, { ok: true, roue: { case: tirage, gain: r.gain }, casino: vue(id.uid) });
       } catch (e) {
         console.error('Casino : roulette du salon impossible :', e);

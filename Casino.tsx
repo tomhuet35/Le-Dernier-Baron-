@@ -4,7 +4,7 @@
  * « Le Bandit du Baron ». Tout l'argent est fictif et tenu par le serveur.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { CASE_VERTE_SALON, CASES_ROUE_SALON, formatDollars, MULTIPLE_GROS_GAIN, type AnnonceCasino, type VueCasino } from '../../shared/casino';
+import { CASE_VERTE_SALON, CASES_ROUE_SALON, formatDollars, GROS_GAIN_ROUE, MULTIPLE_GROS_GAIN, type AnnonceCasino, type VueCasino } from '../../shared/casino';
 import {
   BANDES,
   GAINS_COFFRES,
@@ -23,7 +23,7 @@ import type { EtatCompte } from './Profil';
 import { ANGLE_ROUE, COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRoue } from './RouletteDuJour';
 import { socket } from './socket';
 import { EN, tr } from './traduction';
-import { Celebration, Fenetre, jouerEffet, mouvementReduit, useCompteur } from './ui';
+import { BoutonMusique, Celebration, Fenetre, jouerEffet, mouvementReduit, musiqueDuSalon, useCompteur } from './ui';
 import './casino.css';
 
 const dollars = (n: number) => formatDollars(n, EN);
@@ -55,97 +55,20 @@ const NOMS_SYMBOLES: Record<SymboleMachine, [string, string]> = {
 const nomSymbole = (s: SymboleMachine) => tr(...NOMS_SYMBOLES[s]);
 
 export function Symbole({ s, className }: { s: SymboleMachine; className?: string }) {
-  const cls = `cas-symbole cas-symbole-${s} ${className ?? ''}`;
-  if (s === 'couronne') return <img className={cls} src="/cartes/couronne.webp" alt={nomSymbole(s)} draggable={false} />;
-  return (
-    <svg className={cls} viewBox="0 0 64 64" role="img" aria-label={nomSymbole(s)}>
-      <defs>
-        <linearGradient id={`or-${s}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff2c6" />
-          <stop offset="0.45" stopColor="#e7c27a" />
-          <stop offset="1" stopColor="#8a6424" />
-        </linearGradient>
-      </defs>
-      {s === 'coffre' && (
-        <g>
-          <rect x="9" y="10" width="46" height="44" rx="5" fill="#3a3f47" stroke={`url(#or-${s})`} strokeWidth="3" />
-          <rect x="14" y="15" width="36" height="34" rx="3" fill="#272b31" stroke="#5c636d" strokeWidth="1.5" />
-          <circle cx="32" cy="32" r="10" fill={`url(#or-${s})`} stroke="#5a3d12" strokeWidth="1.5" />
-          <circle cx="32" cy="32" r="4" fill="#272b31" />
-          {Array.from({ length: 8 }, (_, k) => (
-            <line key={k} x1="32" y1="21" x2="32" y2="23.5" stroke="#5a3d12" strokeWidth="1.4" transform={`rotate(${k * 45} 32 32)`} />
-          ))}
-          <rect x="45" y="27" width="4" height="10" rx="1.5" fill={`url(#or-${s})`} />
-          <rect x="13" y="54" width="7" height="4" fill="#272b31" />
-          <rect x="44" y="54" width="7" height="4" fill="#272b31" />
-        </g>
-      )}
-      {s === 'sept' && (
-        <g>
-          <path d="M14 10 H52 V19 L33 56 H20 L38 21 H14 Z" fill="#b8281d" stroke={`url(#or-${s})`} strokeWidth="3.2" strokeLinejoin="round" />
-          <path d="M17 13 H48" stroke="#ff9a8a" strokeWidth="1.4" opacity="0.6" />
-        </g>
-      )}
-      {s === 'lingot' && (
-        <g>
-          <path d="M8 46 L18 24 H46 L56 46 Z" fill={`url(#or-${s})`} stroke="#6b4a14" strokeWidth="1.8" strokeLinejoin="round" />
-          <path d="M18 24 L22 32 H42 L46 24" fill="none" stroke="#fff6d8" strokeWidth="1.4" opacity="0.8" />
-          <path d="M22 32 L14 46 M42 32 L50 46" stroke="#a87a2a" strokeWidth="1.2" />
-          <path d="M24 28 H34" stroke="#fffbe8" strokeWidth="2" strokeLinecap="round" opacity="0.9" />
-        </g>
-      )}
-      {s === 'diamant' && (
-        <g strokeLinejoin="round">
-          <path d="M10 24 L20 12 H44 L54 24 L32 54 Z" fill="#cfe9f4" stroke={`url(#or-${s})`} strokeWidth="2.6" />
-          <path d="M10 24 H54 M20 12 L26 24 L32 12 L38 24 L44 12 M26 24 L32 54 L38 24" fill="none" stroke="#7fb3c8" strokeWidth="1.3" />
-          <path d="M20 12 L26 24 L10 24 Z" fill="#ffffff" opacity="0.75" />
-          <path d="M38 24 L32 54 L54 24 Z" fill="#9cc7d8" opacity="0.6" />
-        </g>
-      )}
-      {s === 'champagne' && (
-        <g>
-          <path d="M14 12 H50 Q48 30 32 32 Q16 30 14 12 Z" fill="#f3d68a" stroke={`url(#or-${s})`} strokeWidth="2.4" />
-          <path d="M17 17 H47" stroke="#fff6d8" strokeWidth="1.2" />
-          <path d="M32 32 V50" stroke={`url(#or-${s})`} strokeWidth="3" />
-          <path d="M21 54 Q32 48 43 54 Z" fill={`url(#or-${s})`} stroke="#6b4a14" strokeWidth="1.2" />
-          {[
-            [24, 22, 1.6],
-            [30, 26, 1.3],
-            [38, 21, 1.8],
-            [41, 8, 1.5],
-            [35, 4, 1.2],
-          ].map(([x, y, r], k) => (
-            <circle key={k} cx={x} cy={y} r={r} fill="#fffbe8" opacity="0.85" />
-          ))}
-        </g>
-      )}
-      {s === 'cigare' && (
-        <g transform="rotate(-28 32 32)">
-          <rect x="8" y="27" width="44" height="11" rx="5.5" fill="#6b3a1e" stroke="#3a1d0c" strokeWidth="1.4" />
-          <path d="M12 30 H46" stroke="#8d5530" strokeWidth="1.2" />
-          <rect x="16" y="26.5" width="8" height="12" fill="#b8281d" stroke={`url(#or-${s})`} strokeWidth="1.6" />
-          <rect x="50" y="28" width="5" height="9" rx="2" fill="#e8662a" />
-          <rect x="53" y="28.5" width="3" height="8" rx="1.5" fill="#9a9a9a" />
-          <path d="M58 26 Q54 18 60 12 Q64 6 58 0" fill="none" stroke="#d9d0c2" strokeWidth="1.8" strokeLinecap="round" opacity="0.7" />
-        </g>
-      )}
-      {s === 'fer' && (
-        <g>
-          <path d="M14 12 V34 A18 18 0 0 0 50 34 V12 H40 V34 A8 8 0 0 1 24 34 V12 Z" fill={`url(#or-${s})`} stroke="#6b4a14" strokeWidth="1.8" strokeLinejoin="round" />
-          {[
-            [19, 18],
-            [19, 28],
-            [45, 18],
-            [45, 28],
-            [24, 46],
-            [40, 46],
-          ].map(([x, y], k) => (
-            <circle key={k} cx={x} cy={y} r="1.8" fill="#5a3d12" />
-          ))}
-        </g>
-      )}
-    </svg>
-  );
+  return <img className={`cas-symbole cas-symbole-${s} ${className ?? ''}`} src={`/cartes/machine-${s}.webp`} alt={nomSymbole(s)} draggable={false} />;
+}
+
+/** Jeton de la couleur de la mise (ivoire, rouge, vert, noir, violet). */
+const JETONS: [number, string][] = [
+  [100_000, 'violet'],
+  [50_000, 'noir'],
+  [10_000, 'vert'],
+  [5_000, 'rouge'],
+  [0, 'ivoire'],
+];
+export function Jeton({ valeur, className }: { valeur: number; className?: string }) {
+  const couleur = JETONS.find(([v]) => valeur >= v)?.[1] ?? 'ivoire';
+  return <img className={`cas-jeton ${className ?? ''}`} src={`/cartes/jeton-${couleur}.webp`} alt="" draggable={false} />;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -178,9 +101,9 @@ function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; app
       setTourne(false);
       setResultat({ case: i, gain });
       onVue(nouvelle);
-      const million = i === CASE_VERTE_SALON;
-      if (million) setFete(true);
-      jouerEffet(million ? 'roulette_gros_lot' : 'roulette_gain');
+      const gros = gain >= GROS_GAIN_ROUE;
+      if (gros) setFete(true);
+      jouerEffet(gros ? 'roulette_gros_lot' : 'machine_pieces');
     };
     if (mouvementReduit()) {
       setRotation(cible % 360);
@@ -196,7 +119,7 @@ function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; app
 
   return (
     <Fenetre titre={tr('Roulette du salon', 'Lounge wheel')} onFermer={tourne ? undefined : onFermer} large>
-      <Roue cases={CASES_SALON} rotation={rotation} tourne={tourne} gagnante={resultat?.case ?? null} pieces={!!resultat && resultat.case !== CASE_VERTE_SALON} />
+      <Roue cases={CASES_SALON} rotation={rotation} tourne={tourne} gagnante={resultat?.case ?? null} pieces={!!resultat && resultat.gain < GROS_GAIN_ROUE} />
       {resultat ? (
         <div className="roulette-resultat" role="status">
           <div>
@@ -211,8 +134,8 @@ function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; app
       )}
       {fete && resultat && (
         <Celebration
-          titre={tr('Le million !', 'The million!')}
-          etiquette={tr('Un million de dollars gagné', 'One million dollars won')}
+          titre={resultat.case === CASE_VERTE_SALON ? tr('Le million !', 'The million!') : tr('Gros gain !', 'Big win!')}
+          etiquette={tr(`Gain : ${dollars(resultat.gain)}`, `Win: ${dollars(resultat.gain)}`)}
           medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(resultat.gain)}</strong>}
           legende={tr('Ajouté à ton solde', 'Added to your balance')}
           onFermer={() => setFete(false)}
@@ -363,7 +286,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
       else if (grand) setFete('gros');
       else if (m.toursGagnes) setFete('bonus');
       if (grand || m.toursGagnes) jouerEffet('roulette_gros_lot');
-      else if (m.gain > 0) jouerEffet('roulette_gain');
+      else if (m.gain > 0) jouerEffet(m.gain >= 5 * m.mise ? 'roulette_gain' : 'machine_pieces');
       // Tours auto : on continue, sauf après un gros gain.
       if (autoRef.current > 0) {
         if (grand) setAuto(0);
@@ -401,6 +324,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   if (tour && tour.coffres >= 3) tour.grille.forEach((col, r) => col.forEach((s, k) => s === 'coffre' && gagnantes.add(r * 3 + k)));
   const changerMise = (sens: number) => {
     const i = MISES_MACHINE.indexOf(mise);
+    jouerEffet('jeton');
     setMise(MISES_MACHINE[Math.min(MISES_MACHINE.length - 1, Math.max(0, i + sens))]);
   };
   const libelleBouton = enCours ? tr('En jeu…', 'Spinning…') : gratuits > 0 ? tr(`Tour gratuit (${gratuits})`, `Free spin (${gratuits})`) : tr('Tourner', 'Spin');
@@ -417,11 +341,13 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
       </header>
       <div className="cas-machine">
         <div className="cas-fronton">
-          <span className="cas-ampoules" aria-hidden="true" />
-          <h2>{tr('Le Bandit du Baron', 'The Baron’s Bandit')}</h2>
-          <p>
-            {tr('Gros lot du salon', 'Lounge jackpot')} <strong>{dollars(vue.grosLot)}</strong>
-          </p>
+          <img src="/cartes/machine-fronton.webp" alt="" draggable={false} />
+          <div className="cas-fronton-texte">
+            <h2>{tr('Le Bandit du Baron', 'The Baron’s Bandit')}</h2>
+            <p>
+              {tr('Gros lot', 'Jackpot')} <strong>{dollars(vue.grosLot)}</strong>
+            </p>
+          </div>
         </div>
         <div className={`cas-fenetre ${gratuits > 0 || tour?.gratuit ? 'gratuit' : ''}`}>
           <div className="cas-rouleaux">
@@ -468,9 +394,12 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
             <button type="button" onClick={() => changerMise(-1)} disabled={enCours || gratuits > 0 || mise === MISES_MACHINE[0]} aria-label={tr('Baisser la mise', 'Lower the bet')}>
               −
             </button>
-            <span>
-              <small>{gratuits > 0 ? tr('Mise du bonus', 'Bonus bet') : tr('Mise', 'Bet')}</small>
-              <strong>{dollars(gratuits > 0 ? vue.miseGratuite : mise)}</strong>
+            <span className="cas-mise-valeur">
+              <Jeton valeur={gratuits > 0 ? vue.miseGratuite : mise} />
+              <span>
+                <small>{gratuits > 0 ? tr('Mise du bonus', 'Bonus bet') : tr('Mise', 'Bet')}</small>
+                <strong>{dollars(gratuits > 0 ? vue.miseGratuite : mise)}</strong>
+              </span>
             </span>
             <button type="button" onClick={() => changerMise(1)} disabled={enCours || gratuits > 0 || mise === MISES_MACHINE[MISES_MACHINE.length - 1]} aria-label={tr('Augmenter la mise', 'Raise the bet')}>
               +
@@ -547,7 +476,7 @@ function Vignette({ jeu, onOuvrir }: { jeu: (typeof JEUX)[number]; onOuvrir?: ()
 function Annonce({ annonce }: { annonce: AnnonceCasino }) {
   const texte =
     annonce.jeu === 'roue'
-      ? tr(`${annonce.nom} a gagné le million à la roulette du salon !`, `${annonce.nom} won the million on the lounge wheel!`)
+      ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la roulette du salon !`, `${annonce.nom} won ${dollars(annonce.gain)} on the lounge wheel!`)
       : annonce.grosLot
         ? tr(`${annonce.nom} a décroché le gros lot : ${dollars(annonce.gain)} !`, `${annonce.nom} hit the jackpot: ${dollars(annonce.gain)}!`)
         : tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la machine à sous !`, `${annonce.nom} won ${dollars(annonce.gain)} on the slot machine!`);
@@ -592,7 +521,7 @@ function Salon({ vue, onRoue, onMachine, onQuitter }: { vue: VueCasino; onRoue: 
         </svg>
         <span>
           <strong>{tr('Roulette du salon', 'Lounge wheel')}</strong>
-          <small>{attente ? tr(`Prochain tour dans ${attente}`, `Next spin in ${attente}`) : tr('100 000 $ ou le million !', '$100,000 or the million!')}</small>
+          <small>{attente ? tr(`Prochain tour dans ${attente}`, `Next spin in ${attente}`) : tr('Jusqu’à 1 million de dollars !', 'Up to one million dollars!')}</small>
         </span>
         {!attente && <span className="pastille-nombre">1</span>}
       </button>
@@ -619,6 +548,9 @@ function Salon({ vue, onRoue, onMachine, onQuitter }: { vue: VueCasino; onRoue: 
           </ol>
         </section>
       )}
+      <div className="cas-pied">
+        <BoutonMusique />
+      </div>
       <p className="cas-mention">{tr('Argent fictif, sans aucune valeur réelle.', 'Play money, with no real value.')}</p>
     </div>
   );
@@ -632,11 +564,22 @@ export default function Casino({ appel, compte, onQuitter }: { appel: Appel; com
   const [roue, setRoue] = useState(false);
   const [annonce, setAnnonce] = useState<AnnonceCasino | null>(null);
   const minuterieAnnonce = useRef(0);
+  const entreRef = useRef(false);
+
+  // Musique d'ambiance du salon (jazz de cabaret) tant qu'on est au casino.
+  useEffect(() => {
+    musiqueDuSalon(true);
+    return () => musiqueDuSalon(false);
+  }, []);
 
   const entrer = useCallback(async () => {
     for (let essai = 0; essai < 4; essai++) {
       const r = (await appel('casino_entrer')) as { ok: boolean; erreur?: string; casino?: VueCasino };
-      if (r.ok && r.casino) return setVue(r.casino);
+      if (r.ok && r.casino) {
+        if (!entreRef.current) jouerEffet('casino_entree');
+        entreRef.current = true;
+        return setVue(r.casino);
+      }
       await new Promise((ok) => window.setTimeout(ok, 1200));
     }
     onQuitter(tr('Le salon est indisponible pour le moment.', 'The lounge is unavailable right now.'));
@@ -646,6 +589,7 @@ export default function Casino({ appel, compte, onQuitter }: { appel: Appel; com
     void entrer();
     const surAnnonce = (a: AnnonceCasino) => {
       setAnnonce(a);
+      jouerEffet('casino_annonce');
       window.clearTimeout(minuterieAnnonce.current);
       minuterieAnnonce.current = window.setTimeout(() => setAnnonce(null), 6000);
     };
