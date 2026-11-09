@@ -496,6 +496,11 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
   const resume = (): ResumeTableBJ[] =>
     [...tables.values()].map((t) => ({ code: t.code, joueurs: t.sieges.map((s) => ({ nom: s.nom, avatar: s.avatar, bot: s.bot })), max: PLACES_BJ }));
 
+  /** La table où ce téléphone est assis (pour inviter des amis). */
+  const tableDe = (socketId: string) => liens.get(socketId)?.code ?? null;
+  const existe = (code: string) => tables.has(code);
+  const complete = (code: string) => (tables.get(code)?.sieges.length ?? PLACES_BJ) >= PLACES_BJ;
+
   /** Un créateur sort du salon : il quitte sa table. */
   const sortir = (socketId: string) => quitter(socketId);
 
@@ -504,5 +509,5 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
     for (const t of tables.values()) if (t.minuterie) clearTimeout(t.minuterie);
   };
 
-  return { brancher, resume, sortir, fermer };
+  return { brancher, resume, sortir, fermer, tableDe, existe, complete };
 }

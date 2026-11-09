@@ -65,6 +65,8 @@ export interface VueCasino {
   riches: RicheSalon[];
   /** Tables de blackjack ouvertes. */
   tables: ResumeTableBJ[];
+  /** Tables de roulette ouvertes (même résumé). */
+  tablesRoulette: ResumeTableBJ[];
   /** Bonus de la machine à sous à jouer (casse ou roue), ou null. */
   bonus: VueBonusMachine | null;
   /** Cadeau du Baron encore à récupérer (montant et fin), ou null. */
@@ -73,7 +75,7 @@ export interface VueCasino {
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette';
   gain: number;
   grosLot?: boolean;
 }

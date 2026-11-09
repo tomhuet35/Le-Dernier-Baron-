@@ -548,7 +548,8 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'sirene'
   | 'suspense'
   | 'suspense_fort'
-  | 'lingots_pluie';
+  | 'lingots_pluie'
+  | 'bille';
 /** aLaDemande : sons du Salon privé, téléchargés seulement quand un créateur ouvre le casino. */
 const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean; aLaDemande?: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
@@ -597,6 +598,8 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   suspense: { fichier: '/cartes/son-suspense.mp3', volume: 0.42, baisserMusique: true, aLaDemande: true },
   suspense_fort: { fichier: '/cartes/son-suspense-fort.mp3', volume: 0.55, baisserMusique: true, aLaDemande: true },
   lingots_pluie: { fichier: '/cartes/son-lingots-pluie.mp3', volume: 0.5, baisserMusique: false, aLaDemande: true },
+  // Roulette : la bille qui roule, rebondit sur les cases et se pose.
+  bille: { fichier: '/cartes/son-bille.mp3', volume: 0.6, baisserMusique: true, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
   vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },
@@ -881,7 +884,7 @@ export function jouerEffet(nom: EffetSonore) {
 
 /** Musique du Salon privé (jazz de cabaret) pendant qu'on est au casino, puis retour à celle du jeu. */
 export function musiqueDuSalon(actif: boolean) {
-  if (actif) musique.preparer(['machine_levier', 'machine_arret', 'machine_pieces', 'jeton', 'casino_entree', 'casino_annonce', 'melange', 'coffre_ouvre', 'sirene', 'suspense', 'suspense_fort', 'lingots_pluie']);
+  if (actif) musique.preparer(['machine_levier', 'machine_arret', 'machine_pieces', 'jeton', 'casino_entree', 'casino_annonce', 'melange', 'coffre_ouvre', 'sirene', 'suspense', 'suspense_fort', 'lingots_pluie', 'bille']);
   musique.choisirPiste(actif ? '/cartes/musique-casino.mp3' : '/cartes/musique.mp3');
 }
 

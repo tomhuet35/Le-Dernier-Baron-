@@ -29,6 +29,7 @@ import { gainCasse, MISES_MACHINE, nouveauCasse, ouvrirCasse, ROUE_BARON, TOURS_
 import { jourParis, lendemainParis } from '../shared/roulette';
 import type { Identite, ServiceComptes, StatsCompte } from './comptes';
 import { creerTablesBlackjack, type BanqueCasino, type DelaisTables } from './tablesCasino';
+import { creerTablesRoulette, type DelaisRoulette } from './tablesRoulette';
 import type { CarteBJ } from '../shared/blackjack';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
@@ -53,6 +54,9 @@ export interface OptionsCasino {
   /** Blackjack : délais et sabot (remplaçables pour les tests). */
   delaisTables?: Partial<DelaisTables>;
   sabotBlackjack?: () => CarteBJ[];
+  /** Roulette : délais et numéro tiré (remplaçables pour les tests). */
+  delaisRoulette?: Partial<DelaisRoulette>;
+  tirageRoulette?: () => number;
 }
 
 /** Porte-monnaie d'un créateur, tenu en mémoire pendant qu'il joue. */
@@ -183,6 +187,7 @@ export function creerCasino(options: OptionsCasino) {
     },
   };
   const tables = creerTablesBlackjack({ io, banque, horloge, delais: options.delaisTables, sabot: options.sabotBlackjack });
+  const roulettes = creerTablesRoulette({ io, banque, horloge, delais: options.delaisRoulette, tirage: options.tirageRoulette, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
     const p = portes.get(uid);
@@ -202,6 +207,7 @@ export function creerCasino(options: OptionsCasino) {
       bonus: p?.bonus[0] ? vueBonus(p.bonus[0]) : null,
       riches: liste,
       tables: tables.resume(),
+      tablesRoulette: roulettes.resume(),
       cadeau: t < finCadeau && p && !p.cadeaux.includes(CADEAU_SALON.id) ? { montant: CADEAU_SALON.montant, fin: finCadeau } : null,
     };
   }
@@ -274,6 +280,7 @@ export function creerCasino(options: OptionsCasino) {
     };
     let dans = false;
     tables.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
+    roulettes.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
 
     socket.on('casino_entrer', async (_data: unknown, rappel?: Rappel) => {
       const id = await acces(rappel);
@@ -296,6 +303,7 @@ export function creerCasino(options: OptionsCasino) {
     socket.on('casino_quitter', async (_data: unknown, rappel?: Rappel) => {
       const id = ctx.identite();
       tables.sortir(socket.id);
+      roulettes.sortir(socket.id);
       void socket.leave(SALLE);
       dans = false;
       if (id) await ecrire(id.uid);
@@ -483,6 +491,7 @@ export function creerCasino(options: OptionsCasino) {
   /** Écrit tout ce qui attend (arrêt du serveur, tests). */
   async function vider() {
     tables.fermer();
+    roulettes.fermer();
     await Promise.all([...portes.keys()].map((uid) => ecrire(uid)));
     if (minuterieSalon) {
       clearTimeout(minuterieSalon);
@@ -491,5 +500,14 @@ export function creerCasino(options: OptionsCasino) {
     }
   }
 
-  return { brancher, vider };
+  /** La table du Salon privé où ce téléphone est assis (pour inviter des amis), ou null. */
+  function tableDe(socketId: string): { jeu: 'blackjack' | 'roulette'; code: string } | null {
+    const bj = tables.tableDe(socketId);
+    if (bj) return { jeu: 'blackjack', code: bj };
+    const rl = roulettes.tableDe(socketId);
+    return rl ? { jeu: 'roulette', code: rl } : null;
+  }
+  const tableComplete = (jeu: 'blackjack' | 'roulette', code: string) => (jeu === 'blackjack' ? tables.complete(code) : roulettes.complete(code));
+
+  return { brancher, vider, estCreateur, tableDe, tableComplete };
 }

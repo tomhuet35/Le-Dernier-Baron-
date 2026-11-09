@@ -384,8 +384,18 @@ export function App() {
     },
     [appel],
   );
+  // Salon privé du casino : seulement pour les comptes Créateur, et jamais pendant une partie.
+  const [casinoOuvert, setCasinoOuvert] = useState(false);
+  // Invitation à une table du Salon privé : le casino s'ouvre et rejoint la table de l'ami.
+  const [casinoInvitation, setCasinoInvitation] = useState<{ id: string; jeu: 'blackjack' | 'roulette'; code: string } | null>(null);
   const rejoindreInvitation = async (inv: Invitation) => {
     setInvitations((l) => l.filter((x) => x.id !== inv.id));
+    if (inv.casino) {
+      if (!profil?.createur) return;
+      setCasinoInvitation({ id: inv.id, jeu: inv.casino, code: inv.code });
+      setCasinoOuvert(true);
+      return;
+    }
     await appel('rejoindre', { code: inv.code, nom: pseudo() });
   };
   // Fonctions stables : sinon chaque nouvelle liste relancerait un chargement, sans fin.
@@ -431,8 +441,7 @@ export function App() {
     [module, pret, utilisateur, profil, chargement, rafraichir, identifier],
   );
 
-  // Salon privé du casino : seulement pour les comptes Créateur, et jamais pendant une partie.
-  const [casinoOuvert, setCasinoOuvert] = useState(false);
+  const finInvitationCasino = useCallback(() => setCasinoInvitation(null), []);
   const quitterCasino = useCallback((m?: string) => {
     setCasinoOuvert(false);
     if (m) setMessage(m);
@@ -447,7 +456,7 @@ export function App() {
   else if (casinoOuvert && profil?.createur)
     ecran = (
       <Suspense fallback={<div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>}>
-        <Casino appel={appel} compte={compte} onQuitter={quitterCasino} />
+        <Casino appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} />
       </Suspense>
     );
   else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirCasino={ouvrirCasino} />;
@@ -464,7 +473,12 @@ export function App() {
             <div key={inv.id} className="invitation">
               <IconeImage nom="invitation" repli="✉️" className="invitation-icone" />
               <p>
-                <strong>{inv.de}</strong> {tr('t’invite à sa partie privée.', 'invites you to their private game.')}
+                <strong>{inv.de}</strong>{' '}
+                {inv.casino === 'roulette'
+                  ? tr('t’invite à sa table de roulette du Salon privé.', 'invites you to their roulette table in the private lounge.')
+                  : inv.casino === 'blackjack'
+                    ? tr('t’invite à sa table de blackjack du Salon privé.', 'invites you to their blackjack table in the private lounge.')
+                    : tr('t’invite à sa partie privée.', 'invites you to their private game.')}
               </p>
               <div className="rangee">
                 <button type="button" className="petit principal" onClick={() => void rejoindreInvitation(inv)}>

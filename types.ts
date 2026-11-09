@@ -339,6 +339,8 @@ export interface Invitation {
   de: string;
   code: string;
   heure: number;
+  /** Invitation à une table du Salon privé (casino), au lieu d'une partie. */
+  casino?: 'blackjack' | 'roulette';
 }
 
 /** Profil complet, envoyé seulement à son propriétaire. */

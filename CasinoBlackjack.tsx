@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { JETONS_BJ, MISE_MAX_BJ, MISE_MIN_BJ, totalMain, couleurCarte, rangCarte, type ActionBJ, type CarteBJ, type MainVueBJ, type PlaceVueBJ, type VueTableBJ } from '../../shared/blackjack';
 import { formatDollars } from '../../shared/casino';
 import type { Appel } from './App';
+import { FenetreInviter } from './CasinoRoulette';
 import { EN, tr } from './traduction';
 import { jouerEffet } from './ui';
 
@@ -47,9 +48,15 @@ export function CarteJeu({ carte, petite, className, style }: { carte: CarteBJ |
       </g>
       {figure ? (
         <g>
-          {/* Les figures : le Roi en baron de la pègre, la Dame en chanteuse de cabaret, le Valet en homme de main. */}
-          <image href={`/cartes/figure-${r === 13 ? 'roi' : r === 12 ? 'dame' : 'valet'}.webp`} x="10.5" y="4" width="29" height="62" preserveAspectRatio="xMidYMid slice" />
-          <rect x="10.5" y="4" width="29" height="62" rx="1.5" className="bj-carte-cadre-image" />
+          {/* Les figures : un cadre doré, une couronne et la lettre en Art déco. */}
+          <rect x="12" y="12" width="26" height="46" rx="2" className="bj-carte-cadre" />
+          <path d="M17 26 L19.5 19 L22.5 24 L25 17 L27.5 24 L30.5 19 L33 26 Z" className="bj-carte-couronne" />
+          <text x="25" y="44" className="bj-carte-figure" textAnchor="middle">
+            {rang}
+          </text>
+          <text x="25" y="54" className="bj-carte-sym-petit" textAnchor="middle">
+            {sym}
+          </text>
         </g>
       ) : r === 1 ? (
         <g>
@@ -182,6 +189,7 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
   const [derniereMise, setDerniereMise] = useState(0);
   const [message, setMessage] = useState('');
   const [erreur, setErreur] = useState<string | null>(null);
+  const [inviter, setInviter] = useState(false);
   const precedente = useRef<VueTableBJ | null>(null);
 
   // Sons : cartes distribuées, sabot remélangé, mon tour, résultat de ma donne.
@@ -362,17 +370,23 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
         {erreur && <p className="cas-erreur">{erreur}</p>}
       </div>
 
-      {v.hote && (
-        <div className="bj-hote">
-          <span>{tr('Bots à la table', 'Bots at the table')}</span>
-          <button type="button" onClick={() => void envoyer('casino_bj_bot', { ajouter: false })} disabled={!v.places.some((p) => p.bot)} aria-label={tr('Retirer un bot', 'Remove a bot')}>
-            −
-          </button>
-          <button type="button" onClick={() => void envoyer('casino_bj_bot', { ajouter: true })} disabled={v.places.length >= 5} aria-label={tr('Ajouter un bot', 'Add a bot')}>
-            +
-          </button>
-        </div>
-      )}
+      <div className="bj-hote">
+        <button type="button" className="rl-inviter" onClick={() => setInviter(true)}>
+          {tr('Inviter un ami', 'Invite a friend')}
+        </button>
+        {v.hote && (
+          <>
+            <span>{tr('Bots', 'Bots')}</span>
+            <button type="button" onClick={() => void envoyer('casino_bj_bot', { ajouter: false })} disabled={!v.places.some((p) => p.bot)} aria-label={tr('Retirer un bot', 'Remove a bot')}>
+              −
+            </button>
+            <button type="button" onClick={() => void envoyer('casino_bj_bot', { ajouter: true })} disabled={v.places.length >= 5} aria-label={tr('Ajouter un bot', 'Add a bot')}>
+              +
+            </button>
+          </>
+        )}
+      </div>
+      {inviter && <FenetreInviter appel={appel} onFermer={() => setInviter(false)} />}
 
       <form
         className="bj-chat"

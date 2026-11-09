@@ -1681,6 +1681,48 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       }
       repondre(rappel, { ok: true, message: L('Invitation envoyée !', 'Invitation sent!') });
     });
+
+    // Salon privé : la liste des amis créateurs (eux seuls ont accès au casino), et l'invitation à sa table.
+    socket.on('casino_amis', async (_data: unknown, rappel?: Rappel) => {
+      if (!comptes || !identite || !casino || !(await casino.estCreateur(identite.uid))) return repondre(rappel, { ok: false, erreur: 'Introuvable.' });
+      try {
+        const moi = await comptes.lire(identite.uid);
+        const lus = await comptes.lirePlusieurs(moi?.amis ?? []);
+        const rang: Record<StatutAmi, number> = { en_ligne: 0, en_partie: 1, hors_ligne: 2 };
+        const amis = Object.entries(lus)
+          .filter(([, st]) => st?.createur && st.codeAmi)
+          .map(([uid, st]) => ({ code: st!.codeAmi!, nom: st!.nom || 'Joueur', avatar: st!.avatar, statut: statutDe(uid) }))
+          .sort((x, y) => rang[x.statut] - rang[y.statut] || x.nom.localeCompare(y.nom));
+        repondre(rappel, { ok: true, amis });
+      } catch (e) {
+        console.error('Casino : amis indisponibles :', e);
+        repondre(rappel, { ok: false, erreur: L('Réessaie dans un instant.', 'Try again in a moment.') });
+      }
+    });
+    const dernieresInvitationsCasino = new Map<string, number>();
+    socket.on('casino_inviter', async (data: { code?: string } = {}, rappel?: Rappel) => {
+      const a = avecCompte(rappel);
+      if (!a) return;
+      if (!casino || !(await casino.estCreateur(a.uid))) return repondre(rappel, { ok: false, erreur: 'Introuvable.' });
+      const table = casino.tableDe(socket.id);
+      if (!table) return repondre(rappel, { ok: false, erreur: L('Assieds-toi d’abord à une table pour inviter tes amis.', 'Sit at a table first to invite your friends.') });
+      const ami = await uidDuCode(data?.code, rappel);
+      if (!ami) return;
+      if (!(amisParUid.get(a.uid)?.has(ami) ?? (await a.comptes.lire(a.uid))?.amis.includes(ami))) {
+        return repondre(rappel, { ok: false, erreur: L('Ce joueur n’est pas dans tes amis.', 'This player is not in your friends.') });
+      }
+      if (!(await casino.estCreateur(ami))) return repondre(rappel, { ok: false, erreur: L('Cet ami n’a pas accès au Salon privé.', 'This friend has no access to the private lounge.') });
+      if (casino.tableComplete(table.jeu, table.code)) return repondre(rappel, { ok: false, erreur: L('Ta table est complète.', 'Your table is full.') });
+      const sockets = socketsParUid.get(ami) ?? new Set<string>();
+      if (!sockets.size) return repondre(rappel, { ok: false, erreur: L('Cet ami n’est pas en ligne pour le moment.', 'This friend is not online right now.') });
+      const maintenant = Date.now();
+      if (maintenant - (dernieresInvitationsCasino.get(ami) ?? 0) < 5000) return repondre(rappel, { ok: false, erreur: L('Invitation déjà envoyée, patiente un peu.', 'Invitation already sent, wait a little.') });
+      dernieresInvitationsCasino.set(ami, maintenant);
+      const nom = (await a.comptes.lire(a.uid))?.nom || identite?.nom || 'Joueur';
+      const invitation: Invitation = { id: nouvelId(), de: nom, code: table.code, heure: maintenant, casino: table.jeu };
+      for (const sid of sockets) io.to(sid).emit('invitation', invitation);
+      repondre(rappel, { ok: true, message: L('Invitation envoyée !', 'Invitation sent!') });
+    });
   });
 
   // Signalements de plus de 6 mois et classements de plus de 8 semaines : supprimés au démarrage, puis chaque jour.
