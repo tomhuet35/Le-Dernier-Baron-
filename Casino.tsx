@@ -17,12 +17,14 @@ import {
 } from '../../shared/casino';
 import {
   BANDES,
+  NB_LIGNES,
   GAINS_COFFRES,
   GAINS_LIGNE,
   LIGNES,
   MISES_MACHINE,
   COUPS_BONUS_CASSE,
   COUPS_DEPART_CASSE,
+  FREE_GAMES,
   MULTIPLICATEUR_GRATUIT,
   ROUE_BARON,
   TOURS_GRATUITS,
@@ -61,6 +63,7 @@ function useSoldeAnime(solde: number): number {
 const NOMS_SYMBOLES: Record<SymboleMachine, [string, string]> = {
   couronne: ['Couronne', 'Crown'],
   coffre: ['Coffre-fort', 'Safe'],
+  jeton: ['Jeton Free Game', 'Free Game chip'],
   sept: ['Sept', 'Seven'],
   lingot: ['Lingot', 'Gold bar'],
   diamant: ['Diamant', 'Diamond'],
@@ -161,8 +164,8 @@ function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; app
   );
 }
 
-function GainDefilant({ gain, delai = 120 }: { gain: number; delai?: number }) {
-  const v = useCompteur(gain, 0, delai, 900);
+function GainDefilant({ gain, delai = 120, duree = 900 }: { gain: number; delai?: number; duree?: number }) {
+  const v = useCompteur(gain, 0, delai, duree);
   return <strong className="roulette-xp-gagne">+{dollars(v)}</strong>;
 }
 
@@ -174,6 +177,9 @@ interface TourMachine {
   grille: GrilleMachine;
   lignes: GainLigne[];
   coffres: number;
+  /** Jetons FREE GAME visibles, et free games gagnés. */
+  jetons: number;
+  freeGames: number;
   gain: number;
   gainGrosLot: number;
   /** 3 Coffres ou plus : le Casse du coffre. */
@@ -185,8 +191,89 @@ interface TourMachine {
   mise: number;
 }
 
-const DUREES_ROULEAUX = [1100, 1420, 1740, 2060, 2380];
-const REMPLISSAGE = [14, 18, 22, 26, 30];
+/** Ampoules de l'arche, en % de l'image du haut de la machine : elles scintillent, puis s'emballent. */
+const AMPOULES: [number, number][] = [
+  [10.74, 27.82], [13.48, 22.38], [17.09, 17.64], [21.88, 13.1], [27.83, 9.17], [34.96, 6.05], [42.38, 4.13], [49.71, 3.02],
+  [57.23, 4.13], [64.75, 5.95], [71.97, 9.17], [77.93, 13.1], [82.71, 17.64], [86.13, 22.38], [88.96, 27.82],
+];
+
+/** Arrêt du premier rouleau, écart entre deux rouleaux, et temps ajouté au suspense selon sa force (ms). */
+const ARRET_PREMIER = 1100;
+const ECART_ARRETS = 320;
+const EXTRA_SUSPENSE = [0, 700, 1250, 1900];
+/** Cases qui défilent par seconde : la bande est d'autant plus longue que le rouleau tourne longtemps. */
+const CASES_PAR_SECONDE = 13;
+
+type MotifSuspense = 'coffre' | 'jeton' | 'couronne' | 'ligne' | 'grosLot';
+/** Suspense d'un rouleau : sa force (0 à 3, selon la rareté de ce qui peut tomber), sa raison, et les cases qui l'annoncent. */
+interface Suspense {
+  niveau: 0 | 1 | 2 | 3;
+  motif: MotifSuspense | null;
+  cases: number[];
+}
+
+/** Symbole d'une suite complète (Couronnes comprises) sur les premiers rouleaux, ou null. */
+function suiteComplete(suite: SymboleMachine[]): SymboleLigne | null {
+  let j = 0;
+  while (j < suite.length && suite[j] === 'couronne') j++;
+  if (j === suite.length) return 'couronne';
+  const base = suite[j];
+  if (base === 'coffre' || base === 'jeton') return null;
+  return suite.every((x) => x === base || x === 'couronne') ? (base as SymboleLigne) : null;
+}
+
+/**
+ * Le suspense de chaque rouleau, d'après ceux déjà arrêtés : 2 Coffres (le casse), 2 jetons (les free games), une
+ * Couronne sur le premier rouleau (la Roue du Baron, sur le dernier), 5 Coffres alignés (le gros lot), ou une
+ * belle ligne presque complète. Plus le gain possible est rare, plus le rouleau ralentit et s'illumine.
+ */
+function planSuspense(g: GrilleMachine): Suspense[] {
+  return g.map((_, r) => {
+    let s: Suspense = { niveau: 0, motif: null, cases: [] };
+    if (r === 0) return s;
+    const plus = (niveau: number, motif: MotifSuspense, cases: number[]) => {
+      if (niveau > s.niveau) s = { niveau: niveau as Suspense['niveau'], motif, cases };
+    };
+    const casesDe = (x: SymboleMachine, jusqua = r) => g.slice(0, jusqua).flatMap((col, k) => col.flatMap((y, rang) => (y === x ? [k * 3 + rang] : [])));
+    const coffres = casesDe('coffre');
+    const jetons = casesDe('jeton');
+    if (coffres.length === 2) plus(2, 'coffre', coffres);
+    else if (coffres.length === 3) plus(1, 'coffre', coffres);
+    else if (coffres.length >= 4) plus(2, 'coffre', coffres);
+    if (jetons.length === 2) plus(2, 'jeton', jetons);
+    else if (jetons.length === 3) plus(1, 'jeton', jetons);
+    else if (jetons.length >= 4) plus(2, 'jeton', jetons);
+    if (r === 4 && g[0].includes('couronne')) plus(3, 'couronne', casesDe('couronne', 1));
+    if (r >= 3)
+      LIGNES.forEach((rangs) => {
+        const suite = rangs.slice(0, r).map((rang, k) => g[k][rang]);
+        const cases = rangs.slice(0, r).map((rang, k) => k * 3 + rang);
+        if (suite.every((x) => x === 'coffre')) return plus(3, 'grosLot', cases);
+        const sym = suiteComplete(suite);
+        if (!sym) return;
+        if (r === 4) plus(sym === 'couronne' ? 3 : sym === 'sept' ? 2 : sym === 'lingot' || sym === 'diamant' ? 1 : 0, 'ligne', cases);
+        else if (sym === 'couronne' || sym === 'sept') plus(1, 'ligne', cases);
+      });
+    return s;
+  });
+}
+
+/** Moment où chaque rouleau s'arrête (ms) : les rouleaux à suspense tournent plus longtemps, les suivants attendent. */
+function horairesArrets(plan: Suspense[]): number[] {
+  const t: number[] = [];
+  plan.forEach((s, r) => t.push((r ? t[r - 1] + ECART_ARRETS : ARRET_PREMIER) + EXTRA_SUSPENSE[s.niveau]));
+  return t;
+}
+
+/** Palier du gain, en multiples de la mise : l'animation grandit avec la rareté. */
+type Palier = 'aucun' | 'petit' | 'joli' | 'gros' | 'enorme' | 'colossal';
+function palierDe(gain: number, mise: number): Palier {
+  if (gain <= 0) return 'aucun';
+  const x = gain / mise;
+  return x < 2 ? 'petit' : x < 10 ? 'joli' : x < MULTIPLE_GROS_GAIN ? 'gros' : x < 200 ? 'enorme' : 'colossal';
+}
+/** Lingots qui tombent, selon le palier. */
+const LINGOTS_PALIER: Record<Palier, number> = { aucun: 0, petit: 0, joli: 10, gros: 26, enorme: 42, colossal: 64 };
 
 function TableDesGains({ onFermer }: { onFermer: () => void }) {
   const ordre: SymboleLigne[] = ['couronne', 'sept', 'lingot', 'diamant', 'champagne', 'cigare', 'fer'];
@@ -217,13 +304,21 @@ function TableDesGains({ onFermer }: { onFermer: () => void }) {
         </tbody>
       </table>
       <p className="cas-gains-note">
-        <Symbole s="couronne" /> {tr('La Couronne remplace tous les symboles, sauf le Coffre.', 'The Crown replaces every symbol except the Safe.')}
+        <Symbole s="couronne" /> {tr('La Couronne remplace tous les symboles, sauf le Coffre et le jeton FREE GAME.', 'The Crown replaces every symbol except the Safe and the FREE GAME chip.')}
       </p>
       <p className="cas-gains-note">
         <Symbole s="coffre" />
         {tr(
           `Coffres n’importe où : 3 = ${GAINS_COFFRES[3]} × la mise, 4 = ${GAINS_COFFRES[4]} ×, 5 = ${GAINS_COFFRES[5]} ×. 5 Coffres sur une ligne : le gros lot du salon.`,
           `Safes anywhere: 3 = ${GAINS_COFFRES[3]} × the bet, 4 = ${GAINS_COFFRES[4]} ×, 5 = ${GAINS_COFFRES[5]} ×. 5 Safes on a line: the lounge jackpot.`,
+        )}
+      </p>
+      <h3 className="cas-gains-titre">Free games</h3>
+      <p className="cas-gains-note">
+        <Symbole s="jeton" />
+        {tr(
+          `Jetons FREE GAME n’importe où : 3 = ${FREE_GAMES[3]} free games, 4 = ${FREE_GAMES[4]}, 5 = ${FREE_GAMES[5]}. Pendant les free games, tous les gains comptent ×${MULTIPLICATEUR_GRATUIT}, et 3 nouveaux jetons en rajoutent. La Couronne ne remplace pas le jeton.`,
+          `FREE GAME chips anywhere: 3 = ${FREE_GAMES[3]} free games, 4 = ${FREE_GAMES[4]}, 5 = ${FREE_GAMES[5]}. During free games every win counts ×${MULTIPLICATEUR_GRATUIT}, and 3 new chips add more. The Crown does not replace the chip.`,
         )}
       </p>
       <h3 className="cas-gains-titre">{tr('Le Casse du coffre', 'The Safe Heist')}</h3>
@@ -595,23 +690,103 @@ function RoueDuBaron({ mise, appel, onVue, onFermer }: { mise: number; appel: Ap
 }
 
 /** Une colonne de la machine : pendant le tour, une longue bande défile jusqu'aux 3 symboles tirés. */
-function Rouleau({ index, symboles, defile, duree, gagnantes }: { index: number; symboles: SymboleMachine[]; defile: boolean; duree: number; gagnantes: Set<number> }) {
+function Rouleau({
+  index,
+  symboles,
+  defile,
+  duree,
+  gagnantes,
+  annonce,
+  suspense,
+}: {
+  index: number;
+  symboles: SymboleMachine[];
+  defile: boolean;
+  duree: number;
+  gagnantes: Set<number>;
+  /** Cases qui annoncent le suspense (elles battent pendant que le rouleau suivant ralentit). */
+  annonce: Set<number>;
+  /** Suspense en cours sur ce rouleau (il tourne encore, les précédents sont arrêtés). */
+  suspense: Suspense | null;
+}) {
   const decalage = symboles.length - 3;
   return (
-    <div className="cas-rouleau">
+    <div className={`cas-rouleau ${suspense ? `suspense sus-${suspense.niveau} sus-${suspense.motif}` : ''}`}>
       <div
         className="cas-bande"
-        style={{ transform: `translateY(calc(var(--case) * ${defile ? -decalage : 0}))`, transitionDuration: defile ? `${duree}ms` : '0ms' } as CSSProperties}
+        style={{
+          transform: `translateY(calc(var(--case) * ${defile ? -decalage : 0}))`,
+          transitionDuration: defile ? `${duree}ms` : '0ms',
+          // Un rouleau à suspense ralentit longuement avant de s'arrêter.
+          ...(suspense ? { transitionTimingFunction: 'cubic-bezier(0.1, 0.62, 0.18, 1)' } : {}),
+        }}
       >
-        {symboles.map((s, k) => (
-          <div key={k} className={`cas-case ${!defile && gagnantes.has(index * 3 + k) ? 'gagnante' : ''}`}>
-            <Symbole s={s} />
-          </div>
-        ))}
+        {symboles.map((s, k) => {
+          const c = index * 3 + k;
+          return (
+            <div key={k} className={`cas-case ${!defile && gagnantes.has(c) ? 'gagnante' : ''} ${annonce.has(c) && k < 3 ? 'annonce' : ''}`}>
+              <Symbole s={s} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
+/** Les lignes gagnantes arrivent une à une, chacune avec ce qu'elle rapporte. */
+function LignesGagnantes({ tour }: { tour: TourMachine }) {
+  const ordre = [...tour.lignes].sort((a, b) => b.multiple - a.multiple);
+  const pas = Math.min(650, 2600 / Math.max(1, ordre.length));
+  const mult = tour.gratuit ? MULTIPLICATEUR_GRATUIT : 1;
+  return (
+    <>
+      {/* Repère aux proportions des rouleaux (environ 2 de large pour 1 de haut) : le trait garde la même épaisseur partout. */}
+      <svg className="cas-lignes" viewBox="0 0 500 242" preserveAspectRatio="none" aria-hidden="true">
+        {ordre.map((l, i) => (
+          <polyline key={l.ligne} pathLength={1} style={{ animationDelay: `${i * pas}ms` }} points={LIGNES[l.ligne].map((rang, r) => `${(r + 0.5) * 100},${((rang + 0.5) * 242) / 3}`).join(' ')} />
+        ))}
+      </svg>
+      {ordre.slice(0, 6).map((l, i) => (
+        <span
+          key={l.ligne}
+          className="cas-ligne-gain"
+          style={{ left: `${((l.nombre - 0.5) / 5) * 100}%`, top: `${((LIGNES[l.ligne][l.nombre - 1] + 0.5) / 3) * 100}%`, animationDelay: `${i * pas + 250}ms` }}
+        >
+          +{dollars((l.multiple * tour.mise * mult) / NB_LIGNES)}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** Pluie de lingots d'or : quelques-uns sur la machine pour un joli gain, tout l'écran pour un gros. */
+function PluieLingots({ n }: { n: number }) {
+  const [lingots] = useState(() =>
+    Array.from({ length: n }, (_, k) => ({
+      x: 3 + Math.random() * 94,
+      delai: (k / n) * 0.9 + Math.random() * 0.35,
+      duree: 1.5 + Math.random() * 0.9,
+      taille: 0.7 + Math.random() * 0.6,
+      tour: (Math.random() * 2 - 1) * 520,
+    })),
+  );
+  return (
+    <div className="cas-pluie" aria-hidden="true">
+      {lingots.map((l, k) => (
+        <img
+          key={k}
+          src="/cartes/machine-lingot.webp"
+          alt=""
+          draggable={false}
+          style={{ left: `${l.x}%`, animationDelay: `${l.delai}s`, animationDuration: `${l.duree}s`, '--t': l.taille, '--tour': `${l.tour}deg` } as CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
+type FeteMachine = { type: 'gain'; palier: Palier | 'grosLot'; gain: number } | { type: 'free'; n: number; relance: boolean; mise: number } | { type: 'finFree'; total: number };
 
 function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onRetour: () => void }) {
   const [mise, setMise] = useState(() => {
@@ -621,18 +796,27 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   const [grille, setGrille] = useState<GrilleMachine>(() => BANDES.map((b, r) => [0, 1, 2].map((k) => b[(r * 7 + k) % b.length])));
   const [bandes, setBandes] = useState<SymboleMachine[][] | null>(null);
   const [defile, setDefile] = useState(false);
+  const [durees, setDurees] = useState<number[]>(() => horairesArrets(planSuspense(BANDES.map(() => ['fer', 'fer', 'fer']))));
+  const [plan, setPlan] = useState<Suspense[] | null>(null);
+  // Rouleaux déjà arrêtés pendant le tour (pour savoir lequel est en suspense).
+  const [arretes, setArretes] = useState(5);
   const [tour, setTour] = useState<TourMachine | null>(null);
   const [enCours, setEnCours] = useState(false);
   const [auto, setAuto] = useState(0);
   const [soldeAffiche, setSoldeAffiche] = useState(vue.solde);
-  const [fete, setFete] = useState<'gros' | 'grosLot' | null>(null);
+  const [fetes, setFetes] = useState<FeteMachine[]>([]);
+  const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
+  const [banniere, setBanniere] = useState<{ texte: string; id: number } | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [gains, setGains] = useState(false);
   // Bonus à jouer (casse ou roue) : repris tel quel en revenant à la machine.
   const [bonus, setBonus] = useState<VueBonusMachine | null>(vue.bonus);
   const vueRef = useRef(vue);
   vueRef.current = vue;
+  // Gains cumulés pendant une série de free games.
+  const totalFree = useRef(0);
   const minuteries = useRef<number[]>([]);
+  const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
   const autoRef = useRef(0);
   autoRef.current = auto;
   useEffect(() => () => minuteries.current.forEach((t) => window.clearTimeout(t)), []);
@@ -653,6 +837,11 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
     if (!r.ok || !r.machine || !r.casino) {
       setEnCours(false);
       setAuto(0);
+      // Un bonus attendait (téléphone resté sur une ancienne version, coupure…) : on le rouvre.
+      if (r.casino) {
+        onVue(r.casino);
+        if (r.casino.bonus) return setBonus(r.casino.bonus);
+      }
       setErreur(r.erreur ?? tr('La machine est indisponible.', 'The machine is unavailable.'));
       return;
     }
@@ -660,68 +849,111 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
     const nouvelle = r.casino;
     if (!m.gratuit) setSoldeAffiche((s) => s - m.mise);
     setTour(null);
+    setPluie(null);
+    setBanniere(null);
     const reduit = mouvementReduit();
+    const p = planSuspense(m.grille);
+    const t = horairesArrets(p);
+
     const fin = () => {
       setDefile(false);
       setBandes(null);
+      setPlan(null);
+      setArretes(5);
       setGrille(m.grille);
       setTour(m);
       setEnCours(false);
       onVue(nouvelle);
       setSoldeAffiche(nouvelle.solde);
-      const grand = m.grosLot || m.gain >= MULTIPLE_GROS_GAIN * m.mise;
-      if (m.grosLot) setFete('grosLot');
-      else if (grand) setFete('gros');
-      if (grand) jouerEffet('roulette_gros_lot');
-      else if (m.gain > 0) jouerEffet(m.gain >= 5 * m.mise ? 'roulette_gain' : 'machine_pieces');
+      // L'animation grandit avec la rareté du gain.
+      const palier = m.grosLot ? 'colossal' : palierDe(m.gain, m.mise);
+      const file: FeteMachine[] = [];
+      if (m.grosLot) file.push({ type: 'gain', palier: 'grosLot', gain: m.gain });
+      else if (palier === 'enorme' || palier === 'colossal') file.push({ type: 'gain', palier, gain: m.gain });
+      if (palier === 'gros') {
+        setBanniere({ texte: tr('Gros gain !', 'Big win!'), id: Date.now() });
+        jouerEffet('roulette_gain');
+      } else if (palier === 'enorme' || palier === 'colossal') jouerEffet('roulette_gros_lot');
+      else if (palier === 'joli') jouerEffet('roulette_gain');
+      else if (palier === 'petit') jouerEffet('machine_pieces');
+      if (LINGOTS_PALIER[palier] && !reduit) {
+        setPluie({ n: LINGOTS_PALIER[palier], id: Date.now() });
+        plusTard(() => jouerEffet('lingots_pluie'), 250);
+        plusTard(() => setPluie(null), 3600);
+      }
+      // Free games : gagnés (ou relancés) avec 3 jetons ou plus ; à la fin de la série, le total gagné.
+      if (m.gratuit) totalFree.current += m.gain;
+      else totalFree.current = 0;
+      if (m.freeGames) file.push({ type: 'free', n: m.freeGames, relance: m.gratuit, mise: m.mise });
+      else if (m.gratuit && nouvelle.toursGratuits === 0 && !nouvelle.bonus) {
+        if (totalFree.current > 0) file.push({ type: 'finFree', total: totalFree.current });
+        totalFree.current = 0;
+      }
+      if (file.length) setFetes((f) => [...f, ...file]);
       // Casse ou roue : les symboles brillent un instant, puis le bonus s'ouvre par-dessus la machine.
       if (nouvelle.bonus) {
         jouerEffet('casino_annonce');
-        const t = window.setTimeout(() => setBonus(vueRef.current.bonus), reduit ? 0 : 1300);
-        minuteries.current.push(t);
+        plusTard(() => setBonus(vueRef.current.bonus), reduit ? 0 : 1300);
       }
-      // Tours auto : on continue, sauf après un gros gain ou un bonus.
+      // Tours auto : on continue, sauf après un grand moment (célébration, bonus, free games gagnés).
       if (autoRef.current > 0) {
-        if (grand || nouvelle.bonus) setAuto(0);
-        else {
-          const t = window.setTimeout(() => {
-            setAuto((a) => Math.max(0, a - 1));
-            if (autoRef.current > 1) void lancerRef.current?.();
-          }, m.gain > 0 ? 1100 : 450);
-          minuteries.current.push(t);
-        }
+        if (file.length || nouvelle.bonus) setAuto(0);
+        else
+          plusTard(
+            () => {
+              setAuto((a) => Math.max(0, a - 1));
+              if (autoRef.current > 1) void lancerRef.current?.();
+            },
+            palier === 'gros' ? 2800 : palier === 'joli' ? 1900 : m.gain > 0 ? 1200 : 450,
+          );
       }
     };
-    if (reduit) {
-      fin();
-      return;
-    }
-    // Chaque rouleau : les 3 symboles visibles, une bande de passage, puis les 3 symboles tirés.
+    if (reduit) return fin();
+    // Chaque rouleau : les 3 symboles visibles, une bande de passage (plus longue s'il y a du suspense), puis les 3 tirés.
     const longues = grille.map((visibles, r) => {
       const b = BANDES[r];
-      const passage = Array.from({ length: REMPLISSAGE[r] }, () => b[Math.floor(Math.random() * b.length)]);
+      const passage = Array.from({ length: Math.round((t[r] / 1000) * CASES_PAR_SECONDE) }, () => b[Math.floor(Math.random() * b.length)]);
       return [...visibles, ...passage, ...m.grille[r]];
     });
+    setDurees(t);
+    setPlan(p);
+    setArretes(0);
     setBandes(longues);
     setDefile(false);
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => setDefile(true)));
-    DUREES_ROULEAUX.forEach((d) => minuteries.current.push(window.setTimeout(() => jouerEffet('machine_arret'), d - 40)));
-    minuteries.current.push(window.setTimeout(fin, DUREES_ROULEAUX[4] + 120));
+    t.forEach((d, r) =>
+      plusTard(() => {
+        jouerEffet('machine_arret');
+        setArretes(r + 1);
+        // Le rouleau suivant entre en suspense : son de tension selon la force.
+        const s = p[r + 1];
+        if (s?.niveau) jouerEffet(s.niveau >= 3 ? 'suspense_fort' : 'suspense');
+      }, d - 40),
+    );
+    plusTard(fin, t[4] + 120);
   }, [appel, enCours, grille, mise, onVue]);
   const lancerRef = useRef<typeof lancer | null>(null);
   lancerRef.current = lancer;
 
-  // Cases gagnantes (rouleau × 3 + rangée) et lignes à tracer.
+  // Cases gagnantes (rouleau × 3 + rangée).
   const gagnantes = new Set<number>();
   for (const l of tour?.lignes ?? []) for (let r = 0; r < l.nombre; r++) gagnantes.add(r * 3 + LIGNES[l.ligne][r]);
   if (tour && tour.coffres >= 3) tour.grille.forEach((col, r) => col.forEach((s, k) => s === 'coffre' && gagnantes.add(r * 3 + k)));
+  if (tour && tour.jetons >= 3) tour.grille.forEach((col, r) => col.forEach((s, k) => s === 'jeton' && gagnantes.add(r * 3 + k)));
   if (tour?.roue) [0, 4].forEach((r) => tour.grille[r].forEach((s, k) => s === 'couronne' && gagnantes.add(r * 3 + k)));
+  // Suspense en cours : le premier rouleau qui tourne encore, et les cases qui l'annoncent.
+  const enSuspense = enCours && plan && arretes < 5 && plan[arretes]?.niveau ? plan[arretes] : null;
+  const annonce = new Set(enSuspense?.cases ?? []);
+  const fete = fetes[0] ?? null;
+  const palier = tour ? (tour.grosLot ? 'colossal' : palierDe(tour.gain, tour.mise)) : 'aucun';
+  const etatMachine = enSuspense ? `suspense sus-${enSuspense.niveau} sus-${enSuspense.motif}` : enCours ? 'tourne' : tour && palier !== 'aucun' ? `gagne palier-${palier}` : '';
+
   const changerMise = (sens: number) => {
     const i = MISES_MACHINE.indexOf(mise);
     jouerEffet('jeton');
     setMise(MISES_MACHINE[Math.min(MISES_MACHINE.length - 1, Math.max(0, i + sens))]);
   };
-  const libelleBouton = enCours ? tr('En jeu…', 'Spinning…') : gratuits > 0 ? tr(`Tour gratuit (${gratuits})`, `Free spin (${gratuits})`) : tr('Tourner', 'Spin');
+  const libelleBouton = enCours ? tr('En jeu…', 'Spinning…') : gratuits > 0 ? 'Free game' : tr('Tourner', 'Spin');
 
   return (
     <div className="cas-ecran cas-machine-ecran">
@@ -733,79 +965,118 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
           {dollars(solde)}
         </span>
       </header>
-      <div className="cas-machine">
-        <div className="cas-fronton">
-          <img src="/cartes/machine-fronton.webp" alt="" draggable={false} />
-          <div className="cas-fronton-texte">
-            <h2>{tr('Le Bandit du Baron', 'The Baron’s Bandit')}</h2>
-            <p>
-              {tr('Gros lot', 'Jackpot')} <strong>{dollars(vue.grosLot)}</strong>
-            </p>
-          </div>
-        </div>
-        <div className={`cas-fenetre ${gratuits > 0 || tour?.gratuit ? 'gratuit' : ''}`}>
-          <div className="cas-rouleaux">
-            {(bandes ?? grille).map((col, r) => (
-              <Rouleau key={r} index={r} symboles={col} defile={defile} duree={DUREES_ROULEAUX[r]} gagnantes={gagnantes} />
+      <div className={`cab ${etatMachine} ${gratuits > 0 || tour?.gratuit ? 'gratuit' : ''}`}>
+        <div className="cab-haut">
+          <img className="cab-image" src="/cartes/machine-haut.webp" alt="" draggable={false} />
+          <span className="cab-ampoules" aria-hidden="true">
+            {AMPOULES.map(([x, y], i) => (
+              <i key={i} style={{ left: `${x}%`, top: `${y}%`, '--i': i } as CSSProperties} />
             ))}
+          </span>
+          <span className="cab-lanterne gauche" aria-hidden="true" />
+          <span className="cab-lanterne droite" aria-hidden="true" />
+          <h2 className="cab-titre">{tr('Le Bandit du Baron', 'The Baron’s Bandit')}</h2>
+          <p className="cab-gros-lot">
+            {tr('Gros lot', 'Jackpot')} <strong>{dollars(vue.grosLot)}</strong>
+          </p>
+          <div className="cab-rouleaux">
+            {(bandes ?? grille).map((col, r) => (
+              <Rouleau
+                key={r}
+                index={r}
+                symboles={col}
+                defile={defile}
+                duree={durees[r]}
+                gagnantes={gagnantes}
+                annonce={annonce}
+                suspense={enSuspense && arretes === r ? enSuspense : null}
+              />
+            ))}
+            {tour && !enCours && tour.lignes.length > 0 && <LignesGagnantes key={tour.arrets.join('-')} tour={tour} />}
+            {banniere && (
+              <div key={banniere.id} className="cab-banniere" role="status">
+                {banniere.texte}
+              </div>
+            )}
           </div>
-          {tour && !enCours && tour.lignes.length > 0 && (
-            <svg className="cas-lignes" viewBox="0 0 5 3" preserveAspectRatio="none" aria-hidden="true">
-              {tour.lignes.map((l) => (
-                <polyline key={l.ligne} points={LIGNES[l.ligne].map((rang, r) => `${r + 0.5},${rang + 0.5}`).join(' ')} />
-              ))}
-            </svg>
-          )}
         </div>
-        <div className="cas-resultat" role="status">
-          {tour && !enCours ? (
-            tour.gain > 0 || tour.casse || tour.roue ? (
-              <>
-                {tour.gain > 0 && <GainDefilant key={tour.arrets.join('-')} gain={tour.gain} delai={0} />}
-                {(tour.casse || tour.roue) && (
-                  <strong className="cas-bonus-annonce">
-                    {[...(tour.casse ? [tr('Le Casse du coffre !', 'The Safe Heist!')] : []), ...(tour.roue ? [tr('La Roue du Baron !', 'The Baron’s Wheel!')] : [])].join(' · ')}
-                  </strong>
-                )}
-                <span>
-                  {[
-                    ...tour.lignes.slice(0, 2).map((l) => `${l.nombre} × ${nomSymbole(l.symbole)}`),
-                    ...(tour.lignes.length > 2 ? [tr(`${tour.lignes.length} lignes`, `${tour.lignes.length} lines`)] : []),
-                    ...(tour.coffres >= 3 ? [`${tour.coffres} × ${nomSymbole('coffre')}`] : []),
-                  ]
-                    .filter((x, i, t) => t.indexOf(x) === i)
-                    .join(' · ')}
-                  {tour.gratuit && tour.gain > 0 && ` (×${MULTIPLICATEUR_GRATUIT})`}
-                </span>
-              </>
+        <div className="cab-bas">
+          <div className="cas-resultat" role="status">
+            {tour && !enCours ? (
+              tour.gain > 0 || tour.casse || tour.roue || tour.freeGames ? (
+                <>
+                  {tour.gain > 0 && <GainDefilant key={tour.arrets.join('-')} gain={tour.gain} delai={0} duree={palier === 'petit' ? 700 : palier === 'joli' ? 1300 : 2000} />}
+                  {(tour.casse || tour.roue || tour.freeGames > 0) && (
+                    <strong className="cas-bonus-annonce">
+                      {[
+                        ...(tour.freeGames ? [tr(`${tour.freeGames} free games !`, `${tour.freeGames} free games!`)] : []),
+                        ...(tour.casse ? [tr('Le Casse du coffre !', 'The Safe Heist!')] : []),
+                        ...(tour.roue ? [tr('La Roue du Baron !', 'The Baron’s Wheel!')] : []),
+                      ].join(' · ')}
+                    </strong>
+                  )}
+                  {tour.gain > 0 && (
+                    <span>
+                      {[
+                        ...tour.lignes.slice(0, 2).map((l) => `${l.nombre} × ${nomSymbole(l.symbole)}`),
+                        ...(tour.lignes.length > 2 ? [tr(`${tour.lignes.length} lignes`, `${tour.lignes.length} lines`)] : []),
+                        ...(tour.coffres >= 3 ? [`${tour.coffres} × ${nomSymbole('coffre')}`] : []),
+                      ]
+                        .filter((x, i, t) => t.indexOf(x) === i)
+                        .join(' · ')}
+                      {tour.gratuit && ` (×${MULTIPLICATEUR_GRATUIT})`}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="discret">{tr('Pas de chance cette fois.', 'No luck this time.')}</span>
+              )
+            ) : enSuspense ? (
+              <strong className={`cas-suspense-texte sus-${enSuspense.motif}`}>
+                {enSuspense.motif === 'coffre'
+                  ? tr('Encore un Coffre…', 'One more Safe…')
+                  : enSuspense.motif === 'jeton'
+                    ? tr('Encore un jeton…', 'One more chip…')
+                    : enSuspense.motif === 'couronne'
+                      ? tr('La Roue du Baron ?', 'The Baron’s Wheel?')
+                      : enSuspense.motif === 'grosLot'
+                        ? tr('Le gros lot ?!', 'The jackpot?!')
+                        : tr('Allez…', 'Come on…')}
+              </strong>
             ) : (
-              <span className="discret">{tr('Pas de chance cette fois.', 'No luck this time.')}</span>
-            )
-          ) : gratuits > 0 ? (
-            <span className="cas-gratuits">{tr(`${gratuits} tours gratuits, gains ×${MULTIPLICATEUR_GRATUIT}`, `${gratuits} free spins, wins ×${MULTIPLICATEUR_GRATUIT}`)}</span>
-          ) : (
-            <span className="discret">{tr('10 lignes · la Couronne remplace tout', '10 lines · the Crown replaces everything')}</span>
-          )}
-          {erreur && <span className="cas-erreur">{erreur}</span>}
-        </div>
-        <div className="cas-commandes">
-          <div className="cas-mise" aria-label={tr('Mise', 'Bet')}>
-            <button type="button" onClick={() => changerMise(-1)} disabled={enCours || gratuits > 0 || mise === MISES_MACHINE[0]} aria-label={tr('Baisser la mise', 'Lower the bet')}>
-              −
-            </button>
-            <span className="cas-mise-valeur">
-              <Jeton valeur={gratuits > 0 ? vue.miseGratuite : mise} />
-              <span>
-                <small>{gratuits > 0 ? tr('Mise du bonus', 'Bonus bet') : tr('Mise', 'Bet')}</small>
-                <strong>{dollars(gratuits > 0 ? vue.miseGratuite : mise)}</strong>
-              </span>
-            </span>
-            <button type="button" onClick={() => changerMise(1)} disabled={enCours || gratuits > 0 || mise === MISES_MACHINE[MISES_MACHINE.length - 1]} aria-label={tr('Augmenter la mise', 'Raise the bet')}>
-              +
-            </button>
+              <span className="discret">{tr('10 lignes · la Couronne remplace tout', '10 lines · the Crown replaces everything')}</span>
+            )}
+            {erreur && <span className="cas-erreur">{erreur}</span>}
           </div>
-          <button type="button" className="cas-tourner" disabled={!peutJouer} onClick={() => void lancer()}>
-            {libelleBouton}
+          {gratuits > 0 ? (
+            <div className="cas-free" aria-label="Free games">
+              <img src="/cartes/free-games.webp" alt="" draggable={false} />
+              <span>
+                <strong>{tr(`${gratuits} free games`, `${gratuits} free games`)}</strong>
+                <small>
+                  {tr(`Gains ×${MULTIPLICATEUR_GRATUIT} · mise ${dollars(vue.miseGratuite)}`, `Wins ×${MULTIPLICATEUR_GRATUIT} · bet ${dollars(vue.miseGratuite)}`)}
+                </small>
+              </span>
+            </div>
+          ) : (
+            <div className="cas-mise" aria-label={tr('Mise', 'Bet')}>
+              <button type="button" onClick={() => changerMise(-1)} disabled={enCours || mise === MISES_MACHINE[0]} aria-label={tr('Baisser la mise', 'Lower the bet')}>
+                −
+              </button>
+              <span className="cas-mise-valeur">
+                <Jeton valeur={mise} />
+                <span>
+                  <small>{tr('Mise', 'Bet')}</small>
+                  <strong>{dollars(mise)}</strong>
+                </span>
+              </span>
+              <button type="button" onClick={() => changerMise(1)} disabled={enCours || mise === MISES_MACHINE[MISES_MACHINE.length - 1]} aria-label={tr('Augmenter la mise', 'Raise the bet')}>
+                +
+              </button>
+            </div>
+          )}
+          <button type="button" className={`cas-tourner ${gratuits > 0 ? 'free' : ''}`} disabled={!peutJouer} onClick={() => void lancer()}>
+            <span>{libelleBouton}</span>
           </button>
           <div className="cas-options">
             <button
@@ -814,11 +1085,11 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
               disabled={!auto && !peutJouer}
               onClick={() => {
                 if (auto) return setAuto(0);
-                setAuto(10);
+                setAuto(gratuits > 0 ? gratuits : 10);
                 void lancer();
               }}
             >
-              {auto ? tr(`Arrêter (${auto})`, `Stop (${auto})`) : tr('Auto ×10', 'Auto ×10')}
+              {auto ? tr(`Arrêter (${auto})`, `Stop (${auto})`) : gratuits > 0 ? tr('Tout jouer', 'Play all') : tr('Auto ×10', 'Auto ×10')}
             </button>
             <button type="button" onClick={() => setGains(true)}>
               {tr('Gains', 'Paytable')}
@@ -827,6 +1098,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
           {!peutJouer && !enCours && gratuits === 0 && !vue.bonus && <p className="cas-erreur">{tr('Solde insuffisant : baisse la mise ou tourne la roulette du salon.', 'Not enough money: lower the bet or spin the lounge wheel.')}</p>}
         </div>
       </div>
+      {pluie && <PluieLingots key={pluie.id} n={pluie.n} />}
       {gains && <TableDesGains onFermer={() => setGains(false)} />}
       {bonus &&
         !enCours &&
@@ -836,16 +1108,49 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
         ) : (
           <RoueDuBaron mise={bonus.mise} appel={appel} onVue={onVue} onFermer={() => setBonus(vueRef.current.bonus)} />
         ))}
-      {fete && tour && (
-        <Celebration
-          titre={fete === 'grosLot' ? tr('Gros lot du salon !', 'Lounge jackpot!') : tr('Gros gain !', 'Big win!')}
-          etiquette={tr(`Gain : ${dollars(tour.gain)}`, `Win: ${dollars(tour.gain)}`)}
-          medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(tour.gain)}</strong>}
-          legende={tr('Ajouté à ton solde', 'Added to your balance')}
-          onFermer={() => setFete(null)}
-        />
-      )}
+      {fete && <FenetreFete key={fetes.length} fete={fete} onFermer={() => setFetes((f) => f.slice(1))} />}
     </div>
+  );
+}
+
+/** Les grands moments de la machine : énorme gain, gros lot, free games gagnés, et le total d'une série de free games. */
+function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => void }) {
+  useEffect(() => {
+    if (fete.type === 'free') jouerEffet('roulette_gros_lot');
+  }, [fete]);
+  if (fete.type === 'free')
+    return (
+      <Celebration
+        titre={fete.relance ? tr('Free games en plus !', 'Extra free games!') : tr('Free games !', 'Free games!')}
+        etiquette={tr(`${fete.n} free games`, `${fete.n} free games`)}
+        medaillon={
+          <div className="cas-medaillon-free">
+            <img src="/cartes/free-games.webp" alt="" draggable={false} />
+            <strong>{fete.relance ? `+${fete.n}` : fete.n}</strong>
+          </div>
+        }
+        legende={tr(`Gains ×${MULTIPLICATEUR_GRATUIT}, à ${dollars(fete.mise)} le tour`, `Wins ×${MULTIPLICATEUR_GRATUIT}, at ${dollars(fete.mise)} a spin`)}
+        onFermer={onFermer}
+      />
+    );
+  if (fete.type === 'finFree')
+    return (
+      <Celebration
+        titre={tr('Free games terminés', 'Free games over')}
+        etiquette={tr(`Gagné : ${dollars(fete.total)}`, `Won: ${dollars(fete.total)}`)}
+        medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(fete.total)}</strong>}
+        legende={tr('Gagnés pendant les free games', 'Won during the free games')}
+        onFermer={onFermer}
+      />
+    );
+  return (
+    <Celebration
+      titre={fete.palier === 'grosLot' ? tr('Gros lot du salon !', 'Lounge jackpot!') : fete.palier === 'colossal' ? tr('Gain colossal !', 'Colossal win!') : tr('Énorme gain !', 'Huge win!')}
+      etiquette={tr(`Gain : ${dollars(fete.gain)}`, `Win: ${dollars(fete.gain)}`)}
+      medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(fete.gain)}</strong>}
+      legende={tr('Ajouté à ton solde', 'Added to your balance')}
+      onFermer={onFermer}
+    />
   );
 }
 

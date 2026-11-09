@@ -31,7 +31,7 @@ import type { Identite, ServiceComptes, StatsCompte } from './comptes';
 import { creerTablesBlackjack, type BanqueCasino, type DelaisTables } from './tablesCasino';
 import type { CarteBJ } from '../shared/blackjack';
 
-type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
+type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
 type Rappel = (r: Reponse) => void;
 
 export interface OptionsCasino {
@@ -373,7 +373,8 @@ export function creerCasino(options: OptionsCasino) {
       if (!p || !dans) return repondre(rappel, INTROUVABLE);
       const t = horloge();
       if (p.occupe || t - p.dernierTour < ECART_TOURS_MS) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
-      if (p.bonus.length) return repondre(rappel, { ok: false, erreur: L('Termine d’abord ton bonus.', 'Finish your bonus first.') });
+      // Bonus en attente : on renvoie l'état du salon, pour que le téléphone rouvre le bonus.
+      if (p.bonus.length) return repondre(rappel, { ok: false, erreur: L('Termine d’abord ton bonus.', 'Finish your bonus first.'), casino: vue(id.uid) });
       const gratuit = p.toursGratuits > 0;
       const mise = gratuit ? p.miseGratuite : Number(data?.mise);
       if (!gratuit && !MISES_MACHINE.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
@@ -399,6 +400,11 @@ export function creerCasino(options: OptionsCasino) {
         // Bonus : le Casse du coffre (3 Coffres), puis la Roue du Baron (Couronne sur le premier et le dernier rouleau).
         if (r.casse) p.bonus.push({ type: 'casse', mise, etat: nouveauCasse(hasardCasse) });
         if (r.roue) p.bonus.push({ type: 'roue', mise });
+        // Free games : 3 jetons ou plus, à la mise de ce tour (pendant des tours gratuits, ils s'ajoutent).
+        if (r.freeGames) {
+          p.toursGratuits = Math.min(TOURS_GRATUITS_MAX, p.toursGratuits + r.freeGames);
+          p.miseGratuite = mise;
+        }
         if (!p.toursGratuits && !p.bonus.length) p.miseGratuite = 0;
         if (gainGrosLot) annoncer({ nom: p.nom, jeu: 'machine', gain, grosLot: true });
         else if (gain >= MULTIPLE_GROS_GAIN * mise) annoncer({ nom: p.nom, jeu: 'machine', gain });

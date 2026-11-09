@@ -80,30 +80,133 @@
 .roue-texte.petit { font-size: 11.5px; }
 
 /* ---------- Machine à sous ---------- */
-/* Taille d'une case : la machine entière (fronton, rouleaux, commandes) tient dans l'écran, en largeur comme en hauteur. */
-.cas-machine-ecran { --case: max(48px, min(calc((100vw - 92px) / 5), calc((100dvh - 430px) / 4.7), 100px)); }
-.cas-machine { display: grid; justify-items: center; gap: 10px; width: min(100%, calc(var(--case) * 5 + 110px)); justify-self: center; padding: 0 0 14px; border-radius: 18px; border: 2px solid var(--or); background: linear-gradient(180deg, #4a0b0b 0%, #2a0806 45%, #1a0c08 100%); box-shadow: 0 0 0 4px rgba(22, 16, 12, 0.9), 0 0 0 6px rgba(210, 168, 90, 0.6), 0 20px 50px rgba(0, 0, 0, 0.75); overflow: hidden; }
+/* La machine est une image : le haut garde ses proportions (rouleaux, titre et gros lot posés dessus), le bas
+   s'étire autour des commandes. --w est sa largeur : elle tient dans l'écran, en largeur comme en hauteur. */
+.cas-machine-ecran { width: 100%; justify-items: center; gap: 4px; padding-bottom: max(8px, env(safe-area-inset-bottom)); --w: max(280px, min(calc(100vw - 8px), 700px, calc((100dvh - 240px) / 1.51))); }
+.cas-machine-ecran::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(62% 55% at 50% 45%, rgba(10, 4, 2, 0) 35%, rgba(10, 4, 2, 0.45) 100%), url('/cartes/machine-fond-portrait.webp') center bottom / cover no-repeat, #120604;
+}
+.cas-machine-ecran { padding-left: 4px; padding-right: 4px; }
+.cas-machine-ecran .cas-barre { width: min(100%, 720px); padding: 0 8px; }
+@media (min-aspect-ratio: 1 / 1) {
+  .cas-machine-ecran { --w: max(300px, min(calc(100vw - 16px), 700px, calc((100dvh - 184px) / 1.213))); padding-top: max(8px, env(safe-area-inset-top)); }
+  .cas-machine-ecran::before { background: radial-gradient(55% 60% at 50% 45%, rgba(10, 4, 2, 0) 35%, rgba(10, 4, 2, 0.45) 100%), url('/cartes/machine-fond-paysage.webp') center bottom / cover no-repeat, #120604; }
+  .cas-machine-ecran .cas-barre { position: absolute; z-index: 3; top: max(10px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); width: auto; }
+}
 
-/* Fronton lumineux : le nom de la machine et le gros lot sont écrits dans le cartouche. */
-.cas-fronton { position: relative; width: calc(100% + 16px); margin: 4px -8px -8px; }
-.cas-fronton img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); }
-.cas-fronton-texte { position: absolute; left: 14%; right: 14%; top: 50%; height: 36%; display: grid; place-content: center; text-align: center; line-height: 1.05; }
-.cas-fronton h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: clamp(15px, 4.8vw, 30px); color: var(--or-vif); letter-spacing: 0.03em; text-shadow: 0 0 12px rgba(231, 194, 122, 0.55), 0 2px 0 #3a0a06; white-space: nowrap; }
-.cas-fronton p { margin: 2px 0 0; font-size: clamp(10px, 2.9vw, 14px); color: var(--creme-doux); white-space: nowrap; }
-.cas-fronton p strong { color: #fff1c4; font-family: var(--titre); font-weight: 400; font-size: 1.2em; }
-.cas-fenetre { position: relative; padding: 8px; border-radius: 14px; background: linear-gradient(180deg, #8a6424, #e7c27a 50%, #8a6424); box-shadow: inset 0 0 0 2px rgba(22, 16, 12, 0.8), 0 6px 18px rgba(0, 0, 0, 0.6); }
-.cas-fenetre.gratuit { background: linear-gradient(180deg, #0a3d22, #3fbf7a 50%, #0a3d22); }
-.cas-rouleaux { display: grid; grid-template-columns: repeat(5, var(--case)); gap: 4px; padding: 4px; border-radius: 8px; background: #120806; }
-.cas-rouleau { height: calc(var(--case) * 3); overflow: hidden; border-radius: 6px; background: linear-gradient(180deg, #d9c49b 0%, #f6ead0 18%, #fff8e6 50%, #f6ead0 82%, #d9c49b 100%); box-shadow: inset 0 10px 14px -8px rgba(0, 0, 0, 0.6), inset 0 -10px 14px -8px rgba(0, 0, 0, 0.6); }
+.cab { position: relative; width: var(--w); --case: calc(var(--w) * 0.11882); --teinte: #ffd774; --teinte-a: rgba(255, 215, 116, 0.6); --pouls: 0.6s; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.7)); }
+.cab-haut { position: relative; width: 100%; aspect-ratio: 1024 / 992; }
+.cab-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; user-select: none; -webkit-user-select: none; }
+.cab-titre { position: absolute; left: 19%; right: 19%; top: 29.5%; height: 14.5%; display: grid; place-items: center; margin: 0; font-family: var(--titre); font-weight: 400; font-size: calc(var(--w) * 0.054); line-height: 1; color: var(--or-vif); letter-spacing: 0.03em; white-space: nowrap; text-shadow: 0 0 calc(var(--w) * 0.02) rgba(231, 194, 122, 0.55), 0 2px 0 #3a0a06; }
+.cab-gros-lot { position: absolute; left: 30%; width: 40%; top: 45.8%; height: 7%; display: flex; align-items: center; justify-content: center; gap: 0.35em; margin: 0; font-size: calc(var(--w) * 0.026); font-weight: 700; color: #4a1608; white-space: nowrap; text-shadow: 0 1px 0 rgba(255, 240, 200, 0.55); }
+.cab-gros-lot strong { font-family: var(--titre); font-weight: 400; font-size: 1.32em; color: #3a0c04; font-variant-numeric: tabular-nums; }
+
+/* Les rouleaux, posés dans les 5 fenêtres ivoire de l'image */
 .cas-bande { transition-property: transform; transition-timing-function: cubic-bezier(0.2, 0.05, 0.15, 1.02); will-change: transform; }
-.cas-case { display: grid; place-items: center; height: var(--case); }
-.cas-case .cas-symbole { width: 74%; height: 74%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)); }
+.cas-case { display: grid; place-items: center; }
+.cas-case .cas-symbole { object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)); }
 .cas-case.gagnante { background: radial-gradient(circle, rgba(255, 215, 120, 0.85) 0%, rgba(255, 215, 120, 0) 70%); animation: cas-gagnante 0.8s ease-in-out infinite alternate; }
 @keyframes cas-gagnante { to { background-color: rgba(255, 236, 170, 0.25); } }
-.cas-lignes { position: absolute; inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px); pointer-events: none; overflow: visible; }
-.cas-lignes polyline { fill: none; stroke: #ffd774; stroke-width: 0.06; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 0.06px #fff1c4); opacity: 0.9; animation: cas-ligne 0.6s ease-out both; stroke-dasharray: 8; stroke-dashoffset: 8; }
+.cas-lignes { pointer-events: none; overflow: visible; }
+.cas-lignes polyline { fill: none; stroke: #ffd774; stroke-linejoin: round; stroke-linecap: round; opacity: 0.92; }
 @keyframes cas-ligne { to { stroke-dashoffset: 0; } }
+.cab-rouleaux { position: absolute; left: 13.09%; width: 73.63%; top: 59.58%; height: 36.79%; display: grid; grid-template-columns: repeat(5, 1fr); column-gap: 0.93%; }
+.cab .cas-rouleau { position: relative; height: calc(var(--case) * 3); overflow: hidden; border-radius: calc(var(--w) * 0.012); background: none; box-shadow: inset 0 calc(var(--w) * 0.012) calc(var(--w) * 0.014) calc(var(--w) * -0.008) rgba(60, 30, 10, 0.45), inset 0 calc(var(--w) * -0.012) calc(var(--w) * 0.014) calc(var(--w) * -0.008) rgba(60, 30, 10, 0.45); }
+.cab .cas-case { height: var(--case); }
+.cab .cas-case .cas-symbole { width: 88%; height: 88%; }
+.cab.gratuit .cab-rouleaux { border-radius: calc(var(--w) * 0.014); box-shadow: 0 0 0 calc(var(--w) * 0.006) rgba(63, 220, 138, 0.9), 0 0 calc(var(--w) * 0.04) rgba(63, 220, 138, 0.65); }
+.cab .cas-lignes { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+.cab .cas-lignes polyline { stroke-width: 6; stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 3px #fff1c4); animation: cas-ligne 0.55s ease-out both; }
+.cas-ligne-gain { position: absolute; z-index: 2; translate: -50% -50%; padding: 0.15em 0.55em; border-radius: 99px; border: 1px solid var(--or-vif); background: rgba(26, 12, 6, 0.9); color: #fff1c4; font-size: max(11px, calc(var(--w) * 0.026)); font-weight: 800; white-space: nowrap; pointer-events: none; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); animation: cas-ligne-gain 2.6s ease-out both; }
+@keyframes cas-ligne-gain { 0% { opacity: 0; transform: scale(0.4); } 12% { opacity: 1; transform: scale(1.18); } 22% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-40%); } }
+.cab-banniere { position: absolute; z-index: 3; left: -6%; right: -6%; top: 50%; translate: 0 -50%; padding: 0.22em 0; text-align: center; font-family: var(--titre); font-size: calc(var(--w) * 0.085); color: #fff1c4; letter-spacing: 0.05em; white-space: nowrap; pointer-events: none; text-shadow: 0 0 18px rgba(255, 210, 110, 0.95), 0 3px 0 #5a1808; background: linear-gradient(90deg, rgba(60, 8, 4, 0), rgba(70, 10, 6, 0.94) 14%, rgba(110, 18, 10, 0.97) 50%, rgba(70, 10, 6, 0.94) 86%, rgba(60, 8, 4, 0)); border-block: 2px solid var(--or-vif); animation: cab-banniere 2.8s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+@keyframes cab-banniere { 0% { opacity: 0; transform: scale(0.3) rotate(-5deg); } 14% { opacity: 1; transform: scale(1.08) rotate(0); } 22% { transform: scale(1); } 84% { opacity: 1; } 100% { opacity: 0; transform: scale(1.12); } }
 
+/* Ampoules de l'arche et lanternes : elles scintillent, s'emballent pendant le tour, flambent au suspense et au gain. */
+.cab-ampoules i { position: absolute; width: 5%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; mix-blend-mode: screen; background: radial-gradient(circle, rgba(255, 252, 232, 0.95) 0 16%, var(--teinte-a) 42%, rgba(255, 190, 80, 0) 70%); opacity: 0.3; animation: cab-scintille 2.4s ease-in-out infinite; animation-delay: calc(var(--i) * -0.37s); }
+@keyframes cab-scintille { 50% { opacity: 0.8; } }
+.cab.tourne .cab-ampoules i { animation: cab-chasse 0.9s linear infinite; animation-delay: calc(var(--i) * 0.06s); }
+.cab.suspense .cab-ampoules i { animation: cab-chasse calc(var(--pouls) * 0.9) linear infinite; animation-delay: calc(var(--i) * var(--pouls) * 0.06); }
+.cab.gagne .cab-ampoules i { animation: cab-flash 0.34s steps(1) 8; }
+.cab.gagne .cab-ampoules i:nth-child(even) { animation-delay: 0.17s; }
+@keyframes cab-chasse { 0%, 100% { opacity: 0.18; transform: scale(1); } 10% { opacity: 1; transform: scale(1.35); } 32% { opacity: 0.3; } }
+@keyframes cab-flash { 0% { opacity: 1; transform: scale(1.35); } 50% { opacity: 0.2; transform: scale(1); } }
+.cab-lanterne { position: absolute; top: 64%; height: 23.5%; width: 7%; border-radius: 40%; pointer-events: none; mix-blend-mode: screen; opacity: 0; background: radial-gradient(closest-side, var(--teinte-a), rgba(255, 190, 80, 0)); }
+.cab-lanterne.gauche { left: 3.4%; }
+.cab-lanterne.droite { right: 3.4%; }
+.cab.suspense .cab-lanterne { animation: cab-lanterne var(--pouls) ease-in-out infinite; }
+.cab.gagne .cab-lanterne { animation: cab-lanterne 0.5s ease-in-out 5; }
+@keyframes cab-lanterne { 50% { opacity: 1; transform: scale(1.3); } }
+
+/* Suspense : la force (1 à 3) règle le pouls, la raison donne la couleur. */
+.sus-1 { --pouls: 0.9s; }
+.sus-2 { --pouls: 0.6s; }
+.sus-3 { --pouls: 0.32s; }
+.sus-coffre, .sus-ligne { --teinte: #ffcf5a; --teinte-a: rgba(255, 207, 90, 0.7); }
+.sus-jeton { --teinte: #3fdc8a; --teinte-a: rgba(63, 220, 138, 0.7); }
+.sus-couronne, .sus-grosLot { --teinte: #ff4a3a; --teinte-a: rgba(255, 74, 58, 0.72); }
+.cab .cas-rouleau.suspense { box-shadow: 0 0 0 calc(var(--w) * 0.005) var(--teinte), 0 0 calc(var(--w) * 0.04) var(--teinte-a); animation: cas-rouleau-suspense var(--pouls) ease-in-out infinite; z-index: 1; }
+.cab .cas-rouleau.suspense::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, var(--teinte-a), transparent 28%, transparent 72%, var(--teinte-a)); opacity: 0.75; animation: apparaitre 0.3s ease-out; }
+@keyframes cas-rouleau-suspense { 50% { box-shadow: 0 0 0 calc(var(--w) * 0.008) var(--teinte), 0 0 calc(var(--w) * 0.075) var(--teinte); } }
+.cab .cas-case.annonce { background: radial-gradient(circle, var(--teinte-a) 0%, rgba(0, 0, 0, 0) 70%); animation: cas-annonce-case var(--pouls) ease-in-out infinite; }
+@keyframes cas-annonce-case { 50% { transform: scale(1.1); } }
+.cab.sus-3 .cab-haut { animation: cab-vibre 0.12s linear infinite; }
+@keyframes cab-vibre { 25% { transform: translateX(-0.6px); } 75% { transform: translateX(0.6px); } }
+.cas-suspense-texte { font-family: var(--titre); font-weight: 400; font-size: 22px; color: var(--teinte); text-shadow: 0 0 12px var(--teinte-a); animation: cas-suspense-texte var(--pouls) ease-in-out infinite; }
+@keyframes cas-suspense-texte { 50% { transform: scale(1.08); } }
+
+/* Le bas de la machine : l'image s'étire autour du résultat, de la mise et du bouton. */
+.cab-bas {
+  position: relative; margin-top: -2px; min-height: calc(var(--w) * 0.5156);
+  display: grid; grid-template-areas: 'res' 'mise' 'bouton' 'options' 'aide'; justify-items: center; align-content: center; gap: 6px;
+  padding: calc(var(--w) * 0.108) calc(var(--w) * 0.13) calc(var(--w) * 0.14);
+  border: 0 solid transparent;
+  border-image: url('/cartes/machine-bas.webp') 150 150 180 150 fill / calc(var(--w) * 0.1465) calc(var(--w) * 0.1465) calc(var(--w) * 0.1758) calc(var(--w) * 0.1465) stretch;
+}
+.cab .cas-resultat { grid-area: res; min-height: 46px; padding: 0; }
+.cab .cas-resultat .roulette-xp-gagne { font-size: clamp(22px, calc(var(--w) * 0.06), 32px); }
+.cab .cas-mise { grid-area: mise; grid-template-columns: 40px minmax(0, auto) 40px; }
+.cab .cas-mise button { width: 40px; min-height: 40px; border: 2px solid var(--or); background: radial-gradient(circle at 50% 35%, #44200f, #170a06); color: var(--or-vif); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); }
+.cab .cas-tourner {
+  grid-area: bouton; position: relative; width: min(calc(var(--w) * 0.56), 330px); aspect-ratio: 640 / 343; min-height: 0; padding: 0;
+  display: grid; place-items: center; border: none; border-radius: 0; box-shadow: none;
+  background: url('/cartes/bouton-tourner.webp') center / contain no-repeat;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)); transition: transform 0.12s, filter 0.2s;
+}
+.cab .cas-tourner span { font-family: var(--titre); font-size: clamp(17px, calc(var(--w) * 0.05), 30px); letter-spacing: 0.08em; text-transform: uppercase; color: #ffe7a8; white-space: nowrap; text-shadow: 0 2px 0 #5a0c06, 0 0 12px rgba(255, 210, 120, 0.6); }
+.cab .cas-tourner:hover:not(:disabled) { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)) brightness(1.1); }
+.cab .cas-tourner:active:not(:disabled) { transform: scale(0.96); }
+.cab .cas-tourner:disabled { opacity: 1; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)) grayscale(0.4) brightness(0.72); }
+.cab .cas-tourner.free span { color: #eafff2; text-shadow: 0 2px 0 #0a3d22, 0 0 12px rgba(80, 230, 150, 0.8); }
+.cab .cas-options { grid-area: options; }
+.cab-bas > .cas-erreur { grid-area: aide; margin: 0; text-align: center; }
+.cas-free { grid-area: mise; display: flex; align-items: center; gap: 10px; }
+.cas-free img { width: 54px; height: 54px; flex: none; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6)); animation: cas-free-pouls 1.6s ease-in-out infinite; }
+.cas-free strong { display: block; font-family: var(--titre); font-weight: 400; font-size: 21px; color: #bff5d4; white-space: nowrap; text-shadow: 0 0 10px rgba(63, 220, 138, 0.6); }
+.cas-free small { font-size: 12px; color: var(--creme-doux); white-space: nowrap; }
+.cab .cas-options button { white-space: nowrap; }
+@keyframes cas-free-pouls { 50% { transform: scale(1.08) rotate(-6deg); } }
+@media (min-aspect-ratio: 1 / 1) {
+  .cab-bas { grid-template-columns: auto auto; grid-template-areas: 'res res' 'mise bouton' 'options bouton' 'aide aide'; column-gap: calc(var(--w) * 0.035); row-gap: 6px; justify-content: center; padding-left: calc(var(--w) * 0.118); padding-right: calc(var(--w) * 0.118); }
+  .cab .cas-tourner { width: min(calc(var(--w) * 0.34), 290px); }
+  .cas-free { gap: 8px; }
+  .cas-free img { width: 44px; height: 44px; }
+  .cas-free strong { font-size: 18px; }
+}
+
+/* Free games gagnés : le jeton arrive en tournant */
+.cas-medaillon-free { position: relative; display: grid; place-items: center; }
+.cas-medaillon-free img { width: 166px; height: 166px; animation: cas-free-entree 1s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.cas-medaillon-free strong { position: absolute; right: -14px; bottom: -6px; min-width: 60px; padding: 0 12px; border-radius: 99px; border: 2px solid #fff1c4; background: #0f6b3a; font-family: var(--titre); font-weight: 400; font-size: 32px; color: #fff1c4; text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); }
+@keyframes cas-free-entree { from { opacity: 0; transform: scale(0.2) rotate(-540deg); } }
+
+/* Pluie de lingots d'or */
+.cas-pluie { position: fixed; inset: 0; z-index: 22; overflow: hidden; pointer-events: none; }
+.cas-pluie img { position: absolute; top: -14vh; width: calc(58px * var(--t)); height: auto; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); animation-name: cas-lingot; animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.55); animation-fill-mode: both; }
+@keyframes cas-lingot { 0% { opacity: 0; transform: translateY(0) rotate(0); } 8% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0.85; transform: translateY(122vh) rotate(var(--tour)); } }
+
+/* Résultat, mise et options (communs) */
 .cas-resultat { display: grid; justify-items: center; gap: 2px; min-height: 52px; padding: 0 12px; text-align: center; font-size: 13.5px; }
 .cas-resultat .roulette-xp-gagne { font-family: var(--titre); font-weight: 400; font-size: 26px; color: #fff1c4; }
 .cas-gratuits { font-weight: 700; color: #9fe0b8; }
@@ -139,12 +242,11 @@
 .cas-gains-note { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0 0; font-size: 13px; color: var(--creme-doux); }
 
 @media (prefers-reduced-motion: reduce) {
-  .cas-case.gagnante, .cas-annonce, .cas-lignes polyline { animation: none !important; }
+  .cas-case.gagnante, .cas-annonce, .cas-lignes polyline, .cab-ampoules i, .cab-lanterne, .cab .cas-rouleau.suspense, .cab .cas-case.annonce, .cab-haut, .cas-suspense-texte, .cas-free img, .cas-medaillon-free img { animation: none !important; }
   .cas-lignes polyline { stroke-dashoffset: 0; }
 }
 
 .cas-pied { display: flex; justify-content: center; }
-.cas-case .cas-symbole { width: 84%; height: 84%; }
 
 /* ---------- Cadeau du Baron ---------- */
 .cas-cadeau { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; border: 2px solid var(--or-vif); background: linear-gradient(120deg, #3c0107 0%, #6b1a0a 45%, #3c0107 100%); box-shadow: 0 0 22px rgba(231, 194, 122, 0.35), inset 0 1px 0 rgba(255, 241, 196, 0.2); animation: cas-cadeau-lueur 2.6s ease-in-out infinite; }

@@ -545,7 +545,10 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'roulette_gain'
   | 'roulette_gros_lot'
   | 'coffre_ouvre'
-  | 'sirene';
+  | 'sirene'
+  | 'suspense'
+  | 'suspense_fort'
+  | 'lingots_pluie';
 /** aLaDemande : sons du Salon privé, téléchargés seulement quand un créateur ouvre le casino. */
 const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean; aLaDemande?: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
@@ -590,6 +593,10 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   // Casse du coffre : la porte du coffre-fort qui s'ouvre, et la sirène de police qui y met fin.
   coffre_ouvre: { fichier: '/cartes/son-coffre-ouvre.mp3', volume: 0.6, baisserMusique: false, aLaDemande: true },
   sirene: { fichier: '/cartes/son-sirene.mp3', volume: 0.5, baisserMusique: true, aLaDemande: true },
+  // Machine : un rouleau qui ralentit pour le suspense (fort : la Roue du Baron, le gros lot), et la pluie de lingots.
+  suspense: { fichier: '/cartes/son-suspense.mp3', volume: 0.42, baisserMusique: true, aLaDemande: true },
+  suspense_fort: { fichier: '/cartes/son-suspense-fort.mp3', volume: 0.55, baisserMusique: true, aLaDemande: true },
+  lingots_pluie: { fichier: '/cartes/son-lingots-pluie.mp3', volume: 0.5, baisserMusique: false, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
   vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },
@@ -874,7 +881,7 @@ export function jouerEffet(nom: EffetSonore) {
 
 /** Musique du Salon privé (jazz de cabaret) pendant qu'on est au casino, puis retour à celle du jeu. */
 export function musiqueDuSalon(actif: boolean) {
-  if (actif) musique.preparer(['machine_levier', 'machine_arret', 'machine_pieces', 'jeton', 'casino_entree', 'casino_annonce', 'melange', 'coffre_ouvre', 'sirene']);
+  if (actif) musique.preparer(['machine_levier', 'machine_arret', 'machine_pieces', 'jeton', 'casino_entree', 'casino_annonce', 'melange', 'coffre_ouvre', 'sirene', 'suspense', 'suspense_fort', 'lingots_pluie']);
   musique.choisirPiste(actif ? '/cartes/musique-casino.mp3' : '/cartes/musique.mp3');
 }
 

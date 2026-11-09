@@ -8,6 +8,7 @@ import {
   COUPS_DEPART_CASSE,
   esperanceCasse,
   evaluerMachine,
+  FREE_GAMES,
   gainCasse,
   gainSuite,
   GAINS_LIGNE,
@@ -30,8 +31,19 @@ describe('Machine à sous « Le Bandit du Baron »', () => {
     expect(t.total).toBeLessThan(0.965);
     expect(1 / t.pCasse).toBeGreaterThan(100); // le casse tombe environ une fois tous les 140 tours
     expect(1 / t.pCasse).toBeLessThan(200);
-    expect(1 / t.pRoue).toBeGreaterThan(300); // la roue, environ une fois tous les 450 tours
+    expect(1 / t.pRoue).toBeGreaterThan(300); // la roue, environ une fois tous les 480 tours
     expect(1 / t.pRoue).toBeLessThan(700);
+    expect(1 / t.pFree).toBeGreaterThan(100); // les free games, environ une fois tous les 150 tours
+    expect(1 / t.pFree).toBeLessThan(200);
+  });
+
+  it('donne les free games avec 3, 4 ou 5 jetons FREE GAME, que la Couronne ne remplace pas', () => {
+    expect(gainSuite(['couronne', 'jeton', 'sept', 'sept', 'sept'])).toBeNull();
+    expect(gainSuite(['jeton', 'jeton', 'jeton', 'sept', 'sept'])).toBeNull();
+    const trois = evaluerMachine(trouverArrets((r) => r.jetons === 3), 10_000, false);
+    expect(trois).toMatchObject({ jetons: 3, freeGames: FREE_GAMES[3] });
+    expect(FREE_GAMES).toEqual({ 3: 10, 4: 15, 5: 25 });
+    expect(evaluerMachine(trouverArrets((r) => r.jetons === 2), 10_000, false).freeGames).toBe(0);
   });
 
   it('lit les lignes de gauche à droite, avec la Couronne comme joker (sauf pour le Coffre)', () => {
@@ -108,6 +120,7 @@ describe('Machine à sous « Le Bandit du Baron »', () => {
         if (c.type === 'multiple') g += c.x * 1000;
         else if (c.type === 'tours') tours = c.n;
       }
+      tours += r.freeGames;
       for (let k = 0; k < tours; k++) g += tour(true);
       return g;
     };
@@ -267,7 +280,9 @@ describe('Salon privé de bout en bout', () => {
     expect(declenche.casino.bonus).toMatchObject({ type: 'casse', mise: 20_000, coups: 3, butin: 0, multiplicateur: 1 });
     expect(declenche.casino.bonus.ouverts.every((x: unknown) => x === null)).toBe(true); // rien n'est dévoilé à l'avance
     await attendre(360);
-    expect((await emettre(l, 'casino_machine', { mise: 1000 })).erreur).toMatch(/bonus/);
+    const refus = await emettre(l, 'casino_machine', { mise: 1000 });
+    expect(refus.erreur).toMatch(/bonus/);
+    expect(refus.casino.bonus.type).toBe('casse'); // le téléphone peut rouvrir le casse
     let solde = declenche.casino.solde;
     let fin: any = null;
     for (let i = 0; i < 12 && !fin; i++) {
@@ -298,8 +313,16 @@ describe('Salon privé de bout en bout', () => {
     await attendre(360);
     const gratuit = await emettre(l, 'casino_machine', { mise: 100_000 });
     expect(gratuit.machine).toMatchObject({ gratuit: true, mise: 10_000 });
-    expect(gratuit.casino.toursGratuits).toBe(TOURS_GRATUITS - 1);
+    const restants = TOURS_GRATUITS - 1 + gratuit.machine.freeGames;
+    expect(gratuit.casino.toursGratuits).toBe(restants);
     expect(gratuit.casino.solde).toBe(tiree.casino.solde + gratuit.machine.gain);
+    // 3 jetons FREE GAME pendant les tours gratuits : 10 free games de plus, toujours à la même mise.
+    arretsImposes = trouverArrets((r) => r.jetons === 3 && !r.casse && !r.roue);
+    k = 0;
+    await attendre(360);
+    const relance = await emettre(l, 'casino_machine', { mise: 1000 });
+    expect(relance.machine).toMatchObject({ gratuit: true, mise: 10_000, freeGames: FREE_GAMES[3] });
+    expect(relance.casino).toMatchObject({ toursGratuits: restants - 1 + FREE_GAMES[3], miseGratuite: 10_000 });
     l.close();
   });
 

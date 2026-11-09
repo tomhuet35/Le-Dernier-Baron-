@@ -7,15 +7,20 @@
  *   les coups soient épuisés ou que la sirène de police sonne ; on repart avec le butin.
  * - Une Couronne visible sur le premier ET sur le dernier rouleau lance la Roue du Baron : ×10 à ×100 la mise,
  *   10 tours gratuits (gains doublés), ou la case verte du gros lot du salon.
+ * - Le jeton FREE GAME compte n'importe où : 3, 4 ou 5 jetons donnent 10, 15 ou 25 free games (tours gratuits à la
+ *   mise du tour, gains doublés), qui peuvent se relancer.
  * - 5 Coffres sur une même ligne : gros lot du salon (progressif, géré par le serveur, hors taux de retour).
  *
  * Le taux de retour (hors gros lot) est calculé exactement par tauxDeRetour() : 96 % environ.
  */
 
-export type SymboleMachine = 'couronne' | 'coffre' | 'sept' | 'lingot' | 'diamant' | 'champagne' | 'cigare' | 'fer';
-export type SymboleLigne = Exclude<SymboleMachine, 'coffre'>;
+export type SymboleMachine = 'couronne' | 'coffre' | 'jeton' | 'sept' | 'lingot' | 'diamant' | 'champagne' | 'cigare' | 'fer';
+/** Symboles qui paient en ligne (le Coffre et le jeton FREE GAME paient n'importe où). */
+export type SymboleLigne = Exclude<SymboleMachine, 'coffre' | 'jeton'>;
+/** Symboles que la Couronne ne remplace pas. */
+const DISPERSES: SymboleMachine[] = ['coffre', 'jeton'];
 
-export const SYMBOLES_MACHINE: SymboleMachine[] = ['couronne', 'coffre', 'sept', 'lingot', 'diamant', 'champagne', 'cigare', 'fer'];
+export const SYMBOLES_MACHINE: SymboleMachine[] = ['couronne', 'coffre', 'jeton', 'sept', 'lingot', 'diamant', 'champagne', 'cigare', 'fer'];
 
 /** Gains d'une ligne pour 3, 4 et 5 symboles alignés depuis la gauche, en multiples de la mise de ligne. */
 export const GAINS_LIGNE: Record<SymboleLigne, [number, number, number]> = {
@@ -25,7 +30,7 @@ export const GAINS_LIGNE: Record<SymboleLigne, [number, number, number]> = {
   diamant: [15, 50, 150],
   champagne: [10, 30, 100],
   cigare: [8, 20, 60],
-  fer: [6, 15, 40],
+  fer: [5, 15, 41],
 };
 
 /** Coffres n'importe où sur la grille : gain en multiples de la mise totale. */
@@ -33,8 +38,11 @@ export const GAINS_COFFRES: Record<number, number> = { 3: 2, 4: 10, 5: 50 };
 /** Tours gratuits de la Roue du Baron, où tous les gains des lignes comptent double. */
 export const TOURS_GRATUITS = 10;
 export const MULTIPLICATEUR_GRATUIT = 2;
+/** Free games gagnés selon le nombre de jetons FREE GAME visibles (5 ou plus : 25). */
+export const FREE_GAMES: Record<number, number> = { 3: 10, 4: 15, 5: 25 };
+export const freeGamesPour = (jetons: number) => (jetons >= 5 ? FREE_GAMES[5] : (FREE_GAMES[jetons] ?? 0));
 /** Tours gratuits au plus d'affilée. */
-export const TOURS_GRATUITS_MAX = 60;
+export const TOURS_GRATUITS_MAX = 100;
 
 /** Mises possibles par tour (réparties sur les 10 lignes). */
 export const MISES_MACHINE = [1_000, 2_000, 5_000, 10_000, 20_000, 50_000, 100_000];
@@ -58,8 +66,8 @@ export const LIGNES: number[][] = [
  * Nombre de chaque symbole sur chaque rouleau. Le premier et le dernier rouleau sont deux fois plus longs avec une
  * seule Couronne : la Roue du Baron reste rare (une Couronne sur chacun des deux à la fois).
  */
-const COURT: Record<SymboleMachine, number> = { couronne: 1, coffre: 1, sept: 2, lingot: 3, diamant: 4, champagne: 5, cigare: 7, fer: 9 };
-const LONG: Record<SymboleMachine, number> = { couronne: 1, coffre: 2, sept: 4, lingot: 6, diamant: 8, champagne: 10, cigare: 15, fer: 18 };
+const COURT: Record<SymboleMachine, number> = { couronne: 1, coffre: 1, jeton: 1, sept: 2, lingot: 3, diamant: 4, champagne: 5, cigare: 7, fer: 9 };
+const LONG: Record<SymboleMachine, number> = { couronne: 1, coffre: 2, jeton: 2, sept: 4, lingot: 6, diamant: 8, champagne: 10, cigare: 15, fer: 18 };
 export const COMPOSITION: Record<SymboleMachine, number>[] = [LONG, COURT, COURT, COURT, LONG];
 
 /** Répartit les symboles régulièrement le long du rouleau (les rares ne se touchent jamais). */
@@ -96,7 +104,7 @@ export function gainSuite(s: SymboleMachine[]): { symbole: SymboleLigne; nombre:
   const parJoker = jokers >= 3 ? GAINS_LIGNE.couronne[jokers - 3] : 0;
   let meilleur: { symbole: SymboleLigne; nombre: number; multiple: number } | null = parJoker ? { symbole: 'couronne', nombre: jokers, multiple: parJoker } : null;
   const base = s[jokers];
-  if (jokers < 5 && base !== 'coffre') {
+  if (jokers < 5 && !DISPERSES.includes(base)) {
     let n = jokers;
     while (n < 5 && (s[n] === base || s[n] === 'couronne')) n++;
     const m = n >= 3 ? GAINS_LIGNE[base as SymboleLigne][n - 3] : 0;
@@ -110,6 +118,9 @@ export interface ResultatMachine {
   grille: GrilleMachine;
   lignes: GainLigne[];
   coffres: number;
+  /** Jetons FREE GAME visibles, et free games gagnés (3 jetons ou plus). */
+  jetons: number;
+  freeGames: number;
   /** Gain total du tour (lignes + coffres, multiplicateur compris), en dollars. */
   gain: number;
   /** 3 Coffres ou plus : le Casse du coffre. */
@@ -133,6 +144,7 @@ export function evaluerMachine(arrets: number[], mise: number, gratuit: boolean)
     if (g) lignes.push({ ligne, ...g });
   });
   const coffres = grille.flat().filter((x) => x === 'coffre').length;
+  const jetons = grille.flat().filter((x) => x === 'jeton').length;
   const gainLignes = lignes.reduce((t, l) => t + l.multiple * miseLigne, 0);
   const gainCoffres = (GAINS_COFFRES[coffres] ?? 0) * mise;
   return {
@@ -140,6 +152,8 @@ export function evaluerMachine(arrets: number[], mise: number, gratuit: boolean)
     grille,
     lignes,
     coffres,
+    jetons,
+    freeGames: freeGamesPour(jetons),
     gain: Math.round((gainLignes + gainCoffres) * mult),
     casse: coffres >= 3,
     roue: grille[0].includes('couronne') && grille[4].includes('couronne'),
@@ -270,10 +284,24 @@ export const ROUE_BARON: CaseRoueBaron[] = [
  * Taux de retour exact (hors gros lot), en fraction de la mise :
  * - lignes : chaque case d'une rangée suit la composition du rouleau, les rouleaux sont indépendants ;
  * - coffres : loi exacte du nombre de Coffres visibles (fenêtre de 3 cases sur chaque rouleau) ;
- * - casse et roue : probabilité de chacun × gain moyen ; les tours gratuits (gains des lignes et des coffres doublés)
- *   peuvent eux-mêmes relancer casse et roue : E_gratuit = 2 × base + P(casse) × casse + P(roue) × roue(E_gratuit).
+ * - casse et roue : probabilité de chacun × gain moyen ;
+ * - free games : loi exacte du nombre de jetons visibles, d'où le nombre moyen de free games gagnés par tour (F) ;
+ * - un tour gratuit (gains des lignes et des coffres doublés) peut lui-même relancer casse, roue et free games :
+ *   G = 2 × base + P(casse) × casse + P(roue) × (multiples + tours × G) + F × G.
  */
-export function tauxDeRetour(): { lignes: number; coffres: number; pCasse: number; casse: number; pRoue: number; roue: number; gratuits: number; total: number } {
+export function tauxDeRetour(): {
+  lignes: number;
+  coffres: number;
+  pCasse: number;
+  casse: number;
+  pRoue: number;
+  roue: number;
+  pFree: number;
+  freeParTour: number;
+  free: number;
+  gratuits: number;
+  total: number;
+} {
   const probas = COMPOSITION.map((c) => {
     const n = Object.values(c).reduce((a, b) => a + b, 0);
     return SYMBOLES_MACHINE.map((s) => c[s] / n);
@@ -295,20 +323,27 @@ export function tauxDeRetour(): { lignes: number; coffres: number; pCasse: numbe
     });
   };
   parcourir(0, 1);
-  // Nombre de coffres visibles : loi exacte rouleau par rouleau, puis combinée.
-  let loi = [1];
-  for (const bande of BANDES) {
-    const parRouleau = [0, 0, 0, 0];
-    for (let a = 0; a < bande.length; a++) {
-      const k = [0, 1, 2].filter((d) => bande[(a + d) % bande.length] === 'coffre').length;
-      parRouleau[k] += 1 / bande.length;
+  // Nombre de coffres (ou de jetons) visibles : loi exacte rouleau par rouleau, puis combinée.
+  const loiVisibles = (symbole: SymboleMachine) => {
+    let loi = [1];
+    for (const bande of BANDES) {
+      const parRouleau = [0, 0, 0, 0];
+      for (let a = 0; a < bande.length; a++) {
+        const k = [0, 1, 2].filter((d) => bande[(a + d) % bande.length] === symbole).length;
+        parRouleau[k] += 1 / bande.length;
+      }
+      const suivante = new Array(loi.length + 3).fill(0);
+      loi.forEach((p, i) => parRouleau.forEach((q, k) => (suivante[i + k] += p * q)));
+      loi = suivante;
     }
-    const suivante = new Array(loi.length + 3).fill(0);
-    loi.forEach((p, i) => parRouleau.forEach((q, k) => (suivante[i + k] += p * q)));
-    loi = suivante;
-  }
+    return loi;
+  };
+  const loi = loiVisibles('coffre');
   const coffres = loi.reduce((t, p, k) => t + p * (GAINS_COFFRES[k] ?? 0), 0);
   const pCasse = loi.reduce((t, p, k) => t + (k >= 3 ? p : 0), 0);
+  const loiJetons = loiVisibles('jeton');
+  const pFree = loiJetons.reduce((t, p, k) => t + (k >= 3 ? p : 0), 0);
+  const freeParTour = loiJetons.reduce((t, p, k) => t + p * freeGamesPour(k), 0);
   const visible = (bande: SymboleMachine[]) => {
     let n = 0;
     for (let a = 0; a < bande.length; a++) if ([0, 1, 2].some((d) => bande[(a + d) % bande.length] === 'couronne')) n++;
@@ -319,7 +354,20 @@ export function tauxDeRetour(): { lignes: number; coffres: number; pCasse: numbe
   const multiples = ROUE_BARON.reduce((s, c) => s + (c.type === 'multiple' ? c.x : 0), 0) / ROUE_BARON.length;
   const toursParRoue = ROUE_BARON.reduce((s, c) => s + (c.type === 'tours' ? c.n : 0), 0) / ROUE_BARON.length;
   const base = lignes + coffres;
-  const gratuit = (MULTIPLICATEUR_GRATUIT * base + pCasse * casse + pRoue * multiples) / (1 - pRoue * toursParRoue);
+  const gratuit = (MULTIPLICATEUR_GRATUIT * base + pCasse * casse + pRoue * multiples) / (1 - pRoue * toursParRoue - freeParTour);
   const roue = multiples + toursParRoue * gratuit;
-  return { lignes, coffres, pCasse, casse, pRoue, roue, gratuits: pRoue * toursParRoue * gratuit, total: base + pCasse * casse + pRoue * roue };
+  const free = freeParTour * gratuit;
+  return {
+    lignes,
+    coffres,
+    pCasse,
+    casse,
+    pRoue,
+    roue,
+    pFree,
+    freeParTour,
+    free,
+    gratuits: (pRoue * toursParRoue + freeParTour) * gratuit,
+    total: base + pCasse * casse + pRoue * roue + free,
+  };
 }
