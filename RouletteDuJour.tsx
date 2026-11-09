@@ -52,9 +52,13 @@ export function useAttente(fin: number | null | undefined): string | null {
   return h > 0 ? `${h} h ${String(min).padStart(2, '0')}` : `${min} min`;
 }
 
-/** La roue : 8 cases rouge sang et noir, filets dorés, le gain écrit dans chaque case (ou le personnage à gagner). */
+/** La roue : des cases rouge sang et noir, filets dorés, le gain écrit dans chaque case (ou le personnage à gagner). */
 export function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: CaseRoue[]; rotation: number; tourne: boolean; gagnante?: number | null; pieces?: boolean }) {
   const R = 100;
+  // Angle d'une case : 8 cases pour les roulettes du jour et du salon, 12 pour la Roue du Baron.
+  const A = 360 / cases.length;
+  // Au-delà de 8 cases, elles sont trop étroites : le texte suit le rayon au lieu d'être couché en travers.
+  const radial = cases.length > 8;
   // Le clapet : un « tic » chaque fois qu'une case passe sous la flèche, en suivant la vraie vitesse de la roue.
   const disque = useRef<SVGSVGElement | null>(null);
   useEffect(() => {
@@ -78,7 +82,7 @@ export function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: Cas
           if (d < -180) d += 360;
           if (d > 180) d -= 360;
           cumul += Math.max(0, d);
-          const k = Math.floor(cumul / ANGLE);
+          const k = Math.floor(cumul / A);
           if (k !== caseVue && t - dernierTic > 35) {
             caseVue = k;
             dernierTic = t;
@@ -91,7 +95,7 @@ export function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: Cas
     };
     id = window.requestAnimationFrame(boucle);
     return () => window.cancelAnimationFrame(id);
-  }, [tourne]);
+  }, [tourne, A]);
   const point = (deg: number, r: number) => {
     const a = ((deg - 90) * Math.PI) / 180;
     return [R + r * Math.cos(a), R + r * Math.sin(a)];
@@ -118,7 +122,7 @@ export function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: Cas
           {cases.map((c, i) =>
             c.avatar ? (
               <clipPath key={i} id={`roue-perso-${i}`}>
-                <circle cx={point(i * ANGLE + ANGLE / 2, 60)[0]} cy={point(i * ANGLE + ANGLE / 2, 60)[1]} r="17" />
+                <circle cx={point(i * A + A / 2, 60)[0]} cy={point(i * A + A / 2, 60)[1]} r="17" />
               </clipPath>
             ) : null,
           )}
@@ -126,11 +130,11 @@ export function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: Cas
         <circle cx={R} cy={R} r="99" fill="url(#roue-or)" />
         <circle cx={R} cy={R} r="93" fill="#1b120c" />
         {cases.map((c, i) => {
-          const debut = i * ANGLE;
+          const debut = i * A;
           const [x1, y1] = point(debut, 92);
-          const [x2, y2] = point(debut + ANGLE, 92);
-          const milieu = debut + ANGLE / 2;
-          const [tx, ty] = point(milieu, 64);
+          const [x2, y2] = point(debut + A, 92);
+          const milieu = debut + A / 2;
+          const [tx, ty] = point(milieu, radial ? 61 : 64);
           const centre = point(milieu, 60);
           return (
             <g key={i}>
@@ -150,11 +154,18 @@ export function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: Cas
                   <circle cx={centre[0]} cy={centre[1]} r="17" fill="none" stroke="#f6dfa0" strokeWidth="1.6" />
                 </>
               ) : (
-                <text x={tx} y={ty} transform={`rotate(${milieu} ${tx} ${ty})`} className={`roue-texte ${c.petit ? 'petit' : ''}`} textAnchor="middle" dominantBaseline="middle">
-                  <tspan x={tx} dy="-4">
+                <text
+                  x={tx}
+                  y={ty}
+                  transform={`rotate(${radial ? milieu - 90 : milieu} ${tx} ${ty})`}
+                  className={`roue-texte ${c.petit ? 'petit' : ''} ${radial ? 'radial' : ''}`}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                >
+                  <tspan x={tx} dy={radial ? -3 : -4}>
                     {c.lignes?.[0]}
                   </tspan>
-                  <tspan x={tx} dy="13" className="roue-xp">
+                  <tspan x={tx} dy={radial ? 11 : 13} className="roue-xp">
                     {c.lignes?.[1]}
                   </tspan>
                 </text>
@@ -167,15 +178,15 @@ export function Roue({ cases, rotation, tourne, gagnante, pieces }: { cases: Cas
           <path
             className="roue-case-gagnante"
             d={(() => {
-              const [x1, y1] = point(gagnante * ANGLE, 92);
-              const [x2, y2] = point(gagnante * ANGLE + ANGLE, 92);
+              const [x1, y1] = point(gagnante * A, 92);
+              const [x2, y2] = point(gagnante * A + A, 92);
               return `M${R} ${R} L${x1} ${y1} A92 92 0 0 1 ${x2} ${y2} Z`;
             })()}
           />
         )}
         {/* Petits rivets dorés sur le bord, comme une vraie roue de casino */}
-        {Array.from({ length: N }, (_, i) => {
-          const [x, y] = point(i * ANGLE, 96);
+        {Array.from({ length: cases.length }, (_, i) => {
+          const [x, y] = point(i * A, 96);
           return <circle key={i} cx={x} cy={y} r="2.2" fill="#fff1c4" />;
         })}
         <circle cx={R} cy={R} r="22" fill="url(#roue-or)" stroke="#5a3d12" strokeWidth="1.5" />

@@ -19,11 +19,13 @@ import {
   MULTIPLE_GROS_GAIN,
   PART_GROS_LOT,
   SOLDE_MAX,
+  partGrosLot,
   type AnnonceCasino,
   type RicheSalon,
+  type VueBonusMachine,
   type VueCasino,
 } from '../shared/casino';
-import { MISES_MACHINE, TOURS_GRATUITS_MAX, tirerMachine } from '../shared/machineASous';
+import { gainCasse, MISES_MACHINE, nouveauCasse, ouvrirCasse, ROUE_BARON, TOURS_GRATUITS_MAX, tirerMachine, type EtatCasse } from '../shared/machineASous';
 import { jourParis, lendemainParis } from '../shared/roulette';
 import type { Identite, ServiceComptes, StatsCompte } from './comptes';
 import { creerTablesBlackjack, type BanqueCasino, type DelaisTables } from './tablesCasino';
@@ -40,6 +42,10 @@ export interface OptionsCasino {
   tirageRoue?: () => number;
   /** Hasard de la machine à sous : entier de 0 à n − 1 (remplaçable pour les tests). */
   hasardMachine?: (n: number) => number;
+  /** Case de la Roue du Baron (remplaçable pour les tests ; au hasard sinon). */
+  tirageRoueBaron?: () => number;
+  /** Mélange des coffres du casse (remplaçable pour les tests ; au hasard sinon). */
+  hasardCasse?: (n: number) => number;
   /** Regroupement des écritures du solde, en millisecondes. */
   delaiEcriture?: number;
   /** Fin du cadeau du Baron (remplaçable pour les tests). */
@@ -61,12 +67,16 @@ interface Porte {
   cadeaux: string[];
   toursGratuits: number;
   miseGratuite: number;
+  /** Bonus de la machine à jouer, dans l'ordre (casse puis roue si les deux tombent ensemble). */
+  bonus: BonusMachine[];
   minuterie: ReturnType<typeof setTimeout> | null;
   ecriture: Promise<void>;
   /** Un tour à la fois : un double appui ne débite jamais deux fois. */
   occupe: boolean;
   dernierTour: number;
 }
+
+type BonusMachine = { type: 'casse'; mise: number; etat: EtatCasse } | { type: 'roue'; mise: number };
 
 const SALLE = 'casino';
 const INTROUVABLE: Reponse = { ok: false, erreur: 'Introuvable.' };
@@ -79,6 +89,8 @@ export function creerCasino(options: OptionsCasino) {
   const delaiEcriture = options.delaiEcriture ?? 5000;
   const hasardMachine = options.hasardMachine ?? ((n: number) => randomInt(n));
   const tirageRoue = options.tirageRoue ?? (() => randomInt(CASES_ROUE_SALON.length));
+  const tirageRoueBaron = options.tirageRoueBaron ?? (() => randomInt(ROUE_BARON.length));
+  const hasardCasse = options.hasardCasse ?? ((n: number) => randomInt(n));
   const finCadeau = options.finCadeau ?? CADEAU_SALON.fin;
 
   const portes = new Map<string, Porte>();
@@ -187,10 +199,26 @@ export function creerCasino(options: OptionsCasino) {
       grosLot,
       toursGratuits: p?.toursGratuits ?? 0,
       miseGratuite: p?.miseGratuite ?? 0,
+      bonus: p?.bonus[0] ? vueBonus(p.bonus[0]) : null,
       riches: liste,
       tables: tables.resume(),
       cadeau: t < finCadeau && p && !p.cadeaux.includes(CADEAU_SALON.id) ? { montant: CADEAU_SALON.montant, fin: finCadeau } : null,
     };
+  }
+
+  /** Le bonus vu par le téléphone : seuls les coffres déjà ouverts montrent leur contenu. */
+  function vueBonus(b: BonusMachine): VueBonusMachine {
+    if (b.type === 'roue') return { type: 'roue', mise: b.mise };
+    const e = b.etat;
+    return { type: 'casse', mise: b.mise, ouverts: e.contenus.map((c, i) => (e.ouverts[i] ? c : null)), coups: e.coups, butin: e.butin, multiplicateur: e.multiplicateur };
+  }
+
+  /** Gros lot du salon : la part qui revient à cette mise, puis le pot repart (jamais sous son montant de départ). */
+  function prendreGrosLot(mise: number): number {
+    const part = partGrosLot(grosLot, mise);
+    grosLot = Math.max(GROS_LOT_DEPART, grosLot - part);
+    diffuserGrosLot(true);
+    return part;
   }
 
   function annoncer(a: AnnonceCasino) {
@@ -231,6 +259,7 @@ export function creerCasino(options: OptionsCasino) {
           cadeaux: stats.casino?.cadeaux ?? [],
           toursGratuits: 0,
           miseGratuite: 0,
+          bonus: [],
           minuterie: null,
           ecriture: Promise.resolve(),
           occupe: false,
@@ -344,6 +373,7 @@ export function creerCasino(options: OptionsCasino) {
       if (!p || !dans) return repondre(rappel, INTROUVABLE);
       const t = horloge();
       if (p.occupe || t - p.dernierTour < ECART_TOURS_MS) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      if (p.bonus.length) return repondre(rappel, { ok: false, erreur: L('Termine d’abord ton bonus.', 'Finish your bonus first.') });
       const gratuit = p.toursGratuits > 0;
       const mise = gratuit ? p.miseGratuite : Number(data?.mise);
       if (!gratuit && !MISES_MACHINE.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
@@ -361,18 +391,15 @@ export function creerCasino(options: OptionsCasino) {
         let gain = r.gain;
         let gainGrosLot = 0;
         if (r.grosLot) {
-          gainGrosLot = grosLot;
-          gain += grosLot;
-          grosLot = GROS_LOT_DEPART;
-          diffuserGrosLot(true);
+          gainGrosLot = prendreGrosLot(mise);
+          gain += gainGrosLot;
         } else diffuserGrosLot();
         if (gain) mouvement(id.uid, p, gain);
         if (gain > 0) p.record = Math.max(p.record, gain);
-        if (r.toursGagnes) {
-          if (!gratuit) p.miseGratuite = mise;
-          p.toursGratuits = Math.min(TOURS_GRATUITS_MAX, p.toursGratuits + r.toursGagnes);
-        }
-        if (!p.toursGratuits) p.miseGratuite = 0;
+        // Bonus : le Casse du coffre (3 Coffres), puis la Roue du Baron (Couronne sur le premier et le dernier rouleau).
+        if (r.casse) p.bonus.push({ type: 'casse', mise, etat: nouveauCasse(hasardCasse) });
+        if (r.roue) p.bonus.push({ type: 'roue', mise });
+        if (!p.toursGratuits && !p.bonus.length) p.miseGratuite = 0;
         if (gainGrosLot) annoncer({ nom: p.nom, jeu: 'machine', gain, grosLot: true });
         else if (gain >= MULTIPLE_GROS_GAIN * mise) annoncer({ nom: p.nom, jeu: 'machine', gain });
         sauverSalon();
@@ -380,6 +407,65 @@ export function creerCasino(options: OptionsCasino) {
       } finally {
         p.occupe = false;
       }
+    });
+
+    // Le Casse du coffre : on ouvre un coffre à la fois ; à la fin, le butin (× multiplicateur × mise) est versé.
+    socket.on('casino_casse', async (data: { index?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      const b = p?.bonus[0];
+      if (!p || !dans || b?.type !== 'casse') return repondre(rappel, { ok: false, erreur: L('Aucun casse en cours.', 'No heist in progress.') });
+      const contenu = ouvrirCasse(b.etat, Number(data?.index));
+      if (!contenu) return repondre(rappel, { ok: false, erreur: L('Ce coffre est déjà ouvert.', 'This safe is already open.') });
+      let gain = 0;
+      if (b.etat.fini) {
+        gain = gainCasse(b.etat) * b.mise;
+        if (gain) {
+          mouvement(id.uid, p, gain);
+          p.record = Math.max(p.record, gain);
+        }
+        p.bonus.shift();
+        if (gain >= MULTIPLE_GROS_GAIN * b.mise) annoncer({ nom: p.nom, jeu: 'casse', gain });
+        if (!p.toursGratuits && !p.bonus.length) p.miseGratuite = 0;
+        sauverSalon();
+      }
+      repondre(rappel, {
+        ok: true,
+        contenu,
+        casse: { ...vueBonus(b), fini: b.etat.fini, sirene: b.etat.sirene, gain, ...(b.etat.fini ? { tout: b.etat.contenus } : {}) },
+        casino: vue(id.uid),
+      });
+    });
+
+    // La Roue du Baron : ×10 à ×100 la mise, 10 tours gratuits, ou la case verte du gros lot.
+    socket.on('casino_roue_baron', async (_data: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      const b = p?.bonus[0];
+      if (!p || !dans || b?.type !== 'roue') return repondre(rappel, { ok: false, erreur: L('Aucune roue à lancer.', 'No wheel to spin.') });
+      const i = tirageRoueBaron() % ROUE_BARON.length;
+      const c = ROUE_BARON[i];
+      let gain = 0;
+      let tours = 0;
+      if (c.type === 'multiple') gain = c.x * b.mise;
+      else if (c.type === 'grosLot') gain = prendreGrosLot(b.mise);
+      else {
+        tours = c.n;
+        p.toursGratuits = Math.min(TOURS_GRATUITS_MAX, p.toursGratuits + tours);
+        p.miseGratuite = b.mise;
+      }
+      p.bonus.shift();
+      if (gain) {
+        mouvement(id.uid, p, gain);
+        p.record = Math.max(p.record, gain);
+      }
+      if (c.type === 'grosLot') annoncer({ nom: p.nom, jeu: 'roueBaron', gain, grosLot: true });
+      else if (gain >= MULTIPLE_GROS_GAIN * b.mise) annoncer({ nom: p.nom, jeu: 'roueBaron', gain });
+      if (!p.toursGratuits && !p.bonus.length) p.miseGratuite = 0;
+      sauverSalon();
+      repondre(rappel, { ok: true, roueBaron: { case: i, gain, tours, grosLot: c.type === 'grosLot' }, casino: vue(id.uid) });
     });
 
     socket.on('disconnect', () => {

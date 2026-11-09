@@ -3,6 +3,12 @@
  * Argent fictif, sans aucune valeur réelle : rien ne s'achète et rien ne s'échange.
  */
 import type { ResumeTableBJ } from './blackjack';
+import type { ContenuCasse } from './machineASous';
+
+/** Bonus de la machine à sous en cours (à finir avant de rejouer) : le Casse du coffre ou la Roue du Baron. */
+export type VueBonusMachine =
+  | { type: 'casse'; mise: number; ouverts: (ContenuCasse | null)[]; coups: number; butin: number; multiplicateur: number }
+  | { type: 'roue'; mise: number };
 
 /** Solde de départ, au premier passage au salon. */
 export const SOLDE_DEPART = 1_000_000;
@@ -24,6 +30,9 @@ export const CADEAU_SALON = { id: 'cadeau-9m-2026-11', montant: 9_000_000, fin: 
 /** Gros lot progressif de la machine à sous : montant de départ, et part de chaque mise qui l'alimente. */
 export const GROS_LOT_DEPART = 1_000_000;
 export const PART_GROS_LOT = 0.01;
+/** Le gros lot entier se gagne à la mise maximale ; à une mise plus petite, on en gagne la part correspondante. */
+export const MISE_GROS_LOT_ENTIER = 100_000;
+export const partGrosLot = (pot: number, mise: number) => Math.floor((pot * Math.min(mise, MISE_GROS_LOT_ENTIER)) / MISE_GROS_LOT_ENTIER);
 
 /** Au-delà de ce multiple de la mise, le gain de la machine à sous est fêté en grand et annoncé dans le salon. */
 export const MULTIPLE_GROS_GAIN = 50;
@@ -56,13 +65,15 @@ export interface VueCasino {
   riches: RicheSalon[];
   /** Tables de blackjack ouvertes. */
   tables: ResumeTableBJ[];
+  /** Bonus de la machine à sous à jouer (casse ou roue), ou null. */
+  bonus: VueBonusMachine | null;
   /** Cadeau du Baron encore à récupérer (montant et fin), ou null. */
   cadeau: { montant: number; fin: number } | null;
 }
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron';
   gain: number;
   grosLot?: boolean;
 }

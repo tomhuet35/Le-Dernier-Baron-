@@ -1,10 +1,12 @@
 /**
  * Machine à sous « Le Bandit du Baron » (Salon privé du casino) : 5 rouleaux × 3 rangées, 10 lignes de gain fixes.
  *
- * - La Couronne est le joker : elle remplace tous les symboles sauf le Coffre, et paie aussi seule (5 Couronnes =
- *   1 000 × la mise de ligne).
- * - Le Coffre-fort paie n'importe où (3, 4 ou 5 sur la grille) et 3 Coffres ou plus donnent 8 tours gratuits où tous
- *   les gains comptent double (et qui peuvent se relancer).
+ * - La Couronne est le joker : elle remplace tous les symboles sauf le Coffre, et paie aussi seule.
+ * - Le Coffre-fort paie n'importe où (3, 4 ou 5 sur la grille) et 3 Coffres ou plus lancent le Casse du coffre :
+ *   12 coffres fermés, on en ouvre un par coup (billets, lingot qui multiplie le butin, « +2 coups ») jusqu'à ce que
+ *   les coups soient épuisés ou que la sirène de police sonne ; on repart avec le butin.
+ * - Une Couronne visible sur le premier ET sur le dernier rouleau lance la Roue du Baron : ×10 à ×100 la mise,
+ *   10 tours gratuits (gains doublés), ou la case verte du gros lot du salon.
  * - 5 Coffres sur une même ligne : gros lot du salon (progressif, géré par le serveur, hors taux de retour).
  *
  * Le taux de retour (hors gros lot) est calculé exactement par tauxDeRetour() : 96 % environ.
@@ -28,10 +30,11 @@ export const GAINS_LIGNE: Record<SymboleLigne, [number, number, number]> = {
 
 /** Coffres n'importe où sur la grille : gain en multiples de la mise totale. */
 export const GAINS_COFFRES: Record<number, number> = { 3: 2, 4: 10, 5: 50 };
-export const TOURS_GRATUITS = 8;
+/** Tours gratuits de la Roue du Baron, où tous les gains des lignes comptent double. */
+export const TOURS_GRATUITS = 10;
 export const MULTIPLICATEUR_GRATUIT = 2;
-/** Tours gratuits au plus d'affilée (relances comprises). */
-export const TOURS_GRATUITS_MAX = 64;
+/** Tours gratuits au plus d'affilée. */
+export const TOURS_GRATUITS_MAX = 60;
 
 /** Mises possibles par tour (réparties sur les 10 lignes). */
 export const MISES_MACHINE = [1_000, 2_000, 5_000, 10_000, 20_000, 50_000, 100_000];
@@ -51,14 +54,13 @@ export const LIGNES: number[][] = [
   [0, 1, 1, 1, 0],
 ];
 
-/** Nombre de chaque symbole sur chacun des 5 rouleaux (32 cases par rouleau). */
-export const COMPOSITION: Record<SymboleMachine, number>[] = [
-  { couronne: 1, coffre: 1, sept: 2, lingot: 3, diamant: 4, champagne: 5, cigare: 7, fer: 9 },
-  { couronne: 1, coffre: 1, sept: 2, lingot: 3, diamant: 4, champagne: 5, cigare: 7, fer: 9 },
-  { couronne: 1, coffre: 1, sept: 2, lingot: 3, diamant: 4, champagne: 5, cigare: 7, fer: 9 },
-  { couronne: 1, coffre: 1, sept: 2, lingot: 3, diamant: 4, champagne: 5, cigare: 7, fer: 9 },
-  { couronne: 1, coffre: 1, sept: 2, lingot: 3, diamant: 4, champagne: 5, cigare: 7, fer: 9 },
-];
+/**
+ * Nombre de chaque symbole sur chaque rouleau. Le premier et le dernier rouleau sont deux fois plus longs avec une
+ * seule Couronne : la Roue du Baron reste rare (une Couronne sur chacun des deux à la fois).
+ */
+const COURT: Record<SymboleMachine, number> = { couronne: 1, coffre: 1, sept: 2, lingot: 3, diamant: 4, champagne: 5, cigare: 7, fer: 9 };
+const LONG: Record<SymboleMachine, number> = { couronne: 1, coffre: 2, sept: 4, lingot: 6, diamant: 8, champagne: 10, cigare: 15, fer: 18 };
+export const COMPOSITION: Record<SymboleMachine, number>[] = [LONG, COURT, COURT, COURT, LONG];
 
 /** Répartit les symboles régulièrement le long du rouleau (les rares ne se touchent jamais). */
 function etaler(compo: Record<SymboleMachine, number>, decalage: number): SymboleMachine[] {
@@ -110,8 +112,10 @@ export interface ResultatMachine {
   coffres: number;
   /** Gain total du tour (lignes + coffres, multiplicateur compris), en dollars. */
   gain: number;
-  /** Tours gratuits gagnés par ce tour. */
-  toursGagnes: number;
+  /** 3 Coffres ou plus : le Casse du coffre. */
+  casse: boolean;
+  /** Une Couronne sur le premier et sur le dernier rouleau : la Roue du Baron. */
+  roue: boolean;
   /** 5 Coffres alignés sur une ligne : gros lot du salon. */
   grosLot: boolean;
 }
@@ -137,7 +141,8 @@ export function evaluerMachine(arrets: number[], mise: number, gratuit: boolean)
     lignes,
     coffres,
     gain: Math.round((gainLignes + gainCoffres) * mult),
-    toursGagnes: coffres >= 3 ? TOURS_GRATUITS : 0,
+    casse: coffres >= 3,
+    roue: grille[0].includes('couronne') && grille[4].includes('couronne'),
     grosLot,
   };
 }
@@ -151,12 +156,124 @@ export function tirerMachine(hasard: (n: number) => number, mise: number, gratui
   );
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Le Casse du coffre
+
+export type ContenuCasse = { type: 'billets'; valeur: number } | { type: 'lingot' } | { type: 'coups' } | { type: 'sirene' };
+/** Les 12 coffres : 6 liasses (multiples de la mise), 2 lingots (+1 au multiplicateur), 2 « +2 coups », 2 sirènes. */
+export const CONTENU_CASSE: ContenuCasse[] = [
+  { type: 'billets', valeur: 2 },
+  { type: 'billets', valeur: 3 },
+  { type: 'billets', valeur: 4 },
+  { type: 'billets', valeur: 5 },
+  { type: 'billets', valeur: 8 },
+  { type: 'billets', valeur: 13 },
+  { type: 'lingot' },
+  { type: 'lingot' },
+  { type: 'coups' },
+  { type: 'coups' },
+  { type: 'sirene' },
+  { type: 'sirene' },
+];
+export const COUPS_DEPART_CASSE = 3;
+export const COUPS_BONUS_CASSE = 2;
+
+export interface EtatCasse {
+  /** Contenu des 12 coffres (gardé par le serveur). */
+  contenus: ContenuCasse[];
+  ouverts: boolean[];
+  coups: number;
+  /** Somme des liasses trouvées, en multiples de la mise. */
+  butin: number;
+  multiplicateur: number;
+  fini: boolean;
+  /** Le casse s'est arrêté sur la sirène. */
+  sirene: boolean;
+}
+
+export function nouveauCasse(hasard: (n: number) => number): EtatCasse {
+  const contenus = [...CONTENU_CASSE];
+  for (let i = contenus.length - 1; i > 0; i--) {
+    const k = hasard(i + 1);
+    [contenus[i], contenus[k]] = [contenus[k], contenus[i]];
+  }
+  return { contenus, ouverts: contenus.map(() => false), coups: COUPS_DEPART_CASSE, butin: 0, multiplicateur: 1, fini: false, sirene: false };
+}
+
+/** Ouvre un coffre ; renvoie son contenu (null si le coup est impossible). */
+export function ouvrirCasse(e: EtatCasse, index: number): ContenuCasse | null {
+  if (e.fini || !Number.isInteger(index) || index < 0 || index >= e.contenus.length || e.ouverts[index]) return null;
+  const c = e.contenus[index];
+  e.ouverts[index] = true;
+  e.coups -= 1;
+  if (c.type === 'billets') e.butin += c.valeur;
+  else if (c.type === 'lingot') e.multiplicateur += 1;
+  else if (c.type === 'coups') e.coups += COUPS_BONUS_CASSE;
+  if (c.type === 'sirene') {
+    e.fini = true;
+    e.sirene = true;
+  } else if (e.coups <= 0 || e.ouverts.every(Boolean)) e.fini = true;
+  return c;
+}
+
+/** Gain du casse, en multiples de la mise totale. */
+export const gainCasse = (e: EtatCasse) => e.butin * e.multiplicateur;
+
+/**
+ * Gain moyen du casse (multiples de la mise), calculé exactement : l'ordre des coffres est au hasard, donc chaque
+ * coffre ouvert est un tirage sans remise. Les liasses étant interchangeables, la moyenne vaut
+ * E[nombre de liasses × (1 + lingots)] × valeur moyenne d'une liasse.
+ */
+export function esperanceCasse(): number {
+  const n = (t: ContenuCasse['type']) => CONTENU_CASSE.filter((c) => c.type === t).length;
+  const billets = CONTENU_CASSE.filter((c): c is { type: 'billets'; valeur: number } => c.type === 'billets');
+  const moyenne = billets.reduce((s, c) => s + c.valeur, 0) / billets.length;
+  const memo = new Map<string, number>();
+  const E = (b: number, l: number, p: number, s: number, coups: number, k: number, g: number): number => {
+    const reste = b + l + p + s;
+    if (coups <= 0 || reste === 0) return k * (1 + g);
+    const cle = `${b},${l},${p},${s},${coups},${k},${g}`;
+    const m = memo.get(cle);
+    if (m !== undefined) return m;
+    let v = 0;
+    if (b) v += (b / reste) * E(b - 1, l, p, s, coups - 1, k + 1, g);
+    if (l) v += (l / reste) * E(b, l - 1, p, s, coups - 1, k, g + 1);
+    if (p) v += (p / reste) * E(b, l, p - 1, s, coups - 1 + COUPS_BONUS_CASSE, k, g);
+    if (s) v += (s / reste) * (k * (1 + g));
+    memo.set(cle, v);
+    return v;
+  };
+  return E(billets.length, n('lingot'), n('coups'), n('sirene'), COUPS_DEPART_CASSE, 0, 0) * moyenne;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// La Roue du Baron
+
+export type CaseRoueBaron = { type: 'multiple'; x: number } | { type: 'tours'; n: number } | { type: 'grosLot' };
+/** 12 cases de même chance, dans l'ordre des aiguilles d'une montre ; la case verte est celle du gros lot. */
+export const ROUE_BARON: CaseRoueBaron[] = [
+  { type: 'multiple', x: 10 },
+  { type: 'multiple', x: 25 },
+  { type: 'multiple', x: 10 },
+  { type: 'multiple', x: 50 },
+  { type: 'multiple', x: 10 },
+  { type: 'multiple', x: 25 },
+  { type: 'grosLot' },
+  { type: 'multiple', x: 10 },
+  { type: 'multiple', x: 100 },
+  { type: 'multiple', x: 10 },
+  { type: 'tours', n: TOURS_GRATUITS },
+  { type: 'multiple', x: 25 },
+];
+
 /**
  * Taux de retour exact (hors gros lot), en fraction de la mise :
- * lignes (chaque case d'une rangée suit la composition du rouleau), coffres (fenêtre de 3 cases sur chaque rouleau),
- * puis tours gratuits (E_gratuit = 2 × (lignes + coffres) + P(bonus) × 8 × E_gratuit).
+ * - lignes : chaque case d'une rangée suit la composition du rouleau, les rouleaux sont indépendants ;
+ * - coffres : loi exacte du nombre de Coffres visibles (fenêtre de 3 cases sur chaque rouleau) ;
+ * - casse et roue : probabilité de chacun × gain moyen ; les tours gratuits (gains des lignes et des coffres doublés)
+ *   peuvent eux-mêmes relancer casse et roue : E_gratuit = 2 × base + P(casse) × casse + P(roue) × roue(E_gratuit).
  */
-export function tauxDeRetour(): { lignes: number; coffres: number; pBonus: number; gratuits: number; total: number } {
+export function tauxDeRetour(): { lignes: number; coffres: number; pCasse: number; casse: number; pRoue: number; roue: number; gratuits: number; total: number } {
   const probas = COMPOSITION.map((c) => {
     const n = Object.values(c).reduce((a, b) => a + b, 0);
     return SYMBOLES_MACHINE.map((s) => c[s] / n);
@@ -191,8 +308,18 @@ export function tauxDeRetour(): { lignes: number; coffres: number; pBonus: numbe
     loi = suivante;
   }
   const coffres = loi.reduce((t, p, k) => t + p * (GAINS_COFFRES[k] ?? 0), 0);
-  const pBonus = loi.reduce((t, p, k) => t + (k >= 3 ? p : 0), 0);
-  const gratuit = (MULTIPLICATEUR_GRATUIT * (lignes + coffres)) / (1 - TOURS_GRATUITS * pBonus);
-  const gratuits = pBonus * TOURS_GRATUITS * gratuit;
-  return { lignes, coffres, pBonus, gratuits, total: lignes + coffres + gratuits };
+  const pCasse = loi.reduce((t, p, k) => t + (k >= 3 ? p : 0), 0);
+  const visible = (bande: SymboleMachine[]) => {
+    let n = 0;
+    for (let a = 0; a < bande.length; a++) if ([0, 1, 2].some((d) => bande[(a + d) % bande.length] === 'couronne')) n++;
+    return n / bande.length;
+  };
+  const pRoue = visible(BANDES[0]) * visible(BANDES[4]);
+  const casse = esperanceCasse();
+  const multiples = ROUE_BARON.reduce((s, c) => s + (c.type === 'multiple' ? c.x : 0), 0) / ROUE_BARON.length;
+  const toursParRoue = ROUE_BARON.reduce((s, c) => s + (c.type === 'tours' ? c.n : 0), 0) / ROUE_BARON.length;
+  const base = lignes + coffres;
+  const gratuit = (MULTIPLICATEUR_GRATUIT * base + pCasse * casse + pRoue * multiples) / (1 - pRoue * toursParRoue);
+  const roue = multiples + toursParRoue * gratuit;
+  return { lignes, coffres, pCasse, casse, pRoue, roue, gratuits: pRoue * toursParRoue * gratuit, total: base + pCasse * casse + pRoue * roue };
 }

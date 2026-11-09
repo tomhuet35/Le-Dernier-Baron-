@@ -297,3 +297,73 @@
 @media (prefers-reduced-motion: reduce) {
   .bj-carte, .bj-carte.retournee, .bj-issue, .bj-place-mise.bilan, .bj-bilan, .cas-cadeau { animation: none !important; }
 }
+
+/* Bonus de la machine à sous : le Casse du coffre et la Roue du Baron, par-dessus la machine. */
+.cas-bonus-annonce { font-family: var(--titre); font-weight: 400; font-size: 22px; color: var(--or-vif); letter-spacing: 0.03em; text-shadow: 0 0 14px rgba(231, 194, 122, 0.6); animation: xp-eclat 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.cas-gains-titre { margin: 14px 0 0; font-family: var(--titre); font-weight: 400; font-size: 18px; color: var(--or-vif); }
+.cas-bonus { position: fixed; inset: 0; z-index: 24; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: max(12px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom)); animation: apparaitre 0.45s ease-out; }
+/* La salle des coffres (casse-salle.webp) dès qu'elle est en ligne ; un fond sombre en attendant. */
+.cas-bonus.casse { background: radial-gradient(85% 65% at 50% 40%, rgba(24, 14, 8, 0.55), rgba(6, 3, 2, 0.94)), url('/cartes/casse-salle.webp') center / cover no-repeat, radial-gradient(90% 70% at 50% 35%, #2b1a0e, #070403); }
+.cas-bonus.roue-baron { background: radial-gradient(70% 55% at 50% 42%, rgba(90, 52, 14, 0.5), rgba(6, 3, 2, 0.95)), url('/cartes/salon-fond.webp') center / cover no-repeat, #0b0705; }
+.cas-bonus-contenu { width: min(100%, 600px); margin: auto 0; display: grid; justify-items: center; gap: 12px; }
+.cas-bonus-tete { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.cas-bonus-tete img { width: 62px; height: 62px; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7)); }
+.cas-bonus-tete h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: clamp(26px, 7.4vw, 40px); color: var(--or-vif); letter-spacing: 0.04em; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9); }
+.cas-bonus-tete span { font-size: 13.5px; color: var(--creme); opacity: 0.85; }
+.cas-bonus .roulette-resultat, .cas-bonus .principal { width: min(100%, 420px); }
+
+.casse-etat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(100%, 480px); }
+.casse-etat > div { display: grid; justify-items: center; gap: 1px; padding: 7px 6px; border-radius: 12px; border: 1px solid rgba(231, 194, 122, 0.45); background: rgba(22, 16, 12, 0.85); min-width: 0; }
+.casse-etat small { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #cdb88f; }
+.casse-etat strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-family: var(--titre); font-weight: 400; font-size: clamp(17px, 4.8vw, 24px); color: var(--or-vif); font-variant-numeric: tabular-nums; white-space: nowrap; animation: xp-eclat 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+
+.casse-grille { --coffre: max(64px, min(calc((100vw - 52px) / 3), calc((100dvh - 340px) / 4), 140px)); display: grid; grid-template-columns: repeat(3, var(--coffre)); gap: 10px; justify-content: center; }
+@media (min-aspect-ratio: 1 / 1) {
+  .casse-grille { --coffre: max(64px, min(calc((100vw - 64px) / 4), calc((100dvh - 400px) / 3), 140px)); grid-template-columns: repeat(4, var(--coffre)); }
+}
+/* Écran large : le titre, les compteurs et le message à gauche, les 12 coffres à droite (plus grands). */
+@media (min-aspect-ratio: 1 / 1) and (min-width: 700px) {
+  .cas-bonus.casse .cas-bonus-contenu { width: min(100%, 1100px); grid-template-columns: minmax(260px, 360px) auto; grid-template-rows: 1fr auto auto auto 1fr; grid-template-areas: '. grille' 'tete grille' 'etat grille' 'msg grille' '. grille'; justify-content: center; column-gap: 34px; row-gap: 14px; }
+  .cas-bonus.casse .cas-bonus-tete { grid-area: tete; }
+  .cas-bonus.casse .cas-bonus-tete h2 { font-size: clamp(26px, 2.8vw, 34px); }
+  .cas-bonus.casse .casse-etat { grid-area: etat; grid-template-columns: 1fr 1fr; }
+  /* Le butin sur toute la largeur (les gros montants restent lisibles), les coups et le multiplicateur dessous. */
+  .cas-bonus.casse .casse-etat > div:nth-child(2) { grid-column: 1 / -1; order: -1; }
+  .cas-bonus.casse .casse-grille { grid-area: grille; align-self: center; --coffre: max(64px, min(calc((100dvh - 64px) / 3 - 7px), calc((100vw - 440px) / 4), 172px)); }
+  .cas-bonus.casse .casse-message, .cas-bonus.casse .casse-fin { grid-area: msg; }
+}
+.casse-coffre { position: relative; width: var(--coffre); height: var(--coffre); min-height: 0; padding: 0; border: none; border-radius: 10px; background: none; perspective: 520px; }
+.casse-coffre:disabled { opacity: 1; }
+.casse-coffre:not(:disabled) { cursor: pointer; }
+.casse-porte { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: contain; transform-origin: 90% 50%; backface-visibility: hidden; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.65)); transition: transform 0.6s cubic-bezier(0.45, 0, 0.25, 1), opacity 0.3s ease 0.35s, filter 0.2s; }
+.casse-coffre:not(:disabled):hover .casse-porte { transform: translateY(-3px) scale(1.04); filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.7)) brightness(1.1); }
+.casse-coffre.ouvre .casse-porte { animation: casse-tremble 0.5s ease-in-out; }
+/* La porte pivote sur ses gonds (à droite) et s'efface : le contenu apparaît dans le coffre. */
+.casse-coffre.ouvert .casse-porte, .casse-coffre.revele .casse-porte { transform: rotateY(112deg); opacity: 0; pointer-events: none; }
+.casse-interieur { position: absolute; inset: 8%; display: grid; place-items: center; align-content: center; gap: 1px; border-radius: 8px; border: 2px solid #8a6424; background: radial-gradient(circle at 50% 38%, #33231a, #0d0907 78%); box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.95), 0 4px 10px rgba(0, 0, 0, 0.6); overflow: hidden; }
+.casse-interieur.image { inset: 0; border: none; border-radius: 0; box-shadow: none; background: url('/cartes/casse-coffre-ouvert.webp') center / contain no-repeat; }
+.casse-dessin { width: 64%; height: 64%; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.7)); animation: casse-sort 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) 0.18s both; }
+.casse-etiquette { font-size: clamp(10.5px, 2.9vw, 13.5px); font-weight: 800; color: #f6e2b0; white-space: nowrap; text-shadow: 0 1px 3px #000, 0 0 8px rgba(0, 0, 0, 0.9); animation: apparaitre 0.4s ease-out 0.35s both; }
+.casse-coffre.sirene .casse-interieur { border-color: #c0281c; box-shadow: inset 0 0 22px rgba(200, 30, 20, 0.75), 0 0 20px rgba(230, 40, 30, 0.7); }
+.casse-dessin-sirene .casse-rayons { animation: casse-clignote 0.5s steps(1) infinite; }
+.casse-coffre.revele { opacity: 0.5; filter: grayscale(0.55); }
+.casse-coffre.revele .casse-dessin, .casse-coffre.revele .casse-etiquette { animation: none; }
+.casse-message { margin: 0; min-height: 2.6em; max-width: 440px; font-size: 14.5px; line-height: 1.35; color: var(--creme); text-align: center; text-shadow: 0 1px 4px #000; }
+.casse-fin { display: grid; justify-items: center; gap: 6px; width: min(100%, 440px); padding: 12px 14px; border-radius: 14px; border: 1px solid var(--or-vif); background: rgba(26, 17, 11, 0.92); text-align: center; animation: apparaitre 0.4s ease-out; }
+.casse-fin p { margin: 0; font-size: 14px; color: var(--creme); }
+.casse-fin .roulette-xp-gagne { font-family: var(--titre); font-weight: 400; font-size: 30px; color: #fff1c4; }
+.casse-fin small { color: #cdb88f; font-variant-numeric: tabular-nums; }
+.casse-vide { font-family: var(--titre); font-weight: 400; font-size: 22px; color: #cdb88f; }
+/* La sirène : l'écran clignote rouge et bleu, comme un gyrophare. */
+.cas-bonus.casse.alerte::after { content: ''; position: fixed; inset: 0; pointer-events: none; animation: casse-gyrophare 0.46s steps(1) 5; }
+.roue-baron .roue { width: min(84vw, calc(100dvh - 330px), 420px); min-width: 240px; }
+
+@keyframes casse-tremble { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(-3deg) translateX(-2px); } 35% { transform: rotate(3deg) translateX(2px); } 55% { transform: rotate(-2deg); } 75% { transform: rotate(2deg); } }
+@keyframes casse-sort { from { opacity: 0; transform: scale(0.3) translateY(14%); } to { opacity: 1; transform: none; } }
+@keyframes casse-clignote { 0% { opacity: 1; } 50% { opacity: 0.15; } }
+@keyframes casse-gyrophare { 0% { box-shadow: inset 0 0 140px 40px rgba(225, 30, 20, 0.6); } 50% { box-shadow: inset 0 0 140px 40px rgba(40, 90, 255, 0.6); } }
+@media (prefers-reduced-motion: reduce) {
+  .casse-porte, .casse-dessin, .casse-etiquette, .casse-etat strong, .cas-bonus-annonce, .casse-dessin-sirene .casse-rayons, .cas-bonus.casse.alerte::after { animation: none !important; transition: none !important; }
+}
+.roue-texte.radial { font-size: 14px; }
+.roue-texte.radial .roue-xp { font-size: 8px; }

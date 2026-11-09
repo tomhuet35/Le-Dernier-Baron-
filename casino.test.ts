@@ -3,7 +3,22 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { authentificationTest, creerServiceComptes, normaliserStats, stockageMemoire } from '../server/comptes';
 import { demarrerServeur } from '../server/serveur';
 import { CASES_ROUE_SALON, formatDollars, SOLDE_DEPART } from '../shared/casino';
-import { BANDES, evaluerMachine, gainSuite, GAINS_LIGNE, grilleDepuisArrets, tauxDeRetour, tirerMachine, TOURS_GRATUITS } from '../shared/machineASous';
+import {
+  BANDES,
+  COUPS_DEPART_CASSE,
+  esperanceCasse,
+  evaluerMachine,
+  gainCasse,
+  gainSuite,
+  GAINS_LIGNE,
+  nouveauCasse,
+  ouvrirCasse,
+  ROUE_BARON,
+  tauxDeRetour,
+  tirerMachine,
+  TOURS_GRATUITS,
+  type ResultatMachine,
+} from '../shared/machineASous';
 import { jourParis } from '../shared/roulette';
 
 // ---------- Machine à sous ----------
@@ -13,8 +28,10 @@ describe('Machine à sous « Le Bandit du Baron »', () => {
     const t = tauxDeRetour();
     expect(t.total).toBeGreaterThan(0.955);
     expect(t.total).toBeLessThan(0.965);
-    expect(t.pBonus).toBeGreaterThan(0.004); // le bonus tombe environ une fois tous les 140 tours
-    expect(t.pBonus).toBeLessThan(0.012);
+    expect(1 / t.pCasse).toBeGreaterThan(100); // le casse tombe environ une fois tous les 140 tours
+    expect(1 / t.pCasse).toBeLessThan(200);
+    expect(1 / t.pRoue).toBeGreaterThan(300); // la roue, environ une fois tous les 450 tours
+    expect(1 / t.pRoue).toBeLessThan(700);
   });
 
   it('lit les lignes de gauche à droite, avec la Couronne comme joker (sauf pour le Coffre)', () => {
@@ -28,33 +45,78 @@ describe('Machine à sous « Le Bandit du Baron »', () => {
     expect(gainSuite(['diamant', 'diamant', 'lingot', 'diamant', 'diamant'])).toBeNull();
   });
 
-  it('donne les tours gratuits avec 3 Coffres, et double les gains pendant ces tours', () => {
-    const arrets = trouverArrets((g) => g.flat().filter((s) => s === 'coffre').length === 3);
-    const normal = evaluerMachine(arrets, 10_000, false);
-    expect(normal.coffres).toBe(3);
-    expect(normal.toursGagnes).toBe(TOURS_GRATUITS);
-    expect(normal.gain).toBeGreaterThanOrEqual(2 * 10_000);
-    expect(evaluerMachine(arrets, 10_000, true).gain).toBe(normal.gain * 2);
+  it('lance le casse avec 3 Coffres, la roue avec une Couronne sur le premier et le dernier rouleau, et double les gains des tours gratuits', () => {
+    const casse = evaluerMachine(trouverArrets((r) => r.coffres === 3), 10_000, false);
+    expect(casse).toMatchObject({ coffres: 3, casse: true });
+    expect(casse.gain).toBeGreaterThanOrEqual(2 * 10_000);
+    const arretsRoue = trouverArrets((r) => r.grille[0].includes('couronne') && r.grille[4].includes('couronne'), true);
+    expect(evaluerMachine(arretsRoue, 10_000, false).roue).toBe(true);
+    const avecGain = trouverArrets((r) => r.gain > 0 && !r.casse && !r.roue);
+    const normal = evaluerMachine(avecGain, 10_000, false);
+    expect(normal.gain).toBeGreaterThan(0);
+    expect(evaluerMachine(avecGain, 10_000, true).gain).toBe(normal.gain * 2);
+    expect(ROUE_BARON.filter((c) => c.type === 'tours')).toEqual([{ type: 'tours', n: TOURS_GRATUITS }]);
+    expect(ROUE_BARON.filter((c) => c.type === 'grosLot')).toHaveLength(1);
   });
 
-  it('reste proche de son taux de retour sur 30 000 tours tirés au hasard', () => {
+  it('fait le casse : un coffre par coup, « +2 coups », lingots qui multiplient, arrêt sur la sirène', () => {
+    // Mélange choisi : l'ordre reste celui de la liste (6 liasses, 2 lingots, 2 « +2 coups », 2 sirènes).
+    const e = nouveauCasse((n) => n - 1);
+    expect(e.coups).toBe(COUPS_DEPART_CASSE);
+    expect(ouvrirCasse(e, 8)).toEqual({ type: 'coups' });
+    expect(e.coups).toBe(COUPS_DEPART_CASSE - 1 + 2);
+    expect(ouvrirCasse(e, 8)).toBeNull(); // déjà ouvert
+    expect(ouvrirCasse(e, 6)).toEqual({ type: 'lingot' });
+    expect(ouvrirCasse(e, 5)?.type).toBe('billets');
+    expect(e).toMatchObject({ butin: e.contenus[5].type === 'billets' ? e.contenus[5].valeur : 0, multiplicateur: 2, fini: false });
+    expect(ouvrirCasse(e, 10)).toEqual({ type: 'sirene' });
+    expect(e).toMatchObject({ fini: true, sirene: true });
+    expect(gainCasse(e)).toBe(e.butin * 2);
+    expect(ouvrirCasse(e, 0)).toBeNull(); // le casse est fini
+    // Gain moyen exact, confirmé par 20 000 casses joués au hasard.
+    const h = graine(3);
+    let total = 0;
+    for (let i = 0; i < 20_000; i++) {
+      const c = nouveauCasse(h);
+      while (!c.fini) {
+        const fermes = c.ouverts.map((o, k) => (o ? -1 : k)).filter((k) => k >= 0);
+        ouvrirCasse(c, fermes[h(fermes.length)]);
+      }
+      total += gainCasse(c);
+    }
+    expect(Math.abs(total / 20_000 - esperanceCasse()) / esperanceCasse()).toBeLessThan(0.04);
+  });
+
+  it('reste proche de son taux de retour sur 30 000 tours tirés au hasard (bonus compris)', () => {
     const hasard = graine(7);
     let mise = 0;
     let gain = 0;
+    const tour = (gratuit: boolean): number => {
+      const r: ResultatMachine = tirerMachine(hasard, 1000, gratuit);
+      let g = r.gain;
+      let tours = 0;
+      if (r.casse) {
+        const c = nouveauCasse(hasard);
+        while (!c.fini) {
+          const fermes = c.ouverts.map((o, k) => (o ? -1 : k)).filter((k) => k >= 0);
+          ouvrirCasse(c, fermes[hasard(fermes.length)]);
+        }
+        g += gainCasse(c) * 1000;
+      }
+      if (r.roue) {
+        const c = ROUE_BARON[hasard(ROUE_BARON.length)];
+        if (c.type === 'multiple') g += c.x * 1000;
+        else if (c.type === 'tours') tours = c.n;
+      }
+      for (let k = 0; k < tours; k++) g += tour(true);
+      return g;
+    };
     for (let i = 0; i < 30_000; i++) {
       mise += 1000;
-      const r = tirerMachine(hasard, 1000, false);
-      gain += r.gain;
-      let reste = r.toursGagnes;
-      while (reste > 0) {
-        reste--;
-        const g = tirerMachine(hasard, 1000, true);
-        gain += g.gain;
-        reste += g.toursGagnes;
-      }
+      gain += tour(false);
     }
-    expect(gain / mise).toBeGreaterThan(0.8);
-    expect(gain / mise).toBeLessThan(1.12);
+    expect(gain / mise).toBeGreaterThan(0.75);
+    expect(gain / mise).toBeLessThan(1.2);
   });
 
   it('écrit les montants à la française', () => {
@@ -74,13 +136,13 @@ function graine(n: number) {
   };
 }
 
-function trouverArrets(condition: (g: ReturnType<typeof grilleDepuisArrets>) => boolean): number[] {
-  const L = BANDES[0].length;
-  for (let a = 0; a < L; a++)
-    for (let b = 0; b < L; b++)
-      for (let c = 0; c < L; c++) {
-        const arrets = [a, b, c, 0, 0];
-        if (condition(grilleDepuisArrets(arrets))) return arrets;
+/** Cherche des arrêts de rouleaux qui donnent un tirage voulu (en faisant varier les rouleaux 1 à 3, ou 1, 2 et 5). */
+function trouverArrets(condition: (r: ResultatMachine) => boolean, extremes = false): number[] {
+  for (let a = 0; a < BANDES[0].length; a++)
+    for (let b = 0; b < BANDES[1].length; b++)
+      for (let c = 0; c < (extremes ? BANDES[4].length : BANDES[2].length); c++) {
+        const arrets = extremes ? [a, b, 5, 9, c] : [a, b, c, 5, 9];
+        if (condition(evaluerMachine(arrets, 1, false))) return arrets;
       }
   throw new Error('aucune grille trouvée');
 }
@@ -115,6 +177,7 @@ beforeAll(async () => {
     comptes: service,
     casino: {
       tirageRoue: () => 3, // la case verte : le million
+      tirageRoueBaron: () => 10, // la case des tours gratuits
       hasardMachine: (n) => (arretsImposes ? arretsImposes[k++ % 5] : hasardGraine(n)),
       delaiEcriture: 40,
     },
@@ -181,7 +244,7 @@ describe('Salon privé de bout en bout', () => {
     s.close();
   });
 
-  it('donne les tours gratuits sans débiter, et refuse une mise plus grosse que le solde', async () => {
+  it('fait jouer le casse et la Roue du Baron, puis les tours gratuits sans débiter ; refuse une mise plus grosse que le solde', async () => {
     // Tom n'a plus que 500 $ : aucune mise possible.
     await service.entrerCasino('uid-crea2');
     await service.mouvementCasino('uid-crea2', -(SOLDE_DEPART - 500));
@@ -189,29 +252,54 @@ describe('Salon privé de bout en bout', () => {
     expect((await emettre(s, 'identifier', { jeton: 'jeton-crea2' })).ok).toBe(true);
     expect((await emettre(s, 'casino_entrer')).casino.solde).toBe(500);
     expect((await emettre(s, 'casino_machine', { mise: 1000 })).erreur).toMatch(/Solde insuffisant/);
-    await service.mouvementCasino('uid-crea2', 50_000);
     s.close();
 
-    // Lucas déclenche le bonus : 3 Coffres.
-    arretsImposes = trouverArrets((g) => g.flat().filter((x) => x === 'coffre').length === 3);
+    // Lucas : 3 Coffres, le casse.
+    arretsImposes = trouverArrets((r) => r.casse && !r.roue);
     k = 0;
     const l = connecter();
     expect((await emettre(l, 'identifier', { jeton: 'jeton-crea' })).ok).toBe(true);
     const entree = (await emettre(l, 'casino_entrer')).casino;
-    expect(entree.toursGratuits).toBe(0);
-    const avant = entree.solde;
+    expect(entree.bonus).toBeNull();
     await attendre(360);
     const declenche = await emettre(l, 'casino_machine', { mise: 20_000 });
-    expect(declenche.ok).toBe(true);
-    expect(declenche.machine.toursGagnes).toBe(TOURS_GRATUITS);
-    expect(declenche.casino).toMatchObject({ toursGratuits: TOURS_GRATUITS, miseGratuite: 20_000, solde: avant - 20_000 + declenche.machine.gain });
+    expect(declenche.machine.casse).toBe(true);
+    expect(declenche.casino.bonus).toMatchObject({ type: 'casse', mise: 20_000, coups: 3, butin: 0, multiplicateur: 1 });
+    expect(declenche.casino.bonus.ouverts.every((x: unknown) => x === null)).toBe(true); // rien n'est dévoilé à l'avance
     await attendre(360);
+    expect((await emettre(l, 'casino_machine', { mise: 1000 })).erreur).toMatch(/bonus/);
+    let solde = declenche.casino.solde;
+    let fin: any = null;
+    for (let i = 0; i < 12 && !fin; i++) {
+      const r = await emettre(l, 'casino_casse', { index: i });
+      expect(r.ok).toBe(true);
+      if (r.casse.fini) fin = r;
+      else expect(r.casino.solde).toBe(solde);
+    }
+    expect(fin.casse.gain).toBe(fin.casse.butin * fin.casse.multiplicateur * 20_000);
+    expect(fin.casse.tout).toHaveLength(12);
+    expect(fin.casino.solde).toBe(solde + fin.casse.gain);
+    expect(fin.casino.bonus).toBeNull();
+    expect((await emettre(l, 'casino_casse', { index: 0 })).ok).toBe(false);
+    solde = fin.casino.solde;
+
+    // Une Couronne sur le premier et le dernier rouleau : la roue, qui tombe sur les 10 tours gratuits.
+    arretsImposes = trouverArrets((r) => r.roue && !r.casse, true);
+    k = 0;
+    await attendre(360);
+    const roue = await emettre(l, 'casino_machine', { mise: 10_000 });
+    expect(roue.machine.roue).toBe(true);
+    expect(roue.casino.bonus).toEqual({ type: 'roue', mise: 10_000 });
+    const tiree = await emettre(l, 'casino_roue_baron');
+    expect(tiree.roueBaron).toMatchObject({ case: 10, tours: TOURS_GRATUITS, gain: 0 });
+    expect(tiree.casino).toMatchObject({ toursGratuits: TOURS_GRATUITS, miseGratuite: 10_000, bonus: null });
     // Tour gratuit : la mise envoyée est ignorée, rien n'est débité, les gains comptent double.
-    const gratuit = await emettre(l, 'casino_machine', { mise: 100_000 });
-    expect(gratuit.machine).toMatchObject({ gratuit: true, mise: 20_000, gain: declenche.machine.gain * 2 });
-    expect(gratuit.casino.solde).toBe(declenche.casino.solde + gratuit.machine.gain);
-    expect(gratuit.casino.toursGratuits).toBe(TOURS_GRATUITS - 1 + TOURS_GRATUITS);
     arretsImposes = null;
+    await attendre(360);
+    const gratuit = await emettre(l, 'casino_machine', { mise: 100_000 });
+    expect(gratuit.machine).toMatchObject({ gratuit: true, mise: 10_000 });
+    expect(gratuit.casino.toursGratuits).toBe(TOURS_GRATUITS - 1);
+    expect(gratuit.casino.solde).toBe(tiree.casino.solde + gratuit.machine.gain);
     l.close();
   });
 

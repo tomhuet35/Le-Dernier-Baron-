@@ -4,15 +4,29 @@
  * « Le Bandit du Baron ». Tout l'argent est fictif et tenu par le serveur.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { CASE_VERTE_SALON, CASES_ROUE_SALON, formatDollars, GROS_GAIN_ROUE, MULTIPLE_GROS_GAIN, type AnnonceCasino, type VueCasino } from '../../shared/casino';
+import {
+  CASE_VERTE_SALON,
+  CASES_ROUE_SALON,
+  formatDollars,
+  GROS_GAIN_ROUE,
+  MISE_GROS_LOT_ENTIER,
+  MULTIPLE_GROS_GAIN,
+  type AnnonceCasino,
+  type VueBonusMachine,
+  type VueCasino,
+} from '../../shared/casino';
 import {
   BANDES,
   GAINS_COFFRES,
   GAINS_LIGNE,
   LIGNES,
   MISES_MACHINE,
+  COUPS_BONUS_CASSE,
+  COUPS_DEPART_CASSE,
   MULTIPLICATEUR_GRATUIT,
+  ROUE_BARON,
   TOURS_GRATUITS,
+  type ContenuCasse,
   type GainLigne,
   type GrilleMachine,
   type SymboleLigne,
@@ -162,7 +176,10 @@ interface TourMachine {
   coffres: number;
   gain: number;
   gainGrosLot: number;
-  toursGagnes: number;
+  /** 3 Coffres ou plus : le Casse du coffre. */
+  casse: boolean;
+  /** Une Couronne sur le premier et sur le dernier rouleau : la Roue du Baron. */
+  roue: boolean;
   grosLot: boolean;
   gratuit: boolean;
   mise: number;
@@ -205,11 +222,375 @@ function TableDesGains({ onFermer }: { onFermer: () => void }) {
       <p className="cas-gains-note">
         <Symbole s="coffre" />
         {tr(
-          `Coffres n’importe où : 3 = ${GAINS_COFFRES[3]} × la mise, 4 = ${GAINS_COFFRES[4]} ×, 5 = ${GAINS_COFFRES[5]} ×. 3 Coffres ou plus : ${TOURS_GRATUITS} tours gratuits, gains ×${MULTIPLICATEUR_GRATUIT}. 5 Coffres sur une ligne : le gros lot du salon.`,
-          `Safes anywhere: 3 = ${GAINS_COFFRES[3]} × the bet, 4 = ${GAINS_COFFRES[4]} ×, 5 = ${GAINS_COFFRES[5]} ×. 3 or more Safes: ${TOURS_GRATUITS} free spins, wins ×${MULTIPLICATEUR_GRATUIT}. 5 Safes on a line: the lounge jackpot.`,
+          `Coffres n’importe où : 3 = ${GAINS_COFFRES[3]} × la mise, 4 = ${GAINS_COFFRES[4]} ×, 5 = ${GAINS_COFFRES[5]} ×. 5 Coffres sur une ligne : le gros lot du salon.`,
+          `Safes anywhere: 3 = ${GAINS_COFFRES[3]} × the bet, 4 = ${GAINS_COFFRES[4]} ×, 5 = ${GAINS_COFFRES[5]} ×. 5 Safes on a line: the lounge jackpot.`,
+        )}
+      </p>
+      <h3 className="cas-gains-titre">{tr('Le Casse du coffre', 'The Safe Heist')}</h3>
+      <p className="cas-gains-note">
+        <Symbole s="coffre" />
+        {tr(
+          `3 Coffres ou plus lancent le casse : 12 coffres-forts fermés et ${COUPS_DEPART_CASSE} coups. Chaque coffre ouvert coûte un coup et cache une liasse de billets, un lingot (le butin passe à ×2, puis ×3), des outils (+${COUPS_BONUS_CASSE} coups)… ou la sirène de police, qui arrête le casse. Tu repars toujours avec le butin.`,
+          `3 or more Safes start the heist: 12 closed safes and ${COUPS_DEPART_CASSE} moves. Each safe you open costs a move and hides a bundle of bills, a gold bar (the loot goes ×2, then ×3), tools (+${COUPS_BONUS_CASSE} moves)… or the police siren, which ends the heist. You always leave with the loot.`,
+        )}
+      </p>
+      <h3 className="cas-gains-titre">{tr('La Roue du Baron', 'The Baron’s Wheel')}</h3>
+      <p className="cas-gains-note">
+        <Symbole s="couronne" />
+        {tr(
+          `Une Couronne sur le premier et sur le dernier rouleau lance la roue : ×10, ×25, ×50 ou ×100 la mise, ${TOURS_GRATUITS} tours gratuits (gains ×${MULTIPLICATEUR_GRATUIT}), ou la case verte du gros lot du salon.`,
+          `A Crown on the first and on the last reel spins the wheel: ×10, ×25, ×50 or ×100 the bet, ${TOURS_GRATUITS} free spins (wins ×${MULTIPLICATEUR_GRATUIT}), or the green lounge jackpot slot.`,
+        )}
+      </p>
+      <p className="cas-gains-note discret">
+        {tr(
+          `Gros lot : en entier à partir de ${dollars(MISE_GROS_LOT_ENTIER)} de mise ; en dessous, une part proportionnelle à la mise.`,
+          `Jackpot: paid in full from a ${dollars(MISE_GROS_LOT_ENTIER)} bet; below that, a share in proportion to the bet.`,
         )}
       </p>
     </Fenetre>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Bonus de la machine : le Casse du coffre et la Roue du Baron
+
+/** Images des bonus : l'image définitive dès qu'elle est en ligne, un dessin de remplacement en attendant. */
+const IMAGES_BONUS = ['casse-coffre-ferme', 'casse-coffre-ouvert', 'casse-billets', 'casse-outils', 'casse-sirene', 'roue-baron'] as const;
+type ImageBonus = (typeof IMAGES_BONUS)[number];
+const imagesVerifiees = new Map<string, Promise<boolean>>();
+function verifierImage(nom: string): Promise<boolean> {
+  let p = imagesVerifiees.get(nom);
+  if (!p) {
+    p = new Promise<boolean>((ok) => {
+      const img = new Image();
+      img.onload = () => ok(img.naturalWidth > 0);
+      img.onerror = () => ok(false);
+      img.src = `/cartes/${nom}.webp`;
+    });
+    imagesVerifiees.set(nom, p);
+  }
+  return p;
+}
+const prechargerImagesBonus = () => IMAGES_BONUS.forEach((n) => void verifierImage(n));
+function useImagesBonus(): Partial<Record<ImageBonus, boolean>> {
+  const [dispo, setDispo] = useState<Partial<Record<ImageBonus, boolean>>>({});
+  useEffect(() => {
+    let vivant = true;
+    for (const n of IMAGES_BONUS) void verifierImage(n).then((ok) => vivant && setDispo((d) => ({ ...d, [n]: ok })));
+    return () => {
+      vivant = false;
+    };
+  }, []);
+  return dispo;
+}
+
+function DessinBillets() {
+  return (
+    <svg className="casse-dessin" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="9" y="27" width="82" height="46" rx="4" fill="#163821" stroke="#9c7a3a" strokeWidth="2" transform="rotate(-13 50 50)" />
+      <g transform="rotate(-3 50 50)">
+        <rect x="5" y="26" width="90" height="50" rx="4" fill="#2b5c37" stroke="#e7c27a" strokeWidth="2.4" />
+        <rect x="11" y="32" width="78" height="38" rx="2" fill="none" stroke="#86b582" strokeWidth="1.2" />
+        <circle cx="64" cy="51" r="14" fill="#1f4a2b" stroke="#e7c27a" strokeWidth="2" />
+        <text x="64" y="59" textAnchor="middle" fontSize="23" fill="#f3dca4" fontFamily="Georgia, serif">
+          $
+        </text>
+        <rect x="24" y="23" width="14" height="56" rx="1.5" fill="#d2a85a" stroke="#8a6424" strokeWidth="1.4" />
+      </g>
+    </svg>
+  );
+}
+function DessinOutils() {
+  return (
+    <svg className="casse-dessin" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M20 88 L74 24 Q80 16 88 20 Q95 24 90 32" fill="none" stroke="#2a2420" strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 88 L74 24 Q80 16 88 20 Q95 24 90 32" fill="none" stroke="#c3c7cd" strokeWidth="8.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 88 L10 85 M20 88 L18 97" stroke="#c3c7cd" strokeWidth="6.5" strokeLinecap="round" />
+      <circle cx="30" cy="31" r="22" fill="#1b120c" stroke="#e7c27a" strokeWidth="2.6" />
+      <text x="30" y="39.5" textAnchor="middle" fontSize="24" fill="#f3dca4" fontFamily="Georgia, serif">
+        +{COUPS_BONUS_CASSE}
+      </text>
+    </svg>
+  );
+}
+function DessinSirene() {
+  return (
+    <svg className="casse-dessin casse-dessin-sirene" viewBox="0 0 100 100" aria-hidden="true">
+      <path className="casse-rayons" d="M50 3 V15 M15 14 L24 23 M85 14 L76 23 M3 46 H15 M97 46 H85" stroke="#ff5a44" strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M24 74 V50 Q24 24 50 24 Q76 24 76 50 V74 Z" fill="#b8231a" stroke="#e7c27a" strokeWidth="2.6" />
+      <path d="M34 52 Q34 36 46 32" fill="none" stroke="#ffc2b2" strokeWidth="5" strokeLinecap="round" />
+      <rect x="14" y="74" width="72" height="14" rx="3" fill="#1b120c" stroke="#e7c27a" strokeWidth="2.6" />
+    </svg>
+  );
+}
+
+/** Ce que cache un coffre ouvert : le dessin, et ce qu'il rapporte. */
+function ContenuCoffre({ c, mise, dispo, multiple }: { c: ContenuCasse; mise: number; dispo: Partial<Record<ImageBonus, boolean>>; multiple?: number }) {
+  const image = (nom: ImageBonus, repli: ReactNode) => (dispo[nom] ? <img className="casse-dessin" src={`/cartes/${nom}.webp`} alt="" draggable={false} /> : repli);
+  const [dessin, etiquette] =
+    c.type === 'billets'
+      ? [image('casse-billets', <DessinBillets />), `+${dollars(c.valeur * mise)}`]
+      : c.type === 'lingot'
+        ? [<img key="l" className="casse-dessin" src="/cartes/machine-lingot.webp" alt="" draggable={false} />, multiple ? `×${multiple}` : tr('Butin ×+1', 'Loot ×+1')]
+        : c.type === 'coups'
+          ? [image('casse-outils', <DessinOutils />), tr(`+${COUPS_BONUS_CASSE} coups`, `+${COUPS_BONUS_CASSE} moves`)]
+          : [image('casse-sirene', <DessinSirene />), tr('Sirène !', 'Siren!')];
+  return (
+    <>
+      {dessin}
+      <span className="casse-etiquette">{etiquette}</span>
+    </>
+  );
+}
+
+type BonusCasse = Extract<VueBonusMachine, { type: 'casse' }>;
+type ReponseCasse = BonusCasse & { fini: boolean; sirene: boolean; gain: number; tout?: ContenuCasse[] };
+
+function messageCasse(c: ContenuCasse, e: BonusCasse, mise: number): string {
+  if (c.type === 'billets') return tr(`Une liasse : ${dollars(c.valeur * mise)} de plus dans le sac.`, `A bundle: ${dollars(c.valeur * mise)} more in the bag.`);
+  if (c.type === 'lingot') return tr(`Un lingot d’or : le butin vaut maintenant ×${e.multiplicateur}.`, `A gold bar: the loot is now worth ×${e.multiplicateur}.`);
+  if (c.type === 'coups') return tr(`Les outils du perceur : +${COUPS_BONUS_CASSE} coups !`, `The safecracker’s tools: +${COUPS_BONUS_CASSE} moves!`);
+  return tr('La sirène ! La police débarque.', 'The siren! The police are coming.');
+}
+
+/** Le Casse du coffre : 12 coffres-forts, un coup par coffre ouvert, jusqu'à la sirène (ou au dernier coup). */
+function CasseDuCoffre({ bonus, appel, onVue, onFermer }: { bonus: BonusCasse; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
+  const dispo = useImagesBonus();
+  const mise = bonus.mise;
+  const [etat, setEtat] = useState<BonusCasse>(bonus);
+  const [ouvrant, setOuvrant] = useState<number | null>(null);
+  // Le multiplicateur atteint par chaque lingot ouvert (affiché dans son coffre).
+  const [multiples, setMultiples] = useState<Record<number, number>>({});
+  const [message, setMessage] = useState(() =>
+    bonus.ouverts.some(Boolean) ? tr('Le casse reprend. Choisis un coffre.', 'The heist resumes. Pick a safe.') : tr('Choisis un coffre. Gare à la sirène !', 'Pick a safe. Watch out for the siren!'),
+  );
+  const [fin, setFin] = useState<{ gain: number; sirene: boolean; tout: ContenuCasse[] } | null>(null);
+  const [alerte, setAlerte] = useState(false);
+  const [fete, setFete] = useState(false);
+  const minuteries = useRef<number[]>([]);
+  useEffect(() => () => minuteries.current.forEach((t) => window.clearTimeout(t)), []);
+  const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
+
+  const ouvrir = async (i: number) => {
+    if (ouvrant !== null || fin || etat.ouverts[i]) return;
+    setOuvrant(i);
+    jouerEffet('coffre_ouvre');
+    const r = (await appel('casino_casse', { index: i })) as { ok: boolean; erreur?: string; contenu?: ContenuCasse; casse?: ReponseCasse; casino?: VueCasino };
+    if (!r.ok || !r.contenu || !r.casse || !r.casino) {
+      setOuvrant(null);
+      setMessage(r.erreur ?? tr('Le coffre résiste… réessaie.', 'The safe resists… try again.'));
+      return;
+    }
+    const { contenu, casse } = r;
+    const nouvelle = r.casino;
+    // La porte tremble pendant que le cadran tourne, puis s'ouvre sur le contenu.
+    plusTard(() => {
+      setEtat(casse);
+      setOuvrant(null);
+      if (contenu.type === 'lingot') setMultiples((m) => ({ ...m, [i]: casse.multiplicateur }));
+      setMessage(messageCasse(contenu, casse, mise));
+      jouerEffet(contenu.type === 'billets' ? 'billets' : contenu.type === 'lingot' ? 'lingots' : contenu.type === 'coups' ? 'deblocage' : 'sirene');
+      if (contenu.type === 'sirene') setAlerte(true);
+      if (!casse.fini) return onVue(nouvelle);
+      plusTard(
+        () => {
+          setFin({ gain: casse.gain, sirene: casse.sirene, tout: casse.tout ?? [] });
+          onVue(nouvelle);
+          if (casse.gain >= MULTIPLE_GROS_GAIN * mise) {
+            setFete(true);
+            jouerEffet('roulette_gros_lot');
+          } else if (casse.gain > 0) jouerEffet('machine_pieces');
+        },
+        contenu.type === 'sirene' ? 1600 : 800,
+      );
+    }, mouvementReduit() ? 0 : 520);
+  };
+
+  return (
+    <div className={`cas-bonus casse ${alerte ? 'alerte' : ''}`} role="dialog" aria-label={tr('Le Casse du coffre', 'The Safe Heist')}>
+      <div className="cas-bonus-contenu">
+        <header className="cas-bonus-tete">
+          <h2>{tr('Le Casse du coffre', 'The Safe Heist')}</h2>
+          <span>{tr(`Mise du bonus : ${dollars(mise)}`, `Bonus bet: ${dollars(mise)}`)}</span>
+        </header>
+        <div className="casse-etat">
+          <div>
+            <small>{tr('Coups', 'Moves')}</small>
+            <strong key={`c${etat.coups}`}>{etat.coups}</strong>
+          </div>
+          <div>
+            <small>{tr('Butin', 'Loot')}</small>
+            <strong key={`b${etat.butin}`}>{dollars(etat.butin * mise)}</strong>
+          </div>
+          <div>
+            <small>{tr('Multiplicateur', 'Multiplier')}</small>
+            <strong key={`m${etat.multiplicateur}`}>×{etat.multiplicateur}</strong>
+          </div>
+        </div>
+        <div className="casse-grille">
+          {etat.ouverts.map((c, i) => {
+            const vu = c ?? (fin ? fin.tout[i] : null);
+            return (
+              <button
+                key={i}
+                type="button"
+                data-son="aucun"
+                className={`casse-coffre ${c ? 'ouvert' : ''} ${!c && vu ? 'revele' : ''} ${ouvrant === i ? 'ouvre' : ''} ${c?.type === 'sirene' ? 'sirene' : ''}`}
+                disabled={!!c || !!fin || ouvrant !== null}
+                onClick={() => void ouvrir(i)}
+                aria-label={c ? tr(`Coffre ${i + 1} : ouvert`, `Safe ${i + 1}: open`) : tr(`Ouvrir le coffre ${i + 1}`, `Open safe ${i + 1}`)}
+              >
+                <span className={`casse-interieur ${dispo['casse-coffre-ouvert'] ? 'image' : ''}`}>{vu && <ContenuCoffre c={vu} mise={mise} dispo={dispo} multiple={multiples[i]} />}</span>
+                <img className="casse-porte" src={dispo['casse-coffre-ferme'] ? '/cartes/casse-coffre-ferme.webp' : '/cartes/machine-coffre.webp'} alt="" draggable={false} />
+              </button>
+            );
+          })}
+        </div>
+        {fin ? (
+          <div className="casse-fin" role="status">
+            <p>{fin.sirene ? tr('La police débarque ! Tu files avec le butin.', 'The police are here! You run off with the loot.') : tr('Plus de coups : tu files avec le butin.', 'No moves left: you run off with the loot.')}</p>
+            {fin.gain > 0 ? (
+              <>
+                <GainDefilant gain={fin.gain} />
+                {etat.multiplicateur > 1 && (
+                  <small>
+                    {dollars(etat.butin * mise)} × {etat.multiplicateur}
+                  </small>
+                )}
+              </>
+            ) : (
+              <strong className="casse-vide">{tr('Les poches vides…', 'Empty pockets…')}</strong>
+            )}
+            <button type="button" className="principal large" onClick={onFermer}>
+              {fin.gain > 0 ? tr('Encaisser', 'Cash in') : tr('Retour à la machine', 'Back to the machine')}
+            </button>
+          </div>
+        ) : (
+          <p className="casse-message" role="status">
+            {message}
+          </p>
+        )}
+      </div>
+      {fete && fin && (
+        <Celebration
+          titre={tr('Le casse du siècle !', 'The heist of the century!')}
+          etiquette={tr(`Gain : ${dollars(fin.gain)}`, `Win: ${dollars(fin.gain)}`)}
+          medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(fin.gain)}</strong>}
+          legende={tr('Ajouté à ton solde', 'Added to your balance')}
+          onFermer={() => setFete(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Les 12 cases de la Roue du Baron (rouge sang et noir, la case verte du gros lot, la case dorée des tours gratuits). */
+const CASES_BARON: CaseRoue[] = ROUE_BARON.map((c, i) =>
+  c.type === 'grosLot'
+    ? { fond: COULEURS_ROUE.vert, lignes: [tr('GROS', 'JACK'), tr('LOT', 'POT')], petit: true }
+    : c.type === 'tours'
+      ? { fond: '#6a4914', lignes: [String(c.n), tr('TOURS', 'SPINS')], petit: true }
+      : { fond: i % 2 ? COULEURS_ROUE.noir : COULEURS_ROUE.rouge, lignes: [`×${c.x}`, tr('MISE', 'BET')], petit: true },
+);
+
+/** La Roue du Baron : le serveur tire la case ; la roue tourne ici jusqu'à elle. */
+function RoueDuBaron({ mise, appel, onVue, onFermer }: { mise: number; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
+  const dispo = useImagesBonus();
+  const [rotation, setRotation] = useState(0);
+  const [tourne, setTourne] = useState(false);
+  const [resultat, setResultat] = useState<{ case: number; gain: number; tours: number; grosLot: boolean } | null>(null);
+  const [fete, setFete] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const minuterie = useRef(0);
+  useEffect(() => () => window.clearTimeout(minuterie.current), []);
+  const angle = 360 / CASES_BARON.length;
+
+  const lancer = async () => {
+    if (tourne || resultat) return;
+    setErreur(null);
+    const r = (await appel('casino_roue_baron')) as { ok: boolean; erreur?: string; roueBaron?: { case: number; gain: number; tours: number; grosLot: boolean }; casino?: VueCasino };
+    if (!r.ok || !r.roueBaron || !r.casino) return setErreur(r.erreur ?? tr('La roue est bloquée… réessaie.', 'The wheel is stuck… try again.'));
+    const res = r.roueBaron;
+    const nouvelle = r.casino;
+    const cible = 360 * 7 + (360 - (res.case * angle + angle / 2)) + (Math.random() - 0.5) * angle * 0.6;
+    const fin = () => {
+      setTourne(false);
+      setResultat(res);
+      onVue(nouvelle);
+      const grand = res.grosLot || res.tours > 0 || res.gain >= MULTIPLE_GROS_GAIN * mise;
+      if (grand) setFete(true);
+      jouerEffet(grand ? 'roulette_gros_lot' : 'roulette_gain');
+    };
+    if (mouvementReduit()) {
+      setRotation(cible % 360);
+      return fin();
+    }
+    jouerEffet('roulette_depart');
+    setTourne(true);
+    setRotation(0);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => setRotation(cible)));
+    minuterie.current = window.setTimeout(fin, DUREE_ROUE_MS + 150);
+  };
+
+  const c = resultat ? ROUE_BARON[resultat.case] : null;
+  return (
+    <div className="cas-bonus roue-baron" role="dialog" aria-label={tr('La Roue du Baron', 'The Baron’s Wheel')}>
+      <div className="cas-bonus-contenu">
+        <header className="cas-bonus-tete">
+          <img src={dispo['roue-baron'] ? '/cartes/roue-baron.webp' : '/cartes/machine-couronne.webp'} alt="" draggable={false} />
+          <h2>{tr('La Roue du Baron', 'The Baron’s Wheel')}</h2>
+          <span>{tr(`Mise du bonus : ${dollars(mise)}`, `Bonus bet: ${dollars(mise)}`)}</span>
+        </header>
+        <Roue cases={CASES_BARON} rotation={rotation} tourne={tourne} gagnante={resultat?.case ?? null} pieces={!!resultat && !fete && resultat.gain > 0} />
+        {resultat && c ? (
+          <>
+            <div className="roulette-resultat" role="status">
+              <div>
+                {c.type === 'tours' ? (
+                  <strong className="roulette-xp-gagne">{tr(`${resultat.tours} tours gratuits`, `${resultat.tours} free spins`)}</strong>
+                ) : (
+                  <GainDefilant gain={resultat.gain} />
+                )}
+                <span>
+                  {c.type === 'tours'
+                    ? tr(`Gains ×${MULTIPLICATEUR_GRATUIT}, à ${dollars(mise)} le tour.`, `Wins ×${MULTIPLICATEUR_GRATUIT}, at ${dollars(mise)} a spin.`)
+                    : c.type === 'grosLot'
+                      ? tr('Le gros lot du salon !', 'The lounge jackpot!')
+                      : tr(`×${c.x} la mise, ajoutés à ton solde.`, `×${c.x} the bet, added to your balance.`)}
+                </span>
+              </div>
+            </div>
+            <button type="button" className="principal large" onClick={onFermer}>
+              {c.type === 'tours' ? tr('Jouer les tours gratuits', 'Play the free spins') : tr('Retour à la machine', 'Back to the machine')}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="principal large bouton-tourner" disabled={tourne} onClick={() => void lancer()}>
+            {tourne ? tr('La roue tourne…', 'Spinning…') : tr('Lancer la roue', 'Spin the wheel')}
+          </button>
+        )}
+        {erreur && <p className="cas-erreur">{erreur}</p>}
+      </div>
+      {fete && resultat && c && (
+        <Celebration
+          titre={c.type === 'grosLot' ? tr('Gros lot du salon !', 'Lounge jackpot!') : c.type === 'tours' ? tr('Tours gratuits !', 'Free spins!') : tr(`×${c.type === 'multiple' ? c.x : ''} la mise !`, `×${c.type === 'multiple' ? c.x : ''} the bet!`)}
+          etiquette={c.type === 'tours' ? tr(`${resultat.tours} tours gratuits`, `${resultat.tours} free spins`) : tr(`Gain : ${dollars(resultat.gain)}`, `Win: ${dollars(resultat.gain)}`)}
+          medaillon={
+            c.type === 'tours' ? (
+              <div className="cas-medaillon-bonus">
+                <Symbole s="couronne" />
+                <strong>{resultat.tours}</strong>
+              </div>
+            ) : (
+              <strong className="celebration-xp cas-medaillon-gain">{dollars(resultat.gain)}</strong>
+            )
+          }
+          legende={c.type === 'tours' ? tr(`${resultat.tours} tours, gains doublés`, `${resultat.tours} spins, double wins`) : tr('Ajouté à ton solde', 'Added to your balance')}
+          onFermer={() => setFete(false)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -244,19 +625,24 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   const [enCours, setEnCours] = useState(false);
   const [auto, setAuto] = useState(0);
   const [soldeAffiche, setSoldeAffiche] = useState(vue.solde);
-  const [fete, setFete] = useState<'gros' | 'grosLot' | 'bonus' | null>(null);
+  const [fete, setFete] = useState<'gros' | 'grosLot' | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [gains, setGains] = useState(false);
+  // Bonus à jouer (casse ou roue) : repris tel quel en revenant à la machine.
+  const [bonus, setBonus] = useState<VueBonusMachine | null>(vue.bonus);
+  const vueRef = useRef(vue);
+  vueRef.current = vue;
   const minuteries = useRef<number[]>([]);
   const autoRef = useRef(0);
   autoRef.current = auto;
   useEffect(() => () => minuteries.current.forEach((t) => window.clearTimeout(t)), []);
+  useEffect(prechargerImagesBonus, []);
   useEffect(() => {
     if (!enCours) setSoldeAffiche(vue.solde);
   }, [vue.solde, enCours]);
   const solde = useSoldeAnime(soldeAffiche);
   const gratuits = vue.toursGratuits;
-  const peutJouer = !enCours && (gratuits > 0 || vue.solde >= mise);
+  const peutJouer = !enCours && !vue.bonus && (gratuits > 0 || vue.solde >= mise);
 
   const lancer = useCallback(async () => {
     if (enCours) return;
@@ -286,12 +672,17 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
       const grand = m.grosLot || m.gain >= MULTIPLE_GROS_GAIN * m.mise;
       if (m.grosLot) setFete('grosLot');
       else if (grand) setFete('gros');
-      else if (m.toursGagnes) setFete('bonus');
-      if (grand || m.toursGagnes) jouerEffet('roulette_gros_lot');
+      if (grand) jouerEffet('roulette_gros_lot');
       else if (m.gain > 0) jouerEffet(m.gain >= 5 * m.mise ? 'roulette_gain' : 'machine_pieces');
-      // Tours auto : on continue, sauf après un gros gain.
+      // Casse ou roue : les symboles brillent un instant, puis le bonus s'ouvre par-dessus la machine.
+      if (nouvelle.bonus) {
+        jouerEffet('casino_annonce');
+        const t = window.setTimeout(() => setBonus(vueRef.current.bonus), reduit ? 0 : 1300);
+        minuteries.current.push(t);
+      }
+      // Tours auto : on continue, sauf après un gros gain ou un bonus.
       if (autoRef.current > 0) {
-        if (grand) setAuto(0);
+        if (grand || nouvelle.bonus) setAuto(0);
         else {
           const t = window.setTimeout(() => {
             setAuto((a) => Math.max(0, a - 1));
@@ -324,6 +715,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   const gagnantes = new Set<number>();
   for (const l of tour?.lignes ?? []) for (let r = 0; r < l.nombre; r++) gagnantes.add(r * 3 + LIGNES[l.ligne][r]);
   if (tour && tour.coffres >= 3) tour.grille.forEach((col, r) => col.forEach((s, k) => s === 'coffre' && gagnantes.add(r * 3 + k)));
+  if (tour?.roue) [0, 4].forEach((r) => tour.grille[r].forEach((s, k) => s === 'couronne' && gagnantes.add(r * 3 + k)));
   const changerMise = (sens: number) => {
     const i = MISES_MACHINE.indexOf(mise);
     jouerEffet('jeton');
@@ -367,9 +759,14 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
         </div>
         <div className="cas-resultat" role="status">
           {tour && !enCours ? (
-            tour.gain > 0 ? (
+            tour.gain > 0 || tour.casse || tour.roue ? (
               <>
-                <GainDefilant key={tour.arrets.join('-')} gain={tour.gain} delai={0} />
+                {tour.gain > 0 && <GainDefilant key={tour.arrets.join('-')} gain={tour.gain} delai={0} />}
+                {(tour.casse || tour.roue) && (
+                  <strong className="cas-bonus-annonce">
+                    {[...(tour.casse ? [tr('Le Casse du coffre !', 'The Safe Heist!')] : []), ...(tour.roue ? [tr('La Roue du Baron !', 'The Baron’s Wheel!')] : [])].join(' · ')}
+                  </strong>
+                )}
                 <span>
                   {[
                     ...tour.lignes.slice(0, 2).map((l) => `${l.nombre} × ${nomSymbole(l.symbole)}`),
@@ -378,7 +775,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
                   ]
                     .filter((x, i, t) => t.indexOf(x) === i)
                     .join(' · ')}
-                  {tour.gratuit && ` (×${MULTIPLICATEUR_GRATUIT})`}
+                  {tour.gratuit && tour.gain > 0 && ` (×${MULTIPLICATEUR_GRATUIT})`}
                 </span>
               </>
             ) : (
@@ -427,25 +824,24 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
               {tr('Gains', 'Paytable')}
             </button>
           </div>
-          {!peutJouer && !enCours && gratuits === 0 && <p className="cas-erreur">{tr('Solde insuffisant : baisse la mise ou tourne la roulette du salon.', 'Not enough money: lower the bet or spin the lounge wheel.')}</p>}
+          {!peutJouer && !enCours && gratuits === 0 && !vue.bonus && <p className="cas-erreur">{tr('Solde insuffisant : baisse la mise ou tourne la roulette du salon.', 'Not enough money: lower the bet or spin the lounge wheel.')}</p>}
         </div>
       </div>
       {gains && <TableDesGains onFermer={() => setGains(false)} />}
+      {bonus &&
+        !enCours &&
+        !fete &&
+        (bonus.type === 'casse' ? (
+          <CasseDuCoffre bonus={bonus} appel={appel} onVue={onVue} onFermer={() => setBonus(vueRef.current.bonus)} />
+        ) : (
+          <RoueDuBaron mise={bonus.mise} appel={appel} onVue={onVue} onFermer={() => setBonus(vueRef.current.bonus)} />
+        ))}
       {fete && tour && (
         <Celebration
-          titre={fete === 'grosLot' ? tr('Gros lot du salon !', 'Lounge jackpot!') : fete === 'bonus' ? tr('Tours gratuits !', 'Free spins!') : tr('Gros gain !', 'Big win!')}
-          etiquette={fete === 'bonus' ? tr(`${TOURS_GRATUITS} tours gratuits`, `${TOURS_GRATUITS} free spins`) : tr(`Gain : ${dollars(tour.gain)}`, `Win: ${dollars(tour.gain)}`)}
-          medaillon={
-            fete === 'bonus' ? (
-              <div className="cas-medaillon-bonus">
-                <Symbole s="coffre" />
-                <strong>×{MULTIPLICATEUR_GRATUIT}</strong>
-              </div>
-            ) : (
-              <strong className="celebration-xp cas-medaillon-gain">{dollars(tour.gain)}</strong>
-            )
-          }
-          legende={fete === 'bonus' ? tr(`${TOURS_GRATUITS} tours, gains doublés`, `${TOURS_GRATUITS} spins, double wins`) : tr('Ajouté à ton solde', 'Added to your balance')}
+          titre={fete === 'grosLot' ? tr('Gros lot du salon !', 'Lounge jackpot!') : tr('Gros gain !', 'Big win!')}
+          etiquette={tr(`Gain : ${dollars(tour.gain)}`, `Win: ${dollars(tour.gain)}`)}
+          medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(tour.gain)}</strong>}
+          legende={tr('Ajouté à ton solde', 'Added to your balance')}
           onFermer={() => setFete(null)}
         />
       )}
@@ -479,7 +875,11 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
   const texte =
     annonce.jeu === 'roue'
       ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la roulette du salon !`, `${annonce.nom} won ${dollars(annonce.gain)} on the lounge wheel!`)
-      : annonce.grosLot
+      : annonce.jeu === 'casse'
+        ? tr(`${annonce.nom} a raflé ${dollars(annonce.gain)} au Casse du coffre !`, `${annonce.nom} grabbed ${dollars(annonce.gain)} in the Safe Heist!`)
+        : annonce.jeu === 'roueBaron' && !annonce.grosLot
+          ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la Roue du Baron !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Baron’s Wheel!`)
+          : annonce.grosLot
         ? tr(`${annonce.nom} a décroché le gros lot : ${dollars(annonce.gain)} !`, `${annonce.nom} hit the jackpot: ${dollars(annonce.gain)}!`)
         : tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la machine à sous !`, `${annonce.nom} won ${dollars(annonce.gain)} on the slot machine!`);
   return (
