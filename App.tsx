@@ -3,7 +3,7 @@ import { MAX_JOUEURS, MIN_JOUEURS, NB_AVATARS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
 import { NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, TRANCHES_EN } from '../../shared/langue';
 import { EN, pluriel, tr } from './traduction';
-import type { Invitation, ListeAmis, MeneurSemaine, ProfilCompte, ProfilPublic, VueClassement, VueSalon } from '../../shared/types';
+import type { Invitation, ListeAmis, MeneurSemaine, ProfilCompte, ProfilPublic, RecompenseSemaine, VueClassement, VueSalon } from '../../shared/types';
 import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
 import {
@@ -28,7 +28,7 @@ import { tutorielDejaVu } from './Tutoriel';
 import { FenetreSignalementGlobale } from './Moderation';
 import { AVATARS } from './textes';
 import { BoutonMusique, Chat, Couronne, CouronneRang, Defilant, Fenetre, IconeImage, IconeMusique, jouerEffet, useMusique } from './ui';
-import { BanniereBaron, FenetreClassement } from './Classement';
+import { BanniereBaron, CelebrationRecompense, FenetreClassement } from './Classement';
 import { BoutonRoulette, FenetreRoulette } from './RouletteDuJour';
 import type { GainRoulette } from '../../shared/roulette';
 
@@ -44,6 +44,7 @@ type Reponse = {
   liste?: ListeAmis | null;
   classement?: VueClassement;
   roulette?: { case: number; gain: GainRoulette; niveauAvant: number; niveau: number };
+  recompense?: RecompenseSemaine;
 };
 export type Appel = (evenement: string, data?: unknown) => Promise<Reponse>;
 export type EnLigne = { joueurs: number; enAttente: number; baron?: MeneurSemaine | null };
@@ -216,6 +217,8 @@ export function App() {
   const [pret, setPret] = useState(false);
   const [utilisateur, setUtilisateur] = useState<Utilisateur | null>(null);
   const [profil, setProfil] = useState<ProfilCompte | null>(null);
+  // XP du classement de la semaine dernière, reçue à la connexion : fêtée dès que le joueur est à l'accueil.
+  const [recompense, setRecompense] = useState<RecompenseSemaine | null>(null);
   const [chargement, setChargement] = useState(false);
   const moduleRef = useRef<ModuleConnexion | null>(null);
   const utilisateurRef = useRef<Utilisateur | null>(null);
@@ -234,13 +237,15 @@ export function App() {
     const r = jeton ? await demander('identifier', { jeton }) : { ok: false, erreur: tr('Session expirée : reconnecte-toi à ton compte.', 'Session expired: please sign in again.') };
     setChargement(false);
     if (r.ok) setProfil((r.profil as ProfilCompte | null | undefined) ?? null);
-    else if (r.erreur && r.erreur !== 'Patiente une seconde.' && r.erreur !== 'Wait a second.') setMessage(r.erreur);
+    if (r.ok && r.recompense) setRecompense(r.recompense);
+    else if (!r.ok && r.erreur && r.erreur !== 'Patiente une seconde.' && r.erreur !== 'Wait a second.') setMessage(r.erreur);
   }, []);
 
   const rafraichir = useCallback(async () => {
     if (!utilisateurRef.current) return;
     const r = await demander('profil');
     if (r.ok && r.profil) setProfil(r.profil as ProfilCompte);
+    if (r.ok && r.recompense) setRecompense(r.recompense);
     else if (!r.ok) void identifier();
   }, [identifier]);
 
@@ -409,6 +414,7 @@ export function App() {
     <>
       {ecran}
       {salon && !salon.partie && <Chat salon={salon} appel={appel} />}
+      {recompense && !salon && !reprise && <CelebrationRecompense recompense={recompense} onFermer={() => setRecompense(null)} />}
       {!connecte && <div className="bandeau-reseau">{tr('Connexion perdue. Reconnexion en cours…', 'Connection lost. Reconnecting…')}</div>}
       {!enPartie && invitations.length > 0 && (
         <div className="invitations" role="status">

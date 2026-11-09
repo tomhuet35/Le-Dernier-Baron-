@@ -881,3 +881,42 @@ export function IconeImage({ nom, repli, className }: { nom: string; repli: stri
   }
   return <img className={className} src={`/cartes/icone-${nom}.webp`} alt="" draggable={false} onError={() => setEchec(true)} />;
 }
+
+/**
+ * Grande célébration plein écran : l'écran s'assombrit, des rayons dorés tournent, le médaillon surgit dans un cercle
+ * d'or et une pluie de pièces et de confettis tombe. Un toucher referme ; sinon elle se referme seule.
+ */
+export function Celebration({ titre, etiquette, medaillon, legende, onFermer }: { titre: string; etiquette: string; medaillon: ReactNode; legende: string; onFermer: () => void }) {
+  // La fonction est gardée dans une ref : le minuteur ne repart pas à chaque rendu.
+  const fermer = useRef(onFermer);
+  fermer.current = onFermer;
+  useEffect(() => {
+    const t = window.setTimeout(() => fermer.current(), 7000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return (
+    <div className="celebration" role="dialog" aria-label={etiquette} onClick={onFermer}>
+      <div className="celebration-rayons" aria-hidden="true" />
+      <div className="celebration-pluie" aria-hidden="true">
+        {Array.from({ length: 46 }, (_, k) => (
+          <i
+            key={k}
+            className={k % 3 === 0 ? 'piece' : `confetti c${k % 4}`}
+            style={{ left: `${(k * 37) % 100}%`, animationDelay: `${((k * 71) % 1600) / 1000}s`, animationDuration: `${2.4 + ((k * 13) % 12) / 10}s`, '--r': `${(k * 53) % 360}deg` } as CSSProperties}
+          />
+        ))}
+      </div>
+      <p className="celebration-titre">{titre}</p>
+      <div className="celebration-medaillon">
+        <span className="celebration-eclats" aria-hidden="true">
+          {Array.from({ length: 16 }, (_, k) => (
+            <i key={k} style={{ '--a': `${k * 22.5}deg`, '--l': `${92 + (k % 3) * 18}px` } as CSSProperties} />
+          ))}
+        </span>
+        {medaillon}
+      </div>
+      <p className="celebration-nom">{legende}</p>
+      <span className="celebration-suite">{tr('Touche pour continuer', 'Tap to continue')}</span>
+    </div>
+  );
+}

@@ -8,6 +8,13 @@ export const XP_PARTIE = 10;
 export const XP_VICTOIRE = 100;
 export const XP_NUIT = 20;
 
+/**
+ * Récompenses du classement de la semaine : chaque lundi, les 10 premiers de la semaine qui vient de finir gagnent de
+ * l'XP (500 pour le 1er, 300 pour le 2e, 200 pour le 3e, puis 100 du 4e au 10e).
+ */
+export const RECOMPENSES_SEMAINE = [500, 300, 200, 100, 100, 100, 100, 100, 100, 100];
+export const xpRecompenseSemaine = (rang: number): number => RECOMPENSES_SEMAINE[rang - 1] ?? 0;
+
 /** Titres du niveau 1 au niveau 10 ; au-delà, on reste Baron (avec le numéro du niveau). */
 export const TITRES = [
   'Petite frappe',

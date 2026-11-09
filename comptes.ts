@@ -60,6 +60,8 @@ export interface StatsCompte {
   personnages?: number[];
   /** Dernier jour (heure de Paris, « 2026-11-05 ») où la roulette a été tournée. */
   roulette?: string;
+  /** Dernière semaine (« 2026-S45 ») dont la récompense du classement a été donnée. */
+  recompenseSemaine?: string;
 }
 
 /** Signalement d'un joueur par un autre (gardé 6 mois pour vérification). */
@@ -145,6 +147,8 @@ export interface ServiceComptes {
   donnerBadgeCreateur(uid: string): Promise<StatsCompte | null>;
   /** Roulette du jour : applique la case tirée ; « deja » si elle a déjà été tournée ce jour-là, null sans compte. */
   tournerRoulette(uid: string, jour: string, tirage: number): Promise<{ stats: StatsCompte; gain: GainRoulette; xpAvant: number } | 'deja' | null>;
+  /** Récompense du classement de la semaine : ajoute l'XP ; « deja » si cette semaine a déjà été récompensée, null sans compte. */
+  recompenserSemaine(uid: string, semaine: string, xp: number): Promise<{ stats: StatsCompte; xpAvant: number } | 'deja' | null>;
   /** Ajoute (ou rafraîchit) l'abonnement aux notifications d'un appareil ; les plus anciens partent au-delà de 5. */
   abonnerPush(uid: string, abonnement: Omit<AbonnementPush, 'depuis'>): Promise<StatsCompte | null>;
   /** Retire des abonnements (désactivés par le joueur, ou expirés). */
@@ -258,6 +262,7 @@ export function normaliserStats(brut: unknown): StatsCompte | null {
     ...(d.createur === true ? { createur: true } : {}),
     ...(Array.isArray(d.personnages) ? { personnages: PERSONNAGES_ROULETTE.filter((p) => (d.personnages as unknown[]).includes(p)) } : {}),
     ...(typeof d.roulette === 'string' ? { roulette: d.roulette } : {}),
+    ...(typeof d.recompenseSemaine === 'string' ? { recompenseSemaine: d.recompenseSemaine } : {}),
   };
 }
 
@@ -449,6 +454,21 @@ export function creerServiceComptes(parties: {
           : { ...base, roulette: jour, personnages: [...perso, gain.avatar], majLe: Date.now() };
       });
       return res.gain ? { stats, gain: res.gain, xpAvant: res.xpAvant } : 'deja';
+    },
+    recompenserSemaine: async (uid, semaine, xp) => {
+      const actuel = await stockage.lire(uid);
+      if (!actuel) return null;
+      if (actuel.recompenseSemaine === semaine) return 'deja';
+      const res = { donne: false, xpAvant: actuel.xp };
+      const stats = await stockage.modifier(uid, (avant) => {
+        const base = avant ?? actuel;
+        res.donne = false;
+        if (base.recompenseSemaine === semaine) return base;
+        res.donne = true;
+        res.xpAvant = base.xp;
+        return { ...base, recompenseSemaine: semaine, xp: base.xp + xp, majLe: Date.now() };
+      });
+      return res.donne ? { stats, xpAvant: res.xpAvant } : 'deja';
     },
     abonnerPush: async (uid, abonnement) => {
       if (!(await stockage.lire(uid))) return null;

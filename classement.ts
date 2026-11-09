@@ -118,6 +118,8 @@ export interface Classement {
   couronneDe(uid: string | null | undefined): Rang | null;
   /** Place et meilleur score du joueur cette semaine. */
   rangDe(uid: string): { rang: number; score: number } | null;
+  /** Place du joueur à la fin de la semaine dernière (pour sa récompense en XP). */
+  rangPrecedent(uid: string): Promise<{ semaine: Semaine; rang: number } | null>;
   /** Premier de la semaine (ou, s'il n'y a encore aucun score, de la semaine dernière) : bannière de l'accueil. */
   meneur(): MeneurSemaine | null;
   vue(uid: string | null, taille?: number): Promise<VueClassement>;
@@ -213,6 +215,13 @@ export function creerClassement(stockage: StockageClassement, horloge: () => num
       const e = courante.scores.get(uid);
       if (!e) return null;
       return { rang: 1 + [...courante.scores.values()].filter((x) => avant(x, e) < 0).length, score: e.score };
+    },
+    async rangPrecedent(uid) {
+      verifierSemaine();
+      const prec = await precedenteChargee();
+      const e = prec?.scores.get(uid);
+      if (!prec || !e) return null;
+      return { semaine: prec.semaine, rang: 1 + [...prec.scores.values()].filter((x) => avant(x, e) < 0).length };
     },
     meneur() {
       verifierSemaine();

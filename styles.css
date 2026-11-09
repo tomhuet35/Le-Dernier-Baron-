@@ -1300,6 +1300,10 @@ button.mini-carte img { box-shadow: 0 0 0 2px rgba(231, 194, 122, 0.55), 0 4px 1
 .semaine-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
 .semaine-nom small { color: var(--creme-doux); font-size: 12px; }
 .semaine-liste .semaine-score { min-width: 40px; text-align: right; color: var(--or-vif); font-size: 15px; }
+.semaine-fin { display: grid; justify-items: end; line-height: 1.15; }
+.semaine-gain-ligne { font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; color: #9fd6b3; white-space: nowrap; }
+.semaine-gain { margin-top: 3px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(159, 214, 179, 0.45); background: rgba(15, 107, 58, 0.35); font-size: 11.5px; font-weight: 700; color: #c9f0d6; white-space: nowrap; }
+.place-1 .semaine-gain { border-color: rgba(231, 194, 122, 0.7); background: rgba(15, 107, 58, 0.55); color: #fff1c4; }
 .semaine-moi { padding: 8px 12px; border-radius: 10px; border: 1px dashed var(--or); text-align: center; font-size: 14px; }
 .semaine-moi strong { color: var(--or-vif); }
 .semaine-astuce { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--filet); background: rgba(231, 194, 122, 0.08); font-size: 13.5px; text-align: center; }
@@ -1415,7 +1419,7 @@ button.bouton-regarder:hover:not(:disabled) { background: rgba(231, 194, 122, 0.
 @keyframes celebration-titre { from { opacity: 0; transform: translateY(-30px) scale(0.6); letter-spacing: 0.4em; } }
 .celebration-medaillon { position: relative; display: grid; place-items: center; width: 170px; height: 170px; border-radius: 50%; background: radial-gradient(circle at 40% 30%, #fff2c6, #d2a85a 45%, #7a5418 85%); box-shadow: 0 0 0 4px rgba(22, 16, 12, 0.9), 0 0 50px 12px rgba(231, 194, 122, 0.55); animation: medaillon 0.9s cubic-bezier(0.25, 1.6, 0.5, 1) 0.35s both; }
 @keyframes medaillon { 0% { opacity: 0; transform: scale(0) rotate(-200deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
-.celebration-medaillon img { width: 152px; height: 152px; border-radius: 50%; object-fit: cover; border: 3px solid #5a3d12; }
+.celebration-medaillon > img { width: 152px; height: 152px; border-radius: 50%; object-fit: cover; border: 3px solid #5a3d12; }
 .celebration-xp { display: grid; place-content: center; justify-items: center; gap: 4px; width: 152px; height: 152px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #13703f, #0a3d22); border: 3px solid #5a3d12; font-family: var(--titre); font-weight: 400; font-size: 44px; line-height: 0.9; color: #fff1c4; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
 .celebration-xp small { font-family: var(--texte); font-size: 16px; font-weight: 800; letter-spacing: 0.12em; color: var(--or-vif); }
 .celebration-eclats { position: absolute; inset: 0; pointer-events: none; }
@@ -1436,3 +1440,10 @@ button.bouton-regarder:hover:not(:disabled) { background: rgba(231, 194, 122, 0.
   .celebration-rayons, .celebration-pluie, .roue-pieces { display: none; }
   .celebration-medaillon, .celebration-titre, .celebration-nom, .celebration-eclats i, .roue-case-gagnante, .roulette-xp-gagne { animation: none !important; }
 }
+
+/* Récompense du classement de la semaine (célébration du lundi) */
+.celebration-recompense { display: grid; place-content: center; justify-items: center; width: 152px; height: 152px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #3a1712, #160b08 78%); border: 3px solid #5a3d12; color: #fff1c4; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
+.celebration-recompense strong { font-family: var(--titre); font-weight: 400; font-size: 40px; line-height: 0.95; font-variant-numeric: tabular-nums; }
+.celebration-recompense small { font-size: 14px; font-weight: 800; letter-spacing: 0.14em; color: var(--or-vif); }
+.celebration-recompense-couronne { width: 62px; height: auto; margin-bottom: 4px; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
+.celebration-recompense-rang { margin-bottom: 2px; font-family: var(--titre); font-size: 22px; color: var(--or-vif); }

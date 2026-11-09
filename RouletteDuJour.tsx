@@ -10,7 +10,7 @@ import type { Appel } from './App';
 import type { EtatCompte } from './Profil';
 import { AVATARS } from './textes';
 import { tr } from './traduction';
-import { Fenetre, jouerEffet, mouvementReduit, useCompteur } from './ui';
+import { Celebration, Fenetre, jouerEffet, mouvementReduit, useCompteur } from './ui';
 
 const N = CASES_ROULETTE.length;
 const ANGLE = 360 / N;
@@ -257,7 +257,30 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
           {tourne ? tr('La roue tourne…', 'Spinning…') : attente ? tr(`Prochain tour dans ${attente}`, `Next spin in ${attente}`) : tr('Tourner la roue', 'Spin the wheel')}
         </button>
       )}
-      {celebration && resultat && <Celebration gain={resultat.gain} nom={resultat.gain.type === 'personnage' ? nomPerso(resultat.gain.avatar) : ''} onFermer={() => setCelebration(false)} />}
+      {celebration &&
+        resultat &&
+        (resultat.gain.type === 'personnage' ? (
+          <Celebration
+            titre={tr('Nouveau personnage\u00a0!', 'New character!')}
+            etiquette={tr(`Nouveau personnage : ${nomPerso(resultat.gain.avatar)}`, `New character: ${nomPerso(resultat.gain.avatar)}`)}
+            medaillon={<img src={`/cartes/avatar-${resultat.gain.avatar}.webp`} alt="" />}
+            legende={nomPerso(resultat.gain.avatar)}
+            onFermer={() => setCelebration(false)}
+          />
+        ) : (
+          <Celebration
+            titre={tr('Gros lot\u00a0!', 'Jackpot!')}
+            etiquette={tr(`Gros lot : ${resultat.gain.xp} XP`, `Jackpot: ${resultat.gain.xp} XP`)}
+            medaillon={
+              <strong className="celebration-xp">
+                +{resultat.gain.xp}
+                <small>XP</small>
+              </strong>
+            }
+            legende={tr('Ajoutés à ton expérience', 'Added to your experience')}
+            onFermer={() => setCelebration(false)}
+          />
+        ))}
     </Fenetre>
   );
 }
@@ -266,46 +289,6 @@ export function FenetreRoulette({ compte, appel, onFermer }: { compte: EtatCompt
 function CompteurXp({ xp }: { xp: number }) {
   const valeur = useCompteur(xp, 0, 120, 900);
   return <strong className="roulette-xp-gagne">+{valeur} XP</strong>;
-}
-
-/**
- * Personnage gagné (ou gros lot) : l'écran s'assombrit, des rayons dorés tournent, le personnage (ou le gros lot)
- * surgit dans un cercle d'or, et une pluie de confettis et de pièces tombe. Un toucher referme.
- */
-function Celebration({ gain, nom, onFermer }: { gain: GainRoulette; nom: string; onFermer: () => void }) {
-  // Se referme seule après quelques secondes (la fonction est gardée dans une ref : le minuteur ne repart pas à chaque rendu).
-  const fermer = useRef(onFermer);
-  fermer.current = onFermer;
-  useEffect(() => {
-    const t = window.setTimeout(() => fermer.current(), 7000);
-    return () => window.clearTimeout(t);
-  }, []);
-  const perso = gain.type === 'personnage';
-  return (
-    <div className="celebration" role="dialog" aria-label={perso ? tr(`Nouveau personnage : ${nom}`, `New character: ${nom}`) : tr('Gros lot', 'Jackpot')} onClick={onFermer}>
-      <div className="celebration-rayons" aria-hidden="true" />
-      <div className="celebration-pluie" aria-hidden="true">
-        {Array.from({ length: 46 }, (_, k) => (
-          <i
-            key={k}
-            className={k % 3 === 0 ? 'piece' : `confetti c${k % 4}`}
-            style={{ left: `${(k * 37) % 100}%`, animationDelay: `${((k * 71) % 1600) / 1000}s`, animationDuration: `${2.4 + ((k * 13) % 12) / 10}s`, '--r': `${(k * 53) % 360}deg` } as React.CSSProperties}
-          />
-        ))}
-      </div>
-      <p className="celebration-titre">{perso ? tr('Nouveau personnage\u00a0!', 'New character!') : tr('Gros lot\u00a0!', 'Jackpot!')}</p>
-      <div className="celebration-medaillon">
-        <span className="celebration-eclats" aria-hidden="true">
-          {Array.from({ length: 16 }, (_, k) => (
-            <i key={k} style={{ '--a': `${k * 22.5}deg`, '--l': `${92 + (k % 3) * 18}px` } as React.CSSProperties} />
-          ))}
-        </span>
-        {perso ? <img src={`/cartes/avatar-${gain.avatar}.webp`} alt="" /> : <strong className="celebration-xp">+{gain.xp}<small>XP</small></strong>}
-      </div>
-      <p className="celebration-nom">{perso ? nom : tr('Ajoutés à ton expérience', 'Added to your experience')}</p>
-      <span className="celebration-suite">{tr('Touche pour continuer', 'Tap to continue')}</span>
-    </div>
-  );
 }
 
 /** Accueil : le bouton de la roulette du jour (avec une pastille quand un tour est disponible). */

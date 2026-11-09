@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { creerClassement, semaineDe, stockageClassementMemoire } from '../server/classement';
 import { authentificationTest, creerServiceComptes, stockageMemoire } from '../server/comptes';
 import { demarrerServeur } from '../server/serveur';
+import { RECOMPENSES_SEMAINE, xpRecompenseSemaine } from '../shared/niveaux';
 import { actionRobot } from '../shared/robot';
 import type { ListeAmis, VueClassement, VueSalon } from '../shared/types';
 
@@ -253,4 +254,58 @@ describe('Classement et spectateurs de bout en bout', () => {
     expect((await emettre(noe, 'regarder', { code: codeLea })).erreur).toMatch(/pas en train de jouer/);
     [lea, max, noe].forEach((s) => s.close());
   }, 15_000);
+});
+
+// ---------- Récompenses du classement : de l'XP pour les 10 premiers, chaque lundi ----------
+
+describe('Récompenses du classement de la semaine', () => {
+  it('donne 500, 300 et 200 XP au podium, puis 100 jusqu’au 10e, et rien après', () => {
+    expect([1, 2, 3, 4, 10, 11, 50].map(xpRecompenseSemaine)).toEqual([500, 300, 200, 100, 100, 0, 0]);
+    expect(RECOMPENSES_SEMAINE).toHaveLength(10);
+  });
+
+  it('ajoute l’XP une seule fois, à la première connexion de la semaine suivante', async () => {
+    const ids = {
+      'jeton-or': { uid: 'uid-or', nom: 'Oriane', email: 'or@gmail.com' },
+      'jeton-argent': { uid: 'uid-argent', nom: 'Arthur', email: 'ar@gmail.com' },
+      'jeton-loin': { uid: 'uid-loin', nom: 'Lou', email: 'lou@gmail.com' },
+    };
+    const st = stockageMemoire();
+    const svc = creerServiceComptes({ configWeb: { apiKey: 'cle', authDomain: 'test.firebaseapp.com', projectId: 'test' }, authentification: authentificationTest(ids), stockage: st });
+    // Semaine dernière (S45) : Oriane 1re, Arthur 2e, dix autres joueurs, puis Lou 13e.
+    const s45 = semaineDe(Date.parse('2026-11-05T12:00:00Z'));
+    const noter = (uid: string, nom: string, score: number) => st.classements.noterClassement(s45, uid, { nom, avatar: 1, niveau: 2, score, date: s45.debut + 1000 });
+    await noter('uid-or', 'Oriane', 300);
+    await noter('uid-argent', 'Arthur', 250);
+    for (let k = 0; k < 10; k++) await noter(`uid-autre-${k}`, `Autre ${k}`, 200 - k);
+    await noter('uid-loin', 'Lou', 50);
+    // On est le mardi suivant.
+    const srv = await demarrerServeur({ port: 0, servirClient: false, comptes: svc, horloge: () => Date.parse('2026-11-10T09:00:00Z') });
+    const brancher = () => io(`http://localhost:${srv.port}`, { transports: ['websocket'], forceNew: true });
+    try {
+      const or = brancher();
+      const premiere = await emettre(or, 'identifier', { jeton: 'jeton-or' });
+      expect(premiere.recompense).toMatchObject({ rang: 1, xp: 500, debut: s45.debut, fin: s45.fin, niveauAvant: 1, niveau: 4 });
+      expect(premiere.profil.xp).toBe(500);
+      // Déjà donnée : ni à la mise à jour du profil, ni à une nouvelle connexion.
+      expect((await emettre(or, 'profil')).recompense).toBeUndefined();
+      const or2 = brancher();
+      const seconde = await emettre(or2, 'identifier', { jeton: 'jeton-or' });
+      expect(seconde.recompense).toBeUndefined();
+      expect(seconde.profil.xp).toBe(500);
+      expect((await svc.recompenserSemaine('uid-or', s45.cle, 500))).toBe('deja');
+
+      const argent = brancher();
+      expect((await emettre(argent, 'identifier', { jeton: 'jeton-argent' })).recompense).toMatchObject({ rang: 2, xp: 300 });
+      const loin = brancher();
+      const rienPourLou = await emettre(loin, 'identifier', { jeton: 'jeton-loin' });
+      expect(rienPourLou.ok).toBe(true);
+      expect(rienPourLou.recompense).toBeUndefined();
+      expect(rienPourLou.profil.xp).toBe(0);
+      expect((await svc.lire('uid-argent'))?.recompenseSemaine).toBe(s45.cle);
+      [or, or2, argent, loin].forEach((x) => x.close());
+    } finally {
+      await srv.fermer();
+    }
+  });
 });

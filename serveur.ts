@@ -28,7 +28,7 @@ import { estLangue, selon, traduireErreurMoteur, type Langue } from '../shared/l
 import { filtrerMessage, pseudoAcceptable } from '../shared/moderation';
 import { CARTE } from '../shared/cartes';
 import { ajouterAuJournal, appliquerAction, attenteDe, creerPartie } from '../shared/moteur';
-import { estTapis, estWeekendXpDouble, niveauDepuisXp, resultatsPartie, titreNiveau, trancheNiveau } from '../shared/niveaux';
+import { estTapis, estWeekendXpDouble, niveauDepuisXp, resultatsPartie, titreNiveau, trancheNiveau, xpRecompenseSemaine } from '../shared/niveaux';
 import { CASES_ROULETTE, jourParis, lendemainParis, PERSONNAGES_ROULETTE } from '../shared/roulette';
 import { actionRobot, NIVEAUX_BOT, PRENOMS_BOTS, profilAleatoire, profilPourTranche, PROFIL_REMPLACANT, STYLES_BOT } from '../shared/robot';
 import type {
@@ -44,6 +44,7 @@ import type {
   ListeAmis,
   ProfilBot,
   ProfilPublic,
+  RecompenseSemaine,
   StatutAmi,
   VueSalon,
 } from '../shared/types';
@@ -539,6 +540,29 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     };
   };
 
+  /**
+   * Récompense du classement de la semaine dernière (les 10 premiers) : l'XP est ajoutée une seule fois, à la première
+   * connexion (ou mise à jour du profil) qui suit la fin de la semaine.
+   */
+  const recompenser = async (uid: string, stats: StatsCompte): Promise<{ stats: StatsCompte; recompense: RecompenseSemaine | null }> => {
+    const rien = { stats, recompense: null };
+    if (!comptes || !classement) return rien;
+    try {
+      const place = await classement.rangPrecedent(uid);
+      const xp = place ? xpRecompenseSemaine(place.rang) : 0;
+      if (!place || !xp || stats.recompenseSemaine === place.semaine.cle) return rien;
+      const r = await comptes.recompenserSemaine(uid, place.semaine.cle, xp);
+      if (!r || r === 'deja') return rien;
+      return {
+        stats: r.stats,
+        recompense: { rang: place.rang, xp, debut: place.semaine.debut, fin: place.semaine.fin, niveauAvant: niveauDepuisXp(r.xpAvant), niveau: niveauDepuisXp(r.stats.xp) },
+      };
+    } catch (e) {
+      console.error('Récompense de la semaine impossible :', e);
+      return rien;
+    }
+  };
+
   /** Range les victoires, nuits gagnées et l'expérience de chaque joueur connecté à son compte. */
   function enregistrerPartie(salon: Salon) {
     const p = salon.partie;
@@ -960,6 +984,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         console.error('Lecture du compte impossible :', e);
         return repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment. Tu peux jouer en invité.', 'Your profile is unavailable right now. You can play as a guest.') });
       }
+      const recu = await recompenser(id.uid, stats);
+      stats = recu.stats;
       if (identite && identite.uid !== id.uid) oublierPresence();
       identite = id;
       resume = resumeCompte(stats);
@@ -970,16 +996,18 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         lierCompte(c.salon, c.joueur);
         diffuser(c.salon);
       }
-      repondre(rappel, { ok: true, profil: profilComplet(id, stats) });
+      repondre(rappel, { ok: true, profil: profilComplet(id, stats), ...(recu.recompense ? { recompense: recu.recompense } : {}) });
     });
 
     socket.on('profil', async (_data: unknown, rappel?: Rappel) => {
       if (!comptes || !identite) return repondre(rappel, { ok: false, erreur: L('Connecte-toi à ton compte.', 'Sign in to your account.') });
       const id = identite;
       try {
-        const stats = await comptes.lire(id.uid);
+        let stats = await comptes.lire(id.uid);
+        const recu = stats ? await recompenser(id.uid, stats) : null;
+        if (recu) stats = recu.stats;
         resume = resumeCompte(stats);
-        repondre(rappel, { ok: true, profil: profilComplet(id, stats) });
+        repondre(rappel, { ok: true, profil: profilComplet(id, stats), ...(recu?.recompense ? { recompense: recu.recompense } : {}) });
       } catch (e) {
         console.error('Lecture du compte impossible :', e);
         repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment.', 'Your profile is unavailable right now.') });

@@ -220,6 +220,17 @@ export interface EntreeClassementVue {
   moi?: boolean;
 }
 
+/** XP gagnée grâce au classement de la semaine dernière (envoyée une seule fois, à la connexion qui suit). */
+export interface RecompenseSemaine {
+  rang: number;
+  xp: number;
+  /** Début et fin de la semaine récompensée. */
+  debut: number;
+  fin: number;
+  niveauAvant: number;
+  niveau: number;
+}
+
 export interface VueClassement {
   semaine: { cle: string; debut: number; fin: number; entrees: EntreeClassementVue[]; moi: EntreeClassementVue | null; total: number };
   precedente: { cle: string; debut: number; fin: number; entrees: EntreeClassementVue[] } | null;

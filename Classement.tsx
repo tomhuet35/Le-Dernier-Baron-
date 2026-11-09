@@ -1,13 +1,15 @@
 /**
  * Classement de la semaine : le meilleur score de chaque joueur, du lundi 0 h au dimanche minuit (heure de Paris).
- * Les 3 premiers portent la couronne d'or, d'argent ou de bronze à côté de leur nom, partout dans le jeu.
+ * Les 3 premiers portent la couronne d'or, d'argent ou de bronze à côté de leur nom, partout dans le jeu, et les 10
+ * premiers gagnent de l'XP chaque lundi (500, 300, 200, puis 100).
  */
 import { useEffect, useState } from 'react';
-import type { EntreeClassementVue, MeneurSemaine, VueClassement } from '../../shared/types';
+import { xpRecompenseSemaine } from '../../shared/niveaux';
+import type { EntreeClassementVue, MeneurSemaine, RecompenseSemaine, VueClassement } from '../../shared/types';
 import type { Appel } from './App';
 import { BadgeNiveau } from './Profil';
 import { EN, LOCALE, tr } from './traduction';
-import { Couronne, CouronneRang, Fenetre } from './ui';
+import { Celebration, Couronne, CouronneRang, Fenetre, jouerEffet, useCompteur } from './ui';
 
 const nomAffiche = (nom: string | null) => nom ?? tr('Joueur', 'Player');
 const rangTexte = (rang: number) => (EN ? `${rang}${rang === 1 ? 'st' : rang === 2 ? 'nd' : rang === 3 ? 'rd' : 'th'}` : rang === 1 ? '1er' : `${rang}e`);
@@ -48,6 +50,7 @@ function Podium({ entrees }: { entrees: EntreeClassementVue[] }) {
           <strong>{nomAffiche(e.nom)}</strong>
           <span className="semaine-score">{e.score} pts</span>
           <BadgeNiveau niveau={e.niveau} />
+          {xpRecompenseSemaine(e.rang) > 0 && <span className="semaine-gain">+{xpRecompenseSemaine(e.rang)} XP</span>}
         </div>
       ))}
     </div>
@@ -67,7 +70,10 @@ function Liste({ entrees }: { entrees: EntreeClassementVue[] }) {
             {e.moi && <small>{tr(' (toi)', ' (you)')}</small>}
           </span>
           <BadgeNiveau niveau={e.niveau} />
-          <strong className="semaine-score">{e.score}</strong>
+          <span className="semaine-fin">
+            <strong className="semaine-score">{e.score}</strong>
+            {xpRecompenseSemaine(e.rang) > 0 && <small className="semaine-gain-ligne">+{xpRecompenseSemaine(e.rang)} XP</small>}
+          </span>
         </li>
       ))}
     </ol>
@@ -124,7 +130,7 @@ export function FenetreClassement({ appel, onFermer, connecte }: { appel: Appel;
               <Couronne className="semaine-vide-couronne" />
               <p>
                 {onglet === 'semaine'
-                  ? tr('Aucun score pour l’instant cette semaine : la couronne t’attend !', 'No scores yet this week: the crown is waiting for you!')
+                  ? tr('Aucun score pour l’instant cette semaine : la couronne et 500 XP t’attendent !', 'No scores yet this week: the crown and 500 XP are waiting for you!')
                   : tr('Personne n’a joué la semaine dernière.', 'Nobody played last week.')}
               </p>
             </div>
@@ -151,13 +157,40 @@ export function FenetreClassement({ appel, onFermer, connecte }: { appel: Appel;
           )}
           <p className="discret semaine-regles">
             {tr(
-              'Ton meilleur score de la semaine compte, en parties jouées jusqu’au bout avec au moins 2 joueurs humains. Les 3 premiers portent la couronne d’or, d’argent ou de bronze à côté de leur nom. Tout repart à zéro le lundi à 0 h (heure de Paris).',
-              'Your best score of the week counts, in games played to the end with at least 2 human players. The top 3 wear the gold, silver or bronze crown next to their name. Everything resets on Monday at midnight (Paris time).',
+              'Ton meilleur score de la semaine compte, en parties jouées jusqu’au bout avec au moins 2 joueurs humains. Les 3 premiers portent la couronne d’or, d’argent ou de bronze à côté de leur nom. Tout repart à zéro le lundi à 0 h (heure de Paris) : les 10 premiers gagnent alors de l’XP (500 pour le 1er, 300 pour le 2e, 200 pour le 3e, puis 100 jusqu’au 10e), ajoutée à leur première connexion de la semaine suivante.',
+              'Your best score of the week counts, in games played to the end with at least 2 human players. The top 3 wear the gold, silver or bronze crown next to their name. Everything resets on Monday at midnight (Paris time): the top 10 then earn XP (500 for 1st, 300 for 2nd, 200 for 3rd, then 100 down to 10th), added the first time they sign in the following week.',
             )}
           </p>
         </>
       )}
     </Fenetre>
+  );
+}
+
+/** Lundi : récompense du classement de la semaine dernière, fêtée en plein écran (l'XP monte dans le médaillon). */
+export function CelebrationRecompense({ recompense, onFermer }: { recompense: RecompenseSemaine; onFermer: () => void }) {
+  const { rang, xp, niveau, niveauAvant } = recompense;
+  const valeur = useCompteur(xp, 0, 1000, 900);
+  useEffect(() => {
+    jouerEffet(rang <= 3 ? 'roulette_gros_lot' : 'roulette_gain');
+    if (niveau <= niveauAvant) return;
+    const t = window.setTimeout(() => jouerEffet('niveau'), 2300);
+    return () => window.clearTimeout(t);
+  }, [rang, niveau, niveauAvant]);
+  return (
+    <Celebration
+      titre={tr(`${rangTexte(rang)} de la semaine\u00a0!`, `${rangTexte(rang)} of the week!`)}
+      etiquette={tr(`Récompense du classement de la semaine : ${xp} XP`, `Weekly ranking reward: ${xp} XP`)}
+      medaillon={
+        <div className={`celebration-recompense rang-${Math.min(rang, 4)}`}>
+          {rang <= 3 ? <Couronne rang={rang as 1 | 2 | 3} className="celebration-recompense-couronne" /> : <span className="celebration-recompense-rang">{rangTexte(rang)}</span>}
+          <strong>+{valeur}</strong>
+          <small>XP</small>
+        </div>
+      }
+      legende={niveau > niveauAvant ? tr(`Niveau ${niveau} atteint\u00a0!`, `Level ${niveau} reached!`) : tr('Récompense du classement', 'Ranking reward')}
+      onFermer={onFermer}
+    />
   );
 }
 
