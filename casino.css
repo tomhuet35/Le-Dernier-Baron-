@@ -173,27 +173,32 @@
 .bj-mes-mains .bj-carte { width: min(15vw, 66px); }
 .bj-code { font-family: var(--titre); color: var(--or-vif); letter-spacing: 0.06em; }
 .bj-table {
-  position: relative; width: 100%; max-width: 660px; justify-self: center; aspect-ratio: 1 / 0.86;
+  position: relative; width: 100%; max-width: 720px; justify-self: center; aspect-ratio: 1 / 0.86;
   border-radius: 22px 22px 50% 50% / 22px 22px 34% 34%;
   background: radial-gradient(70% 60% at 50% 35%, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.35) 100%), #0d5a31 url('/cartes/feutre-casino.webp') center / 220px;
   box-shadow: inset 0 0 0 3px #d2a85a, inset 0 0 0 5px rgba(22, 16, 12, 0.6), inset 0 0 40px rgba(0, 0, 0, 0.55), 0 0 0 10px #4a1410, 0 0 0 12px #d2a85a, 0 18px 40px rgba(0, 0, 0, 0.7);
   margin: 12px 0 14px;
 }
-@media (min-width: 700px) { .bj-table { aspect-ratio: 1 / 0.62; } }
 .bj-croupier { position: absolute; top: 3%; left: 50%; translate: -50% 0; display: grid; justify-items: center; gap: 4px; z-index: 2; }
 .bj-croupier-nom { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #f3e6c4; text-shadow: 0 1px 2px #000; }
-.bj-croupier-nom img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--or-vif); }
+.bj-croupier-nom img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; border: 1.5px solid var(--or-vif); }
 .bj-croupier-vide { height: calc(var(--carte, 46px) * 1.4); }
-.bj-sabot { position: absolute; top: 5%; right: 5%; width: 13%; aspect-ratio: 2 / 3; }
-.bj-sabot img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
-.bj-sabot img:nth-child(1) { rotate: -8deg; translate: -4px 2px; }
-.bj-sabot img:nth-child(2) { rotate: -3deg; translate: -2px 1px; }
+.bj-sabot { position: absolute; top: 4%; right: 3%; width: 20%; }
+.bj-sabot img { display: block; width: 100%; height: auto; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6)); }
 .bj-arc { position: absolute; left: 0; top: 12%; width: 100%; height: auto; pointer-events: none; overflow: visible; }
-@media (min-width: 700px) { .bj-arc { left: 18%; width: 64%; top: 13%; } }
+/* Grande table (tablette, ordinateur) : la table en demi-lune peinte, cuir capitonné et filet doré. */
+@media (min-width: 700px) {
+  .bj-table { aspect-ratio: 1400 / 775; border-radius: 0; box-shadow: none; background: url('/cartes/table-blackjack.webp') center / 100% 100% no-repeat; filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.7)); }
+  .bj-arc { left: 20%; width: 60%; top: 14%; }
+  .bj-table .bj-place { left: var(--xl); top: var(--yl); }
+  .bj-croupier { top: 6%; }
+  .bj-croupier-nom img { width: 46px; height: 46px; }
+  .bj-sabot { top: 8%; right: 9%; width: 13%; }
+}
 .bj-arc text { font-family: var(--titre); font-size: 14px; letter-spacing: 0.08em; fill: rgba(243, 214, 138, 0.8); }
 .bj-arc text.petit { font-family: var(--texte); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; fill: rgba(243, 214, 138, 0.55); }
 
-.bj-place { position: absolute; translate: -50% -50%; display: grid; justify-items: center; gap: 3px; width: 21%; z-index: 1; }
+.bj-place { position: absolute; left: var(--x); top: var(--y); translate: -50% -50%; display: grid; justify-items: center; gap: 3px; width: 21%; z-index: 1; }
 .bj-place-mains { display: flex; gap: 4px; justify-content: center; min-height: calc(var(--petite, 24px) * 1.4); }
 .bj-place-mise { display: flex; align-items: center; gap: 3px; padding: 1px 6px 1px 1px; border-radius: 99px; background: rgba(10, 6, 4, 0.7); font-size: 10.5px; font-weight: 700; color: #fff1c4; white-space: nowrap; }
 .bj-place-mise img { width: 16px; height: 16px; }
@@ -236,10 +241,7 @@
 .bj-carte .bj-carte-coin { font: 8.5px Georgia, serif; }
 .bj-carte .bj-carte-centre { font: 26px Georgia, serif; }
 .bj-carte .bj-carte-as { font: 22px Georgia, serif; }
-.bj-carte .bj-carte-sym-petit { font: 9px Georgia, serif; }
-.bj-carte .bj-carte-figure { font-family: var(--titre); font-size: 19px; }
-.bj-carte-cadre { fill: #f3e3c0; stroke: #d2a85a; stroke-width: 0.8; }
-.bj-carte-couronne { fill: #d2a85a; stroke: #8a6424; stroke-width: 0.4; }
+.bj-carte-cadre-image { fill: none; stroke: #b8935a; stroke-width: 0.8; }
 .bj-carte-rayon { stroke: #e7c27a; stroke-width: 0.7; opacity: 0.8; }
 .bj-carte.rouge text { fill: #a3231a; }
 .bj-carte.noire text { fill: #141010; }

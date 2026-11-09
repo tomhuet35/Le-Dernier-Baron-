@@ -47,14 +47,9 @@ export function CarteJeu({ carte, petite, className, style }: { carte: CarteBJ |
       </g>
       {figure ? (
         <g>
-          <rect x="12" y="12" width="26" height="46" rx="2" className="bj-carte-cadre" />
-          <path d="M17 26 L19.5 19 L22.5 24 L25 17 L27.5 24 L30.5 19 L33 26 Z" className="bj-carte-couronne" />
-          <text x="25" y="44" className="bj-carte-figure" textAnchor="middle">
-            {rang}
-          </text>
-          <text x="25" y="54" className="bj-carte-sym-petit" textAnchor="middle">
-            {sym}
-          </text>
+          {/* Les figures : le Roi en baron de la pègre, la Dame en chanteuse de cabaret, le Valet en homme de main. */}
+          <image href={`/cartes/figure-${r === 13 ? 'roi' : r === 12 ? 'dame' : 'valet'}.webp`} x="10.5" y="4" width="29" height="62" preserveAspectRatio="xMidYMid slice" />
+          <rect x="10.5" y="4" width="29" height="62" rx="1.5" className="bj-carte-cadre-image" />
         </g>
       ) : r === 1 ? (
         <g>
@@ -106,7 +101,7 @@ function Issue({ main }: { main: MainVueBJ }) {
   return <span className={`bj-issue ${main.issue}`}>{tr(...textes[main.issue!])}</span>;
 }
 
-/** Les places, en arc devant le croupier (5 au plus). */
+/** Les places, en arc devant le croupier (5 au plus) : sur téléphone, puis sur la grande table (tablette, ordinateur). */
 const POSITIONS = [
   [11, 64],
   [29, 77],
@@ -114,13 +109,21 @@ const POSITIONS = [
   [71, 77],
   [89, 64],
 ];
+const POSITIONS_LARGES = [
+  [17, 47],
+  [32, 63],
+  [50, 70],
+  [68, 63],
+  [83, 47],
+];
 
 function Place({ place, index, tour }: { place: PlaceVueBJ; index: number; tour: VueTableBJ['tour'] }) {
   const [x, y] = POSITIONS[index] ?? POSITIONS[2];
+  const [xl, yl] = POSITIONS_LARGES[index] ?? POSITIONS_LARGES[2];
   const joue = tour?.place === place.id;
   const mise = place.mains.length ? place.mains.reduce((s, m) => s + m.mise, 0) : place.mise;
   return (
-    <div className={`bj-place ${place.moi ? 'moi' : ''} ${joue ? 'joue' : ''} ${place.absent ? 'absent' : ''}`} style={{ left: `${x}%`, top: `${y}%` }}>
+    <div className={`bj-place ${place.moi ? 'moi' : ''} ${joue ? 'joue' : ''} ${place.absent ? 'absent' : ''}`} style={{ '--x': `${x}%`, '--y': `${y}%`, '--xl': `${xl}%`, '--yl': `${yl}%` } as CSSProperties}>
       <div className="bj-place-mains">
         {place.mains.map((m, k) => (
           <Main key={k} main={m} petite active={joue && tour?.main === k} />
@@ -240,15 +243,13 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
       <div className="bj-table">
         <div className="bj-croupier">
           <span className="bj-croupier-nom">
-            <img src="/cartes/avatar-4.webp" alt="" />
-            {tr('Le croupier', 'The dealer')}
+            <img src="/cartes/croupiere-blackjack.webp" alt="" />
+            {tr('La croupière', 'The dealer')}
           </span>
           {v.croupier.length > 0 ? <Main main={{ cartes: v.croupier }} croupier /> : <div className="bj-croupier-vide" />}
         </div>
         <div className="bj-sabot" title={tr(`${v.sabot} cartes dans le sabot`, `${v.sabot} cards in the shoe`)}>
-          <img src="/cartes/carte-dos-casino.webp" alt="" />
-          <img src="/cartes/carte-dos-casino.webp" alt="" />
-          <img src="/cartes/carte-dos-casino.webp" alt="" />
+          <img src="/cartes/sabot-blackjack.webp" alt="" />
         </div>
         <svg className="bj-arc" viewBox="0 0 400 200" aria-hidden="true">
           <path id="bj-arc-1" d="M30 52 Q200 150 370 52" fill="none" />
@@ -260,7 +261,7 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
           </text>
           <text className="petit">
             <textPath href="#bj-arc-2" startOffset="50%" textAnchor="middle">
-              {tr('Le croupier reste sur 17 · Assurance 2 pour 1', 'Dealer stands on 17 · Insurance pays 2 to 1')}
+              {tr('La croupière reste sur 17 · Assurance 2 pour 1', 'Dealer stands on 17 · Insurance pays 2 to 1')}
             </textPath>
           </text>
         </svg>
@@ -315,7 +316,7 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
         )}
         {v.assurance && (
           <div className="bj-assurance">
-            <p>{tr(`Le croupier montre un As. Assurance pour ${dollars(Math.floor((moi?.mains[0]?.mise ?? 0) / 2))} ?`, `The dealer shows an Ace. Insurance for ${dollars(Math.floor((moi?.mains[0]?.mise ?? 0) / 2))}?`)}</p>
+            <p>{tr(`La croupière montre un As. Assurance pour ${dollars(Math.floor((moi?.mains[0]?.mise ?? 0) / 2))} ?`, `The dealer shows an Ace. Insurance for ${dollars(Math.floor((moi?.mains[0]?.mise ?? 0) / 2))}?`)}</p>
             <div className="bj-boutons">
               <button type="button" onClick={() => void envoyer('casino_bj_assurance', { oui: false })}>
                 {tr('Non merci', 'No thanks')}
@@ -347,7 +348,7 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
         )}
         {v.phase === 'joueurs' && !v.actions.length && tourDe && <p className="bj-attente">{tr(`${tourDe.nom} joue…`, `${tourDe.nom} is playing…`)}</p>}
         {v.phase === 'assurance' && !v.assurance && <p className="bj-attente">{tr('Les joueurs choisissent l’assurance…', 'Players are choosing insurance…')}</p>}
-        {v.phase === 'croupier' && <p className="bj-attente">{tr('Le croupier joue…', 'The dealer is playing…')}</p>}
+        {v.phase === 'croupier' && <p className="bj-attente">{tr('La croupière joue…', 'The dealer is playing…')}</p>}
         {v.phase === 'fin' && moi && moi.gainTotal !== null && (
           <p className={`bj-bilan ${moi.gainTotal > engage ? 'gagne' : moi.gainTotal < engage ? 'perdu' : ''}`}>
             {moi.gainTotal > engage
