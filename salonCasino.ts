@@ -30,6 +30,7 @@ import { jourParis, lendemainParis } from '../shared/roulette';
 import type { Identite, ServiceComptes, StatsCompte } from './comptes';
 import { creerTablesBlackjack, type BanqueCasino, type DelaisTables } from './tablesCasino';
 import { creerTablesRoulette, type DelaisRoulette } from './tablesRoulette';
+import { etatNuitsVide, jouerNuits, type EtatNuits, type TypeEvenementNuit } from '../shared/machineNuits';
 import type { CarteBJ } from '../shared/blackjack';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
@@ -57,6 +58,9 @@ export interface OptionsCasino {
   /** Roulette : délais et numéro tiré (remplaçables pour les tests). */
   delaisRoulette?: Partial<DelaisRoulette>;
   tirageRoulette?: () => number;
+  /** Les Nuits du Baron : hasard des rouleaux, et tirage imposé (tests, démonstration). */
+  hasardNuits?: (n: number) => number;
+  forcerNuits?: () => { arrets?: number[]; evenement?: TypeEvenementNuit } | undefined;
 }
 
 /** Porte-monnaie d'un créateur, tenu en mémoire pendant qu'il joue. */
@@ -71,6 +75,8 @@ interface Porte {
   cadeaux: string[];
   toursGratuits: number;
   miseGratuite: number;
+  /** Les Nuits du Baron : free games et rouleaux figés. */
+  nuits: EtatNuits;
   /** Bonus de la machine à jouer, dans l'ordre (casse puis roue si les deux tombent ensemble). */
   bonus: BonusMachine[];
   minuterie: ReturnType<typeof setTimeout> | null;
@@ -92,6 +98,7 @@ export function creerCasino(options: OptionsCasino) {
   const horloge = options.horloge ?? Date.now;
   const delaiEcriture = options.delaiEcriture ?? 5000;
   const hasardMachine = options.hasardMachine ?? ((n: number) => randomInt(n));
+  const hasardNuits = options.hasardNuits ?? ((n: number) => randomInt(n));
   const tirageRoue = options.tirageRoue ?? (() => randomInt(CASES_ROUE_SALON.length));
   const tirageRoueBaron = options.tirageRoueBaron ?? (() => randomInt(ROUE_BARON.length));
   const hasardCasse = options.hasardCasse ?? ((n: number) => randomInt(n));
@@ -208,6 +215,7 @@ export function creerCasino(options: OptionsCasino) {
       riches: liste,
       tables: tables.resume(),
       tablesRoulette: roulettes.resume(),
+      nuits: p ? { gratuits: p.nuits.gratuits, miseGratuite: p.nuits.miseGratuite, collantes: p.nuits.collantes } : { gratuits: 0, miseGratuite: 0, collantes: null },
       cadeau: t < finCadeau && p && !p.cadeaux.includes(CADEAU_SALON.id) ? { montant: CADEAU_SALON.montant, fin: finCadeau } : null,
     };
   }
@@ -265,6 +273,7 @@ export function creerCasino(options: OptionsCasino) {
           cadeaux: stats.casino?.cadeaux ?? [],
           toursGratuits: 0,
           miseGratuite: 0,
+          nuits: etatNuitsVide(),
           bonus: [],
           minuterie: null,
           ecriture: Promise.resolve(),
@@ -418,6 +427,37 @@ export function creerCasino(options: OptionsCasino) {
         else if (gain >= MULTIPLE_GROS_GAIN * mise) annoncer({ nom: p.nom, jeu: 'machine', gain });
         sauverSalon();
         repondre(rappel, { ok: true, machine: { ...r, gain, gainGrosLot, gratuit, mise }, casino: vue(id.uid) });
+      } finally {
+        p.occupe = false;
+      }
+    });
+
+    // Les Nuits du Baron : un tour (free games et rouleaux figés gardés par le serveur).
+    socket.on('casino_nuits', async (data: { mise?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      const t = horloge();
+      if (p.occupe || t - p.dernierTour < ECART_TOURS_MS) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      const e = p.nuits;
+      const gratuit = e.gratuits > 0;
+      // Pendant une descente de police, la mise reste celle du tour où elle a commencé.
+      const mise = gratuit ? e.miseGratuite : (e.collantes?.mise ?? Number(data?.mise));
+      if (!gratuit && !MISES_MACHINE.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
+      if (!gratuit && p.solde < mise) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant pour cette mise.', 'Not enough money for this bet.') });
+      p.occupe = true;
+      p.dernierTour = t;
+      try {
+        if (!gratuit) mouvement(id.uid, p, -mise);
+        const { resultat } = jouerNuits(hasardNuits, mise, e, options.forcerNuits?.());
+        if (resultat.gain) {
+          mouvement(id.uid, p, resultat.gain);
+          p.record = Math.max(p.record, resultat.gain);
+        }
+        if (resultat.gain >= MULTIPLE_GROS_GAIN * mise) annoncer({ nom: p.nom, jeu: 'nuits', gain: resultat.gain });
+        sauverSalon();
+        repondre(rappel, { ok: true, nuits: { ...resultat, mise, gratuit }, casino: vue(id.uid) });
       } finally {
         p.occupe = false;
       }

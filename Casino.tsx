@@ -37,6 +37,7 @@ import {
 import type { VueTableBJ } from '../../shared/blackjack';
 import type { Appel } from './App';
 import { TableBlackjack } from './CasinoBlackjack';
+import { MachineNuits } from './CasinoNuits';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
 import type { EtatCompte } from './Profil';
@@ -44,20 +45,9 @@ import { ANGLE_ROUE, COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRo
 import { socket } from './socket';
 import { EN, tr } from './traduction';
 import { BoutonMusique, Celebration, Fenetre, jouerEffet, mouvementReduit, musiqueDuSalon, useCompteur } from './ui';
+import { dollars, GainDefilant, Jeton, LINGOTS_PALIER, palierDe, PluieLingots, useSoldeAnime, type Palier } from './casinoOutils';
 import './casino.css';
 
-const dollars = (n: number) => formatDollars(n, EN);
-
-/** Le solde défile jusqu'à sa nouvelle valeur. */
-function useSoldeAnime(solde: number): number {
-  const [depart, setDepart] = useState(solde);
-  const precedent = useRef(solde);
-  useEffect(() => {
-    setDepart(precedent.current);
-    precedent.current = solde;
-  }, [solde]);
-  return useCompteur(solde, depart, 0, 700);
-}
 
 // ---------------------------------------------------------------------------------------------------------------
 // Symboles de la machine à sous (dessinés en attendant les images définitives)
@@ -77,19 +67,6 @@ const nomSymbole = (s: SymboleMachine) => tr(...NOMS_SYMBOLES[s]);
 
 export function Symbole({ s, className }: { s: SymboleMachine; className?: string }) {
   return <img className={`cas-symbole cas-symbole-${s} ${className ?? ''}`} src={`/cartes/machine-${s}.webp`} alt={nomSymbole(s)} draggable={false} />;
-}
-
-/** Jeton de la couleur de la mise (ivoire, rouge, vert, noir, violet). */
-const JETONS: [number, string][] = [
-  [100_000, 'violet'],
-  [50_000, 'noir'],
-  [10_000, 'vert'],
-  [5_000, 'rouge'],
-  [0, 'ivoire'],
-];
-export function Jeton({ valeur, className }: { valeur: number; className?: string }) {
-  const couleur = JETONS.find(([v]) => valeur >= v)?.[1] ?? 'ivoire';
-  return <img className={`cas-jeton ${className ?? ''}`} src={`/cartes/jeton-${couleur}.webp`} alt="" draggable={false} />;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -166,10 +143,6 @@ function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; app
   );
 }
 
-function GainDefilant({ gain, delai = 120, duree = 900 }: { gain: number; delai?: number; duree?: number }) {
-  const v = useCompteur(gain, 0, delai, duree);
-  return <strong className="roulette-xp-gagne">+{dollars(v)}</strong>;
-}
 
 // ---------------------------------------------------------------------------------------------------------------
 // Machine à sous « Le Bandit du Baron »
@@ -266,16 +239,6 @@ function horairesArrets(plan: Suspense[]): number[] {
   plan.forEach((s, r) => t.push((r ? t[r - 1] + ECART_ARRETS : ARRET_PREMIER) + EXTRA_SUSPENSE[s.niveau]));
   return t;
 }
-
-/** Palier du gain, en multiples de la mise : l'animation grandit avec la rareté. */
-type Palier = 'aucun' | 'petit' | 'joli' | 'gros' | 'enorme' | 'colossal';
-function palierDe(gain: number, mise: number): Palier {
-  if (gain <= 0) return 'aucun';
-  const x = gain / mise;
-  return x < 2 ? 'petit' : x < 10 ? 'joli' : x < MULTIPLE_GROS_GAIN ? 'gros' : x < 200 ? 'enorme' : 'colossal';
-}
-/** Lingots qui tombent, selon le palier. */
-const LINGOTS_PALIER: Record<Palier, number> = { aucun: 0, petit: 0, joli: 10, gros: 26, enorme: 42, colossal: 64 };
 
 function TableDesGains({ onFermer }: { onFermer: () => void }) {
   const ordre: SymboleLigne[] = ['couronne', 'sept', 'lingot', 'diamant', 'champagne', 'cigare', 'fer'];
@@ -762,32 +725,6 @@ function LignesGagnantes({ tour }: { tour: TourMachine }) {
   );
 }
 
-/** Pluie de lingots d'or : quelques-uns sur la machine pour un joli gain, tout l'écran pour un gros. */
-function PluieLingots({ n }: { n: number }) {
-  const [lingots] = useState(() =>
-    Array.from({ length: n }, (_, k) => ({
-      x: 3 + Math.random() * 94,
-      delai: (k / n) * 0.9 + Math.random() * 0.35,
-      duree: 1.5 + Math.random() * 0.9,
-      taille: 0.7 + Math.random() * 0.6,
-      tour: (Math.random() * 2 - 1) * 520,
-    })),
-  );
-  return (
-    <div className="cas-pluie" aria-hidden="true">
-      {lingots.map((l, k) => (
-        <img
-          key={k}
-          src="/cartes/machine-lingot.webp"
-          alt=""
-          draggable={false}
-          style={{ left: `${l.x}%`, animationDelay: `${l.delai}s`, animationDuration: `${l.duree}s`, '--t': l.taille, '--tour': `${l.tour}deg` } as CSSProperties}
-        />
-      ))}
-    </div>
-  );
-}
-
 type FeteMachine = { type: 'gain'; palier: Palier | 'grosLot'; gain: number } | { type: 'free'; n: number; relance: boolean; mise: number } | { type: 'finFree'; total: number };
 
 function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onRetour: () => void }) {
@@ -1159,8 +1096,9 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // ---------------------------------------------------------------------------------------------------------------
 // Le salon
 
-const JEUX: { id: 'machine' | 'roulette' | 'blackjack' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
-  { id: 'machine', nom: ['Machine à sous', 'Slot machine'], image: '/cartes/casino-machine.webp', repli: '/cartes/evenement_casse_du_siecle.webp' },
+const JEUX: { id: 'machine' | 'nuits' | 'roulette' | 'blackjack' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+  { id: 'machine', nom: ['Le Bandit du Baron', 'The Baron’s Bandit'], image: '/cartes/casino-machine.webp', repli: '/cartes/evenement_casse_du_siecle.webp' },
+  { id: 'nuits', nom: ['Les Nuits du Baron', 'The Baron’s Nights'], image: '/cartes/casino-nuits.webp', repli: '/cartes/evenement_couvre_feu.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
   { id: 'blackjack', nom: ['Blackjack', 'Blackjack'], image: '/cartes/casino-blackjack.webp', repli: '/cartes/billets_05.webp' },
   { id: 'poker', nom: ['Poker', 'Poker'], image: '/cartes/casino-poker.webp', repli: '/cartes/baron.webp' },
@@ -1184,6 +1122,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
       ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la roulette du salon !`, `${annonce.nom} won ${dollars(annonce.gain)} on the lounge wheel!`)
       : annonce.jeu === 'roulette'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la roulette !`, `${annonce.nom} won ${dollars(annonce.gain)} at roulette!`)
+      : annonce.jeu === 'nuits'
+        ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} aux Nuits du Baron !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Baron’s Nights!`)
       : annonce.jeu === 'casse'
         ? tr(`${annonce.nom} a raflé ${dollars(annonce.gain)} au Casse du coffre !`, `${annonce.nom} grabbed ${dollars(annonce.gain)} in the Safe Heist!`)
         : annonce.jeu === 'roueBaron' && !annonce.grosLot
@@ -1302,6 +1242,7 @@ function Salon({
   vue,
   onRoue,
   onMachine,
+  onNuits,
   onBlackjack,
   onRoulette,
   onCadeau,
@@ -1310,6 +1251,7 @@ function Salon({
   vue: VueCasino;
   onRoue: () => void;
   onMachine: () => void;
+  onNuits: () => void;
   onBlackjack: () => void;
   onRoulette: () => void;
   onCadeau: () => void;
@@ -1354,11 +1296,11 @@ function Salon({
       </button>
       <div className="cas-jeux">
         {JEUX.map((j) => (
-          <Vignette key={j.id} jeu={j} onOuvrir={j.id === 'machine' ? onMachine : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : undefined} />
+          <Vignette key={j.id} jeu={j} onOuvrir={j.id === 'machine' ? onMachine : j.id === 'nuits' ? onNuits : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : undefined} />
         ))}
       </div>
       <p className="cas-gros-lot">
-        {tr('Gros lot de la machine à sous', 'Slot machine jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
+        {tr('Gros lot du Bandit du Baron', 'Baron’s Bandit jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
       </p>
       {vue.riches.length > 0 && (
         <section className="cas-riches">
@@ -1400,7 +1342,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machine' | 'table'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machine' | 'nuits' | 'table'>('salon');
   const [roue, setRoue] = useState(false);
   const [fenetreTables, setFenetreTables] = useState<JeuTable | null>(null);
   const [table, setTable] = useState<TableActive | null>(null);
@@ -1519,6 +1461,7 @@ export default function Casino({
   let contenu: ReactNode;
   if (!vue) contenu = <div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>;
   else if (ecran === 'machine') contenu = <Machine vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('salon')} />;
+  else if (ecran === 'nuits') contenu = <MachineNuits vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('salon')} />;
   else if (ecran === 'table' && table?.jeu === 'blackjack') contenu = <TableBlackjack v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
   else if (ecran === 'table' && table?.jeu === 'roulette') contenu = <TableRoulette v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
   else
@@ -1527,6 +1470,7 @@ export default function Casino({
         vue={vue}
         onRoue={() => setRoue(true)}
         onMachine={() => setEcran('machine')}
+        onNuits={() => setEcran('nuits')}
         onBlackjack={() => setFenetreTables('blackjack')}
         onRoulette={() => setFenetreTables('roulette')}
         onCadeau={() => void recupererCadeau()}

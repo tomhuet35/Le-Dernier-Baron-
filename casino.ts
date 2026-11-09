@@ -67,6 +67,8 @@ export interface VueCasino {
   tables: ResumeTableBJ[];
   /** Tables de roulette ouvertes (même résumé). */
   tablesRoulette: ResumeTableBJ[];
+  /** Les Nuits du Baron : free games restants et rouleaux figés par la police. */
+  nuits: { gratuits: number; miseGratuite: number; collantes: { rouleaux: number[]; restants: number; mise: number } | null };
   /** Bonus de la machine à sous à jouer (casse ou roue), ou null. */
   bonus: VueBonusMachine | null;
   /** Cadeau du Baron encore à récupérer (montant et fin), ou null. */
@@ -75,7 +77,7 @@ export interface VueCasino {
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits';
   gain: number;
   grosLot?: boolean;
 }
