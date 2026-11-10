@@ -37,6 +37,7 @@ import {
 import type { VueTableBJ } from '../../shared/blackjack';
 import type { Appel } from './App';
 import { TableBlackjack } from './CasinoBlackjack';
+import { BandeauFolleNuit, ShowFolleNuit } from './CasinoFolleNuit';
 import { MachineNuits } from './CasinoNuits';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
@@ -1172,6 +1173,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
         ? tr(`${annonce.nom} a décroché le ${annonce.jackpot === 'grand' ? 'GRAND' : 'MAJOR'} des Nuits du Baron : ${dollars(annonce.gain)} !`, `${annonce.nom} hit the ${annonce.jackpot === 'grand' ? 'GRAND' : 'MAJOR'} on the Baron’s Nights: ${dollars(annonce.gain)}!`)
       : annonce.jeu === 'nuits'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} aux Nuits du Baron !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Baron’s Nights!`)
+      : annonce.jeu === 'folleNuit'
+        ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la Folle Nuit !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Crazy Night!`)
       : annonce.jeu === 'casse'
         ? tr(`${annonce.nom} a raflé ${dollars(annonce.gain)} au Casse du coffre !`, `${annonce.nom} grabbed ${dollars(annonce.gain)} in the Safe Heist!`)
         : annonce.jeu === 'roueBaron' && !annonce.grosLot
@@ -1310,6 +1313,7 @@ function Salon({
   onMachines,
   onBlackjack,
   onRoulette,
+  onFolleNuit,
   onCadeau,
   onCadeauFini,
   onQuitter,
@@ -1319,6 +1323,7 @@ function Salon({
   onMachines: () => void;
   onBlackjack: () => void;
   onRoulette: () => void;
+  onFolleNuit: () => void;
   onCadeau: () => void;
   onCadeauFini: () => void;
   onQuitter: () => void;
@@ -1360,6 +1365,7 @@ function Salon({
         </span>
         {!attente && <span className="pastille-nombre">1</span>}
       </button>
+      <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} />
       <div className="cas-jeux">
         {JEUX.map((j) => (
           <Vignette key={j.id} jeu={j} onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : undefined} />
@@ -1408,7 +1414,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit'>('salon');
   const [roue, setRoue] = useState(false);
   const [fenetreTables, setFenetreTables] = useState<JeuTable | null>(null);
   const [table, setTable] = useState<TableActive | null>(null);
@@ -1537,6 +1543,19 @@ export default function Casino({
   else if (ecran === 'nuits') contenu = <MachineNuits vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
   else if (ecran === 'table' && table?.jeu === 'blackjack') contenu = <TableBlackjack v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
   else if (ecran === 'table' && table?.jeu === 'roulette') contenu = <TableRoulette v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
+  else if (ecran === 'folleNuit')
+    contenu = (
+      <ShowFolleNuit
+        appel={appel}
+        onRetour={() => {
+          setEcran('salon');
+          void appel('casino_vue').then((r) => {
+            const casino = (r as unknown as { casino?: VueCasino }).casino;
+            if (r.ok && casino) setVue(casino);
+          });
+        }}
+      />
+    );
   else
     contenu = (
       <Salon
@@ -1545,6 +1564,7 @@ export default function Casino({
         onMachines={() => setEcran('machines')}
         onBlackjack={() => setFenetreTables('blackjack')}
         onRoulette={() => setFenetreTables('roulette')}
+        onFolleNuit={() => setEcran('folleNuit')}
         onCadeau={() => void recupererCadeau()}
         onCadeauFini={() =>
           void (async () => {
