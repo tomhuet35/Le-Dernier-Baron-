@@ -30,7 +30,7 @@ import { jourParis, lendemainParis } from '../shared/roulette';
 import type { Identite, ServiceComptes, StatsCompte } from './comptes';
 import { creerTablesBlackjack, type BanqueCasino, type DelaisTables } from './tablesCasino';
 import { creerTablesRoulette, type DelaisRoulette } from './tablesRoulette';
-import { etatNuitsVide, jouerNuits, type EtatNuits, type TypeEvenementNuit } from '../shared/machineNuits';
+import { dureeAnimationNuits, etatNuitsVide, jouerNuits, meilleurJackpot, type EtatNuits, type ForcerNuits } from '../shared/machineNuits';
 import type { CarteBJ } from '../shared/blackjack';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
@@ -60,7 +60,7 @@ export interface OptionsCasino {
   tirageRoulette?: () => number;
   /** Les Nuits du Baron : hasard des rouleaux, et tirage imposé (tests, démonstration). */
   hasardNuits?: (n: number) => number;
-  forcerNuits?: () => { arrets?: number[]; evenement?: TypeEvenementNuit } | undefined;
+  forcerNuits?: () => ForcerNuits | undefined;
 }
 
 /** Porte-monnaie d'un créateur, tenu en mémoire pendant qu'il joue. */
@@ -455,7 +455,13 @@ export function creerCasino(options: OptionsCasino) {
           mouvement(id.uid, p, resultat.gain);
           p.record = Math.max(p.record, resultat.gain);
         }
-        if (resultat.gain >= MULTIPLE_GROS_GAIN * mise) annoncer({ nom: p.nom, jeu: 'nuits', gain: resultat.gain });
+        // Annonce au salon : gros gain, ou jackpot MAJOR / GRAND du bonus Jetons du Baron.
+        const jackpot = resultat.bonusJetons ? meilleurJackpot(resultat.bonusJetons) : null;
+        // L'annonce attend la fin de l'animation chez le joueur (rouleaux, événement, bonus), pour ne rien lui gâcher.
+        if (resultat.gain >= MULTIPLE_GROS_GAIN * mise || jackpot === 'major' || jackpot === 'grand') {
+          const annonce = { nom: p.nom, jeu: 'nuits' as const, gain: resultat.gain, ...(jackpot === 'major' || jackpot === 'grand' ? { jackpot } : {}) };
+          setTimeout(() => annoncer(annonce), dureeAnimationNuits(resultat)).unref?.();
+        }
         sauverSalon();
         repondre(rappel, { ok: true, nuits: { ...resultat, mise, gratuit }, casino: vue(id.uid) });
       } finally {

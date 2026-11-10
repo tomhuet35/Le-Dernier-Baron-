@@ -1122,6 +1122,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
       ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la roulette du salon !`, `${annonce.nom} won ${dollars(annonce.gain)} on the lounge wheel!`)
       : annonce.jeu === 'roulette'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la roulette !`, `${annonce.nom} won ${dollars(annonce.gain)} at roulette!`)
+      : annonce.jeu === 'nuits' && annonce.jackpot
+        ? tr(`${annonce.nom} a décroché le ${annonce.jackpot === 'grand' ? 'GRAND' : 'MAJOR'} des Nuits du Baron : ${dollars(annonce.gain)} !`, `${annonce.nom} hit the ${annonce.jackpot === 'grand' ? 'GRAND' : 'MAJOR'} on the Baron’s Nights: ${dollars(annonce.gain)}!`)
       : annonce.jeu === 'nuits'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} aux Nuits du Baron !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Baron’s Nights!`)
       : annonce.jeu === 'casse'

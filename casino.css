@@ -642,19 +642,78 @@
   .cab.nuits .cas-mise .cas-jeton { display: none; }
 }
 
-/* La Couronne couvre tout son rouleau (et les menottes de la police le figent) */
-.nu-couronne { position: absolute; z-index: 1; top: 0; height: 100%; left: calc(var(--k) * 20.32%); width: 18.71%; overflow: hidden; border-radius: calc(var(--w) * 0.01); box-shadow: 0 0 0 calc(var(--w) * 0.004) #ffd774, 0 0 calc(var(--w) * 0.03) rgba(255, 215, 116, 0.7); background: url('/cartes/machine2-couronne-geante.webp') center / cover no-repeat, #04102c; transform-origin: 50% 50%; animation: nu-couronne 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) both; pointer-events: none; }
-.nu-couronne::before { content: ''; position: absolute; inset: 0; background: rgba(2, 8, 28, 0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
-.nu-couronne > img:first-child { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-@keyframes nu-couronne { 0% { opacity: 0; transform: scaleY(0.34); filter: brightness(2.4); } 60% { opacity: 1; } 100% { transform: scaleY(1); filter: brightness(1); } }
-.nu-couronne.gagnante { animation: nu-couronne-gagne 0.9s ease-in-out infinite alternate; }
-@keyframes nu-couronne-gagne { to { box-shadow: 0 0 0 calc(var(--w) * 0.006) #fff1c4, 0 0 calc(var(--w) * 0.06) rgba(255, 215, 116, 0.95); } }
-.nu-couronne.figee { box-shadow: 0 0 0 calc(var(--w) * 0.004) #ffd774, 0 0 calc(var(--w) * 0.035) rgba(80, 140, 255, 0.85); }
-.nu-multiple { position: absolute; left: 50%; bottom: 5%; translate: -50% 0; padding: 0.05em 0.4em; border-radius: 99px; border: 2px solid #fff1c4; background: radial-gradient(circle at 50% 30%, #c0281c, #5a0c06); font-family: var(--titre); font-weight: 400; font-size: calc(var(--w) * 0.055); line-height: 1.1; color: #fff1c4; text-shadow: 0 2px 0 #3a0603; box-shadow: 0 0 calc(var(--w) * 0.03) rgba(255, 120, 60, 0.85); animation: nu-multiple 0.7s cubic-bezier(0.3, 1.8, 0.5, 1) 0.25s both; }
+/* La Couronne remplit les 3 cases de son rouleau (les menottes de la police le figent, le casse le multiplie) */
+.cab.nuits .cas-rouleau.sauvage { background: radial-gradient(70% 55% at 50% 50%, rgba(255, 214, 110, 0.42), rgba(255, 214, 110, 0) 75%); box-shadow: inset 0 0 0 calc(var(--w) * 0.004) rgba(214, 160, 40, 0.9), inset 0 0 calc(var(--w) * 0.03) rgba(255, 196, 70, 0.55); }
+.nu-case-couronne { animation: nu-case-couronne 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; animation-delay: calc(var(--rang) * 0.08s); }
+@keyframes nu-case-couronne { from { opacity: 0; transform: scale(0.3); filter: brightness(2.2); } }
+.nu-multiple { position: absolute; z-index: 2; left: 50%; bottom: 4%; translate: -50% 0; padding: 0.05em 0.4em; border-radius: 99px; border: 2px solid #fff1c4; background: radial-gradient(circle at 50% 30%, #c0281c, #5a0c06); font-family: var(--titre); font-weight: 400; font-size: calc(var(--w) * 0.05); line-height: 1.1; color: #fff1c4; text-shadow: 0 2px 0 #3a0603; box-shadow: 0 0 calc(var(--w) * 0.03) rgba(255, 120, 60, 0.85); pointer-events: none; animation: nu-multiple 0.7s cubic-bezier(0.3, 1.8, 0.5, 1) 0.25s both; }
 @keyframes nu-multiple { from { opacity: 0; transform: scale(3) rotate(-20deg); } }
-.nu-menottes { position: absolute; left: 50%; bottom: 3%; width: 96%; translate: -50% 0; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)); transform-origin: 50% 0; animation: nu-menottes 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.nu-menottes { position: absolute; z-index: 2; left: 50%; bottom: 2%; width: 94%; translate: -50% 0; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)); transform-origin: 50% 0; pointer-events: none; animation: nu-menottes 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
 @keyframes nu-menottes { 0% { opacity: 0; transform: translateY(-160%) rotate(-25deg); } 55% { opacity: 1; transform: translateY(0) rotate(10deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0); } }
-.nu-couronne.figee .nu-menottes { animation: none; }
+
+/* Les jackpots, dans la grande plaque : GRAND, puis MAJOR, MINOR et MINI */
+.cab.nuits .nu-jackpots { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--w) * 0.004); letter-spacing: 0; text-shadow: none; }
+.nu-jp { display: inline-flex; align-items: baseline; gap: 0.35em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nu-jp b { font-family: var(--titre); font-weight: 400; letter-spacing: 0.06em; }
+.nu-jp > span { font-family: var(--titre); color: #fff1d0; }
+.cab.nuits .nu-jp.grand { font-size: calc(var(--w) * 0.046); line-height: 1.05; }
+.nu-jp.grand b { color: #ffcf4a; text-shadow: 0 0 calc(var(--w) * 0.02) rgba(255, 200, 80, 0.8), 0 2px 0 #050c26; }
+.nu-jp.grand > span { color: #ffe9a8; text-shadow: 0 2px 0 #050c26; }
+.nu-jp-ligne { display: flex; gap: calc(var(--w) * 0.024); font-size: calc(var(--w) * 0.027); line-height: 1.1; }
+.nu-jp.major b { color: #ff7a66; }
+.nu-jp.minor b { color: #86b6ff; }
+.nu-jp.mini b { color: #6ae3a0; }
+.nu-jp.allume { animation: nu-jp-allume 0.45s ease-in-out infinite alternate; }
+@keyframes nu-jp-allume { to { transform: scale(1.12); filter: brightness(1.5) drop-shadow(0 0 6px rgba(255, 230, 150, 0.9)); } }
+.nu-gains-jackpots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 8px 0 0; }
+.nu-gains-jackpots .nu-jp { justify-content: space-between; padding: 5px 10px; border-radius: 10px; border: 1px solid var(--filet); background: rgba(8, 18, 50, 0.85); font-size: 14px; }
+.nu-gains-jeton { display: inline-grid; width: 34px; height: 34px; flex: none; }
+.nu-gains-jeton .cas-symbole { width: 34px; height: 34px; }
+
+/* Le Jeton du Baron */
+.nu-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.nu-jeton { overflow: visible; }
+.nu-jeton .nu-jeton-cran { fill: #0b1a44; }
+.nu-jeton .nu-jeton-face { fill: url(#nu-face); }
+.nu-jeton.mini .nu-jeton-face { fill: #127a46; }
+.nu-jeton.minor .nu-jeton-face { fill: #2557c9; }
+.nu-jeton.major .nu-jeton-face { fill: #a51f16; }
+.nu-jeton-texte { font-family: var(--titre); font-weight: 400; fill: #ffe7a0; text-anchor: middle; dominant-baseline: central; stroke: #2a1a04; stroke-width: 1.4px; paint-order: stroke; letter-spacing: 0.02em; }
+.nu-jeton.mini .nu-jeton-texte, .nu-jeton.minor .nu-jeton-texte, .nu-jeton.major .nu-jeton-texte { fill: #fff6dc; }
+.nu-jeton-dollar { font-size: 13px; font-weight: 800; fill: #e8c06a; text-anchor: middle; dominant-baseline: central; }
+
+/* Le bonus Jetons du Baron : 15 cases, les Jetons restent collés, les cases vides tournent à chaque relance */
+.nu-bonus { position: absolute; z-index: 2; inset: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(3, var(--case)); grid-auto-flow: column; column-gap: 1.62%; animation: apparaitre 0.4s ease-out; }
+.nu-bonus-case { position: relative; display: grid; place-items: center; overflow: hidden; border-radius: calc(var(--w) * 0.008); background: radial-gradient(circle at 50% 40%, #183577, #050d26 80%); box-shadow: inset 0 0 0 1px rgba(214, 160, 40, 0.5); }
+.nu-bonus-case .cas-symbole { width: 86%; height: 86%; transition: transform 0.2s, opacity 0.3s, filter 0.3s; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }
+.nu-bonus-case.pleine { background: radial-gradient(circle at 50% 45%, rgba(255, 214, 110, 0.5), #0b1a44 75%); box-shadow: inset 0 0 0 calc(var(--w) * 0.004) rgba(255, 215, 116, 0.85); }
+.nu-bonus.roule .nu-bonus-case:not(.pleine)::after { content: ''; position: absolute; inset: -40% 0; background: linear-gradient(180deg, transparent, rgba(160, 200, 255, 0.55), transparent); animation: nu-bonus-roule 0.3s linear 2; }
+@keyframes nu-bonus-roule { from { transform: translateY(-60%); } to { transform: translateY(60%); } }
+.nu-bonus-case.nouvelle .cas-symbole { animation: nu-jeton-tombe 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+@keyframes nu-jeton-tombe { from { opacity: 0; transform: translateY(-110%) scale(1.35); filter: brightness(2); } }
+.nu-bonus-case.compte { box-shadow: inset 0 0 0 calc(var(--w) * 0.006) #fff1c4, 0 0 calc(var(--w) * 0.04) rgba(255, 215, 116, 0.95); }
+.nu-bonus-case.compte .cas-symbole { transform: scale(1.16); filter: brightness(1.35) drop-shadow(0 0 6px rgba(255, 230, 150, 0.9)); }
+.nu-bonus-case.comptee .cas-symbole { opacity: 0.42; filter: grayscale(0.35); }
+.nu-bonus.grand .nu-bonus-case { animation: nu-bonus-grand 0.32s steps(2) 8; }
+@keyframes nu-bonus-grand { 50% { box-shadow: inset 0 0 0 calc(var(--w) * 0.007) #fff1c4, 0 0 calc(var(--w) * 0.05) rgba(255, 215, 116, 1); } }
+.cab.nuits.nu-bonus-actif { --teinte-a: rgba(255, 210, 110, 0.8); }
+.nu-bonus-titre { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, calc(var(--w) * 0.05), 26px); color: #ffd774; letter-spacing: 0.04em; text-shadow: 0 0 12px rgba(255, 210, 110, 0.6); }
+.nu-bonus-total { font-family: var(--titre); font-size: clamp(16px, calc(var(--w) * 0.045), 24px); color: #fff1d0; font-variant-numeric: tabular-nums; }
+.cab-banniere.nu-banniere.jetons { background: linear-gradient(90deg, rgba(4, 10, 40, 0), rgba(10, 26, 80, 0.95) 14%, rgba(20, 44, 120, 0.97) 50%, rgba(10, 26, 80, 0.95) 86%, rgba(4, 10, 40, 0)); }
+.cab-banniere.nu-banniere.mini { color: #c9ffe0; text-shadow: 0 0 18px rgba(80, 230, 150, 0.95), 0 3px 0 #052a16; background: linear-gradient(90deg, rgba(4, 40, 20, 0), rgba(8, 70, 36, 0.95) 14%, rgba(14, 110, 56, 0.97) 50%, rgba(8, 70, 36, 0.95) 86%, rgba(4, 40, 20, 0)); }
+.cab-banniere.nu-banniere.minor { color: #d9e8ff; text-shadow: 0 0 18px rgba(110, 170, 255, 0.95), 0 3px 0 #061538; background: linear-gradient(90deg, rgba(6, 20, 60, 0), rgba(18, 50, 140, 0.95) 14%, rgba(30, 80, 200, 0.97) 50%, rgba(18, 50, 140, 0.95) 86%, rgba(6, 20, 60, 0)); }
+.cab-banniere.nu-banniere.major { color: #ffe0d8; text-shadow: 0 0 18px rgba(255, 110, 80, 0.95), 0 3px 0 #3a0603; background: linear-gradient(90deg, rgba(60, 8, 4, 0), rgba(110, 18, 10, 0.95) 14%, rgba(170, 30, 18, 0.97) 50%, rgba(110, 18, 10, 0.95) 86%, rgba(60, 8, 4, 0)); }
+.cab-banniere.nu-banniere.grand { font-size: calc(var(--w) * 0.12); color: #3a2204; text-shadow: 0 1px 0 #fff6d0, 0 0 22px rgba(255, 240, 180, 0.9); background: linear-gradient(90deg, rgba(120, 80, 10, 0), #b8860b 12%, #ffe08a 50%, #b8860b 88%, rgba(120, 80, 10, 0)); animation-duration: 3.2s; }
+.nu-medaillon-jackpot { display: grid; justify-items: center; gap: 2px; padding: 14px 28px 16px; border-radius: 20px; border: 3px solid #ffe39a; background: radial-gradient(circle at 50% 30%, #1d3f94, #071234); box-shadow: 0 0 0 4px rgba(10, 20, 60, 0.9), 0 0 44px rgba(255, 210, 110, 0.65); animation: nu-jackpot-entree 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.nu-medaillon-jackpot b { font-family: var(--titre); font-weight: 400; font-size: clamp(38px, 11vw, 56px); letter-spacing: 0.08em; line-height: 1.05; color: #ffcf4a; text-shadow: 0 0 20px rgba(255, 200, 80, 0.8), 0 3px 0 #050c26; }
+.nu-medaillon-jackpot strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 6vw, 28px); color: #fff1d0; }
+.nu-medaillon-jackpot.mini b { color: #6ae3a0; }
+.nu-medaillon-jackpot.minor b { color: #86b6ff; }
+.nu-medaillon-jackpot.major b { color: #ff7a66; }
+.nu-medaillon-jackpot.grand { background: radial-gradient(circle at 50% 30%, #ffe08a, #b8860b 70%, #6a4a06); border-color: #fff6d0; }
+.nu-medaillon-jackpot.grand b { color: #3a2204; text-shadow: 0 1px 0 #fff6d0; }
+.nu-medaillon-jackpot.grand strong { color: #2a1802; }
+@keyframes nu-jackpot-entree { 0% { opacity: 0; transform: scale(0.2) rotate(-8deg); } 60% { opacity: 1; transform: scale(1.12) rotate(2deg); } 100% { transform: scale(1) rotate(0); } }
 
 /* Les effets des événements, posés sur les rouleaux */
 .nu-butin { position: absolute; z-index: 2; top: 50%; left: calc(var(--k) * 20.32% + 9.35%); width: 30%; translate: -50% -50%; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.7)); pointer-events: none; animation: nu-butin 0.8s cubic-bezier(0.5, 0, 0.75, 0) both; }
@@ -688,5 +747,5 @@
 .nu-fx-police .nu-carte img { box-shadow: 0 0 0 2px rgba(255, 215, 116, 0.8), -24px 0 50px rgba(255, 40, 40, 0.6), 24px 0 50px rgba(50, 110, 255, 0.7), 0 18px 34px rgba(0, 0, 0, 0.7); }
 
 @media (prefers-reduced-motion: reduce) {
-  .nu-couronne, .nu-multiple, .nu-menottes, .cab.nuits .cas-case.gagnante .cas-symbole, .nu-butin, .nu-alliance, .nu-nuit, .nu-lune, .cab.nuits .cas-case.nu-retourne, .cab.nu-fx-police .cab-ampoules i, .cab.nu-fx-police .cab-lanterne, .nu-carte, .nu-carte-evenement, .nu-carte-evenement p { animation: none !important; }
+  .nu-case-couronne, .nu-multiple, .nu-menottes, .nu-jp.allume, .nu-bonus, .nu-bonus-case .cas-symbole, .nu-bonus-case::after, .nu-medaillon-jackpot, .cab.nuits .cas-case.gagnante .cas-symbole, .nu-butin, .nu-alliance, .nu-nuit, .nu-lune, .cab.nuits .cas-case.nu-retourne, .cab.nu-fx-police .cab-ampoules i, .cab.nu-fx-police .cab-lanterne, .nu-carte, .nu-carte-evenement, .nu-carte-evenement p { animation: none !important; }
 }

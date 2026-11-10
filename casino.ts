@@ -80,4 +80,6 @@ export interface AnnonceCasino {
   jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits';
   gain: number;
   grosLot?: boolean;
+  /** Les Nuits du Baron : le jackpot décroché (MAJOR ou GRAND). */
+  jackpot?: 'major' | 'grand';
 }

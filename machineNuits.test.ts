@@ -10,10 +10,16 @@ import {
   GAIN_JUGES_NUIT,
   gainsNuit,
   GAINS_NUIT,
+  JACKPOTS_NUIT,
   jouerNuits,
+  jouerBonusJetons,
+  JETONS_POUR_BONUS,
+  meilleurJackpot,
+  RELANCES_JETONS,
   tauxDeRetourNuits,
   tourNuits,
   TOURS_POLICE,
+  type ForcerNuits,
   type ResultatNuit,
   type SymboleNuit,
   type TypeEvenementNuit,
@@ -78,7 +84,7 @@ describe('Les Nuits du Baron : règles', () => {
     }
   });
 
-  it('joue chaque événement : police figée 3 tours (mise bloquée), casse multiplicateur, trahison, alliance, couvre-feu', () => {
+  it('joue chaque événement : police figée 3 tours (mise bloquée, un seul tour en free games), casse multiplicateur, trahison, alliance, couvre-feu', () => {
     const h = graine(4);
     const tour = (evenement: TypeEvenementNuit) => tourNuits(h, 1000, { gratuit: false, collantes: [], forcer: { evenement } });
     // Descente de police : les rouleaux restent joker ce tour et les 2 suivants, à la même mise.
@@ -93,6 +99,12 @@ describe('Les Nuits du Baron : règles', () => {
       for (const r of figes) expect(suite.resultat.sauvages).toContain(r);
     }
     expect(etat.collantes).toBeNull();
+    expect(figes).toHaveLength(1);
+    // Pendant les free games, la police ne fige son rouleau que pour ce tour.
+    const libre = { ...etatNuitsVide(), gratuits: 3, miseGratuite: 1000 };
+    const policeLibre = jouerNuits(h, 1000, libre, { evenement: 'police' });
+    expect(policeLibre.resultat.evenement?.type).toBe('police');
+    expect(libre.collantes).toBeNull();
     // Casse du siècle : un rouleau joker multiplicateur.
     const casse = tour('casse');
     const e = casse.evenement as { type: 'casse'; rouleau: number; multiple: number };
@@ -116,14 +128,59 @@ describe('Les Nuits du Baron : règles', () => {
     for (let r = 0; r < 3; r++) for (const s of couvreFeu.grille[r]) expect(PETITS).not.toContain(s);
   });
 
-  it('rend environ 96 % des mises sur 400 000 tours (free games et événements compris)', () => {
+  it('joue le bonus Jetons du Baron : 3 relances remises à 3, tous les Jetons paient, 15 cases = GRAND', () => {
+    // 6 Jetons au départ : le bonus s'arrête quand 3 relances de suite n'apportent rien.
+    const depart = Object.fromEntries([0, 2, 4, 7, 9, 13].map((c) => [c, { x: 1 }]));
+    const b = jouerBonusJetons(graine(3), 10_000, depart);
+    let restantes = RELANCES_JETONS;
+    for (const r of b.relances) {
+      const nouvelles = Object.keys(r.nouvelles).length;
+      expect(r.restantes).toBe(nouvelles ? RELANCES_JETONS : restantes - 1);
+      for (const c of Object.keys(r.nouvelles)) expect(depart).not.toHaveProperty(c);
+      restantes = r.restantes;
+    }
+    if (!b.grand) expect(b.relances.at(-1)!.restantes).toBe(0);
+    const somme = Object.values(b.valeurs).reduce((t, v) => t + v.x, 0);
+    expect(b.gain).toBe(Math.round(somme * 10_000) + (b.grand ? JACKPOTS_NUIT.grand * 10_000 : 0));
+    // Les 15 cases remplies : le GRAND (1000 fois la mise) en plus des Jetons.
+    const plein = jouerBonusJetons(graine(3), 10_000, depart, true);
+    expect(plein.grand).toBe(true);
+    expect(Object.keys(plein.valeurs)).toHaveLength(15);
+    expect(meilleurJackpot(plein)).toBe('grand');
+    expect(plein.gain).toBeGreaterThanOrEqual((JACKPOTS_NUIT.grand + 15 * 0.5) * 10_000);
+    // Forcé sur un tour : 6 Jetons au moins, dont un MAJOR, et le gain du tour comprend le bonus.
+    const t = tourNuits(sansEvenement(graine(6)), 1000, { gratuit: false, collantes: [], forcer: { bonusJetons: { jackpot: 'major' } } });
+    expect(Object.keys(t.jetons).length).toBeGreaterThanOrEqual(JETONS_POUR_BONUS);
+    expect(t.bonusJetons).not.toBeNull();
+    expect(meilleurJackpot(t.bonusJetons!)).toMatch(/major|grand/);
+    expect(t.gain).toBeGreaterThanOrEqual(t.bonusJetons!.gain + t.gains.reduce((s, g) => s + g.gain, 0));
+  });
+
+  it('ne compte pas les Jetons recouverts par un rouleau joker, et la trahison ne les retourne pas', () => {
+    const h = graine(12);
+    for (let i = 0; i < 3000; i++) {
+      const r = tourNuits(h, 1000, { gratuit: false, collantes: [], forcer: i % 3 ? undefined : { evenement: 'trahison' } });
+      for (const c of Object.keys(r.jetons).map(Number)) {
+        expect(r.grille[Math.floor(c / 3)][c % 3]).toBe('jeton');
+        expect(r.sauvages).not.toContain(Math.floor(c / 3));
+      }
+      if (r.evenement?.type === 'trahison') for (const c of r.evenement.cases) expect(r.avant[Math.floor(c / 3)][c % 3]).toBe('mystere');
+      expect(!!r.bonusJetons).toBe(Object.keys(r.jetons).length >= JETONS_POUR_BONUS);
+    }
+  });
+
+  it('rend environ 96 % des mises sur 400 000 tours (free games, événements et Jetons du Baron compris)', () => {
     const t = tauxDeRetourNuits(400_000, graine(17));
     expect(t.total).toBeGreaterThan(0.9);
     expect(t.total).toBeLessThan(1.03);
-    expect(1 / t.freeGames).toBeGreaterThan(100); // les free games, environ une fois tous les 150 tours
-    expect(1 / t.freeGames).toBeLessThan(220);
-    expect(t.evenements).toBeGreaterThan(0.04); // un événement environ une fois tous les 20 tours
-    expect(t.evenements).toBeLessThan(0.06);
+    expect(1 / t.freeGames).toBeGreaterThan(140); // les free games, environ une fois tous les 185 tours
+    expect(1 / t.freeGames).toBeLessThan(240);
+    expect(t.evenements).toBeGreaterThan(0.034); // un événement environ une fois tous les 25 tours
+    expect(t.evenements).toBeLessThan(0.05);
+    expect(1 / t.bonusJetons).toBeGreaterThan(100); // le bonus Jetons du Baron, environ une fois tous les 130 tours
+    expect(1 / t.bonusJetons).toBeLessThan(170);
+    // Plus de « bons » tours : environ 1 tour sur 7 rend au moins la mise.
+    expect(t.rendMise).toBeGreaterThan(0.12);
   });
 });
 
@@ -136,7 +193,7 @@ const identites = {
 const stockage = stockageMemoire();
 const service = creerServiceComptes({ configWeb: { apiKey: 'cle', authDomain: 'test.firebaseapp.com', projectId: 'test' }, authentification: authentificationTest(identites), stockage });
 let serveur: Awaited<ReturnType<typeof demarrerServeur>>;
-let forcer: { arrets?: number[]; evenement?: TypeEvenementNuit } | undefined;
+let forcer: ForcerNuits | undefined;
 const connecter = () => io(`http://localhost:${serveur.port}`, { transports: ['websocket'], forceNew: true });
 function emettre(s: Socket, evt: string, data?: unknown): Promise<any> {
   return new Promise((ok) => s.emit(evt, data, ok));
@@ -180,7 +237,7 @@ describe('Les Nuits du Baron de bout en bout', () => {
     }
     expect((await emettre(a, 'casino_vue')).casino.nuits.collantes).toBeNull();
     // 3 Juges : 8 free games à 20 000 $, sans débit.
-    forcer = { arrets: trouver((x) => x.juges === 3) };
+    forcer = { arrets: trouver((x) => x.juges === 3), evenement: 'couvreFeu' };
     await attendre(380);
     const juges = await emettre(a, 'casino_nuits', { mise: 20_000 });
     expect(juges.casino.nuits).toMatchObject({ gratuits: FREE_GAMES_NUIT, miseGratuite: 20_000 });
@@ -190,6 +247,14 @@ describe('Les Nuits du Baron de bout en bout', () => {
     expect(gratuit.nuits).toMatchObject({ gratuit: true, mise: 20_000 });
     expect(gratuit.nuits.evenement).not.toBeNull();
     expect(gratuit.casino.solde).toBe(juges.casino.solde + gratuit.nuits.gain);
+    // Jetons du Baron jusqu'au GRAND, pendant un free game : tout est versé d'un coup.
+    forcer = { bonusJetons: { grand: true } };
+    await attendre(380);
+    const jetons = await emettre(a, 'casino_nuits', { mise: 1000 });
+    forcer = undefined;
+    expect(jetons.nuits.bonusJetons.grand).toBe(true);
+    expect(jetons.nuits.gain).toBeGreaterThanOrEqual(1000 * 20_000);
+    expect(jetons.casino.solde).toBe(gratuit.casino.solde + jetons.nuits.gain);
     a.close();
   });
 });
