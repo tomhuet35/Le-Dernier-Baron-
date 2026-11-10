@@ -12,7 +12,8 @@
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import {
-  CADEAU_SALON,
+  cadeauDisponible,
+  CADEAUX_SALON,
   CASES_ROUE_SALON,
   GROS_GAIN_ROUE,
   GROS_LOT_DEPART,
@@ -21,6 +22,7 @@ import {
   SOLDE_MAX,
   partGrosLot,
   type AnnonceCasino,
+  type CadeauSalon,
   type RicheSalon,
   type VueBonusMachine,
   type VueCasino,
@@ -50,8 +52,8 @@ export interface OptionsCasino {
   hasardCasse?: (n: number) => number;
   /** Regroupement des écritures du solde, en millisecondes. */
   delaiEcriture?: number;
-  /** Fin du cadeau du Baron (remplaçable pour les tests). */
-  finCadeau?: number;
+  /** Les cadeaux du Baron (remplaçables pour les tests). */
+  cadeaux?: CadeauSalon[];
   /** Blackjack : délais et sabot (remplaçables pour les tests). */
   delaisTables?: Partial<DelaisTables>;
   sabotBlackjack?: () => CarteBJ[];
@@ -102,7 +104,9 @@ export function creerCasino(options: OptionsCasino) {
   const tirageRoue = options.tirageRoue ?? (() => randomInt(CASES_ROUE_SALON.length));
   const tirageRoueBaron = options.tirageRoueBaron ?? (() => randomInt(ROUE_BARON.length));
   const hasardCasse = options.hasardCasse ?? ((n: number) => randomInt(n));
-  const finCadeau = options.finCadeau ?? CADEAU_SALON.fin;
+  const cadeaux = options.cadeaux ?? CADEAUX_SALON;
+  /** Heure d'ouverture des cadeaux à durée (gardée avec les réglages du serveur). */
+  const ouvertures: Record<string, number> = {};
 
   const portes = new Map<string, Porte>();
   const createurs = new Map<string, { ok: boolean; t: number }>();
@@ -115,7 +119,9 @@ export function creerCasino(options: OptionsCasino) {
   const chargement = comptes
     .lireParametre('casino')
     .then((brut) => {
-      const d = (brut ?? {}) as { grosLot?: unknown; riches?: unknown };
+      const d = (brut ?? {}) as { grosLot?: unknown; riches?: unknown; ouvertures?: unknown };
+      if (d.ouvertures && typeof d.ouvertures === 'object')
+        for (const [k, v] of Object.entries(d.ouvertures as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v)) ouvertures[k] = v;
       if (typeof d.grosLot === 'number' && Number.isFinite(d.grosLot) && d.grosLot >= GROS_LOT_DEPART) grosLot = Math.floor(d.grosLot);
       if (d.riches && typeof d.riches === 'object') {
         for (const [uid, r] of Object.entries(d.riches as Record<string, unknown>)) {
@@ -124,13 +130,19 @@ export function creerCasino(options: OptionsCasino) {
         }
       }
     })
-    .catch((e) => console.error('Casino : lecture des réglages impossible :', e));
+    .catch((e) => console.error('Casino : lecture des réglages impossible :', e))
+    .then(() => {
+      // Un cadeau à durée s'ouvre la première fois que le serveur le voit : son heure d'ouverture est gardée.
+      const nouveaux = cadeaux.filter((c) => c.duree !== undefined && ouvertures[c.id] === undefined);
+      for (const c of nouveaux) ouvertures[c.id] = horloge();
+      if (nouveaux.length) sauverSalon();
+    });
 
   const sauverSalon = () => {
     if (minuterieSalon) return;
     minuterieSalon = setTimeout(() => {
       minuterieSalon = null;
-      void comptes.ecrireParametre('casino', { grosLot, riches: Object.fromEntries(riches) }).catch((e) => console.error('Casino : écriture impossible :', e));
+      void comptes.ecrireParametre('casino', { grosLot, riches: Object.fromEntries(riches), ouvertures }).catch((e) => console.error('Casino : écriture impossible :', e));
     }, delaiEcriture);
   };
 
@@ -216,7 +228,10 @@ export function creerCasino(options: OptionsCasino) {
       tables: tables.resume(),
       tablesRoulette: roulettes.resume(),
       nuits: p ? { gratuits: p.nuits.gratuits, miseGratuite: p.nuits.miseGratuite, collantes: p.nuits.collantes } : { gratuits: 0, miseGratuite: 0, collantes: null },
-      cadeau: t < finCadeau && p && !p.cadeaux.includes(CADEAU_SALON.id) ? { montant: CADEAU_SALON.montant, fin: finCadeau } : null,
+      cadeau: (() => {
+        const c = p ? cadeauDisponible(cadeaux, ouvertures, p.cadeaux, t) : null;
+        return c ? { montant: c.cadeau.montant, fin: c.fin } : null;
+      })(),
     };
   }
 
@@ -332,22 +347,25 @@ export function creerCasino(options: OptionsCasino) {
       if (!id) return;
       const p = portes.get(id.uid);
       if (!p || !dans) return repondre(rappel, INTROUVABLE);
-      if (horloge() >= finCadeau) return repondre(rappel, { ok: false, erreur: L('Le cadeau n’est plus disponible.', 'The gift is no longer available.') });
+      // Le cadeau récupéré : celui que le salon montre (ouvert, pas encore pris, qui se termine le plus tôt).
+      const dispo = cadeauDisponible(cadeaux, ouvertures, p.cadeaux, horloge());
+      if (!dispo) return repondre(rappel, { ok: false, erreur: L('Le cadeau n’est plus disponible.', 'The gift is no longer available.'), casino: vue(id.uid) });
+      const cadeau = dispo.cadeau;
       if (p.occupe) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
       p.occupe = true;
       try {
         await ecrire(id.uid);
-        const r = await comptes.recupererCadeauCasino(id.uid, CADEAU_SALON.id, CADEAU_SALON.montant);
+        const r = await comptes.recupererCadeauCasino(id.uid, cadeau.id, cadeau.montant);
         if (r === null) return repondre(rappel, INTROUVABLE);
         if (r === 'deja') {
-          if (!p.cadeaux.includes(CADEAU_SALON.id)) p.cadeaux.push(CADEAU_SALON.id);
-          return repondre(rappel, { ok: false, erreur: L('Tu as déjà récupéré ce cadeau.', 'You have already claimed this gift.') });
+          if (!p.cadeaux.includes(cadeau.id)) p.cadeaux.push(cadeau.id);
+          return repondre(rappel, { ok: false, erreur: L('Tu as déjà récupéré ce cadeau.', 'You have already claimed this gift.'), casino: vue(id.uid) });
         }
-        p.solde = r.casino?.solde ?? p.solde + CADEAU_SALON.montant;
-        p.cadeaux = r.casino?.cadeaux ?? [...p.cadeaux, CADEAU_SALON.id];
+        p.solde = r.casino?.solde ?? p.solde + cadeau.montant;
+        p.cadeaux = r.casino?.cadeaux ?? [...p.cadeaux, cadeau.id];
         riches.set(id.uid, { nom: p.nom, avatar: p.avatar, solde: p.solde });
         sauverSalon();
-        repondre(rappel, { ok: true, cadeau: CADEAU_SALON.montant, casino: vue(id.uid) });
+        repondre(rappel, { ok: true, cadeau: cadeau.montant, casino: vue(id.uid) });
       } catch (e) {
         console.error('Casino : cadeau impossible :', e);
         repondre(rappel, { ok: false, erreur: L('Le cadeau est indisponible pour le moment, réessaie plus tard.', 'The gift is unavailable right now, try again later.') });
@@ -542,7 +560,7 @@ export function creerCasino(options: OptionsCasino) {
     if (minuterieSalon) {
       clearTimeout(minuterieSalon);
       minuterieSalon = null;
-      await comptes.ecrireParametre('casino', { grosLot, riches: Object.fromEntries(riches) }).catch(() => undefined);
+      await comptes.ecrireParametre('casino', { grosLot, riches: Object.fromEntries(riches), ouvertures }).catch(() => undefined);
     }
   }
 

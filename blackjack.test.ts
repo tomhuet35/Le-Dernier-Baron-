@@ -18,7 +18,7 @@ import {
   type MainBJ,
   type VueTableBJ,
 } from '../shared/blackjack';
-import { CADEAU_SALON, SOLDE_DEPART } from '../shared/casino';
+import { cadeauDisponible, SOLDE_DEPART, type CadeauSalon } from '../shared/casino';
 
 /** Carte : rang 1 (As) à 13 (Roi). */
 const c = (rang: number, couleur = 0): CarteBJ => couleur * 13 + rang - 1;
@@ -154,6 +154,10 @@ const identites = {
 };
 const stockage = stockageMemoire();
 const service = creerServiceComptes({ configWeb: { apiKey: 'cle', authDomain: 'test.firebaseapp.com', projectId: 'test' }, authentification: authentificationTest(identites), stockage });
+const CADEAUX_TEST: CadeauSalon[] = [
+  { id: 'cadeau-test-long', montant: 5_000_000, fin: Date.now() + 3_600_000 },
+  { id: 'cadeau-test-30min', montant: 9_000_000, duree: 30 * 60_000 },
+];
 let serveur: Awaited<ReturnType<typeof demarrerServeur>>;
 const connecter = () => io(`http://localhost:${serveur.port}`, { transports: ['websocket'], forceNew: true });
 function emettre(s: Socket, evt: string, data?: unknown): Promise<any> {
@@ -171,7 +175,7 @@ beforeAll(async () => {
     comptes: service,
     casino: {
       delaiEcriture: 30,
-      finCadeau: Date.now() + 3_600_000,
+      cadeaux: CADEAUX_TEST,
       delaisTables: { mises: 2000, decision: 1500, assurance: 400, bot: 20, croupier: 15, pause: 150 },
       sabotBlackjack: () =>
         nouveauSabot((n) => {
@@ -268,18 +272,35 @@ describe('Table de blackjack de bout en bout', () => {
     b.close();
   }, 30_000);
 
-  it('donne le cadeau du Baron une seule fois', async () => {
+  it('donne chaque cadeau du Baron une seule fois, le plus court d’abord (30 minutes dès l’ouverture)', async () => {
     const s = connecter();
     await emettre(s, 'identifier', { jeton: 'jeton-b' });
     const entree = (await emettre(s, 'casino_entrer')).casino;
-    expect(entree.cadeau).toMatchObject({ montant: CADEAU_SALON.montant });
+    // D'abord le cadeau de 30 minutes, ouvert au démarrage du serveur.
+    expect(entree.cadeau).toMatchObject({ montant: 9_000_000 });
+    expect(entree.cadeau.fin).toBeGreaterThan(Date.now() + 29 * 60_000);
+    expect(entree.cadeau.fin).toBeLessThanOrEqual(Date.now() + 30 * 60_000);
     const r = await emettre(s, 'casino_cadeau');
     expect(r.ok).toBe(true);
     expect(r.casino.solde).toBe(entree.solde + 9_000_000);
-    expect(r.casino.cadeau).toBeNull();
+    // Puis l'autre cadeau.
+    expect(r.casino.cadeau).toMatchObject({ montant: 5_000_000 });
+    const r2 = await emettre(s, 'casino_cadeau');
+    expect(r2.ok).toBe(true);
+    expect(r2.casino.solde).toBe(entree.solde + 14_000_000);
+    expect(r2.casino.cadeau).toBeNull();
     expect((await emettre(s, 'casino_cadeau')).ok).toBe(false);
-    expect((await stockage.lire('uid-b'))?.casino?.cadeaux).toEqual([CADEAU_SALON.id]);
-    expect(await service.recupererCadeauCasino('uid-b', CADEAU_SALON.id, 9_000_000)).toBe('deja');
+    expect((await stockage.lire('uid-b'))?.casino?.cadeaux).toEqual(['cadeau-test-30min', 'cadeau-test-long']);
+    expect(await service.recupererCadeauCasino('uid-b', 'cadeau-test-30min', 9_000_000)).toBe('deja');
     s.close();
+  });
+
+  it('ferme un cadeau à durée au bout de son temps, et attend son ouverture', () => {
+    const t = Date.now();
+    const cadeaux: CadeauSalon[] = [{ id: 'court', montant: 1, duree: 30 * 60_000 }];
+    expect(cadeauDisponible(cadeaux, {}, [], t)).toBeNull();
+    expect(cadeauDisponible(cadeaux, { court: t }, [], t + 29 * 60_000)?.fin).toBe(t + 30 * 60_000);
+    expect(cadeauDisponible(cadeaux, { court: t }, [], t + 30 * 60_000)).toBeNull();
+    expect(cadeauDisponible(cadeaux, { court: t }, ['court'], t)).toBeNull();
   });
 });

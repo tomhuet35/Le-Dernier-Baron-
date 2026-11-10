@@ -1188,10 +1188,28 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
 }
 
 /** Cadeau du Baron : la somme à récupérer, et le temps qu'il reste. */
-function BandeauCadeau({ cadeau, onRecuperer }: { cadeau: { montant: number; fin: number }; onRecuperer: () => void }) {
-  const reste = useAttente(cadeau.fin);
+function BandeauCadeau({ cadeau, onRecuperer, onFini }: { cadeau: { montant: number; fin: number }; onRecuperer: () => void; onFini: () => void }) {
+  const longue = useAttente(cadeau.fin);
+  // Dans la dernière heure, le compte à rebours passe à la seconde (et le bandeau s'en va quand c'est fini).
+  const [maintenant, setMaintenant] = useState(() => Date.now());
+  const urgent = cadeau.fin - maintenant < 3_600_000;
+  useEffect(() => {
+    if (!urgent) return;
+    const t = window.setInterval(() => setMaintenant(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [urgent]);
+  const fini = cadeau.fin <= maintenant;
+  // Fini : on redemande la vue au serveur (un autre cadeau peut prendre sa place).
+  const finiRef = useRef(onFini);
+  finiRef.current = onFini;
+  useEffect(() => {
+    if (fini) finiRef.current();
+  }, [fini]);
+  if (fini) return null;
+  const s = Math.ceil((cadeau.fin - maintenant) / 1000);
+  const reste = urgent ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s` : longue;
   return (
-    <section className="cas-cadeau">
+    <section className={`cas-cadeau ${urgent ? 'urgent' : ''}`}>
       <img src="/cartes/machine-coffre.webp" alt="" />
       <div>
         <small>{tr('Cadeau du Baron', 'The Baron’s gift')}</small>
@@ -1293,6 +1311,7 @@ function Salon({
   onBlackjack,
   onRoulette,
   onCadeau,
+  onCadeauFini,
   onQuitter,
 }: {
   vue: VueCasino;
@@ -1301,6 +1320,7 @@ function Salon({
   onBlackjack: () => void;
   onRoulette: () => void;
   onCadeau: () => void;
+  onCadeauFini: () => void;
   onQuitter: () => void;
 }) {
   const solde = useSoldeAnime(vue.solde);
@@ -1321,7 +1341,7 @@ function Salon({
           <strong className="cas-solde">{dollars(solde)}</strong>
         </div>
       </section>
-      {vue.cadeau && <BandeauCadeau cadeau={vue.cadeau} onRecuperer={onCadeau} />}
+      {vue.cadeau && <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} />}
       <button type="button" className={`cas-bouton-roue ${attente ? '' : 'prete'}`} onClick={onRoue}>
         <svg className="bouton-roulette-icone" viewBox="0 0 40 40" aria-hidden="true">
           <circle cx="20" cy="20" r="19.5" fill="#d2a85a" />
@@ -1479,9 +1499,15 @@ export default function Casino({
     if (r.ok && r.casino) setVue(r.casino);
   };
   const recupererCadeau = async () => {
-    const r = (await appel('casino_cadeau')) as { ok: boolean; cadeau?: number; casino?: VueCasino };
-    if (!r.ok || !r.casino) return;
-    setVue(r.casino);
+    const r = (await appel('casino_cadeau')) as { ok: boolean; erreur?: string; cadeau?: number; casino?: VueCasino };
+    if (r.casino) setVue(r.casino);
+    if (!r.ok || !r.casino) {
+      if (r.erreur) {
+        setInfo(r.erreur);
+        window.setTimeout(() => setInfo(null), 4000);
+      }
+      return;
+    }
     setCadeau(r.cadeau ?? 0);
     jouerEffet('roulette_gros_lot');
   };
@@ -1520,6 +1546,12 @@ export default function Casino({
         onBlackjack={() => setFenetreTables('blackjack')}
         onRoulette={() => setFenetreTables('roulette')}
         onCadeau={() => void recupererCadeau()}
+        onCadeauFini={() =>
+          void (async () => {
+            const r = (await appel('casino_vue')) as { ok: boolean; casino?: VueCasino };
+            if (r.ok && r.casino) setVue(r.casino);
+          })()
+        }
         onQuitter={() => onQuitter()}
       />
     );

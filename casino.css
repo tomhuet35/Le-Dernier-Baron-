@@ -764,3 +764,9 @@
 .cas-auto-choix button { min-width: 40px; padding: 4px 10px; font-family: var(--titre); font-size: 15px; color: var(--or-vif); border-color: var(--or); }
 .cas-auto-choix .cas-auto-fermer { min-width: 34px; padding: 4px 8px; font-family: inherit; color: var(--creme-doux); border-color: var(--filet); }
 .cab.nuits .cas-auto-choix button { background: rgba(6, 14, 40, 0.92); }
+
+/* Cadeau du Baron dans sa dernière heure : le compte à rebours à la seconde, le bandeau qui brille */
+.cas-cadeau.urgent { animation: cas-cadeau-urgent 1.4s ease-in-out infinite; }
+.cas-cadeau.urgent span { font-variant-numeric: tabular-nums; color: #ffd774; font-weight: 700; }
+@keyframes cas-cadeau-urgent { 50% { box-shadow: 0 0 0 2px rgba(255, 215, 116, 0.9), 0 0 26px rgba(255, 196, 70, 0.7); } }
+@media (prefers-reduced-motion: reduce) { .cas-cadeau.urgent { animation: none; } }

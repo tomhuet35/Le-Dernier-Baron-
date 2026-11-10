@@ -24,8 +24,39 @@ export const CASE_VERTE_SALON = 3;
 /** À partir de ce gain, la roulette du salon est fêtée en grand et annoncée à tout le salon. */
 export const GROS_GAIN_ROUE = 500_000;
 
-/** Cadeau du Baron : une somme à récupérer une seule fois, jusqu'à la date prévue (mardi 10 novembre 2026, minuit à Paris). */
-export const CADEAU_SALON = { id: 'cadeau-9m-2026-11', montant: 9_000_000, fin: Date.UTC(2026, 10, 10, 23, 0, 0) };
+/**
+ * Cadeaux du Baron : chacun est une somme à récupérer une seule fois. Il s'arrête à une date fixe (`fin`), ou reste
+ * ouvert `duree` ms à partir de sa mise en ligne (le serveur retient l'heure où il l'a ouvert, même s'il redémarre).
+ * Le salon montre d'abord celui qui se termine le plus tôt.
+ */
+export interface CadeauSalon {
+  id: string;
+  montant: number;
+  fin?: number;
+  duree?: number;
+}
+export const CADEAUX_SALON: CadeauSalon[] = [
+  // 9 millions pendant 30 minutes, dès la mise en ligne.
+  { id: 'cadeau-9m-30min-2026-11-10', montant: 9_000_000, duree: 30 * 60_000 },
+  // 9 millions jusqu'au mardi 10 novembre 2026, minuit à Paris.
+  { id: 'cadeau-9m-2026-11', montant: 9_000_000, fin: Date.UTC(2026, 10, 10, 23, 0, 0) },
+];
+/** Fin d'un cadeau : sa date fixe, ou son ouverture + sa durée (null tant qu'il n'est pas ouvert). */
+export function finCadeau(c: CadeauSalon, ouvertures: Record<string, number>): number | null {
+  if (c.fin !== undefined) return c.fin;
+  const debut = ouvertures[c.id];
+  return debut !== undefined && c.duree !== undefined ? debut + c.duree : null;
+}
+/** Le cadeau à montrer à un joueur : encore ouvert, pas encore récupéré, et qui se termine le plus tôt. */
+export function cadeauDisponible(cadeaux: CadeauSalon[], ouvertures: Record<string, number>, recuperes: string[], t: number): { cadeau: CadeauSalon; fin: number } | null {
+  let meilleur: { cadeau: CadeauSalon; fin: number } | null = null;
+  for (const c of cadeaux) {
+    const fin = finCadeau(c, ouvertures);
+    if (fin === null || t >= fin || recuperes.includes(c.id)) continue;
+    if (!meilleur || fin < meilleur.fin) meilleur = { cadeau: c, fin };
+  }
+  return meilleur;
+}
 
 /** Gros lot progressif de la machine à sous : montant de départ, et part de chaque mise qui l'alimente. */
 export const GROS_LOT_DEPART = 1_000_000;
