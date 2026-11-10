@@ -53,8 +53,6 @@ const LETTRES: Partial<Record<SymboleNuit, { fr: string; en: string; couleur: st
   as: { fr: 'A', en: 'A', couleur: '#c0281c' },
   roi: { fr: 'R', en: 'K', couleur: '#2f6bff' },
   dame: { fr: 'D', en: 'Q', couleur: '#9a4fd6' },
-  valet: { fr: 'V', en: 'J', couleur: '#1fae64' },
-  dix: { fr: '10', en: '10', couleur: '#e0901c' },
 };
 const NOMS: Record<SymboleNuit, [string, string]> = {
   chat: ['Chat noir', 'Black cat'],
@@ -63,8 +61,6 @@ const NOMS: Record<SymboleNuit, [string, string]> = {
   as: ['As', 'Ace'],
   roi: ['Roi', 'King'],
   dame: ['Dame', 'Queen'],
-  valet: ['Valet', 'Jack'],
-  dix: ['Dix', 'Ten'],
   couronne: ['Couronne', 'Crown'],
   juge: ['Juge', 'Judge'],
   mystere: ['Carte mystère', 'Mystery card'],
@@ -220,7 +216,7 @@ function TableNuits({ mise, onFermer }: { mise: number; onFermer: () => void }) 
           </span>
         </p>
       ))}
-      <p className="cas-gains-note discret">{tr('Un événement tombe environ une fois tous les 25 tours.', 'An event happens about once every 25 spins.')}</p>
+      <p className="cas-gains-note discret">{tr('Un événement tombe environ une fois tous les 15 tours. Environ un tour sur deux paie.', 'An event happens about once every 15 spins. About one spin in two pays.')}</p>
     </Fenetre>
   );
 }

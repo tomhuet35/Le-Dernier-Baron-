@@ -46,14 +46,14 @@ function trouver(condition: (r: ResultatNuit) => boolean): number[] {
   }
   throw new Error('aucun tirage trouvé');
 }
-const PETITS = ['as', 'roi', 'dame', 'valet', 'dix'];
+const PETITS = ['as', 'roi', 'dame'];
 
 describe('Les Nuits du Baron : règles', () => {
   it('compte les 243 façons de gagner, rouleaux joker et multiplicateur compris', () => {
     const g: SymboleNuit[][] = [
-      ['chat', 'dix', 'chat'],
+      ['chat', 'dame', 'chat'],
       ['as', 'roi', 'dame'],
-      ['chat', 'valet', 'dix'],
+      ['chat', 'roi', 'roi'],
       ['as', 'as', 'as'],
       ['chat', 'chat', 'chat'],
     ];
@@ -169,18 +169,18 @@ describe('Les Nuits du Baron : règles', () => {
     }
   });
 
-  it('rend environ 96 % des mises sur 400 000 tours (free games, événements et Jetons du Baron compris)', () => {
+  it('rend environ 107 % des mises sur 400 000 tours, et un tour sur deux paie (free games, événements et Jetons du Baron compris)', () => {
     const t = tauxDeRetourNuits(400_000, graine(17));
-    expect(t.total).toBeGreaterThan(0.9);
-    expect(t.total).toBeLessThan(1.03);
-    expect(1 / t.freeGames).toBeGreaterThan(140); // les free games, environ une fois tous les 185 tours
-    expect(1 / t.freeGames).toBeLessThan(240);
-    expect(t.evenements).toBeGreaterThan(0.034); // un événement environ une fois tous les 25 tours
-    expect(t.evenements).toBeLessThan(0.05);
-    expect(1 / t.bonusJetons).toBeGreaterThan(100); // le bonus Jetons du Baron, environ une fois tous les 130 tours
-    expect(1 / t.bonusJetons).toBeLessThan(170);
-    // Plus de « bons » tours : environ 1 tour sur 7 rend au moins la mise.
-    expect(t.rendMise).toBeGreaterThan(0.12);
+    expect(t.total).toBeGreaterThan(1.0);
+    expect(t.total).toBeLessThan(1.16);
+    expect(t.gagnants).toBeGreaterThan(0.45); // un tour sur deux paie quelque chose
+    expect(t.rendMise).toBeGreaterThan(0.18); // environ 1 tour sur 5 rend au moins la mise
+    expect(1 / t.freeGames).toBeGreaterThan(120); // les free games, environ une fois tous les 155 tours
+    expect(1 / t.freeGames).toBeLessThan(200);
+    expect(t.evenements).toBeGreaterThan(0.055); // un événement environ une fois tous les 15 tours
+    expect(t.evenements).toBeLessThan(0.085);
+    expect(1 / t.bonusJetons).toBeGreaterThan(65); // le bonus Jetons du Baron, environ une fois tous les 90 tours
+    expect(1 / t.bonusJetons).toBeLessThan(120);
   });
 });
 

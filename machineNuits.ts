@@ -12,39 +12,41 @@
  *   - Casse du siècle : une Couronne multiplicatrice (×2 ou ×3) couvre un rouleau ;
  *   - Trahison : des cartes mystère tombent, puis se retournent toutes sur le même symbole ;
  *   - Alliance : deux rouleaux voisins se soudent (le second recopie le premier) ;
- *   - Couvre-feu : les petits symboles (A, R, D, V, 10) disparaissent, remplacés par des symboles de valeur.
+ *   - Couvre-feu : les petits symboles (A, R, D) disparaissent, remplacés par des symboles de valeur.
  * - Le Jeton du Baron porte une somme ou un jackpot (MINI, MINOR, MAJOR). 6 Jetons lancent le bonus Jetons du
  *   Baron : les Jetons restent collés, 3 relances, remises à 3 à chaque nouveau Jeton ; tous les Jetons paient à la
  *   fin, et les 15 cases remplies donnent le GRAND.
  *
- * Le taux de retour (environ 96 %) est vérifié par simulation : tauxDeRetourNuits().
+ * Le taux de retour (environ 107 % : une machine généreuse, l'argent du salon est fictif) est vérifié par
+ * simulation : tauxDeRetourNuits().
  */
 
-export type SymbolePayantNuit = 'chat' | 'chapeau' | 'champagne' | 'as' | 'roi' | 'dame' | 'valet' | 'dix';
+export type SymbolePayantNuit = 'chat' | 'chapeau' | 'champagne' | 'as' | 'roi' | 'dame';
 export type SymboleNuit = SymbolePayantNuit | 'couronne' | 'juge' | 'mystere' | 'jeton';
 export type TypeEvenementNuit = 'police' | 'casse' | 'trahison' | 'alliance' | 'couvreFeu';
 
-export const PAYANTS_NUIT: SymbolePayantNuit[] = ['chat', 'chapeau', 'champagne', 'as', 'roi', 'dame', 'valet', 'dix'];
-const PETITS: SymbolePayantNuit[] = ['as', 'roi', 'dame', 'valet', 'dix'];
+export const PAYANTS_NUIT: SymbolePayantNuit[] = ['chat', 'chapeau', 'champagne', 'as', 'roi', 'dame'];
+const PETITS: SymbolePayantNuit[] = ['as', 'roi', 'dame'];
 
-/** La mise est partagée en 20 pièces ; gains pour 3, 4 et 5 rouleaux, en pièces, par façon de gagner. */
+/**
+ * La mise est partagée en 20 pièces ; gains pour 3, 4 et 5 rouleaux, en pièces, par façon de gagner. Six symboles
+ * seulement (sans Valet ni 10) : ils se retrouvent bien plus souvent d'un rouleau à l'autre, et un tour sur deux paie.
+ */
 export const PIECES_NUIT = 20;
 export const GAINS_NUIT: Record<SymbolePayantNuit, [number, number, number]> = {
-  chat: [14, 27, 50],
-  chapeau: [11, 20, 36],
-  champagne: [9, 16, 27],
-  as: [7, 12, 18],
-  roi: [6, 11, 16],
-  dame: [6, 10, 14],
-  valet: [5, 9, 13],
-  dix: [5, 8, 12],
+  chat: [10, 13, 20],
+  chapeau: [8, 10, 15],
+  champagne: [7, 9, 12],
+  as: [7, 8, 10],
+  roi: [6, 7, 9],
+  dame: [6, 7, 8],
 };
 /** 3 Juges : 2 fois la mise et les free games. */
 export const GAIN_JUGES_NUIT = 2;
 export const FREE_GAMES_NUIT = 8;
 export const FREE_GAMES_NUIT_MAX = 100;
 /** Chance d'un événement sur un tour normal (pendant les free games : à chaque tour). */
-export const CHANCE_EVENEMENT_NUIT = 0.042;
+export const CHANCE_EVENEMENT_NUIT = 0.07;
 const POIDS_EVENEMENTS: [TypeEvenementNuit, number][] = [
   ['police', 2],
   ['casse', 2],
@@ -79,7 +81,7 @@ const VALEURS_JETON: [ValeurJeton, number][] = [
 export const JETONS_POUR_BONUS = 6;
 export const RELANCES_JETONS = 3;
 /** Chance, à chaque relance, qu'une case vide reçoive un Jeton (en millièmes). */
-const CHANCE_JETON_RELANCE = 43;
+const CHANCE_JETON_RELANCE = 36;
 
 export interface BonusJetons {
   /** Les Jetons du tour qui lance le bonus (case 0 à 14 = rouleau × 3 + rangée). */
@@ -92,17 +94,17 @@ export interface BonusJetons {
   gain: number;
 }
 
-const BASE: Record<SymbolePayantNuit, number> = { chat: 2, chapeau: 3, champagne: 3, as: 3, roi: 4, dame: 4, valet: 4, dix: 4 };
+const BASE: Record<SymbolePayantNuit, number> = { chat: 3, chapeau: 4, champagne: 4, as: 5, roi: 5, dame: 5 };
 const avec = (extra: Partial<Record<SymboleNuit, number>>): Partial<Record<SymboleNuit, number>> => ({ ...BASE, ...extra });
 export const COMPOSITION_NUIT: Partial<Record<SymboleNuit, number>>[] = [
-  avec({ juge: 2, jeton: 2, dix: 5 }),
+  avec({ juge: 2, jeton: 2 }),
   avec({ couronne: 1, jeton: 2 }),
-  avec({ couronne: 1, juge: 2, jeton: 2, dix: 5 }),
+  avec({ couronne: 1, juge: 2, jeton: 2 }),
   avec({ couronne: 1, jeton: 2 }),
-  avec({ juge: 2, jeton: 2, dix: 5 }),
+  avec({ juge: 2, jeton: 2 }),
 ];
 /** En plus des Jetons isolés, chaque rouleau a une pile de Jetons. */
-const PILES_JETON = [2, 1, 2, 1, 2];
+const PILES_JETON = [2, 2, 3, 2, 2];
 
 /** Répartit les symboles régulièrement le long du rouleau (les rares ne se touchent jamais). */
 function etaler(compo: Partial<Record<SymboleNuit, number>>, decalage: number): SymboleNuit[] {
@@ -264,8 +266,6 @@ export function tourNuits(
         ['as', 4],
         ['roi', 4],
         ['dame', 4],
-        ['valet', 4],
-        ['dix', 4],
       ],
       hasard,
     );
