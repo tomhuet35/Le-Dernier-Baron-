@@ -45,7 +45,7 @@ export const freeGamesPour = (jetons: number) => (jetons >= 5 ? FREE_GAMES[5] : 
 export const TOURS_GRATUITS_MAX = 100;
 
 /** Mises possibles par tour (réparties sur les 10 lignes). */
-export const MISES_MACHINE = [1_000, 2_000, 5_000, 10_000, 20_000, 50_000, 100_000];
+export const MISES_MACHINE = [1_000, 2_000, 5_000, 10_000, 20_000, 50_000, 100_000, 200_000];
 export const NB_LIGNES = 10;
 
 /** Les 10 lignes : la rangée (0 en haut, 2 en bas) prise sur chacun des 5 rouleaux. */

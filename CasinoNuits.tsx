@@ -30,7 +30,7 @@ import {
   type ValeurJeton,
 } from '../../shared/machineNuits';
 import type { Appel } from './App';
-import { dollars, GainDefilant, Jeton, LINGOTS_PALIER, palierDe, PluieLingots, useSoldeAnime } from './casinoOutils';
+import { dollars, GainDefilant, Jeton, LINGOTS_PALIER, OptionsMachine, palierDe, PluieLingots, useSoldeAnime, useToursAuto } from './casinoOutils';
 import { EN, tr } from './traduction';
 import { Celebration, Fenetre, jouerEffet, mouvementReduit, type EffetSonore } from './ui';
 
@@ -80,49 +80,32 @@ function court(n: number): string {
 }
 const courtDollars = (n: number) => (EN ? `$${court(n)}` : `${court(n)} $`);
 
-/** Dégradés partagés par tous les Jetons (posés une fois dans la page). */
-function DefsJetons() {
-  return (
-    <svg className="nu-defs" width="0" height="0" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="nu-or" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff0b8" />
-          <stop offset="0.45" stopColor="#e2b44c" />
-          <stop offset="1" stopColor="#8a5a12" />
-        </linearGradient>
-        <radialGradient id="nu-face" cx="0.5" cy="0.35" r="0.75">
-          <stop offset="0" stopColor="#2a4fa8" />
-          <stop offset="1" stopColor="#081638" />
-        </radialGradient>
-      </defs>
-    </svg>
-  );
-}
-
-/** Le Jeton du Baron : une plaque bleu nuit cerclée d'or, avec sa somme ou son jackpot. */
+/** Le Jeton du Baron (image) : sa somme écrite dessus, ou le jeton MINI, MINOR ou MAJOR. */
 function JetonNuit({ v, mise }: { v?: ValeurJeton; mise: number }) {
   const jp = v?.jackpot;
-  const texte = jp ? NOMS_JACKPOTS[jp] : v ? court(v.x * mise) : '';
+  const nom = v ? `${tr(...NOMS.jeton)} : ${jp ? NOMS_JACKPOTS[jp] : dollars(Math.round(v.x * mise))}` : tr(...NOMS.jeton);
+  if (jp) return <img className={`cas-symbole nu-jeton ${jp}`} src={`/cartes/nuits-jeton-${jp}.webp`} alt={nom} draggable={false} />;
+  const texte = v ? court(v.x * mise) : '';
   return (
-    <svg className={`cas-symbole nu-jeton ${jp ?? ''}`} viewBox="0 0 100 100" role="img" aria-label={v ? `${tr(...NOMS.jeton)} : ${jp ? NOMS_JACKPOTS[jp] : dollars(Math.round(v.x * mise))}` : tr(...NOMS.jeton)}>
-      <circle cx="50" cy="50" r="47" fill="url(#nu-or)" stroke="#5a3a08" strokeWidth="1.5" />
-      {Array.from({ length: 8 }, (_, i) => (
-        <rect key={i} x="44" y="3.5" width="12" height="12" rx="2.5" className="nu-jeton-cran" transform={`rotate(${i * 45 + 22.5} 50 50)`} />
-      ))}
-      <circle cx="50" cy="50" r="35.5" className="nu-jeton-face" stroke="url(#nu-or)" strokeWidth="3.5" />
-      <circle cx="50" cy="50" r="29" fill="none" stroke="rgba(255, 220, 140, 0.45)" strokeWidth="1" strokeDasharray="2 3" />
+    <svg className="cas-symbole nu-jeton" viewBox="0 0 100 100" role="img" aria-label={nom}>
+      <image href="/cartes/nuits-jeton.webp" x="0" y="0" width="100" height="100" />
       {texte && (
-        <text x="50" y={jp ? 51 : 46} className="nu-jeton-texte" style={{ fontSize: texte.length > 5 ? 15 : texte.length > 4 ? 17 : 21 }}>
+        <text x="50" y="45" className="nu-jeton-texte" style={{ fontSize: texte.length > 5 ? 16 : texte.length > 4 ? 18 : 22 }}>
           {texte}
         </text>
       )}
-      {v && !jp && (
-        <text x="50" y="66" className="nu-jeton-dollar">
+      {v && (
+        <text x="50" y="65" className="nu-jeton-dollar">
           $
         </text>
       )}
     </svg>
   );
+}
+
+/** La plaque d'un jackpot (image). */
+function PlaqueJackpot({ j, className }: { j: JackpotNuit; className?: string }) {
+  return <img className={`nu-plaque-jackpot ${j} ${className ?? ''}`} src={`/cartes/nuits-${j}.webp`} alt={NOMS_JACKPOTS[j]} draggable={false} />;
 }
 
 function SymboleNuitImage({ s }: { s: SymboleNuit }) {
@@ -217,9 +200,12 @@ function TableNuits({ mise, onFermer }: { mise: number; onFermer: () => void }) 
       </p>
       <div className="nu-gains-jackpots">
         {(['grand', 'major', 'minor', 'mini'] as JackpotNuit[]).map((j) => (
-          <span key={j} className={`nu-jp ${j}`}>
-            <b>{NOMS_JACKPOTS[j]}</b>
-            <span>{dollars(JACKPOTS_NUIT[j] * mise)}</span>
+          <span key={j} className={`nu-gains-jackpot ${j}`}>
+            <PlaqueJackpot j={j} />
+            <span>
+              <strong>{dollars(JACKPOTS_NUIT[j] * mise)}</strong>
+              <small>{tr(`${JACKPOTS_NUIT[j]} fois la mise`, `${JACKPOTS_NUIT[j]} times the bet`)}</small>
+            </span>
           </span>
         ))}
       </div>
@@ -342,18 +328,18 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
   const [tour, setTour] = useState<TourNuit | null>(null);
   const [gainAffiche, setGainAffiche] = useState(0);
   const [bonus, setBonus] = useState<EtatBonus | null>(null);
-  const [auto, setAuto] = useState(0);
   const [soldeAffiche, setSoldeAffiche] = useState(vue.solde);
   const [fetes, setFetes] = useState<FeteNuit[]>([]);
   const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
-  const [banniere, setBanniere] = useState<{ texte: string; id: number; classe?: string } | null>(null);
+  const [banniere, setBanniere] = useState<{ texte: string; id: number; classe?: string; jackpot?: JackpotNuit; montant?: number } | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [gains, setGains] = useState(false);
   const totalFree = useRef(0);
   const minuteries = useRef<number[]>([]);
   const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
-  const autoRef = useRef(0);
-  autoRef.current = auto;
+  /** Délai avant le tour automatique suivant (selon le dernier gain), et l'arrêt des tours automatiques. */
+  const delaiAuto = useRef(150);
+  const arreterAuto = useRef(() => {});
   const vueRef = useRef(vue);
   vueRef.current = vue;
   useEffect(() => () => minuteries.current.forEach((t) => window.clearTimeout(t)), []);
@@ -376,7 +362,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
     const r = (await appel('casino_nuits', { mise })) as { ok: boolean; erreur?: string; nuits?: TourNuit; casino?: VueCasino };
     if (!r.ok || !r.nuits || !r.casino) {
       setEnCours(false);
-      setAuto(0);
+      arreterAuto.current();
       setErreur(r.erreur ?? tr('La machine est indisponible.', 'The machine is unavailable.'));
       return;
     }
@@ -422,17 +408,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
         totalFree.current = 0;
       }
       if (file.length) setFetes((f) => [...f, ...file]);
-      if (autoRef.current > 0) {
-        if (file.length) setAuto(0);
-        else
-          plusTard(
-            () => {
-              setAuto((a) => Math.max(0, a - 1));
-              if (autoRef.current > 1) void lancerRef.current?.();
-            },
-            palier === 'gros' ? 2800 : palier === 'joli' ? 1900 : m.gain > 0 ? 1200 : 500,
-          );
-      }
+      delaiAuto.current = file.length ? 900 : palier === 'gros' ? 2800 : palier === 'joli' ? 1900 : m.gain > 0 ? 1200 : 500;
     };
 
     // Le bonus Jetons du Baron, rejoué relance par relance, puis le compte des Jetons.
@@ -458,7 +434,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
       if (bj.grand) {
         plusTard(() => {
           setBonus((x) => x && { ...x, grand: true });
-          setBanniere({ texte: 'GRAND !', id: Date.now(), classe: 'grand' });
+          setBanniere({ texte: 'GRAND !', id: Date.now(), classe: 'grand', jackpot: 'grand', montant: JACKPOTS_NUIT.grand * m.mise });
           jouerEffet('roulette_gros_lot');
         }, t + 200);
         t += 2600;
@@ -473,7 +449,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
         plusTard(() => {
           setBonus((x) => x && { ...x, compte: c, comptes: [...x.comptes, c], total: somme });
           jouerEffet(v.jackpot ? 'roulette_gain' : 'jeton');
-          if (v.jackpot) setBanniere({ texte: `${NOMS_JACKPOTS[v.jackpot]} !`, id: Date.now() + c, classe: v.jackpot });
+          if (v.jackpot) setBanniere({ texte: `${NOMS_JACKPOTS[v.jackpot]} !`, id: Date.now() + c, classe: v.jackpot, jackpot: v.jackpot, montant: v.x * m.mise });
         }, t);
         t += v.jackpot ? 1200 : 240;
       }
@@ -571,8 +547,9 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
     );
     plusTard(apresArret, t[4] + 120);
   }, [appel, enCours, grille, mise, onVue]);
-  const lancerRef = useRef<typeof lancer | null>(null);
-  lancerRef.current = lancer;
+  const fete = fetes[0] ?? null;
+  const tours = useToursAuto({ pret: !enCours && !fete, gratuits, lancer: () => void lancer(), delai: () => delaiAuto.current, fete: !!fete, fermerFete: () => setFetes((f) => f.slice(1)) });
+  arreterAuto.current = tours.arreter;
 
   // Cases gagnantes : les symboles de chaque gain sur ses rouleaux, et les Juges.
   const gagnantes = new Set<number>();
@@ -593,7 +570,6 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
       return { s, v: decor(r, k) };
     }),
   );
-  const fete = fetes[0] ?? null;
   const palier = tour ? palierDe(gainAffiche, tour.mise) : 'aucun';
   const etatMachine = suspense !== null ? 'suspense sus-2 sus-coffre' : bonus ? 'tourne nu-bonus-actif' : enCours ? 'tourne' : tour && palier !== 'aucun' ? `gagne palier-${palier}` : '';
   const changerMise = (sens: number) => {
@@ -615,10 +591,9 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
 
   return (
     <div className="cas-ecran cas-machine-ecran nuits">
-      <DefsJetons />
       <header className="cas-barre">
-        <button type="button" className="cas-retour" onClick={onRetour} disabled={enCours} aria-label={tr('Retour au salon', 'Back to the lounge')}>
-          ‹ {tr('Salon', 'Lounge')}
+        <button type="button" className="cas-retour" onClick={onRetour} disabled={enCours} aria-label={tr('Retour aux machines', 'Back to the machines')}>
+          ‹ {tr('Machines', 'Machines')}
         </button>
         <span className="cas-solde-petit" aria-label={tr('Ton solde', 'Your balance')}>
           {dollars(solde)}
@@ -636,18 +611,12 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
           <span className="cab-lanterne droite" aria-hidden="true" />
           {/* Les jackpots, à la place du titre : GRAND en grand, puis MAJOR, MINOR et MINI */}
           <div className="cab-titre nu-jackpots" aria-label={tr('Jackpots', 'Jackpots')}>
-            <span className={`nu-jp grand ${jackpotsAllumes.has('grand') ? 'allume' : ''}`}>
-              <b>GRAND</b>
-              <span>{courtDollars(JACKPOTS_NUIT.grand * miseJackpots)}</span>
-            </span>
-            <span className="nu-jp-ligne">
-              {(['major', 'minor', 'mini'] as JackpotNuit[]).map((j) => (
-                <span key={j} className={`nu-jp ${j} ${jackpotsAllumes.has(j) ? 'allume' : ''}`}>
-                  <b>{NOMS_JACKPOTS[j]}</b>
-                  <span>{courtDollars(JACKPOTS_NUIT[j] * miseJackpots)}</span>
-                </span>
-              ))}
-            </span>
+            {(['mini', 'minor', 'major', 'grand'] as JackpotNuit[]).map((j) => (
+              <span key={j} className={`nu-jp ${j} ${jackpotsAllumes.has(j) ? 'allume' : ''}`}>
+                <PlaqueJackpot j={j} />
+                <span>{courtDollars(JACKPOTS_NUIT[j] * miseJackpots)}</span>
+              </span>
+            ))}
           </div>
           <p className="cab-gros-lot nu-plaque">{plaque}</p>
           <div className="cab-rouleaux">
@@ -689,10 +658,17 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
                 })}
               </div>
             )}
-            {banniere && (
-              <div key={banniere.id} className={`cab-banniere ${banniere.classe ? `nu-banniere ${banniere.classe}` : ''}`} role="status">
-                {banniere.texte}
+            {banniere?.jackpot ? (
+              <div key={banniere.id} className={`nu-banniere-jackpot ${banniere.jackpot}`} role="status" aria-label={banniere.texte}>
+                <PlaqueJackpot j={banniere.jackpot} />
+                {banniere.montant !== undefined && <strong>{dollars(banniere.montant)}</strong>}
               </div>
+            ) : (
+              banniere && (
+                <div key={banniere.id} className={`cab-banniere ${banniere.classe ? `nu-banniere ${banniere.classe}` : ''}`} role="status">
+                  {banniere.texte}
+                </div>
+              )
             )}
           </div>
         </div>
@@ -766,23 +742,17 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
           <button type="button" className={`cas-tourner ${gratuits > 0 ? 'free' : ''}`} disabled={!peutJouer} onClick={() => void lancer()}>
             <span>{bonus ? tr('Bonus…', 'Bonus…') : enCours ? tr('En jeu…', 'Spinning…') : gratuits > 0 ? 'Free game' : tr('Tourner', 'Spin')}</span>
           </button>
-          <div className="cas-options">
-            <button
-              type="button"
-              className={auto ? 'actif' : ''}
-              disabled={!auto && !peutJouer}
-              onClick={() => {
-                if (auto) return setAuto(0);
-                setAuto(gratuits > 0 ? gratuits : 10);
-                void lancer();
-              }}
-            >
-              {auto ? tr(`Arrêter (${auto})`, `Stop (${auto})`) : gratuits > 0 ? tr('Tout jouer', 'Play all') : tr('Auto ×10', 'Auto ×10')}
-            </button>
-            <button type="button" onClick={() => setGains(true)}>
-              {tr('Gains', 'Paytable')}
-            </button>
-          </div>
+          <OptionsMachine
+            auto={tours.auto}
+            gratuits={gratuits}
+            peutJouer={peutJouer}
+            onDemarrer={(k) => {
+              delaiAuto.current = 100;
+              tours.demarrer(k);
+            }}
+            onArreter={tours.arreter}
+            onGains={() => setGains(true)}
+          />
           {!peutJouer && !enCours && gratuits === 0 && <p className="cas-erreur">{tr('Solde insuffisant : baisse la mise ou tourne la roulette du salon.', 'Not enough money: lower the bet or spin the lounge wheel.')}</p>}
         </div>
       </div>
@@ -829,7 +799,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
               </div>
             ) : fete.type === 'jetons' && fete.jackpot ? (
               <div className={`nu-medaillon-jackpot ${fete.jackpot}`}>
-                <b>{NOMS_JACKPOTS[fete.jackpot]}</b>
+                <PlaqueJackpot j={fete.jackpot} />
                 <strong>{dollars(JACKPOTS_NUIT[fete.jackpot] * fete.mise)}</strong>
               </div>
             ) : (

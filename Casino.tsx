@@ -45,7 +45,7 @@ import { ANGLE_ROUE, COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRo
 import { socket } from './socket';
 import { EN, tr } from './traduction';
 import { BoutonMusique, Celebration, Fenetre, jouerEffet, mouvementReduit, musiqueDuSalon, useCompteur } from './ui';
-import { dollars, GainDefilant, Jeton, LINGOTS_PALIER, palierDe, PluieLingots, useSoldeAnime, type Palier } from './casinoOutils';
+import { dollars, GainDefilant, Jeton, LINGOTS_PALIER, OptionsMachine, palierDe, PluieLingots, useSoldeAnime, useToursAuto, type Palier } from './casinoOutils';
 import './casino.css';
 
 
@@ -741,7 +741,6 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   const [arretes, setArretes] = useState(5);
   const [tour, setTour] = useState<TourMachine | null>(null);
   const [enCours, setEnCours] = useState(false);
-  const [auto, setAuto] = useState(0);
   const [soldeAffiche, setSoldeAffiche] = useState(vue.solde);
   const [fetes, setFetes] = useState<FeteMachine[]>([]);
   const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
@@ -756,8 +755,9 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   const totalFree = useRef(0);
   const minuteries = useRef<number[]>([]);
   const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
-  const autoRef = useRef(0);
-  autoRef.current = auto;
+  /** Délai avant le tour automatique suivant (selon le dernier gain), et l'arrêt des tours automatiques. */
+  const delaiAuto = useRef(150);
+  const arreterAuto = useRef(() => {});
   useEffect(() => () => minuteries.current.forEach((t) => window.clearTimeout(t)), []);
   useEffect(prechargerImagesBonus, []);
   useEffect(() => {
@@ -775,7 +775,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
     const r = (await appel('casino_machine', { mise })) as { ok: boolean; erreur?: string; machine?: TourMachine; casino?: VueCasino };
     if (!r.ok || !r.machine || !r.casino) {
       setEnCours(false);
-      setAuto(0);
+      arreterAuto.current();
       // Un bonus attendait (téléphone resté sur une ancienne version, coupure…) : on le rouvre.
       if (r.casino) {
         onVue(r.casino);
@@ -834,18 +834,10 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
         jouerEffet('casino_annonce');
         plusTard(() => setBonus(vueRef.current.bonus), reduit ? 0 : 1300);
       }
-      // Tours auto : on continue, sauf après un grand moment (célébration, bonus, free games gagnés).
-      if (autoRef.current > 0) {
-        if (file.length || nouvelle.bonus) setAuto(0);
-        else
-          plusTard(
-            () => {
-              setAuto((a) => Math.max(0, a - 1));
-              if (autoRef.current > 1) void lancerRef.current?.();
-            },
-            palier === 'gros' ? 2800 : palier === 'joli' ? 1900 : m.gain > 0 ? 1200 : 450,
-          );
-      }
+      // Tours auto : ils continuent après les fêtes (fermées toutes seules), mais s'arrêtent sur un bonus à jouer
+      // (Casse du coffre, Roue du Baron), qui demande au joueur de choisir.
+      if (nouvelle.bonus) arreterAuto.current();
+      delaiAuto.current = file.length ? 900 : palier === 'gros' ? 2800 : palier === 'joli' ? 1900 : m.gain > 0 ? 1200 : 450;
     };
     if (reduit) return fin();
     // Chaque rouleau : les 3 symboles visibles, une bande de passage (plus longue s'il y a du suspense), puis les 3 tirés.
@@ -871,8 +863,6 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
     );
     plusTard(fin, t[4] + 120);
   }, [appel, enCours, grille, mise, onVue]);
-  const lancerRef = useRef<typeof lancer | null>(null);
-  lancerRef.current = lancer;
 
   // Cases gagnantes (rouleau × 3 + rangée).
   const gagnantes = new Set<number>();
@@ -884,6 +874,8 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   const enSuspense = enCours && plan && arretes < 5 && plan[arretes]?.niveau ? plan[arretes] : null;
   const annonce = new Set(enSuspense?.cases ?? []);
   const fete = fetes[0] ?? null;
+  const tours = useToursAuto({ pret: !enCours && !fete && !bonus && !vue.bonus, gratuits, lancer: () => void lancer(), delai: () => delaiAuto.current, fete: !!fete, fermerFete: () => setFetes((f) => f.slice(1)) });
+  arreterAuto.current = tours.arreter;
   const palier = tour ? (tour.grosLot ? 'colossal' : palierDe(tour.gain, tour.mise)) : 'aucun';
   const etatMachine = enSuspense ? `suspense sus-${enSuspense.niveau} sus-${enSuspense.motif}` : enCours ? 'tourne' : tour && palier !== 'aucun' ? `gagne palier-${palier}` : '';
 
@@ -897,8 +889,8 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   return (
     <div className="cas-ecran cas-machine-ecran">
       <header className="cas-barre">
-        <button type="button" className="cas-retour" onClick={onRetour} disabled={enCours} aria-label={tr('Retour au salon', 'Back to the lounge')}>
-          ‹ {tr('Salon', 'Lounge')}
+        <button type="button" className="cas-retour" onClick={onRetour} disabled={enCours} aria-label={tr('Retour aux machines', 'Back to the machines')}>
+          ‹ {tr('Machines', 'Machines')}
         </button>
         <span className="cas-solde-petit" aria-label={tr('Ton solde', 'Your balance')}>
           {dollars(solde)}
@@ -1017,23 +1009,17 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
           <button type="button" className={`cas-tourner ${gratuits > 0 ? 'free' : ''}`} disabled={!peutJouer} onClick={() => void lancer()}>
             <span>{libelleBouton}</span>
           </button>
-          <div className="cas-options">
-            <button
-              type="button"
-              className={auto ? 'actif' : ''}
-              disabled={!auto && !peutJouer}
-              onClick={() => {
-                if (auto) return setAuto(0);
-                setAuto(gratuits > 0 ? gratuits : 10);
-                void lancer();
-              }}
-            >
-              {auto ? tr(`Arrêter (${auto})`, `Stop (${auto})`) : gratuits > 0 ? tr('Tout jouer', 'Play all') : tr('Auto ×10', 'Auto ×10')}
-            </button>
-            <button type="button" onClick={() => setGains(true)}>
-              {tr('Gains', 'Paytable')}
-            </button>
-          </div>
+          <OptionsMachine
+            auto={tours.auto}
+            gratuits={gratuits}
+            peutJouer={peutJouer}
+            onDemarrer={(k) => {
+              delaiAuto.current = 100;
+              tours.demarrer(k);
+            }}
+            onArreter={tours.arreter}
+            onGains={() => setGains(true)}
+          />
           {!peutJouer && !enCours && gratuits === 0 && !vue.bonus && <p className="cas-erreur">{tr('Solde insuffisant : baisse la mise ou tourne la roulette du salon.', 'Not enough money: lower the bet or spin the lounge wheel.')}</p>}
         </div>
       </div>
@@ -1096,13 +1082,73 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // ---------------------------------------------------------------------------------------------------------------
 // Le salon
 
-const JEUX: { id: 'machine' | 'nuits' | 'roulette' | 'blackjack' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
-  { id: 'machine', nom: ['Le Bandit du Baron', 'The Baron’s Bandit'], image: '/cartes/casino-machine.webp', repli: '/cartes/evenement_casse_du_siecle.webp' },
-  { id: 'nuits', nom: ['Les Nuits du Baron', 'The Baron’s Nights'], image: '/cartes/casino-nuits.webp', repli: '/cartes/evenement_couvre_feu.webp' },
+const JEUX: { id: 'machines' | 'roulette' | 'blackjack' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+  { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines.webp', repli: '/cartes/casino-machine.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
   { id: 'blackjack', nom: ['Blackjack', 'Blackjack'], image: '/cartes/casino-blackjack.webp', repli: '/cartes/billets_05.webp' },
   { id: 'poker', nom: ['Poker', 'Poker'], image: '/cartes/casino-poker.webp', repli: '/cartes/baron.webp' },
 ];
+
+/** Le menu des machines à sous : on choisit sa machine, puis on y joue. */
+const MACHINES: { id: 'machine' | 'nuits'; nom: [string, string]; image: string; texte: [string, string] }[] = [
+  {
+    id: 'machine',
+    nom: ['Le Bandit du Baron', 'The Baron’s Bandit'],
+    image: '/cartes/casino-machine.webp',
+    texte: ['5 rouleaux, 10 lignes. Casse du coffre, Roue du Baron et free games.', '5 reels, 10 lines. Safe Heist, Baron’s Wheel and free games.'],
+  },
+  {
+    id: 'nuits',
+    nom: ['Les Nuits du Baron', 'The Baron’s Nights'],
+    image: '/cartes/casino-nuits.webp',
+    texte: ['243 façons de gagner. Événements, free games et Jetons du Baron.', '243 ways to win. Events, free games and Baron’s Tokens.'],
+  },
+];
+
+function ChoixMachines({ vue, onMachine, onRetour }: { vue: VueCasino; onMachine: (m: 'machine' | 'nuits') => void; onRetour: () => void }) {
+  const solde = useSoldeAnime(vue.solde);
+  return (
+    <div className="cas-ecran cas-choix-machines">
+      <header className="cas-barre">
+        <button type="button" className="cas-retour" onClick={onRetour}>
+          ‹ {tr('Salon', 'Lounge')}
+        </button>
+        <h1>{tr('Machines à sous', 'Slot machines')}</h1>
+        <span className="cas-barre-vide" />
+      </header>
+      <p className="cas-choix-aide">
+        <span>{tr('Choisis ta machine', 'Pick your machine')}</span>
+        <span className="cas-solde-petit" aria-label={tr('Ton solde', 'Your balance')}>
+          {dollars(solde)}
+        </span>
+      </p>
+      <div className="cas-machines">
+        {MACHINES.map((m) => (
+          <button key={m.id} type="button" className={`cas-carte-machine ${m.id}`} onClick={() => onMachine(m.id)}>
+            <img src={m.image} alt="" draggable={false} />
+            <span className="cas-carte-machine-texte">
+              <strong>{tr(...m.nom)}</strong>
+              <span>{tr(...m.texte)}</span>
+              {m.id === 'machine' ? (
+                <em>
+                  {tr('Gros lot', 'Jackpot')} : <b>{dollars(vue.grosLot)}</b>
+                </em>
+              ) : (
+                <em className="cas-carte-jackpots">
+                  <img src="/cartes/nuits-mini.webp" alt="MINI" />
+                  <img src="/cartes/nuits-minor.webp" alt="MINOR" />
+                  <img src="/cartes/nuits-major.webp" alt="MAJOR" />
+                  <img src="/cartes/nuits-grand.webp" alt="GRAND" />
+                </em>
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="cas-mention">{tr('Mise de 1 000 $ à 200 000 $ · tours automatiques de 10 à l’infini', 'Bets from $1,000 to $200,000 · auto spins from 10 to infinity')}</p>
+    </div>
+  );
+}
 
 function Vignette({ jeu, onOuvrir }: { jeu: (typeof JEUX)[number]; onOuvrir?: () => void }) {
   const [src, setSrc] = useState(jeu.image);
@@ -1243,8 +1289,7 @@ function FenetreTables({ jeu, vue, appel, onTable, onVue, onFermer }: { jeu: Jeu
 function Salon({
   vue,
   onRoue,
-  onMachine,
-  onNuits,
+  onMachines,
   onBlackjack,
   onRoulette,
   onCadeau,
@@ -1252,8 +1297,7 @@ function Salon({
 }: {
   vue: VueCasino;
   onRoue: () => void;
-  onMachine: () => void;
-  onNuits: () => void;
+  onMachines: () => void;
   onBlackjack: () => void;
   onRoulette: () => void;
   onCadeau: () => void;
@@ -1298,7 +1342,7 @@ function Salon({
       </button>
       <div className="cas-jeux">
         {JEUX.map((j) => (
-          <Vignette key={j.id} jeu={j} onOuvrir={j.id === 'machine' ? onMachine : j.id === 'nuits' ? onNuits : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : undefined} />
+          <Vignette key={j.id} jeu={j} onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : undefined} />
         ))}
       </div>
       <p className="cas-gros-lot">
@@ -1344,7 +1388,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machine' | 'nuits' | 'table'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table'>('salon');
   const [roue, setRoue] = useState(false);
   const [fenetreTables, setFenetreTables] = useState<JeuTable | null>(null);
   const [table, setTable] = useState<TableActive | null>(null);
@@ -1462,8 +1506,9 @@ export default function Casino({
 
   let contenu: ReactNode;
   if (!vue) contenu = <div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>;
-  else if (ecran === 'machine') contenu = <Machine vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('salon')} />;
-  else if (ecran === 'nuits') contenu = <MachineNuits vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('salon')} />;
+  else if (ecran === 'machines') contenu = <ChoixMachines vue={vue} onMachine={setEcran} onRetour={() => setEcran('salon')} />;
+  else if (ecran === 'machine') contenu = <Machine vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
+  else if (ecran === 'nuits') contenu = <MachineNuits vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
   else if (ecran === 'table' && table?.jeu === 'blackjack') contenu = <TableBlackjack v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
   else if (ecran === 'table' && table?.jeu === 'roulette') contenu = <TableRoulette v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
   else
@@ -1471,8 +1516,7 @@ export default function Casino({
       <Salon
         vue={vue}
         onRoue={() => setRoue(true)}
-        onMachine={() => setEcran('machine')}
-        onNuits={() => setEcran('nuits')}
+        onMachines={() => setEcran('machines')}
         onBlackjack={() => setFenetreTables('blackjack')}
         onRoulette={() => setFenetreTables('roulette')}
         onCadeau={() => void recupererCadeau()}

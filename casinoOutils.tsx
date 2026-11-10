@@ -1,11 +1,11 @@
 /**
  * Petits outils communs aux écrans du Salon privé (les deux machines à sous, le salon) : le solde qui défile, le
- * jeton de la mise, le gain qui défile, le palier d'un gain et la pluie de lingots.
+ * jeton de la mise, le gain qui défile, le palier d'un gain, la pluie de lingots et les tours automatiques.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { formatDollars, MULTIPLE_GROS_GAIN } from '../../shared/casino';
-import { EN } from './traduction';
-import { useCompteur } from './ui';
+import { EN, tr } from './traduction';
+import { jouerEffet, useCompteur } from './ui';
 
 export const dollars = (n: number) => formatDollars(n, EN);
 
@@ -70,6 +70,98 @@ export function PluieLingots({ n }: { n: number }) {
           style={{ left: `${l.x}%`, animationDelay: `${l.delai}s`, animationDuration: `${l.duree}s`, '--t': l.taille, '--tour': `${l.tour}deg` } as CSSProperties}
         />
       ))}
+    </div>
+  );
+}
+
+// ---------- Tours automatiques des machines à sous ----------
+
+/** Nombres de tours automatiques proposés (Infinity : jusqu'à ce qu'on arrête, ou que le solde manque). */
+export const CHOIX_AUTO = [10, 25, 50, 100, Infinity];
+export type EtatAuto = { actif: boolean; restants: number };
+
+/**
+ * Les tours automatiques : quand la machine est prête (rien ne tourne, aucune fête à l'écran), le tour suivant part
+ * après `delai` ms. Les free games se jouent sans compter ; les tours payés décomptent `restants`. Pendant les tours
+ * automatiques, les fêtes se ferment toutes seules au bout de quelques secondes.
+ */
+export function useToursAuto({ pret, gratuits, lancer, delai, fete, fermerFete }: { pret: boolean; gratuits: number; lancer: () => void; delai: () => number; fete: boolean; fermerFete: () => void }) {
+  const [auto, setAuto] = useState<EtatAuto>({ actif: false, restants: 0 });
+  const lancerRef = useRef(lancer);
+  lancerRef.current = lancer;
+  const delaiRef = useRef(delai);
+  delaiRef.current = delai;
+  useEffect(() => {
+    if (!auto.actif || !pret) return;
+    if (gratuits <= 0 && auto.restants <= 0) {
+      setAuto({ actif: false, restants: 0 });
+      return;
+    }
+    const t = window.setTimeout(() => {
+      if (gratuits <= 0) setAuto((a) => ({ ...a, restants: a.restants - 1 }));
+      lancerRef.current();
+    }, delaiRef.current());
+    return () => window.clearTimeout(t);
+  }, [auto, pret, gratuits]);
+  const fermerRef = useRef(fermerFete);
+  fermerRef.current = fermerFete;
+  useEffect(() => {
+    if (!auto.actif || !fete) return;
+    const t = window.setTimeout(() => fermerRef.current(), 3500);
+    return () => window.clearTimeout(t);
+  }, [auto.actif, fete]);
+  return {
+    auto,
+    demarrer: (n: number) => setAuto({ actif: true, restants: n }),
+    arreter: () => setAuto({ actif: false, restants: 0 }),
+  };
+}
+
+/** Les boutons sous la machine : Auto (10 à 100, ou ∞), Tout jouer pendant les free games, Arrêter, et Gains. */
+export function OptionsMachine({ auto, gratuits, peutJouer, onDemarrer, onArreter, onGains }: { auto: EtatAuto; gratuits: number; peutJouer: boolean; onDemarrer: (n: number) => void; onArreter: () => void; onGains: () => void }) {
+  const [choix, setChoix] = useState(false);
+  if (choix && !auto.actif)
+    return (
+      <div className="cas-options cas-auto-choix" role="group" aria-label={tr('Tours automatiques', 'Auto spins')}>
+        {CHOIX_AUTO.map((n) => (
+          <button
+            key={n}
+            type="button"
+            className="cas-auto-nombre"
+            disabled={!peutJouer}
+            onClick={() => {
+              jouerEffet('jeton');
+              setChoix(false);
+              onDemarrer(n);
+            }}
+          >
+            {n === Infinity ? '∞' : n}
+          </button>
+        ))}
+        <button type="button" className="cas-auto-fermer" onClick={() => setChoix(false)} aria-label={tr('Fermer', 'Close')}>
+          ✕
+        </button>
+      </div>
+    );
+  const restants = auto.restants === Infinity ? '∞' : String(Math.max(0, auto.restants));
+  return (
+    <div className="cas-options">
+      {auto.actif ? (
+        <button type="button" className="actif" onClick={onArreter}>
+          {gratuits > 0 && auto.restants <= 0 ? tr('Arrêter', 'Stop') : tr(`Arrêter (${restants})`, `Stop (${restants})`)}
+        </button>
+      ) : gratuits > 0 ? (
+        <button type="button" disabled={!peutJouer} onClick={() => onDemarrer(0)}>
+          {tr('Tout jouer', 'Play all')}
+        </button>
+      ) : (
+        <button type="button" disabled={!peutJouer} onClick={() => setChoix(true)}>
+          {tr('Auto ▾', 'Auto ▾')}
+        </button>
+      )}
+      <button type="button" onClick={onGains}>
+        {tr('Gains', 'Paytable')}
+      </button>
     </div>
   );
 }

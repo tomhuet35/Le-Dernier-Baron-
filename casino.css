@@ -41,14 +41,30 @@
 .cas-bouton-roue small { color: var(--creme-doux); font-size: 13px; }
 .cas-bouton-roue .pastille-nombre { top: -4px; right: 6px; }
 
-/* Les jeux : deux par ligne sur téléphone (le dernier, seul, prend toute la ligne), cinq de front sur grand écran */
+/* Les jeux : deux par ligne sur téléphone, quatre de front sur grand écran */
 .cas-jeux { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.cas-jeux > .cas-vignette:last-child:nth-child(odd) { grid-column: 1 / -1; aspect-ratio: 2 / 1.05; }
-@media (min-width: 700px) {
-  .cas-jeux { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-  .cas-jeux > .cas-vignette:last-child:nth-child(odd) { grid-column: auto; aspect-ratio: 2 / 2.6; }
-  .cas-jeux .cas-vignette-nom { font-size: 17px; padding: 22px 6px 8px; }
-}
+@media (min-width: 700px) { .cas-jeux { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Le menu des machines à sous */
+.cas-choix-machines { gap: 10px; }
+.cas-choix-machines .cas-barre h1 { font-size: clamp(18px, 5vw, 28px); white-space: nowrap; }
+.cas-choix-machines .cas-retour { white-space: nowrap; }
+.cas-choix-aide { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 0 2px; font-family: var(--titre); font-size: 17px; color: var(--creme-doux); letter-spacing: 0.04em; }
+.cas-machines { display: grid; gap: 12px; }
+@media (min-width: 640px) { .cas-machines { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cas-carte-machine { position: relative; display: grid; padding: 0; overflow: hidden; border-radius: 16px; border: 2px solid var(--or); background: var(--nuit-2); text-align: left; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6); transition: transform 0.15s, box-shadow 0.2s; }
+.cas-carte-machine:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--or-vif); }
+.cas-carte-machine > img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: 50% 38%; }
+.cas-carte-machine.nuits { border-color: #c9a24a; background: #071233; }
+.cas-carte-machine-texte { display: grid; gap: 3px; padding: 10px 14px 12px; background: linear-gradient(180deg, rgba(10, 6, 4, 0.2), rgba(10, 6, 4, 0.9)); }
+.cas-carte-machine.nuits .cas-carte-machine-texte { background: linear-gradient(180deg, rgba(4, 10, 32, 0.4), rgba(4, 10, 32, 0.95)); }
+.cas-carte-machine strong { font-family: var(--titre); font-weight: 400; font-size: 21px; color: var(--or-vif); }
+.cas-carte-machine-texte > span { font-size: 13px; color: var(--creme-doux); }
+.cas-carte-machine em { font-style: normal; font-size: 13px; color: var(--creme); }
+.cas-carte-machine em b { font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 15px; }
+.cas-carte-jackpots { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.cas-carte-jackpots img { height: 26px; width: auto; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6)); }
+.cas-carte-jackpots img:last-child { height: 32px; }
 .cas-vignette { position: relative; display: block; padding: 0; overflow: hidden; aspect-ratio: 2 / 2.6; border-radius: 14px; border: 2px solid var(--or); background: var(--nuit-2); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6); }
 .cas-vignette img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s; }
 .cas-vignette:hover:not(:disabled) img { transform: scale(1.04); }
@@ -651,36 +667,28 @@
 .nu-menottes { position: absolute; z-index: 2; left: 50%; bottom: 2%; width: 94%; translate: -50% 0; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)); transform-origin: 50% 0; pointer-events: none; animation: nu-menottes 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
 @keyframes nu-menottes { 0% { opacity: 0; transform: translateY(-160%) rotate(-25deg); } 55% { opacity: 1; transform: translateY(0) rotate(10deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0); } }
 
-/* Les jackpots, dans la grande plaque : GRAND, puis MAJOR, MINOR et MINI */
-.cab.nuits .nu-jackpots { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--w) * 0.004); letter-spacing: 0; text-shadow: none; }
-.nu-jp { display: inline-flex; align-items: baseline; gap: 0.35em; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.nu-jp b { font-family: var(--titre); font-weight: 400; letter-spacing: 0.06em; }
-.nu-jp > span { font-family: var(--titre); color: #fff1d0; }
-.cab.nuits .nu-jp.grand { font-size: calc(var(--w) * 0.046); line-height: 1.05; }
-.nu-jp.grand b { color: #ffcf4a; text-shadow: 0 0 calc(var(--w) * 0.02) rgba(255, 200, 80, 0.8), 0 2px 0 #050c26; }
-.nu-jp.grand > span { color: #ffe9a8; text-shadow: 0 2px 0 #050c26; }
-.nu-jp-ligne { display: flex; gap: calc(var(--w) * 0.024); font-size: calc(var(--w) * 0.027); line-height: 1.1; }
-.nu-jp.major b { color: #ff7a66; }
-.nu-jp.minor b { color: #86b6ff; }
-.nu-jp.mini b { color: #6ae3a0; }
+/* Les jackpots, dans la grande plaque : MINI, MINOR, MAJOR et GRAND, chacun avec sa plaque et son montant */
+.cab.nuits .nu-jackpots { display: grid; grid-template-columns: 1fr 1fr 1fr 1.18fr; align-items: center; gap: 1.5%; padding: 0 2.6%; letter-spacing: 0; text-shadow: none; }
+.nu-jp { display: grid; justify-items: center; align-content: center; gap: 1%; min-width: 0; height: 100%; }
+.nu-jp .nu-plaque-jackpot { width: 100%; height: calc(var(--w) * 0.074); object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }
+.nu-jp.grand .nu-plaque-jackpot { height: calc(var(--w) * 0.084); }
+.nu-jp > span { font-family: var(--titre); font-size: calc(var(--w) * 0.028); line-height: 1; color: #fff1d0; white-space: nowrap; font-variant-numeric: tabular-nums; text-shadow: 0 1px 0 #050c26; }
+.nu-jp.grand > span { font-size: calc(var(--w) * 0.032); color: #ffe39a; }
 .nu-jp.allume { animation: nu-jp-allume 0.45s ease-in-out infinite alternate; }
-@keyframes nu-jp-allume { to { transform: scale(1.12); filter: brightness(1.5) drop-shadow(0 0 6px rgba(255, 230, 150, 0.9)); } }
-.nu-gains-jackpots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 8px 0 0; }
-.nu-gains-jackpots .nu-jp { justify-content: space-between; padding: 5px 10px; border-radius: 10px; border: 1px solid var(--filet); background: rgba(8, 18, 50, 0.85); font-size: 14px; }
+@keyframes nu-jp-allume { to { transform: scale(1.14); filter: brightness(1.45) drop-shadow(0 0 6px rgba(255, 230, 150, 0.9)); } }
+.nu-gains-jackpots { display: grid; gap: 6px; margin: 8px 0 0; }
+.nu-gains-jackpot { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 10px; padding: 4px 10px 4px 4px; border-radius: 12px; border: 1px solid var(--filet); background: rgba(8, 18, 50, 0.85); }
+.nu-gains-jackpot .nu-plaque-jackpot { width: 112px; height: 52px; object-fit: contain; }
+.nu-gains-jackpot > span { display: grid; gap: 1px; }
+.nu-gains-jackpot strong { font-family: var(--titre); font-weight: 400; font-size: 18px; color: #ffe39a; font-variant-numeric: tabular-nums; }
+.nu-gains-jackpot small { font-size: 12px; color: var(--creme-doux); }
 .nu-gains-jeton { display: inline-grid; width: 34px; height: 34px; flex: none; }
 .nu-gains-jeton .cas-symbole { width: 34px; height: 34px; }
 
-/* Le Jeton du Baron */
-.nu-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
-.nu-jeton { overflow: visible; }
-.nu-jeton .nu-jeton-cran { fill: #0b1a44; }
-.nu-jeton .nu-jeton-face { fill: url(#nu-face); }
-.nu-jeton.mini .nu-jeton-face { fill: #127a46; }
-.nu-jeton.minor .nu-jeton-face { fill: #2557c9; }
-.nu-jeton.major .nu-jeton-face { fill: #a51f16; }
-.nu-jeton-texte { font-family: var(--titre); font-weight: 400; fill: #ffe7a0; text-anchor: middle; dominant-baseline: central; stroke: #2a1a04; stroke-width: 1.4px; paint-order: stroke; letter-spacing: 0.02em; }
-.nu-jeton.mini .nu-jeton-texte, .nu-jeton.minor .nu-jeton-texte, .nu-jeton.major .nu-jeton-texte { fill: #fff6dc; }
-.nu-jeton-dollar { font-size: 13px; font-weight: 800; fill: #e8c06a; text-anchor: middle; dominant-baseline: central; }
+/* Le Jeton du Baron : l'image, et sa somme écrite au milieu */
+.nu-jeton { overflow: visible; object-fit: contain; }
+.nu-jeton-texte { font-family: var(--titre); font-weight: 400; fill: #ffe7a0; text-anchor: middle; dominant-baseline: central; stroke: #061238; stroke-width: 2.2px; paint-order: stroke; letter-spacing: 0.02em; }
+.nu-jeton-dollar { font-family: var(--titre); font-size: 13px; fill: #f0c86a; text-anchor: middle; dominant-baseline: central; stroke: #061238; stroke-width: 1.6px; paint-order: stroke; }
 
 /* Le bonus Jetons du Baron : 15 cases, les Jetons restent collés, les cases vides tournent à chaque relance */
 .nu-bonus { position: absolute; z-index: 2; inset: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(3, var(--case)); grid-auto-flow: column; column-gap: 1.62%; animation: apparaitre 0.4s ease-out; }
@@ -704,15 +712,16 @@
 .cab-banniere.nu-banniere.minor { color: #d9e8ff; text-shadow: 0 0 18px rgba(110, 170, 255, 0.95), 0 3px 0 #061538; background: linear-gradient(90deg, rgba(6, 20, 60, 0), rgba(18, 50, 140, 0.95) 14%, rgba(30, 80, 200, 0.97) 50%, rgba(18, 50, 140, 0.95) 86%, rgba(6, 20, 60, 0)); }
 .cab-banniere.nu-banniere.major { color: #ffe0d8; text-shadow: 0 0 18px rgba(255, 110, 80, 0.95), 0 3px 0 #3a0603; background: linear-gradient(90deg, rgba(60, 8, 4, 0), rgba(110, 18, 10, 0.95) 14%, rgba(170, 30, 18, 0.97) 50%, rgba(110, 18, 10, 0.95) 86%, rgba(60, 8, 4, 0)); }
 .cab-banniere.nu-banniere.grand { font-size: calc(var(--w) * 0.12); color: #3a2204; text-shadow: 0 1px 0 #fff6d0, 0 0 22px rgba(255, 240, 180, 0.9); background: linear-gradient(90deg, rgba(120, 80, 10, 0), #b8860b 12%, #ffe08a 50%, #b8860b 88%, rgba(120, 80, 10, 0)); animation-duration: 3.2s; }
-.nu-medaillon-jackpot { display: grid; justify-items: center; gap: 2px; padding: 14px 28px 16px; border-radius: 20px; border: 3px solid #ffe39a; background: radial-gradient(circle at 50% 30%, #1d3f94, #071234); box-shadow: 0 0 0 4px rgba(10, 20, 60, 0.9), 0 0 44px rgba(255, 210, 110, 0.65); animation: nu-jackpot-entree 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
-.nu-medaillon-jackpot b { font-family: var(--titre); font-weight: 400; font-size: clamp(38px, 11vw, 56px); letter-spacing: 0.08em; line-height: 1.05; color: #ffcf4a; text-shadow: 0 0 20px rgba(255, 200, 80, 0.8), 0 3px 0 #050c26; }
-.nu-medaillon-jackpot strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 6vw, 28px); color: #fff1d0; }
-.nu-medaillon-jackpot.mini b { color: #6ae3a0; }
-.nu-medaillon-jackpot.minor b { color: #86b6ff; }
-.nu-medaillon-jackpot.major b { color: #ff7a66; }
-.nu-medaillon-jackpot.grand { background: radial-gradient(circle at 50% 30%, #ffe08a, #b8860b 70%, #6a4a06); border-color: #fff6d0; }
-.nu-medaillon-jackpot.grand b { color: #3a2204; text-shadow: 0 1px 0 #fff6d0; }
-.nu-medaillon-jackpot.grand strong { color: #2a1802; }
+/* La plaque du jackpot surgit au milieu des rouleaux pendant le compte, puis sur la fête */
+.nu-banniere-jackpot { position: absolute; z-index: 3; left: 50%; top: 50%; width: 78%; translate: -50% -50%; display: grid; justify-items: center; gap: 2%; pointer-events: none; animation: nu-banniere-jackpot 1.15s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.nu-banniere-jackpot .nu-plaque-jackpot { width: 100%; height: auto; filter: drop-shadow(0 0 calc(var(--w) * 0.05) rgba(255, 210, 110, 0.85)) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.7)); }
+.nu-banniere-jackpot.grand { width: 96%; animation-duration: 2.6s; }
+.nu-banniere-jackpot strong { padding: 0.1em 0.6em; border-radius: 99px; border: 2px solid #ffe39a; background: rgba(6, 14, 42, 0.92); font-family: var(--titre); font-weight: 400; font-size: calc(var(--w) * 0.05); color: #fff1d0; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); }
+@keyframes nu-banniere-jackpot { 0% { opacity: 0; transform: scale(0.2) rotate(-6deg); } 22% { opacity: 1; transform: scale(1.1) rotate(1deg); } 32% { transform: scale(1) rotate(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: scale(1.08); } }
+.celebration-medaillon:has(.nu-medaillon-jackpot) { width: auto; height: auto; border-radius: 0; background: none; box-shadow: none; }
+.nu-medaillon-jackpot { display: grid; justify-items: center; gap: 6px; animation: nu-jackpot-entree 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.nu-medaillon-jackpot .nu-plaque-jackpot { width: min(80vw, 400px); height: auto; filter: drop-shadow(0 0 40px rgba(255, 210, 110, 0.7)) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.7)); }
+.nu-medaillon-jackpot strong { font-family: var(--titre); font-weight: 400; font-size: clamp(24px, 7vw, 34px); color: #fff1d0; text-shadow: 0 0 16px rgba(255, 210, 110, 0.7), 0 3px 6px rgba(0, 0, 0, 0.8); }
 @keyframes nu-jackpot-entree { 0% { opacity: 0; transform: scale(0.2) rotate(-8deg); } 60% { opacity: 1; transform: scale(1.12) rotate(2deg); } 100% { transform: scale(1) rotate(0); } }
 
 /* Les effets des événements, posés sur les rouleaux */
@@ -747,5 +756,11 @@
 .nu-fx-police .nu-carte img { box-shadow: 0 0 0 2px rgba(255, 215, 116, 0.8), -24px 0 50px rgba(255, 40, 40, 0.6), 24px 0 50px rgba(50, 110, 255, 0.7), 0 18px 34px rgba(0, 0, 0, 0.7); }
 
 @media (prefers-reduced-motion: reduce) {
-  .nu-case-couronne, .nu-multiple, .nu-menottes, .nu-jp.allume, .nu-bonus, .nu-bonus-case .cas-symbole, .nu-bonus-case::after, .nu-medaillon-jackpot, .cab.nuits .cas-case.gagnante .cas-symbole, .nu-butin, .nu-alliance, .nu-nuit, .nu-lune, .cab.nuits .cas-case.nu-retourne, .cab.nu-fx-police .cab-ampoules i, .cab.nu-fx-police .cab-lanterne, .nu-carte, .nu-carte-evenement, .nu-carte-evenement p { animation: none !important; }
+  .nu-case-couronne, .nu-multiple, .nu-menottes, .nu-jp.allume, .nu-banniere-jackpot, .nu-bonus, .nu-bonus-case .cas-symbole, .nu-bonus-case::after, .nu-medaillon-jackpot, .cab.nuits .cas-case.gagnante .cas-symbole, .nu-butin, .nu-alliance, .nu-nuit, .nu-lune, .cab.nuits .cas-case.nu-retourne, .cab.nu-fx-police .cab-ampoules i, .cab.nu-fx-police .cab-lanterne, .nu-carte, .nu-carte-evenement, .nu-carte-evenement p { animation: none !important; }
 }
+
+/* Tours automatiques : 10, 25, 50, 100 ou à l'infini */
+.cas-auto-choix { flex-wrap: nowrap; gap: 6px; }
+.cas-auto-choix button { min-width: 40px; padding: 4px 10px; font-family: var(--titre); font-size: 15px; color: var(--or-vif); border-color: var(--or); }
+.cas-auto-choix .cas-auto-fermer { min-width: 34px; padding: 4px 8px; font-family: inherit; color: var(--creme-doux); border-color: var(--filet); }
+.cab.nuits .cas-auto-choix button { background: rgba(6, 14, 40, 0.92); }

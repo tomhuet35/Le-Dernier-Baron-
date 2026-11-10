@@ -30,7 +30,7 @@ export const CADEAU_SALON = { id: 'cadeau-9m-2026-11', montant: 9_000_000, fin: 
 /** Gros lot progressif de la machine à sous : montant de départ, et part de chaque mise qui l'alimente. */
 export const GROS_LOT_DEPART = 1_000_000;
 export const PART_GROS_LOT = 0.01;
-/** Le gros lot entier se gagne à la mise maximale ; à une mise plus petite, on en gagne la part correspondante. */
+/** Le gros lot entier se gagne à partir de 100 000 $ de mise ; à une mise plus petite, on en gagne la part correspondante. */
 export const MISE_GROS_LOT_ENTIER = 100_000;
 export const partGrosLot = (pot: number, mise: number) => Math.floor((pot * Math.min(mise, MISE_GROS_LOT_ENTIER)) / MISE_GROS_LOT_ENTIER);
 
