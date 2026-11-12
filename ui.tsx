@@ -589,7 +589,50 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'suspense'
   | 'suspense_fort'
   | 'lingots_pluie'
-  | 'bille';
+  | 'bille'
+  | 'bandit_gain'
+  | 'bandit_jackpot'
+  | 'nuits_lancer'
+  | 'nuits_arret'
+  | 'nuits_gain'
+  | 'nuits_gros'
+  | 'bj_carte'
+  | 'bj_tour'
+  | 'bj_gain'
+  | 'bj_blackjack'
+  | 'bj_perdu'
+  | 'rl_gain'
+  | 'rl_gros'
+  | 'rl_perdu'
+  | 'fn_intro'
+  | 'fn_depart'
+  | 'fn_tic'
+  | 'fn_gain'
+  | 'fn_fanfare'
+  | 'fn_perdu'
+  | 'cf_ouvre'
+  | 'cf_butin'
+  | 'cf_police'
+  | 'cf_encaisse'
+  | 'cf_gros'
+  | 'cf_perdu'
+  | 'cv_tic'
+  | 'cv_envol'
+  | 'cv_pie'
+  | 'cv_perdu'
+  | 'cv_encaisse'
+  | 'cv_gros'
+  | 'chute_lacher'
+  | 'chute_clou'
+  | 'chute_case'
+  | 'chute_case_bas'
+  | 'chute_gros';
+export interface OptionsEffet {
+  /** Vitesse de lecture : plus aigu au-dessus de 1, plus grave en dessous. */
+  vitesse?: number;
+  /** Multiplie le volume prévu pour ce son. */
+  volume?: number;
+}
 /** aLaDemande : sons du Salon privé, téléchargés seulement quand un créateur ouvre le casino. */
 const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusique: boolean; aLaDemande?: boolean }> = {
   jouer: { fichier: '/cartes/son-jouer.mp3', volume: 0.8, baisserMusique: false },
@@ -640,6 +683,51 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   lingots_pluie: { fichier: '/cartes/son-lingots-pluie.mp3', volume: 0.5, baisserMusique: false, aLaDemande: true },
   // Roulette : la bille qui roule, rebondit sur les cases et se pose.
   bille: { fichier: '/cartes/son-bille.mp3', volume: 0.6, baisserMusique: true, aLaDemande: true },
+  // Le Bandit du Baron : la sonnette des gains, et le gros lot (cloches, alarme de la machine, pluie de pièces).
+  bandit_gain: { fichier: '/cartes/son-bandit-gain.mp3', volume: 0.84, baisserMusique: true, aLaDemande: true },
+  bandit_jackpot: { fichier: '/cartes/son-bandit-jackpot.mp3', volume: 1.0, baisserMusique: true, aLaDemande: true },
+  // Les Nuits du Baron : départ feutré, rouleau qui se pose, gains au vibraphone.
+  nuits_lancer: { fichier: '/cartes/son-nuits-lancer.mp3', volume: 0.65, baisserMusique: false, aLaDemande: true },
+  nuits_arret: { fichier: '/cartes/son-nuits-arret.mp3', volume: 0.52, baisserMusique: false, aLaDemande: true },
+  nuits_gain: { fichier: '/cartes/son-nuits-gain.mp3', volume: 0.82, baisserMusique: true, aLaDemande: true },
+  nuits_gros: { fichier: '/cartes/son-nuits-gros.mp3', volume: 0.65, baisserMusique: true, aLaDemande: true },
+  // Blackjack : carte glissée sur le tapis, sonnette du tour, jetons gagnés, blackjack, mise ramassée.
+  bj_carte: { fichier: '/cartes/son-bj-carte.mp3', volume: 0.56, baisserMusique: false, aLaDemande: true },
+  bj_tour: { fichier: '/cartes/son-bj-tour.mp3', volume: 0.43, baisserMusique: false, aLaDemande: true },
+  bj_gain: { fichier: '/cartes/son-bj-gain.mp3', volume: 1.0, baisserMusique: false, aLaDemande: true },
+  bj_blackjack: { fichier: '/cartes/son-bj-blackjack.mp3', volume: 0.8, baisserMusique: true, aLaDemande: true },
+  bj_perdu: { fichier: '/cartes/son-bj-perdu.mp3', volume: 0.54, baisserMusique: false, aLaDemande: true },
+  // Roulette : jetons poussés vers le gagnant, gros coup, mise ratissée.
+  rl_gain: { fichier: '/cartes/son-rl-gain.mp3', volume: 1.0, baisserMusique: true, aLaDemande: true },
+  rl_gros: { fichier: '/cartes/son-rl-gros.mp3', volume: 0.71, baisserMusique: true, aLaDemande: true },
+  rl_perdu: { fichier: '/cartes/son-rl-perdu.mp3', volume: 0.55, baisserMusique: false, aLaDemande: true },
+  // La Folle Nuit : roulement de tambour, élan de la grande roue, son clapet de bois, cuivres du show.
+  fn_intro: { fichier: '/cartes/son-fn-intro.mp3', volume: 0.78, baisserMusique: true, aLaDemande: true },
+  fn_depart: { fichier: '/cartes/son-fn-depart.mp3', volume: 0.97, baisserMusique: true, aLaDemande: true },
+  fn_tic: { fichier: '/cartes/son-fn-tic.mp3', volume: 0.33, baisserMusique: false, aLaDemande: true },
+  fn_gain: { fichier: '/cartes/son-fn-gain.mp3', volume: 0.72, baisserMusique: true, aLaDemande: true },
+  fn_fanfare: { fichier: '/cartes/son-fn-fanfare.mp3', volume: 0.98, baisserMusique: true, aLaDemande: true },
+  fn_perdu: { fichier: '/cartes/son-fn-perdu.mp3', volume: 0.4, baisserMusique: false, aLaDemande: true },
+  // Les Coffres du Baron : molette et porte du coffre, butin, police, menottes, encaissement.
+  cf_ouvre: { fichier: '/cartes/son-cf-ouvre.mp3', volume: 0.83, baisserMusique: false, aLaDemande: true },
+  cf_butin: { fichier: '/cartes/son-cf-butin.mp3', volume: 0.57, baisserMusique: false, aLaDemande: true },
+  cf_police: { fichier: '/cartes/son-cf-police.mp3', volume: 0.63, baisserMusique: true, aLaDemande: true },
+  cf_encaisse: { fichier: '/cartes/son-cf-encaisse.mp3', volume: 0.82, baisserMusique: true, aLaDemande: true },
+  cf_gros: { fichier: '/cartes/son-cf-gros.mp3', volume: 1.0, baisserMusique: true, aLaDemande: true },
+  cf_perdu: { fichier: '/cartes/son-cf-perdu.mp3', volume: 0.68, baisserMusique: false, aLaDemande: true },
+  // Le Vol de la Couronne : tic du compte à rebours, envol, la pie voleuse, chute, couronne récupérée.
+  cv_tic: { fichier: '/cartes/son-cv-tic.mp3', volume: 0.37, baisserMusique: false, aLaDemande: true },
+  cv_envol: { fichier: '/cartes/son-cv-envol.mp3', volume: 0.78, baisserMusique: true, aLaDemande: true },
+  cv_pie: { fichier: '/cartes/son-cv-pie.mp3', volume: 1.0, baisserMusique: false, aLaDemande: true },
+  cv_perdu: { fichier: '/cartes/son-cv-perdu.mp3', volume: 0.51, baisserMusique: false, aLaDemande: true },
+  cv_encaisse: { fichier: '/cartes/son-cv-encaisse.mp3', volume: 0.9, baisserMusique: true, aLaDemande: true },
+  cv_gros: { fichier: '/cartes/son-cv-gros.mp3', volume: 1.0, baisserMusique: true, aLaDemande: true },
+  // La Chute des Écus : l’écu lâché, chaque clou (joué plus ou moins aigu), la case, le gros gain.
+  chute_lacher: { fichier: '/cartes/son-chute-lacher.mp3', volume: 0.46, baisserMusique: false, aLaDemande: true },
+  chute_clou: { fichier: '/cartes/son-chute-clou.mp3', volume: 0.36, baisserMusique: false, aLaDemande: true },
+  chute_case: { fichier: '/cartes/son-chute-case.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
+  chute_case_bas: { fichier: '/cartes/son-chute-case-bas.mp3', volume: 0.57, baisserMusique: false, aLaDemande: true },
+  chute_gros: { fichier: '/cartes/son-chute-gros.mp3', volume: 0.69, baisserMusique: true, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
   vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },
@@ -761,8 +849,10 @@ const musique = (() => {
           (brut) =>
             brut
               ? new Promise<AudioBuffer | null>((ok) => {
-                  // Forme « rappel » : la seule comprise par les anciennes versions de Safari.
-                  c.decodeAudioData(brut.slice(0), ok, () => ok(null));
+                  // Forme « rappel » : la seule comprise par les anciennes versions de Safari. Les navigateurs récents
+                  // renvoient aussi une promesse, qui échoue en plus du rappel : on la fait taire.
+                  const p = c.decodeAudioData(brut.slice(0), ok, () => ok(null)) as Promise<AudioBuffer> | undefined;
+                  p?.catch?.(() => ok(null));
                 })
               : null,
         ),
@@ -838,9 +928,10 @@ const musique = (() => {
     } else if (audio) audio.volume = v;
   });
 
-  const effet = async (nom: EffetSonore) => {
+  /** vitesse : lecture plus aiguë (> 1) ou plus grave (< 1) ; volume : multiplie le volume prévu pour ce son. */
+  const effet = async (nom: EffetSonore, opts: OptionsEffet = {}) => {
     if (!active || document.hidden || volEffets() === 0) return;
-    const reglage = { ...EFFETS[nom], volume: EFFETS[nom].volume * volEffets() };
+    const reglage = { ...EFFETS[nom], volume: EFFETS[nom].volume * volEffets() * (opts.volume ?? 1) };
     const c = ctx();
     if (c) {
       if (c.state === 'suspended') await c.resume().catch(() => undefined);
@@ -850,6 +941,7 @@ const musique = (() => {
         const gain = c.createGain();
         gain.gain.value = reglage.volume;
         source.buffer = tampon;
+        if (opts.vitesse) source.playbackRate.value = opts.vitesse;
         source.connect(gain).connect(c.destination);
         source.start();
         if (reglage.baisserMusique) baisserMusique(tampon.duration);
@@ -858,7 +950,8 @@ const musique = (() => {
     }
     // Navigateur sans Web Audio : simple lecture du fichier.
     const a = new Audio(reglage.fichier);
-    a.volume = reglage.volume;
+    a.volume = Math.min(1, reglage.volume);
+    if (opts.vitesse) a.playbackRate = opts.vitesse;
     void a.play().catch(() => undefined);
   };
 
@@ -918,14 +1011,48 @@ const musique = (() => {
 })();
 
 /** Joue un effet sonore (rien si le son est coupé). */
-export function jouerEffet(nom: EffetSonore) {
-  void musique.effet(nom);
+export function jouerEffet(nom: EffetSonore, opts?: OptionsEffet) {
+  void musique.effet(nom, opts);
 }
 
 /** Musique du Salon privé (jazz de cabaret) pendant qu'on est au casino, puis retour à celle du jeu. */
 export function musiqueDuSalon(actif: boolean) {
   if (actif) musique.preparer(['machine_levier', 'machine_arret', 'machine_pieces', 'jeton', 'casino_entree', 'casino_annonce', 'melange', 'coffre_ouvre', 'sirene', 'suspense', 'suspense_fort', 'lingots_pluie', 'bille']);
-  musique.choisirPiste(actif ? '/cartes/musique-casino.mp3' : '/cartes/musique.mp3');
+  musique.choisirPiste(actif ? MUSIQUES_CASINO.salon : '/cartes/musique.mp3');
+}
+
+/** Où l'on est dans le Salon privé : le salon lui-même, ou l'un de ses jeux. */
+export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute';
+
+/** Chaque jeu du salon a sa musique (boucle d'environ une minute), le salon garde son jazz de cabaret. */
+const MUSIQUES_CASINO: Record<LieuCasino, string> = {
+  salon: '/cartes/musique-casino.mp3',
+  machine: '/cartes/musique-bandit.mp3',
+  nuits: '/cartes/musique-nuits.mp3',
+  blackjack: '/cartes/musique-blackjack.mp3',
+  roulette: '/cartes/musique-roulette.mp3',
+  folleNuit: '/cartes/musique-folle-nuit.mp3',
+  coffres: '/cartes/musique-coffres.mp3',
+  couronne: '/cartes/musique-couronne.mp3',
+  chute: '/cartes/musique-chute.mp3',
+};
+/** Les sons propres à chaque jeu, préparés en entrant dans le jeu. */
+const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
+  salon: [],
+  machine: ['bandit_gain', 'bandit_jackpot'],
+  nuits: ['nuits_lancer', 'nuits_arret', 'nuits_gain', 'nuits_gros'],
+  blackjack: ['bj_carte', 'bj_tour', 'bj_gain', 'bj_blackjack', 'bj_perdu'],
+  roulette: ['rl_gain', 'rl_gros', 'rl_perdu'],
+  folleNuit: ['fn_intro', 'fn_depart', 'fn_tic', 'fn_gain', 'fn_fanfare', 'fn_perdu'],
+  coffres: ['cf_ouvre', 'cf_butin', 'cf_police', 'cf_encaisse', 'cf_gros', 'cf_perdu'],
+  couronne: ['cv_tic', 'cv_envol', 'cv_pie', 'cv_perdu', 'cv_encaisse', 'cv_gros'],
+  chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
+};
+
+/** En entrant dans un jeu du salon : sa musique (en fondu) et ses sons. */
+export function musiqueDuCasino(lieu: LieuCasino) {
+  musique.preparer(SONS_DES_JEUX[lieu]);
+  musique.choisirPiste(MUSIQUES_CASINO[lieu]);
 }
 
 /** Son des boutons : un clic discret partout, et un son propre à certains boutons (cartes, annonces, fenêtres). */

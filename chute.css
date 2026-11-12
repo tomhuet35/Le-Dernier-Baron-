@@ -1,0 +1,99 @@
+/* La Chute des Écus : la scène de cabaret, le plateau aux clous d'or, les écus qui tombent et les cases du bas. */
+
+#racine:has(.cdc-ecran) { max-width: 1320px; }
+.cas-ecran.cdc-ecran { width: 100%; max-width: 1280px; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.cdc-ecran > * { min-width: 0; }
+.cdc-titre { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; line-height: 1; font-size: clamp(20px, 5.4vw, 30px) !important; color: var(--or-vif); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 18px rgba(233, 173, 91, 0.35); }
+
+/*
+ * La scène : le décor (rideaux, colonnes, Paris la nuit) et le plateau posé au milieu. La taille du plateau est
+ * calculée par l'écran (au pixel près, pour placer clous et écus), la scène ne fait que donner la place.
+ */
+.cdc-scene {
+  position: relative; display: grid; place-items: center; padding: 10px;
+  height: clamp(380px, calc((100vw - 48px) * 1.33 + 20px), calc(100dvh - 360px));
+  border-radius: 16px; overflow: hidden; isolation: isolate;
+  background: url('/cartes/chute-fond-portrait.webp') 50% 38% / cover no-repeat, #1a0710;
+  border: 2px solid rgba(231, 194, 122, 0.55); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+}
+.cdc-plateau {
+  position: relative; flex: none;
+  background: url('/cartes/chute-plateau.webp') center / 100% 100% no-repeat;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.7));
+}
+.cdc-distributeur { position: absolute; z-index: 2; height: auto; transform-origin: 50% 0; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
+.cdc-clou { position: absolute; z-index: 1; height: auto; transform: translate(-50%, -50%); pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.75)); }
+.cdc-ecu {
+  position: absolute; left: 0; top: 0; z-index: 4; height: auto; will-change: transform; pointer-events: none;
+  filter: brightness(1.18) saturate(1.1) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 5px rgba(255, 210, 120, 0.6));
+}
+
+/* Les cases du bas : le cadre doré (l'image), et l'intérieur coloré selon ce que paie la case. */
+.cdc-case { position: absolute; z-index: 3; background: url('/cartes/chute-case.webp') center / 100% 100% no-repeat; pointer-events: none; }
+.cdc-case-x {
+  position: absolute; left: 12.5%; right: 13%; top: 21.5%; bottom: 17%;
+  display: grid; place-items: center; border-radius: 22% / 34%;
+  background: var(--fond); color: var(--texte);
+  font-family: var(--titre); font-weight: 400; line-height: 1; letter-spacing: -0.02em; white-space: nowrap; font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.cdc-case.touchee .cdc-case-x { animation: cdc-touchee 0.7s ease-out; }
+@keyframes cdc-touchee { 0% { filter: brightness(2.1); box-shadow: 0 0 14px 4px rgba(255, 220, 140, 0.95); } 100% { filter: none; } }
+
+/* Le panneau : dernières chutes, mise, risque, rangées, lâcher. */
+.cdc-commandes { display: grid; gap: 10px; padding: 12px 14px 14px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.9); justify-items: center; align-content: start; }
+.cdc-historique { list-style: none; margin: 0; padding: 2px; width: 100%; display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; min-height: 28px; }
+.cdc-historique li { padding: 2px 9px; border-radius: 99px; border: 1px solid rgba(255, 241, 196, 0.35); background: var(--fond); color: var(--texte); font-family: var(--titre); font-size: 14px; line-height: 1.4; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cdc-historique li:first-child:not(.vide) { animation: cdc-arrive 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); box-shadow: 0 0 10px rgba(255, 214, 120, 0.5); }
+.cdc-historique li.vide { border-style: dashed; background: none; color: var(--creme-doux); font-family: inherit; font-size: 12.5px; }
+@keyframes cdc-arrive { from { opacity: 0; transform: scale(0.4); } }
+.cdc-risques, .cdc-rangees { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+.cdc-risques small, .cdc-rangees small { min-width: 64px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--creme-doux); text-align: right; }
+.cdc-risques button { min-width: 74px; min-height: 36px; padding: 2px 12px; border-radius: 99px; font-size: 14px; font-weight: 700; color: var(--creme); border-color: var(--filet); background: rgba(10, 6, 4, 0.6); }
+.cdc-risques button.choisi.faible { border-color: #f3d48a; background: linear-gradient(180deg, #f3d48a, #c99a3f); color: #2a1608; }
+.cdc-risques button.choisi.moyen { border-color: #ffb36b; background: linear-gradient(180deg, #f39a4a, #b3561c); color: #fff4e2; }
+.cdc-risques button.choisi.eleve { border-color: #ff8a8a; background: linear-gradient(180deg, #d83a4e, #8e1424); color: #fff4e2; }
+.cdc-risques button:disabled { opacity: 0.4; }
+.cdc-pas { width: 40px; min-height: 40px; padding: 0; border-radius: 50%; font-size: 22px; line-height: 1; background: var(--nuit-3); border-color: var(--or); }
+.cdc-rangees strong { min-width: 40px; text-align: center; font-family: var(--titre); font-weight: 400; font-size: 28px; color: #f3e7cf; }
+.cdc-max { font-size: 12.5px; color: var(--creme-doux); }
+.cdc-max b { font-family: var(--titre); font-weight: 400; font-size: 16px; color: var(--or-vif); }
+.cdc-lacher { width: min(100%, 380px); }
+.cdc-lacher.arret { background: radial-gradient(120% 140% at 50% 0%, #4a4a4a, #262626 60%, #141414); }
+.cdc-options { justify-content: center; flex-wrap: wrap; }
+.cdc-options button { min-width: 52px; }
+
+/* Le solde : le gain qui vient d'arriver s'affiche dessous. */
+.cdc-solde { position: relative; z-index: 25; transition: color 0.3s, box-shadow 0.3s, border-color 0.3s; }
+.cdc-solde.credite { color: #fff1c4; border-color: #ffcf6b; box-shadow: 0 0 16px rgba(255, 200, 110, 0.75); }
+.cdc-credit { position: absolute; right: 8px; top: calc(100% + 4px); padding: 2px 10px; border-radius: 99px; background: linear-gradient(180deg, #2f7d45, #1d5530); border: 1px solid #8fd18a; font-family: var(--titre); font-weight: 400; font-size: 15px; color: #eaffe6; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); animation: cdc-credit 1.8s ease-out both; pointer-events: none; z-index: 5; }
+@keyframes cdc-credit { 0% { opacity: 0; transform: translateY(8px) scale(0.8); } 12% { opacity: 1; transform: none; } 75% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
+
+/* Belle chute (×10 et plus) ou pluie d'écus (gros gain), en grand au milieu. */
+.cdc-gain { position: fixed; left: 50%; top: 40%; z-index: 30; display: grid; justify-items: center; gap: 2px; padding: 12px 26px 14px; border-radius: 22px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(122, 26, 18, 0.96), rgba(22, 13, 11, 0.96)); box-shadow: 0 0 40px rgba(255, 200, 110, 0.55), 0 18px 40px rgba(0, 0, 0, 0.7); pointer-events: none; transform: translate(-50%, -50%); animation: cdc-gain-arrivee 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both, cdc-gain-depart 0.45s ease-in 1.7s both; }
+.cdc-gain.gros { padding: 18px 36px 22px; animation: cdc-gain-arrivee 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both, cdc-gain-depart 0.6s ease-in 3s both; }
+.cdc-gain span { font-size: 13px; font-weight: 900; letter-spacing: 0.24em; text-transform: uppercase; color: #ffcf6b; }
+.cdc-gain em { font-family: var(--titre); font-style: normal; font-size: clamp(22px, 6vw, 30px); line-height: 1; color: #ffcf6b; }
+.cdc-gain strong { font-family: var(--titre); font-weight: 400; font-size: clamp(28px, 7.4vw, 42px); line-height: 1.05; color: #fff1c4; font-variant-numeric: tabular-nums; white-space: nowrap; text-shadow: 0 0 18px rgba(255, 200, 110, 0.9), 0 3px 8px rgba(0, 0, 0, 0.8); }
+.cdc-gain.gros strong { font-size: clamp(36px, 10vw, 66px); }
+@keyframes cdc-gain-arrivee { from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } }
+@keyframes cdc-gain-depart { to { opacity: 0; transform: translate(-50%, -62%) scale(0.92); } }
+
+/* Grand écran (iPad à l'horizontale, ordinateur) : la scène à gauche, toute la hauteur ; le panneau à droite. */
+@media (min-aspect-ratio: 1 / 1) and (min-width: 900px) {
+  .cas-ecran.cdc-ecran { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); grid-template-areas: 'barre barre' 'scene commandes'; align-items: start; }
+  .cdc-ecran > .cas-barre { grid-area: barre; }
+  .cdc-scene { grid-area: scene; height: max(480px, calc(100dvh - 92px)); background-image: url('/cartes/chute-fond-paysage.webp'); background-position: 50% 50%; }
+  .cdc-commandes { grid-area: commandes; }
+}
+/* Téléphone : réglages plus serrés pour garder le bouton sous le pouce. */
+@media (max-width: 560px) {
+  .cdc-scene { padding: 6px; border-radius: 14px; }
+  .cdc-commandes { gap: 8px; padding: 10px; }
+  .cdc-risques small, .cdc-rangees small { min-width: 0; }
+  .cdc-risques button { min-width: 0; padding: 2px 10px; font-size: 13px; }
+  .cdc-historique li { font-size: 13px; padding: 1px 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cdc-ecran *, .cdc-gain { animation: none !important; }
+}

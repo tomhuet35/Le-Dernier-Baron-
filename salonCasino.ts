@@ -1,6 +1,6 @@
 /**
  * Salon privé du Baron (casino des comptes Créateur) : solde, roulette du salon, machines à sous, tables, le show
- * La Folle Nuit, les Coffres du Baron, le Vol de la Couronne et le gros lot progressif.
+ * La Folle Nuit, les Coffres du Baron, le Vol de la Couronne, la Chute des Écus et le gros lot progressif.
  *
  * - Chaque événement casino_* vérifie que le compte connecté a le badge Créateur ; sinon « Introuvable. », sans dire
  *   que le casino existe.
@@ -62,6 +62,7 @@ import type { DureesFN, HappyHourFN } from '../shared/folleNuit';
 import { creerShowFolleNuit, type TirageImpose } from './showFolleNuit';
 import { creerCoffres } from './festinCasino';
 import { creerVolCouronne } from './couronneCasino';
+import { creerChute } from './chuteCasino';
 import type { DureesCouronne } from '../shared/couronne';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
@@ -105,6 +106,10 @@ export interface OptionsCasino {
   delaisCouronne?: Partial<DureesCouronne>;
   kCouronne?: number;
   tirageCouronne?: () => number | undefined;
+  /** La Chute des Écus : rebonds et chemin imposés, délai de l'annonce (tests, démonstration). */
+  hasardChute?: () => number;
+  cheminChute?: (rangees: number) => number[] | undefined;
+  delaiAnnonceChute?: number;
   /** Défis entre amis : durées accélérées (tests). */
   echelleDefis?: number;
 }
@@ -430,6 +435,7 @@ export function creerCasino(options: OptionsCasino) {
   const coffres = creerCoffres({ banque: banqueDe('coffres'), hasard: options.hasardCoffres, placer: options.placerBadgesCoffres, annoncer: (a) => annoncer(a) });
   const show = creerShowFolleNuit({ io, banque: banqueDe('folleNuit'), horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, happyHour: options.happyHourFolleNuit, annoncer: (a) => annoncer(a) });
   const couronne = creerVolCouronne({ io, banque: banqueDe('couronne'), horloge, delais: options.delaisCouronne, k: options.kCouronne, tirage: options.tirageCouronne, annoncer: (a) => annoncer(a) });
+  const chute = creerChute({ banque: banqueDe('chute'), horloge, hasard: options.hasardChute, chemin: options.cheminChute, delaiAnnonce: options.delaiAnnonceChute, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
     const p = portes.get(uid);
@@ -589,6 +595,7 @@ export function creerCasino(options: OptionsCasino) {
     show.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     coffres.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     couronne.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
+    chute.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
 
     socket.on('casino_entrer', async (_data: unknown, rappel?: Rappel) => {
       const id = await acces(rappel);
@@ -876,6 +883,7 @@ export function creerCasino(options: OptionsCasino) {
     roulettes.fermer();
     show.fermer();
     couronne.fermer();
+    chute.fermer();
     defis.fermer();
     await Promise.all([...portes.keys()].map((uid) => ecrire(uid)));
     if (minuterieSalon) {

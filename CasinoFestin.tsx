@@ -146,13 +146,12 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
 
   const fin = (c: VueCoffres) => {
     if (c.etat === 'perdu') {
-      jouerEffet('sirene');
-      plusTard(() => jouerEffet('echec'), 400);
+      jouerEffet('cf_police');
+      plusTard(() => jouerEffet('cf_perdu'), 500);
       return;
     }
     const gros = c.gain >= MULTIPLE_GROS_GAIN * c.mise || c.gain >= 1_000_000;
-    jouerEffet(gros ? 'roulette_gros_lot' : 'roulette_gain');
-    plusTard(() => jouerEffet('machine_pieces'), 200);
+    jouerEffet(gros ? 'cf_gros' : 'cf_encaisse');
     setAnnonce({ montant: c.gain, x: c.x, gros, id: Date.now() });
     plusTard(() => setAnnonce(null), gros ? 3600 : 2400);
     setCredit({ montant: c.gain, id: Date.now() });
@@ -186,7 +185,7 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
     if (!enCours || attente !== null) return;
     setAttente(i);
     setErreur(null);
-    jouerEffet('coffre_ouvre');
+    jouerEffet('cf_ouvre');
     const r = await appel('casino_coffres_ouvrir', { index: i });
     // La porte s'entrouvre (le coffre tremble) avant de montrer ce qu'il y a dedans.
     await new Promise((ok) => window.setTimeout(ok, mouvementReduit() ? 0 : 420));
@@ -194,7 +193,7 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
     if (!r.ok) return setErreur(r.erreur ?? tr('Action impossible.', 'Action not allowed.'));
     const x = r as unknown as { coffres: VueCoffres; solde: number };
     setPartie(x.coffres);
-    if (x.coffres.coffres[i] === 'butin') jouerEffet('reussite');
+    if (x.coffres.coffres[i] === 'butin') jouerEffet('cf_butin');
     if (x.coffres.etat !== 'enCours') {
       majSolde(x.solde);
       fin(x.coffres);

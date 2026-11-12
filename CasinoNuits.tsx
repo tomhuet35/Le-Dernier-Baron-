@@ -352,7 +352,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
   const lancer = useCallback(async () => {
     if (enCours) return;
     setErreur(null);
-    jouerEffet('machine_levier');
+    jouerEffet('nuits_lancer');
     setEnCours(true);
     const figes = vueRef.current.nuits.collantes?.rouleaux ?? [];
     const r = (await appel('casino_nuits', { mise })) as { ok: boolean; erreur?: string; nuits?: TourNuit; casino?: VueCasino };
@@ -390,7 +390,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
       const file: FeteNuit[] = [];
       if (b) file.push({ type: 'jetons', gain: b.gain, jackpot: meilleurJackpot(b), mise: m.mise });
       else if (palier === 'enorme' || palier === 'colossal') file.push({ type: 'gain', gain: m.gain, colossal: palier === 'colossal' });
-      if (b) jouerEffet(palier === 'enorme' || palier === 'colossal' ? 'roulette_gros_lot' : 'roulette_gain');
+      if (b) jouerEffet(palier === 'enorme' || palier === 'colossal' ? 'nuits_gros' : 'nuits_gain');
       if (LINGOTS_PALIER[palier] && !reduit) {
         setPluie({ n: LINGOTS_PALIER[palier], id: Date.now() });
         plusTard(() => jouerEffet('lingots_pluie'), 250);
@@ -422,8 +422,8 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
         }, t);
         plusTard(() => {
           setBonus((x) => x && { ...x, roule: false, valeurs: { ...x.valeurs, ...rel.nouvelles }, nouvelles: nv, restantes: rel.restantes });
-          jouerEffet(nv.length ? 'jeton' : 'machine_arret');
-          if (nv.some((c) => rel.nouvelles[c].jackpot)) jouerEffet('roulette_gain');
+          jouerEffet(nv.length ? 'jeton' : 'nuits_arret');
+          if (nv.some((c) => rel.nouvelles[c].jackpot)) jouerEffet('nuits_gain');
         }, t + 620);
         t += nv.length ? 1250 : 1000;
       }
@@ -431,7 +431,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
         plusTard(() => {
           setBonus((x) => x && { ...x, grand: true });
           setBanniere({ texte: 'GRAND !', id: Date.now(), classe: 'grand', jackpot: 'grand', montant: JACKPOTS_NUIT.grand * m.mise });
-          jouerEffet('roulette_gros_lot');
+          jouerEffet('nuits_gros');
         }, t + 200);
         t += 2600;
       }
@@ -444,7 +444,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
         const somme = Math.round(total);
         plusTard(() => {
           setBonus((x) => x && { ...x, compte: c, comptes: [...x.comptes, c], total: somme });
-          jouerEffet(v.jackpot ? 'roulette_gain' : 'jeton');
+          jouerEffet(v.jackpot ? 'nuits_gain' : 'jeton');
           if (v.jackpot) setBanniere({ texte: `${NOMS_JACKPOTS[v.jackpot]} !`, id: Date.now() + c, classe: v.jackpot, jackpot: v.jackpot, montant: v.x * m.mise });
         }, t);
         t += v.jackpot ? 1200 : 240;
@@ -464,9 +464,9 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
       const palier = palierDe(gainLignes, m.mise);
       if (palier === 'gros') {
         setBanniere({ texte: tr('Gros gain !', 'Big win!'), id: Date.now() });
-        jouerEffet('roulette_gain');
-      } else if (palier === 'enorme' || palier === 'colossal') jouerEffet('roulette_gros_lot');
-      else if (palier === 'joli') jouerEffet('roulette_gain');
+        jouerEffet('nuits_gain');
+      } else if (palier === 'enorme' || palier === 'colossal') jouerEffet('nuits_gros');
+      else if (palier === 'joli') jouerEffet('nuits_gain');
       else if (palier === 'petit') jouerEffet('machine_pieces');
       if (b && !reduit) plusTard(() => jouerBonus(b), gainLignes > 0 || m.freeGames ? 1600 : 700);
       else terminer();
@@ -534,7 +534,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
     }
     t.forEach((d, k) =>
       plusTard(() => {
-        if (!figes.includes(k)) jouerEffet('machine_arret');
+        if (!figes.includes(k)) jouerEffet('nuits_arret');
         if (susp !== null && k === susp - 1) {
           setSuspense({ rouleau: susp, texte: susJuges ? tr('Un troisième Juge ?', 'A third Judge?') : tr('Le sixième Jeton ?', 'The sixth Token?') });
           jouerEffet('suspense');

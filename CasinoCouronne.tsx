@@ -186,7 +186,7 @@ function useSceneVol(h: MutableRefObject<Horloges>, refs: {
         ecrire(refs.compte.current, String(Math.ceil(reste / 1000)));
         if (refs.barre.current) refs.barre.current.style.transform = `scaleX(${v.duree ? Math.min(1, reste / v.duree) : 0})`;
         const s = Math.ceil(reste / 1000);
-        if (s !== dernierTic && s <= 3 && s >= 1) jouerEffet('tic');
+        if (s !== dernierTic && s <= 3 && s >= 1) jouerEffet('cv_tic');
         dernierTic = s;
         pos = { x: cx, y: cy };
         texte = '';
@@ -572,10 +572,10 @@ export function JeuCouronne({ vue, appel, onVue, onRetour }: { vue: VueCasino; a
     const p = precedente.current;
     precedente.current = v;
     if (!p) return;
-    if (v.phase === 'vol' && p.phase !== 'vol') jouerEffet('lancement');
+    if (v.phase === 'vol' && p.phase !== 'vol') jouerEffet('cv_envol');
     if (v.phase === 'volee' && p.phase !== 'volee') {
-      if ((v.x ?? 0) < X_MAX_COURONNE) jouerEffet('pickpocket');
-      if (v.mesMises.some((m, i) => m?.etat === 'volee' && p.mesMises[i]?.etat === 'enVol')) plusTard(() => jouerEffet('echec'), 650);
+      if ((v.x ?? 0) < X_MAX_COURONNE) jouerEffet('cv_pie');
+      if (v.mesMises.some((m, i) => m?.etat === 'volee' && p.mesMises[i]?.etat === 'enVol')) plusTard(() => jouerEffet('cv_perdu'), 650);
     }
     if (v.phase === 'mises' && p.phase !== 'mises') setErreur(null);
     // Mes récupérations : la somme en grand, et du butin qui tombe pour les beaux envols.
@@ -584,8 +584,7 @@ export function JeuCouronne({ vue, appel, onVue, onRetour }: { vue: VueCasino; a
       if (m?.etat !== 'recuperee' || avant?.etat === 'recuperee' || p.manche !== v.manche) return;
       const x = m.x ?? 1;
       const gros = m.gain >= MULTIPLE_GROS_GAIN * m.mise || m.gain >= 1_000_000;
-      jouerEffet(gros ? 'roulette_gros_lot' : 'roulette_gain');
-      plusTard(() => jouerEffet('machine_pieces'), 200);
+      jouerEffet(gros ? 'cv_gros' : 'cv_encaisse');
       setAnnonce({ montant: m.gain, x, gros, id: Date.now() + i });
       plusTard(() => setAnnonce(null), gros ? 3600 : 2200);
       setCredit({ montant: m.gain, id: Date.now() + i });

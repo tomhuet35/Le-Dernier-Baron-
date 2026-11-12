@@ -200,12 +200,12 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
     const compter = (x: VueTableBJ) => x.croupier.filter((c) => c !== null).length + x.places.reduce((s, pl) => s + pl.mains.reduce((t, m) => t + m.cartes.length, 0), 0);
     const nouvelles = compter(v) - (p.numero === v.numero ? compter(p) : 0);
     if (v.melange && !p.melange) jouerEffet('melange');
-    else if (nouvelles > 0) jouerEffet('carte');
-    if (v.actions.length && !p.actions.length) jouerEffet('tour');
+    else if (nouvelles > 0) jouerEffet('bj_carte');
+    if (v.actions.length && !p.actions.length) jouerEffet('bj_tour');
     if (v.phase === 'fin' && p.phase !== 'fin' && moi?.gainTotal !== null && moi) {
       const engage = moi.mains.reduce((s, m) => s + m.mise, 0) + moi.assurance;
-      if (moi.gainTotal! > engage) jouerEffet(moi.mains.some((m) => m.issue === 'blackjack') ? 'roulette_gain' : 'machine_pieces');
-      else if (moi.gainTotal! < engage && engage > 0) jouerEffet('echec');
+      if (moi.gainTotal! > engage) jouerEffet(moi.mains.some((m) => m.issue === 'blackjack') ? 'bj_blackjack' : 'bj_gain');
+      else if (moi.gainTotal! < engage && engage > 0) jouerEffet('bj_perdu');
     }
     if (v.phase === 'mises' && p.phase !== 'mises') setMise(0);
   }, [v, moi]);

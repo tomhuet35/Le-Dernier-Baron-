@@ -459,9 +459,9 @@ export function TableRoulette({ v, appel, onQuitter }: { v: VueTableRoulette; ap
     if (v.phase === 'resultat' && p.phase !== 'resultat' && moi.resultat !== null) {
       if (moi.resultat >= 1_000_000) {
         setFete(moi.resultat);
-        jouerEffet('roulette_gros_lot');
-      } else if (moi.resultat > 0) jouerEffet('roulette_gain');
-      else if (moi.resultat < 0) jouerEffet('echec');
+        jouerEffet('rl_gros');
+      } else if (moi.resultat > 0) jouerEffet('rl_gain');
+      else if (moi.resultat < 0) jouerEffet('rl_perdu');
     }
     if (v.phase === 'mises' && p.phase !== 'mises') setErreur(null);
   }, [v, moi]);

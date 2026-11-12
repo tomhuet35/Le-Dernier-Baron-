@@ -160,7 +160,7 @@ function clapet(pas: number, fleches: () => (HTMLElement | null)[]) {
       coup = -sens * 14;
       if (t - dernierSon > 55) {
         dernierSon = t;
-        jouerEffet('roulette_tic');
+        jouerEffet('fn_tic');
       }
     }
     case_ = ici;
@@ -253,7 +253,7 @@ function GrandeRoue({ v, etape }: { v: VueFolleNuit; etape: { fin: number | null
     const depart = angleRoue;
     const total = 360 * 5 + mod(cible - depart, 360);
     const tic = clapet(PAS, () => [fleche.current]);
-    if (Date.now() - t0 < 600) jouerEffet('roulette_depart');
+    if (Date.now() - t0 < 600) jouerEffet('fn_depart');
     let id = 0;
     const image = () => {
       const p = (Date.now() - t0) / duree;
@@ -800,7 +800,7 @@ function BonusFolle({ b, v, etape, peutChoisir, onChoix }: { b: Extract<VueBonus
       tic(ang);
       if (k !== tour) {
         tour = k;
-        if (p < 0.08) jouerEffet('roulette_depart');
+        if (p < 0.08) jouerEffet('fn_depart');
       }
       const f = t >= k * par + par * 0.78 ? k + 1 : k;
       if (f !== fait) setFaits((fait = f));
@@ -1131,7 +1131,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
     precedente.current = v;
     if (!v || !p) return;
     if (v.phase === 'mises' && p.phase !== 'mises') setErreur(null);
-    if (v.phase === 'intro' && p.phase !== 'intro') jouerEffet('suspense');
+    if (v.phase === 'intro' && p.phase !== 'intro') jouerEffet('fn_intro');
     if (v.monGain !== null && p.monGain === null) {
       const mise = Object.values(v.mesMises).reduce((s, x) => s + (x ?? 0), 0);
       const gros = v.monGain >= 1_000_000 || (!!mise && v.monGain >= mise * 50);
@@ -1141,7 +1141,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
         minuterieAnnonce.current = window.setTimeout(() => setAnnonce(null), gros ? 4300 : 2900);
       }
       if (gros) {
-        jouerEffet('roulette_gros_lot');
+        jouerEffet('fn_fanfare');
         if (!mouvementReduit()) {
           const n = v.monGain >= 50_000_000 ? LINGOTS_PALIER.colossal : v.monGain >= 5_000_000 ? LINGOTS_PALIER.enorme : LINGOTS_PALIER.gros;
           setPluie({ n, id: Date.now() });
@@ -1149,8 +1149,8 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
           window.clearTimeout(minuteriePluie.current);
           minuteriePluie.current = window.setTimeout(() => setPluie(null), 3800);
         }
-      } else if (v.monGain > 0) jouerEffet('roulette_gain');
-      else if (v.monGain < 0) jouerEffet('echec');
+      } else if (v.monGain > 0) jouerEffet('fn_gain');
+      else if (v.monGain < 0) jouerEffet('fn_perdu');
     }
   }, [v]);
 
