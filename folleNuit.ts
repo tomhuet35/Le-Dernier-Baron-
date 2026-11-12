@@ -106,13 +106,32 @@ export const CASE_TOP_SLOT: [CaseFN | null, number][] = [
 
 /** La Happy Hour de la Folle Nuit : de 11 h à 12 h, heure de Paris. */
 export const HAPPY_HOUR_FN = { debut: 11, fin: 12 };
+/**
+ * Happy Hours spéciales : sans interruption, jour et nuit, entre deux dates (Top Slot ×10 à ×100 à chaque manche).
+ * En dehors, la Happy Hour quotidienne (11 h à 12 h) reprend.
+ */
+export const HAPPY_HOURS_SPECIALES: { debut: number; fin: number }[] = [
+  // Une semaine de Happy Hour : du jeudi 12 novembre 2026 au jeudi 19 novembre inclus (jusqu'à minuit, heure de Paris).
+  { debut: Date.UTC(2026, 10, 11, 23, 0, 0), fin: Date.UTC(2026, 10, 19, 23, 0, 0) },
+];
 const HEURE_PARIS = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
 export interface HappyHourFN {
   active: boolean;
   /** Millisecondes avant la fin (si elle est en cours) ou avant la prochaine. */
   reste: number;
+  /** Une Happy Hour spéciale (plusieurs jours sans interruption) : en cours, ou la prochaine. */
+  speciale?: true;
 }
-export function happyHourFN(t: number): HappyHourFN {
+export function happyHourFN(t: number, speciales = HAPPY_HOURS_SPECIALES): HappyHourFN {
+  const enCours = speciales.find((h) => t >= h.debut && t < h.fin);
+  if (enCours) return { active: true, reste: enCours.fin - t, speciale: true };
+  const quotidienne = happyHourQuotidienne(t);
+  // Une Happy Hour spéciale qui commence avant la prochaine quotidienne.
+  const prochaine = speciales.filter((h) => h.debut > t).sort((a, b) => a.debut - b.debut)[0];
+  if (!quotidienne.active && prochaine && prochaine.debut - t < quotidienne.reste) return { active: false, reste: prochaine.debut - t, speciale: true };
+  return quotidienne;
+}
+function happyHourQuotidienne(t: number): HappyHourFN {
   const p: Record<string, string> = {};
   for (const x of HEURE_PARIS.formatToParts(new Date(t))) p[x.type] = x.value;
   const s = (Number(p.hour) % 24) * 3600 + Number(p.minute) * 60 + Number(p.second);

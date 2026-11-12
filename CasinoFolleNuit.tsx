@@ -985,10 +985,14 @@ function SceneBonus({ v, etape, appel }: { v: VueFolleNuit; etape: { fin: number
 // ---------------------------------------------------------------------------------------------------------------
 // Le tapis des mises
 
-/** Temps restant lisible : « 34 min », « 2 h 15 ». */
+/** Temps restant lisible : « 34 min », « 2 h 15 », « 6 j 8 h ». */
 function duree(ms: number): string {
   const m = Math.max(1, Math.ceil(ms / 60_000));
   if (m < 60) return `${m} min`;
+  if (m >= 24 * 60) {
+    const h = Math.floor(m / 60);
+    return tr(`${Math.floor(h / 24)} j${h % 24 ? ` ${h % 24} h` : ''}`, `${Math.floor(h / 24)} d${h % 24 ? ` ${h % 24} h` : ''}`);
+  }
   return `${Math.floor(m / 60)} h${m % 60 ? ` ${String(m % 60).padStart(2, '0')}` : ''}`;
 }
 
@@ -1005,14 +1009,18 @@ function BandeauHappyHour({ hh }: { hh: HappyHourFN | undefined }) {
   if (hh.active)
     return (
       <p className="fn-happy actif" role="status">
-        <strong>Happy Hour</strong>
+        <strong>{hh.speciale ? tr('Happy Hour non-stop', 'Non-stop Happy Hour') : 'Happy Hour'}</strong>
         <span>{tr(`Top Slot ×10 à ×100 à chaque manche · encore ${duree(reste)}`, `Top Slot ×10 to ×100 every round · ${duree(reste)} left`)}</span>
       </p>
     );
   return (
     <p className="fn-happy">
       <strong>Happy Hour</strong>
-      <span>{tr(`de 11 h à 12 h : Top Slot ×10 à ×100 · dans ${duree(reste)}`, `11 am to noon: Top Slot ×10 to ×100 · in ${duree(reste)}`)}</span>
+      <span>
+        {hh.speciale
+          ? tr(`non-stop, jour et nuit : Top Slot ×10 à ×100 · dans ${duree(reste)}`, `non-stop, day and night: Top Slot ×10 to ×100 · in ${duree(reste)}`)
+          : tr(`de 11 h à 12 h : Top Slot ×10 à ×100 · dans ${duree(reste)}`, `11 am to noon: Top Slot ×10 to ×100 · in ${duree(reste)}`)}
+      </span>
     </p>
   );
 }
@@ -1360,7 +1368,9 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
           </div>
         </form>
         <p className="cas-mention">
-          {tr('1 paie 1 pour 1 · 2 paie 2 · 5 paie 5 · 10 paie 10 · les bonus paient leur multiplicateur. Le Top Slot multiplie une case à chaque manche (×2 à ×50) ; Happy Hour de 11 h à 12 h : ×10 à ×100. Jetons de 1 000 à 500 000 $, 1 000 000 $ au plus par manche.', '1 pays 1 to 1 · 2 pays 2 · 5 pays 5 · 10 pays 10 · bonuses pay their multiplier. The Top Slot boosts one spot every round (×2 to ×50); Happy Hour from 11 am to noon: ×10 to ×100. Chips from $1,000 to $500,000, $1,000,000 at most per round.')}
+          {v.happyHour?.active && v.happyHour.speciale
+            ? tr('1 paie 1 pour 1 · 2 paie 2 · 5 paie 5 · 10 paie 10 · les bonus paient leur multiplicateur. Happy Hour non-stop, jour et nuit : le Top Slot multiplie une case à chaque manche de ×10 à ×100. Jetons de 1 000 à 500 000 $, 1 000 000 $ au plus par manche.', '1 pays 1 to 1 · 2 pays 2 · 5 pays 5 · 10 pays 10 · bonuses pay their multiplier. Non-stop Happy Hour, day and night: the Top Slot boosts one spot every round from ×10 to ×100. Chips from $1,000 to $500,000, $1,000,000 at most per round.')
+            : tr('1 paie 1 pour 1 · 2 paie 2 · 5 paie 5 · 10 paie 10 · les bonus paient leur multiplicateur. Le Top Slot multiplie une case à chaque manche (×2 à ×50) ; Happy Hour de 11 h à 12 h : ×10 à ×100. Jetons de 1 000 à 500 000 $, 1 000 000 $ au plus par manche.', '1 pays 1 to 1 · 2 pays 2 · 5 pays 5 · 10 pays 10 · bonuses pay their multiplier. The Top Slot boosts one spot every round (×2 to ×50); Happy Hour from 11 am to noon: ×10 to ×100. Chips from $1,000 to $500,000, $1,000,000 at most per round.')}
         </p>
       </section>
 
@@ -1430,7 +1440,9 @@ export function BandeauFolleNuit({ vue, onOuvrir }: { vue: VueCasino; onOuvrir: 
         )}
         <small>
           {fn?.happyHour?.active
-            ? tr('Happy Hour jusqu’à 12 h : le Top Slot donne de ×10 à ×100 à chaque manche !', 'Happy Hour until noon: the Top Slot gives ×10 to ×100 every round!')
+            ? fn.happyHour.speciale
+              ? tr('Happy Hour non-stop toute la semaine : le Top Slot donne de ×10 à ×100 à chaque manche !', 'Non-stop Happy Hour all week: the Top Slot gives ×10 to ×100 every round!')
+              : tr('Happy Hour jusqu’à 12 h : le Top Slot donne de ×10 à ×100 à chaque manche !', 'Happy Hour until noon: the Top Slot gives ×10 to ×100 every round!')
             : fn?.enDirect
             ? tr(`Le show tourne · ${fn.spectateurs} au show`, `The show is on · ${fn.spectateurs} watching`)
             : tr('La roue géante, le Top Slot et 4 bonus : le show commence dès ton arrivée.', 'The giant wheel, the Top Slot and 4 bonuses: the show starts when you arrive.')}

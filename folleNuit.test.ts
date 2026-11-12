@@ -149,11 +149,29 @@ describe('La Folle Nuit : la roue et les gains', () => {
     expect([...vus].sort((a, b) => a - b)).toEqual(X_TOP_SLOT_HAPPY.map(([x]) => x));
   });
 
-  it('ouvre la Happy Hour de 11 h à 12 h, heure de Paris (hiver comme été)', () => {
-    expect(happyHourFN(Date.parse('2026-11-12T10:30:00Z'))).toEqual({ active: true, reste: 30 * 60_000 }); // 11 h 30 à Paris (UTC+1)
-    expect(happyHourFN(Date.parse('2026-07-01T09:15:00Z'))).toEqual({ active: true, reste: 45 * 60_000 }); // 11 h 15 (UTC+2)
-    expect(happyHourFN(Date.parse('2026-11-12T09:00:00Z'))).toEqual({ active: false, reste: 60 * 60_000 }); // 10 h : dans une heure
-    expect(happyHourFN(Date.parse('2026-11-12T11:00:00Z'))).toEqual({ active: false, reste: 23 * 3_600_000 }); // midi : demain
+  it('ouvre la Happy Hour quotidienne de 11 h à 12 h, heure de Paris (hiver comme été)', () => {
+    expect(happyHourFN(Date.parse('2026-11-12T10:30:00Z'), [])).toEqual({ active: true, reste: 30 * 60_000 }); // 11 h 30 à Paris (UTC+1)
+    expect(happyHourFN(Date.parse('2026-07-01T09:15:00Z'), [])).toEqual({ active: true, reste: 45 * 60_000 }); // 11 h 15 (UTC+2)
+    expect(happyHourFN(Date.parse('2026-11-12T09:00:00Z'), [])).toEqual({ active: false, reste: 60 * 60_000 }); // 10 h : dans une heure
+    expect(happyHourFN(Date.parse('2026-11-12T11:00:00Z'), [])).toEqual({ active: false, reste: 23 * 3_600_000 }); // midi : demain
+  });
+
+  it('tient une Happy Hour spéciale sans interruption pendant la semaine du 12 au 19 novembre 2026', () => {
+    const fin = Date.parse('2026-11-19T23:00:00Z'); // vendredi 20 novembre, 0 h à Paris
+    // Jeudi 12, 15 h 30 à Paris : en cours (hors 11 h – 12 h), jusqu'au 19 au soir.
+    const t = Date.parse('2026-11-12T14:30:00Z');
+    expect(happyHourFN(t)).toEqual({ active: true, reste: fin - t, speciale: true });
+    // Mardi 17, 3 h du matin : toujours en cours.
+    expect(happyHourFN(Date.parse('2026-11-17T02:00:00Z')).active).toBe(true);
+    // Jeudi 19, 23 h 59 : encore une minute.
+    expect(happyHourFN(Date.parse('2026-11-19T22:59:00Z'))).toEqual({ active: true, reste: 60_000, speciale: true });
+    // Vendredi 20, minuit pile : finie ; la quotidienne reprend à 11 h.
+    expect(happyHourFN(fin)).toEqual({ active: false, reste: 11 * 3_600_000 });
+    expect(happyHourFN(Date.parse('2026-11-20T10:15:00Z'))).toEqual({ active: true, reste: 45 * 60_000 });
+    // Avant une Happy Hour spéciale : on annonce celle qui arrive en premier.
+    const speciale = [{ debut: Date.parse('2026-12-01T12:00:00Z'), fin: Date.parse('2026-12-02T12:00:00Z') }]; // 1er décembre, 13 h à Paris
+    expect(happyHourFN(Date.parse('2026-12-01T11:00:00Z'), speciale)).toEqual({ active: false, reste: 3_600_000, speciale: true }); // midi : la spéciale dans 1 h
+    expect(happyHourFN(Date.parse('2026-12-01T08:00:00Z'), speciale)).toEqual({ active: false, reste: 2 * 3_600_000 }); // 9 h : la quotidienne d'abord
   });
 
   it('tire une manche complète, avec l’arrêt imposé si on le demande', () => {
