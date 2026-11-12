@@ -9,6 +9,9 @@ import {
   CASES_CHASSE,
   CASES_FN,
   COLONNES_BILLES,
+  JETONS_FN,
+  MAX_CASE_FN,
+  MAX_MANCHE_FN,
   NOMBRES_FN,
   PAIEMENT_NOMBRE,
   retourFN,
@@ -42,6 +45,13 @@ function hasardFixe(graine: number): Hasard {
 }
 
 describe('La Folle Nuit : la roue et les gains', () => {
+  it('accepte 500 000 $ par case, soit 4 000 000 $ par manche', () => {
+    expect(MAX_CASE_FN).toBe(500_000);
+    expect(Math.max(...JETONS_FN)).toBe(MAX_CASE_FN);
+    expect(CASES_FN).toHaveLength(8);
+    expect(MAX_MANCHE_FN).toBe(4_000_000);
+  });
+
   it('a 54 cases, dans les bonnes proportions, sans deux cases pareilles côte à côte', () => {
     const compte: Record<string, number> = {};
     for (const c of ROUE_FN) compte[c] = (compte[c] ?? 0) + 1;

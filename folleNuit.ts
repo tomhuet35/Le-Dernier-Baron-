@@ -23,10 +23,10 @@ export const estCaseFN = (c: unknown): c is CaseFN => typeof c === 'string' && (
 /** Une case chiffrée paie son chiffre pour 1. */
 export const PAIEMENT_NOMBRE: Record<NombreFN, number> = { '1': 1, '2': 2, '5': 5, '10': 10 };
 
-/** Jetons, et plafonds par case et par manche (comme à la roulette du salon). */
+/** Jetons, et plafonds : 500 000 $ par case, donc 4 000 000 $ par manche au plus (les 8 cases pleines). */
 export const JETONS_FN = [1_000, 5_000, 25_000, 100_000, 500_000];
 export const MAX_CASE_FN = 500_000;
-export const MAX_MANCHE_FN = 1_000_000;
+export const MAX_MANCHE_FN = MAX_CASE_FN * CASES_FN.length;
 /** Multiplicateur le plus haut d'un bonus (Top Slot compris). */
 export const X_MAX_FN = 25_000;
 
