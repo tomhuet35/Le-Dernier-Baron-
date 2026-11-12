@@ -3,7 +3,7 @@
  * Argent fictif, sans aucune valeur réelle : rien ne s'achète et rien ne s'échange.
  */
 import type { ResumeTableBJ } from './blackjack';
-import type { CaseFN } from './folleNuit';
+import type { CaseFN, HappyHourFN } from './folleNuit';
 import type { ContenuCasse } from './machineASous';
 
 /** Bonus de la machine à sous en cours (à finir avant de rejouer) : le Casse du coffre ou la Roue du Baron. */
@@ -108,7 +108,7 @@ export interface VueCasino {
   /** Cadeau du Baron encore à récupérer (montant et fin), ou null. */
   cadeau: { montant: number; fin: number } | null;
   /** La Folle Nuit : en direct ou non, combien regardent, et les derniers résultats. */
-  folleNuit?: { enDirect: boolean; spectateurs: number; historique: { case: CaseFN; x: number }[] };
+  folleNuit?: { enDirect: boolean; spectateurs: number; historique: { case: CaseFN; x: number }[]; happyHour?: HappyHourFN };
 }
 
 export interface AnnonceCasino {

@@ -66,40 +66,70 @@ export interface TopSlot {
   case: CaseFN;
   x: number;
 }
-/** Multiplicateurs du Top Slot (sur 1 000). */
+/**
+ * Multiplicateurs du Top Slot (sur 1 000). Il en tombe un à chaque manche : ×2 le plus souvent, ×50 rarement
+ * (moyenne ≈ 3,64, pour que chaque case rende toujours environ 97,6 % des mises).
+ */
 export const X_TOP_SLOT: [number, number][] = [
-  [2, 230],
-  [3, 200],
-  [4, 140],
-  [5, 120],
-  [7, 100],
-  [10, 90],
-  [15, 50],
-  [20, 40],
-  [25, 20],
-  [50, 10],
+  [2, 493],
+  [3, 230],
+  [4, 100],
+  [5, 80],
+  [7, 42],
+  [10, 28],
+  [15, 12],
+  [20, 8],
+  [25, 4],
+  [50, 3],
 ];
-/** Case visée par le Top Slot (sur 10 000) ; le reste du temps, les deux rouleaux ne s'alignent pas (null). */
+/** Happy Hour (chaque jour de 11 h à 12 h, heure de Paris) : le Top Slot donne de ×10 à ×100. */
+export const X_TOP_SLOT_HAPPY: [number, number][] = [
+  [10, 300],
+  [15, 220],
+  [20, 170],
+  [25, 120],
+  [50, 100],
+  [75, 50],
+  [100, 40],
+];
+/** Case visée par le Top Slot (sur 10 000) : une case à chaque manche, les chiffres fréquents un peu plus souvent. */
 export const CASE_TOP_SLOT: [CaseFN | null, number][] = [
-  ['1', 944],
-  ['2', 978],
-  ['5', 567],
-  ['10', 403],
-  ['pile', 500],
-  ['chasse', 500],
-  ['billes', 500],
-  ['folle', 500],
-  [null, 5108],
+  ['1', 1930],
+  ['2', 1999],
+  ['5', 1159],
+  ['10', 824],
+  ['pile', 1022],
+  ['chasse', 1022],
+  ['billes', 1022],
+  ['folle', 1022],
 ];
+
+/** La Happy Hour de la Folle Nuit : de 11 h à 12 h, heure de Paris. */
+export const HAPPY_HOUR_FN = { debut: 11, fin: 12 };
+const HEURE_PARIS = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+export interface HappyHourFN {
+  active: boolean;
+  /** Millisecondes avant la fin (si elle est en cours) ou avant la prochaine. */
+  reste: number;
+}
+export function happyHourFN(t: number): HappyHourFN {
+  const p: Record<string, string> = {};
+  for (const x of HEURE_PARIS.formatToParts(new Date(t))) p[x.type] = x.value;
+  const s = (Number(p.hour) % 24) * 3600 + Number(p.minute) * 60 + Number(p.second);
+  const debut = HAPPY_HOUR_FN.debut * 3600;
+  const fin = HAPPY_HOUR_FN.fin * 3600;
+  if (s >= debut && s < fin) return { active: true, reste: (fin - s) * 1000 };
+  return { active: false, reste: ((((debut - s) % 86_400) + 86_400) % 86_400) * 1000 };
+}
 /** Ce que les deux rouleaux affichent quand ils ne s'alignent pas (pour l'animation). */
 export interface TirageTopSlot {
   touche: TopSlot | null;
   /** Affichage des deux rouleaux (case et multiplicateur), même quand ils ne s'alignent pas. */
   affiche: TopSlot;
 }
-export function tirerTopSlot(h: Hasard): TirageTopSlot {
+export function tirerTopSlot(h: Hasard, happyHour = false): TirageTopSlot {
   const c = pioche(h, CASE_TOP_SLOT);
-  const x = pioche(h, X_TOP_SLOT);
+  const x = pioche(h, happyHour ? X_TOP_SLOT_HAPPY : X_TOP_SLOT);
   if (c) return { touche: { case: c, x }, affiche: { case: c, x } };
   return { touche: null, affiche: { case: CASES_FN[h(CASES_FN.length)], x } };
 }
@@ -313,8 +343,8 @@ export interface Manche {
   case: CaseFN;
   bonus: JeuBonus | null;
 }
-export function tirerManche(h: Hasard, imposee?: { arret?: number; topSlot?: TopSlot | null }): Manche {
-  const topSlot = imposee?.topSlot !== undefined ? { touche: imposee.topSlot, affiche: imposee.topSlot ?? { case: '1' as CaseFN, x: 2 } } : tirerTopSlot(h);
+export function tirerManche(h: Hasard, imposee?: { arret?: number; topSlot?: TopSlot | null }, happyHour = false): Manche {
+  const topSlot = imposee?.topSlot !== undefined ? { touche: imposee.topSlot, affiche: imposee.topSlot ?? { case: '1' as CaseFN, x: 2 } } : tirerTopSlot(h, happyHour);
   const arret = imposee?.arret !== undefined ? ((imposee.arret % ROUE_FN.length) + ROUE_FN.length) % ROUE_FN.length : h(ROUE_FN.length);
   const c = ROUE_FN[arret];
   let bonus: JeuBonus | null = null;
@@ -415,4 +445,6 @@ export interface VueFolleNuit {
   solde: number;
   peutRefaire: boolean;
   messages: { nom: string; texte: string }[];
+  /** Happy Hour (11 h à 12 h) : en cours, et le temps avant la fin ou avant la prochaine. */
+  happyHour: HappyHourFN;
 }

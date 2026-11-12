@@ -35,7 +35,7 @@ import { creerTablesBlackjack, type BanqueCasino, type DelaisTables } from './ta
 import { creerTablesRoulette, type DelaisRoulette } from './tablesRoulette';
 import { dureeAnimationNuits, etatNuitsVide, jouerNuits, meilleurJackpot, type EtatNuits, type ForcerNuits } from '../shared/machineNuits';
 import type { CarteBJ } from '../shared/blackjack';
-import type { DureesFN } from '../shared/folleNuit';
+import type { DureesFN, HappyHourFN } from '../shared/folleNuit';
 import { creerShowFolleNuit, type TirageImpose } from './showFolleNuit';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
@@ -70,6 +70,8 @@ export interface OptionsCasino {
   delaisFolleNuit?: Partial<DureesFN>;
   hasardFolleNuit?: (n: number) => number;
   tirageFolleNuit?: () => TirageImpose;
+  /** Happy Hour de la Folle Nuit imposée (démonstration). */
+  happyHourFolleNuit?: (t: number) => HappyHourFN;
 }
 
 /** Porte-monnaie d'un créateur, tenu en mémoire pendant qu'il joue. */
@@ -214,7 +216,7 @@ export function creerCasino(options: OptionsCasino) {
   };
   const tables = creerTablesBlackjack({ io, banque, horloge, delais: options.delaisTables, sabot: options.sabotBlackjack });
   const roulettes = creerTablesRoulette({ io, banque, horloge, delais: options.delaisRoulette, tirage: options.tirageRoulette, annoncer: (a) => annoncer(a) });
-  const show = creerShowFolleNuit({ io, banque, horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, annoncer: (a) => annoncer(a) });
+  const show = creerShowFolleNuit({ io, banque, horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, happyHour: options.happyHourFolleNuit, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
     const p = portes.get(uid);

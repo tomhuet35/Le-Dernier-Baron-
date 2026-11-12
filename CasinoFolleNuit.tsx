@@ -13,7 +13,7 @@
  * Les roues sont animées image par image (requestAnimationFrame) sur l'horloge du serveur : petit élan, lancer, long
  * freinage, léger dépassement puis retour ; la flèche claque (et le son « tic ») à chaque case qui passe sous elle.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   CASES_FN,
   COLONNES_BILLES,
@@ -27,6 +27,7 @@ import {
   facteurTopSlot,
   type BonusFN,
   type CaseFN,
+  type HappyHourFN,
   type SegmentFolle,
   type VueBonusFN,
   type VueFolleNuit,
@@ -179,16 +180,46 @@ function useDebutEtape(v: VueFolleNuit, etape: { fin: number | null; duree: numb
 /** État des ampoules de la jante : chenillard lent, rapide pendant le lancer, toutes qui clignotent au résultat. */
 type Lumieres = 'attente' | 'tourne' | 'gagne';
 
+/** Centres des 52 ampoules de fn-roue-jante.webp (repère 0 → 1000), dans le sens des aiguilles d'une montre. */
+const AMPOULES: [number, number][] = [[580.7, 46.0], [628.1, 57.0], [674.2, 73.2], [717.8, 94.1], [759.3, 118.6], [798.0, 147.4], [832.1, 178.8], [864.0, 214.7], [891.8, 253.3], [915.1, 294.9], [933.9, 337.8], [948.4, 382.1], [958.4, 427.2], [957.2, 570.8], [946.5, 616.3], [931.0, 660.9], [909.9, 704.4], [884.6, 745.9], [855.9, 784.1], [826.0, 817.9], [791.7, 849.0], [754.6, 877.3], [713.8, 901.9], [671.0, 922.7], [625.8, 939.0], [579.3, 950.6], [420.9, 950.3], [374.0, 938.9], [328.3, 922.5], [285.5, 901.6], [244.4, 876.9], [207.6, 848.5], [173.6, 817.7], [143.7, 783.9], [115.4, 745.8], [90.7, 704.2], [69.7, 661.1], [54.1, 616.4], [42.5, 570.7], [42.6, 425.3], [53.2, 379.4], [68.6, 334.8], [88.2, 291.9], [112.4, 249.4], [142.2, 209.4], [175.0, 173.9], [212.1, 141.5], [250.9, 114.6], [292.5, 90.9], [335.5, 71.7], [381.3, 56.6], [428.1, 45.8]];
+
+/**
+ * Les ampoules de la jante, chacune à sa place : une sur trois allumée qui avance (chenillard), lent pendant les mises,
+ * très rapide pendant le lancer ; au résultat, une sur deux clignote en alternance.
+ */
+function Ampoules({ etat }: { etat: Lumieres }) {
+  const id = useId().replace(/:/g, '');
+  return (
+    <svg className={`fn-ampoules ${etat} ${mouvementReduit() ? 'fixes' : ''}`} viewBox="0 0 1000 1000" aria-hidden="true">
+      <defs>
+        <radialGradient id={`${id}-on`}>
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.28" stopColor="#fff4c8" />
+          <stop offset="0.5" stopColor="#ffd36a" stopOpacity="0.75" />
+          <stop offset="1" stopColor="#ffb53a" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={`${id}-off`}>
+          <stop offset="0" stopColor="#6b3d0e" />
+          <stop offset="0.75" stopColor="#4a2a08" stopOpacity="0.9" />
+          <stop offset="1" stopColor="#4a2a08" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {AMPOULES.map(([x, y], i) => (
+        <g key={i} style={{ '--p': (i % 3) / 3, '--q': (i % 2) / 2 } as CSSProperties}>
+          <circle className="eteinte" cx={x} cy={y} r="12.5" fill={`url(#${id}-off)`} />
+          <circle className="allumee" cx={x} cy={y} r="27" fill={`url(#${id}-on)`} />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 function Jante({ lumieres }: { lumieres: Lumieres }) {
   return (
     <>
       <span className="fn-roue-ombre" />
       <img className="fn-roue-jante" src="/cartes/fn-roue-jante.webp" alt="" draggable={false} />
-      {!mouvementReduit() && (
-        <span className={`fn-roue-lumieres ${lumieres}`}>
-          <img src="/cartes/fn-roue-jante.webp" alt="" draggable={false} />
-        </span>
-      )}
+      <Ampoules etat={lumieres} />
     </>
   );
 }
@@ -292,6 +323,7 @@ function GrandeRoue({ v, etape }: { v: VueFolleNuit; etape: { fin: number | null
 // Le Top Slot : deux vrais rouleaux (les cases, les multiplicateurs) qui défilent et s'arrêtent l'un après l'autre.
 
 const X_ROULEAU = [2, 3, 4, 5, 7, 10, 15, 20, 25, 50];
+const X_ROULEAU_HAPPY = [10, 15, 20, 25, 50, 75, 100];
 
 function Rouleau({ items, debut, arret, rate }: { items: ReactNode[]; debut: number | null; arret: number; rate: boolean }) {
   const bande = useRef<HTMLSpanElement>(null);
@@ -358,16 +390,18 @@ function TopSlot({ v, etape }: { v: VueFolleNuit; etape: { fin: number | null; d
     if (!t) return null;
     const h = suite(v.manche);
     const cases: ReactNode[] = Array.from({ length: 18 }, (_, i) => <ItemCase key={i} c={CASES_FN[Math.floor(h() * CASES_FN.length)]} />);
-    const xs: ReactNode[] = Array.from({ length: 22 }, (_, i) => <span key={i} className="fn-ts-x">×{X_ROULEAU[Math.floor(h() * X_ROULEAU.length)]}</span>);
+    const valeurs = v.happyHour?.active ? X_ROULEAU_HAPPY : X_ROULEAU;
+    const xs: ReactNode[] = Array.from({ length: 22 }, (_, i) => <span key={i} className="fn-ts-x">×{valeurs[Math.floor(h() * valeurs.length)]}</span>);
     cases.push(<ItemCase key="fin" c={t.affiche.case} />, <ItemCase key="apres" c={CASES_FN[Math.floor(h() * CASES_FN.length)]} />);
     xs.push(<span key="fin" className="fn-ts-x">×{t.affiche.x}</span>);
     return { cases, xs };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t, v.manche]);
   const touche = montre && fini && !!t?.touche;
   const rate = montre && !t?.touche;
   const vide = [<span key="v" className="fn-ts-vide">?</span>];
   return (
-    <div className={`fn-topslot ${touche ? 'touche' : ''} ${rate && fini ? 'rate' : ''}`} aria-live="polite" aria-label={montre && t ? (t.touche ? `Top Slot : ×${t.touche.x} ${nomCase(t.touche.case)}` : 'Top Slot') : 'Top Slot'}>
+    <div className={`fn-topslot ${touche ? 'touche' : ''} ${rate && fini ? 'rate' : ''} ${v.happyHour?.active ? 'happy' : ''}`} aria-live="polite" aria-label={montre && t ? (t.touche ? `Top Slot : ×${t.touche.x} ${nomCase(t.touche.case)}` : 'Top Slot') : 'Top Slot'}>
       <span className="fn-topslot-fenetre g">
         {/* Le rouleau des cases a une case de plus après l'arrêt : un raté s'arrête entre les deux. */}
         {montre && bandes ? <Rouleau items={bandes.cases.slice(0, rate ? bandes.cases.length : bandes.cases.length - 1)} debut={debut} arret={arrets[0]} rate={rate} /> : <Rouleau items={vide} debut={null} arret={0} rate={false} />}
@@ -387,7 +421,8 @@ function ligneAnimateur(v: VueFolleNuit): string {
   const c = v.arret !== null ? ROUE_FN[v.arret] : null;
   switch (v.phase) {
     case 'mises':
-      return v.closes ? tr('Rien ne va plus !', 'No more bets!') : tr('Faites vos jeux ! Le 10… ou la Folle Nuit ?', 'Place your bets! The 10… or the Crazy Night?');
+      if (v.closes) return tr('Rien ne va plus !', 'No more bets!');
+      return v.happyHour?.active ? tr('C’est la Happy Hour ! Le Top Slot donne de ×10 à ×100 !', 'It’s Happy Hour! The Top Slot gives ×10 to ×100!') : tr('Faites vos jeux ! Le 10… ou la Folle Nuit ?', 'Place your bets! The 10… or the Crazy Night?');
     case 'topSlot':
       return top ? tr(`Top Slot : ×${top.x} sur ${nomCase(top.case)} !`, `Top Slot: ×${top.x} on ${nomCase(top.case)}!`) : tr('Le Top Slot tourne…', 'The Top Slot is spinning…');
     case 'roue':
@@ -785,6 +820,38 @@ function SceneBonus({ v, etape, appel }: { v: VueFolleNuit; etape: { fin: number
 // ---------------------------------------------------------------------------------------------------------------
 // Le tapis des mises
 
+/** Temps restant lisible : « 34 min », « 2 h 15 ». */
+function duree(ms: number): string {
+  const m = Math.max(1, Math.ceil(ms / 60_000));
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)} h${m % 60 ? ` ${String(m % 60).padStart(2, '0')}` : ''}`;
+}
+
+/** La Happy Hour : en cours (Top Slot ×10 à ×100, compte à rebours), ou l'heure de la prochaine. */
+function BandeauHappyHour({ hh }: { hh: HappyHourFN | undefined }) {
+  const cible = useMemo(() => (hh ? Date.now() + hh.reste : null), [hh]);
+  const [, setTic] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setTic((x) => x + 1), 15_000);
+    return () => window.clearInterval(t);
+  }, []);
+  if (!hh || cible === null) return null;
+  const reste = Math.max(0, cible - Date.now());
+  if (hh.active)
+    return (
+      <p className="fn-happy actif" role="status">
+        <strong>Happy Hour</strong>
+        <span>{tr(`Top Slot ×10 à ×100 à chaque manche · encore ${duree(reste)}`, `Top Slot ×10 to ×100 every round · ${duree(reste)} left`)}</span>
+      </p>
+    );
+  return (
+    <p className="fn-happy">
+      <strong>Happy Hour</strong>
+      <span>{tr(`de 11 h à 12 h : Top Slot ×10 à ×100 · dans ${duree(reste)}`, `11 am to noon: Top Slot ×10 to ×100 · in ${duree(reste)}`)}</span>
+    </p>
+  );
+}
+
 function Tapis({ v, ouvertes, onMiser }: { v: VueFolleNuit; ouvertes: boolean; onMiser: (c: CaseFN) => void }) {
   const top = v.topSlot?.touche;
   const sortie = v.arret !== null && (v.phase === 'resultat' || v.phase === 'finBonus' || v.phase === 'intro' || v.phase === 'choix' || v.phase === 'jeu') ? ROUE_FN[v.arret] : null;
@@ -965,6 +1032,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
         <h1 className="fn-titre">
           <img className="fn-logo" src="/cartes/fn-logo.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
           <span className="fn-direct">{tr('En direct', 'Live')}</span>
+          {v.happyHour?.active && <span className="fn-happy-pastille">Happy Hour</span>}
         </h1>
         <span className="cas-solde-petit">{dollars(v.solde)}</span>
       </header>
@@ -997,6 +1065,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
       </div>
 
       <section className="fn-commandes" role="group" aria-label={tr('Tes mises', 'Your bets')}>
+        <BandeauHappyHour hh={v.happyHour} />
         <Tapis v={v} ouvertes={ouvertes} onMiser={(c) => void miser(c)} />
         <div className="bj-jetons">
           {JETONS_FN.map((j) => (
@@ -1102,7 +1171,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
           </div>
         </form>
         <p className="cas-mention">
-          {tr('1 paie 1 pour 1 · 2 paie 2 · 5 paie 5 · 10 paie 10 · les bonus paient leur multiplicateur. Le Top Slot multiplie une case avant chaque tour. Jetons de 1 000 à 500 000 $, 1 000 000 $ au plus par manche.', '1 pays 1 to 1 · 2 pays 2 · 5 pays 5 · 10 pays 10 · bonuses pay their multiplier. The Top Slot boosts one spot before each spin. Chips from $1,000 to $500,000, $1,000,000 at most per round.')}
+          {tr('1 paie 1 pour 1 · 2 paie 2 · 5 paie 5 · 10 paie 10 · les bonus paient leur multiplicateur. Le Top Slot multiplie une case à chaque manche (×2 à ×50) ; Happy Hour de 11 h à 12 h : ×10 à ×100. Jetons de 1 000 à 500 000 $, 1 000 000 $ au plus par manche.', '1 pays 1 to 1 · 2 pays 2 · 5 pays 5 · 10 pays 10 · bonuses pay their multiplier. The Top Slot boosts one spot every round (×2 to ×50); Happy Hour from 11 am to noon: ×10 to ×100. Chips from $1,000 to $500,000, $1,000,000 at most per round.')}
         </p>
       </section>
 
@@ -1163,9 +1232,12 @@ export function BandeauFolleNuit({ vue, onOuvrir }: { vue: VueCasino; onOuvrir: 
         <strong>
           <img className="fn-logo" src="/cartes/fn-logo.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
           <span className="fn-direct">{tr('En direct', 'Live')}</span>
+          {fn?.happyHour?.active && <span className="fn-happy-pastille">Happy Hour</span>}
         </strong>
         <small>
-          {fn?.enDirect
+          {fn?.happyHour?.active
+            ? tr('Happy Hour jusqu’à 12 h : le Top Slot donne de ×10 à ×100 à chaque manche !', 'Happy Hour until noon: the Top Slot gives ×10 to ×100 every round!')
+            : fn?.enDirect
             ? tr(`Le show tourne · ${fn.spectateurs} au show`, `The show is on · ${fn.spectateurs} watching`)
             : tr('La roue géante, le Top Slot et 4 bonus : le show commence dès ton arrivée.', 'The giant wheel, the Top Slot and 4 bonuses: the show starts when you arrive.')}
         </small>

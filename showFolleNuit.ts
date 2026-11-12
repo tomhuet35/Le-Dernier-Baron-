@@ -22,6 +22,7 @@ import {
   facteurTopSlot,
   flecheFolle,
   FLECHES_FOLLE,
+  happyHourFN,
   JETONS_FN,
   MAX_CASE_FN,
   MAX_MANCHE_FN,
@@ -32,6 +33,7 @@ import {
   xPile,
   type CaseFN,
   type DureesFN,
+  type HappyHourFN,
   type Hasard,
   type JoueurFN,
   type Manche,
@@ -71,12 +73,15 @@ export function creerShowFolleNuit(options: {
   delais?: Partial<DureesFN>;
   /** Arrêt de la roue et Top Slot imposés (tests, démonstration). */
   tirage?: () => TirageImpose;
+  /** Happy Hour imposée (tests, démonstration) ; sinon de 11 h à 12 h, heure de Paris. */
+  happyHour?: (t: number) => HappyHourFN;
   annoncer?: (a: AnnonceCasino) => void;
 }) {
   const { io, banque } = options;
   const horloge = options.horloge ?? Date.now;
   const hasard = options.hasard ?? ((n: number) => randomInt(n));
   const D: DureesFN = { ...DUREES_FN, ...options.delais };
+  const happyHour = () => (options.happyHour ?? happyHourFN)(horloge());
 
   /** Téléphones qui regardent le show → le compte. */
   const spectateurs = new Map<string, { uid: string }>();
@@ -142,6 +147,7 @@ export function creerShowFolleNuit(options: {
       solde: uid ? banque.solde(uid) : 0,
       peutRefaire: !!uid && !!precedentes.get(uid)?.length,
       messages: messages.slice(-30),
+      happyHour: happyHour(),
     };
   }
 
@@ -181,7 +187,7 @@ export function creerShowFolleNuit(options: {
 
   function fermer() {
     manche += 1;
-    tirage = tirerManche(hasard, options.tirage?.());
+    tirage = tirerManche(hasard, options.tirage?.(), happyHour().active);
     // Les mises de cette manche deviennent celles à « refaire » à la suivante.
     for (const j of joueurs.values()) if (j.poses.length) precedentes.set(j.uid, j.poses.map((p) => ({ ...p })));
     planifier(D.topSlot, 'topSlot', () => planifier(D.roue, 'roue', apresRoue));
@@ -368,7 +374,7 @@ export function creerShowFolleNuit(options: {
     minuterie = null;
   };
   /** Ce que l'accueil du salon montre du show : en direct ou non, les derniers résultats. */
-  const resume = () => ({ enDirect: enCours, spectateurs: uidsSpectateurs().size, historique: historique.slice(0, 6) });
+  const resume = () => ({ enDirect: enCours, spectateurs: uidsSpectateurs().size, historique: historique.slice(0, 6), happyHour: happyHour() });
 
   return { brancher, sortir, fermer: fermerShow, resume, estBonus };
 }
