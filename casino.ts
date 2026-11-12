@@ -111,13 +111,13 @@ export interface VueCasino {
   cadeau: { montant: number; fin: number } | null;
   /** La Folle Nuit : en direct ou non, combien regardent, et les derniers résultats. */
   folleNuit?: { enDirect: boolean; spectateurs: number; historique: { case: CaseFN; x: number }[]; happyHour?: HappyHourFN };
-  /** Le Festin du Baron : une partie attend-elle le joueur ? */
-  festin?: { enCours: boolean };
+  /** Les Coffres du Baron : une partie attend-elle le joueur ? */
+  coffres?: { enCours: boolean };
 }
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'festin';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres';
   gain: number;
   grosLot?: boolean;
   /** Les Nuits du Baron : le jackpot décroché (MAJOR ou GRAND). */

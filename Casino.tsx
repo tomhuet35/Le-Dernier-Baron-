@@ -1088,7 +1088,7 @@ const JEUX: { id: 'machines' | 'roulette' | 'blackjack' | 'festin' | 'poker'; no
   { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines.webp', repli: '/cartes/casino-machine.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
   { id: 'blackjack', nom: ['Blackjack', 'Blackjack'], image: '/cartes/casino-blackjack.webp', repli: '/cartes/billets_05.webp' },
-  { id: 'festin', nom: ['Le Festin du Baron', 'The Baron’s Feast'], image: '/cartes/casino-festin.webp', repli: '/cartes/baron.webp' },
+  { id: 'festin', nom: ['Les Coffres du Baron', 'The Baron’s Safes'], image: '/cartes/casino-festin.webp', repli: '/cartes/baron.webp' },
   { id: 'poker', nom: ['Poker', 'Poker'], image: '/cartes/casino-poker.webp', repli: '/cartes/baron.webp' },
 ];
 
@@ -1176,8 +1176,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
         ? tr(`${annonce.nom} a décroché le ${annonce.jackpot === 'grand' ? 'GRAND' : 'MAJOR'} des Nuits du Baron : ${dollars(annonce.gain)} !`, `${annonce.nom} hit the ${annonce.jackpot === 'grand' ? 'GRAND' : 'MAJOR'} on the Baron’s Nights: ${dollars(annonce.gain)}!`)
       : annonce.jeu === 'nuits'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} aux Nuits du Baron !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Baron’s Nights!`)
-      : annonce.jeu === 'festin'
-        ? tr(`${annonce.nom} a encaissé ${dollars(annonce.gain)} au Festin du Baron !`, `${annonce.nom} cashed out ${dollars(annonce.gain)} at the Baron’s Feast!`)
+      : annonce.jeu === 'coffres'
+        ? tr(`${annonce.nom} a raflé ${dollars(annonce.gain)} aux Coffres du Baron !`, `${annonce.nom} grabbed ${dollars(annonce.gain)} from the Baron’s Safes!`)
       : annonce.jeu === 'folleNuit'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la Folle Nuit !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Crazy Night!`)
       : annonce.jeu === 'casse'
@@ -1379,7 +1379,7 @@ function Salon({
             key={j.id}
             jeu={j}
             onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : j.id === 'festin' ? onFestin : undefined}
-            ruban={j.id === 'festin' ? (vue.festin?.enCours ? tr('En cours', 'In play') : tr('Nouveau', 'New')) : undefined}
+            ruban={j.id === 'festin' ? (vue.coffres?.enCours ? tr('En cours', 'In play') : tr('Nouveau', 'New')) : undefined}
           />
         ))}
       </div>
