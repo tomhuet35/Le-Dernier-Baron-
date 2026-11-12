@@ -144,26 +144,29 @@ export interface Pile {
   chapeau: number;
   cote: CotePiece;
 }
-/** Multiplicateurs de la pièce (sur 1 000). Le côté Chapeau prend le plus petit des deux tirages. */
-export const X_PILE: [number, number][] = [
-  [2, 120],
-  [3, 140],
-  [4, 130],
-  [5, 120],
-  [6, 90],
-  [8, 90],
-  [10, 90],
-  [12, 60],
-  [15, 50],
-  [20, 45],
-  [25, 30],
-  [50, 22],
-  [100, 13],
+/**
+ * Pile ou face : la Couronne vaut toujours ×10 au moins (jusqu'à ×100), le Chapeau garde les petits multiplicateurs
+ * (×2 à ×8). Sur un grand nombre de pièces, le bonus rend autant qu'avant (multiplicateur moyen ≈ 9,5).
+ */
+export const X_COURONNE: [number, number][] = [
+  [10, 560],
+  [12, 150],
+  [15, 110],
+  [20, 80],
+  [25, 50],
+  [50, 35],
+  [100, 15],
+];
+export const X_CHAPEAU: [number, number][] = [
+  [2, 260],
+  [3, 250],
+  [4, 200],
+  [5, 160],
+  [7, 80],
+  [8, 50],
 ];
 export function tirerPile(h: Hasard): Pile {
-  const a = pioche(h, X_PILE);
-  const b = pioche(h, X_PILE);
-  return { couronne: Math.max(a, b), chapeau: Math.min(a, b), cote: h(2) ? 'couronne' : 'chapeau' };
+  return { couronne: pioche(h, X_COURONNE), chapeau: pioche(h, X_CHAPEAU), cote: h(2) ? 'couronne' : 'chapeau' };
 }
 export const xPile = (p: Pile) => (p.cote === 'couronne' ? p.couronne : p.chapeau);
 

@@ -64,7 +64,8 @@ describe('La Folle Nuit : la roue et les gains', () => {
     const h = hasardFixe(42);
     for (let k = 0; k < 300; k++) {
       const p = tirerPile(h);
-      expect(p.couronne).toBeGreaterThanOrEqual(p.chapeau);
+      expect(p.couronne).toBeGreaterThanOrEqual(10); // toujours un ×10 au moins sur la pièce
+      expect(p.chapeau).toBeLessThan(10);
       expect(xPile(p)).toBe(p.cote === 'couronne' ? p.couronne : p.chapeau);
 
       const c = tirerChasse(h);

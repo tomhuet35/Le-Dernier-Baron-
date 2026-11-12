@@ -121,6 +121,43 @@
 .fn-case-salon { position: absolute; z-index: 2; right: 9px; bottom: 7px; padding: 0 4px; border-radius: 6px; background: rgba(10, 6, 4, 0.55); font-size: 9.5px; font-weight: 700; color: rgba(255, 241, 196, 0.85); }
 .fn-case.bonus .fn-case-salon { bottom: auto; top: 8px; }
 
+/* Le chargement de chaque mini-jeu : rayons, emblème, nom du bonus, barre qui se remplit jusqu'au début du jeu. */
+.fn-chargement { position: absolute; inset: -10px; z-index: 6; display: grid; align-content: center; justify-items: center; gap: 8px; padding: 20px; overflow: hidden; text-align: center; background: radial-gradient(60% 50% at 50% 42%, var(--teinte, #7a1a12), #0d0806 78%); animation: fn-chargement-entree 0.45s ease-out both; }
+.fn-chargement.sort { animation: fn-chargement-sortie 0.5s ease-in both; }
+.fn-chargement-pile { --teinte: #8e1c14; }
+.fn-chargement-chasse { --teinte: #5c2470; }
+.fn-chargement-billes { --teinte: #136d7e; }
+.fn-chargement-folle { --teinte: #1d2a6e; background: linear-gradient(rgba(8, 8, 26, 0.55), rgba(8, 8, 26, 0.85)), url('/cartes/fn-folle-decor.webp') center / cover no-repeat; }
+@keyframes fn-chargement-entree { from { opacity: 0; transform: scale(1.06); } }
+@keyframes fn-chargement-sortie { to { opacity: 0; transform: scale(0.96); } }
+.fn-chargement > * { position: relative; }
+.fn-chargement-rayons { position: absolute !important; left: 50%; top: 42%; width: 240vmax; height: 240vmax; margin: -120vmax 0 0 -120vmax; background: repeating-conic-gradient(from 0deg, rgba(255, 214, 120, 0.2) 0deg 8deg, transparent 8deg 22deg); -webkit-mask: radial-gradient(circle, #000 0, rgba(0, 0, 0, 0.5) 12%, transparent 30%); mask: radial-gradient(circle, #000 0, rgba(0, 0, 0, 0.5) 12%, transparent 30%); animation: fn-chenillard 12s linear infinite; }
+.fn-chargement-etincelles { position: absolute !important; left: 50%; top: 38%; width: 0; height: 0; }
+.fn-chargement-etincelles i { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #fff1c4; box-shadow: 0 0 10px 3px rgba(255, 214, 120, 0.9); transform: rotate(var(--a)) translateY(-60px); opacity: 0; animation: fn-etincelle 1.6s ease-out var(--d) infinite; }
+@keyframes fn-etincelle { 0% { opacity: 0; transform: rotate(var(--a)) translateY(-50px) scale(0.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-150px) scale(1); } }
+.fn-chargement-embleme { width: min(38vw, 190px); height: auto; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 26px rgba(255, 214, 120, 0.45)); animation: fn-embleme-arrivee 0.9s cubic-bezier(0.3, 1.6, 0.5, 1) both, fn-flotte 2.4s ease-in-out 0.9s infinite; }
+@keyframes fn-embleme-arrivee { from { opacity: 0; transform: scale(0.2) rotate(-25deg); } }
+@keyframes fn-flotte { 50% { transform: translateY(-8px) scale(1.03); } }
+.fn-chargement-bonus { margin: 0; font-size: 13px; font-weight: 900; letter-spacing: 0.3em; text-transform: uppercase; color: #ffcf6b; animation: fn-bulle 0.5s ease-out 0.3s both; }
+.fn-chargement h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 8vw, 50px); color: var(--or-vif); text-shadow: 0 0 22px rgba(255, 200, 110, 0.6), 0 4px 10px rgba(0, 0, 0, 0.8); animation: fn-titre-bonus 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.4s both; }
+@keyframes fn-titre-bonus { from { opacity: 0; transform: scale(0.6); letter-spacing: 0.3em; } }
+.fn-chargement-barre { width: min(76%, 320px); height: 10px; overflow: hidden; border-radius: 99px; border: 1px solid rgba(231, 194, 122, 0.7); background: rgba(10, 6, 4, 0.7); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6); }
+.fn-chargement-barre span { display: block; height: 100%; transform-origin: left; background: linear-gradient(90deg, #a8742a, #ffe08a, #e9ad5b); box-shadow: 0 0 12px rgba(255, 214, 120, 0.8); animation: fn-remplir linear both; }
+@keyframes fn-remplir { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.fn-chargement-texte { margin: 0; font-size: 14px; color: #f6eedc; }
+.fn-chargement-texte::after { content: ''; animation: fn-points 1.2s steps(4) infinite; }
+@keyframes fn-points { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+.fn-chargement small { padding: 3px 10px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); font-size: 12px; color: var(--creme-doux); }
+
+/* La somme gagnée, en grand au milieu de l'écran */
+.fn-gain { position: fixed; left: 50%; top: 42%; z-index: 30; display: grid; justify-items: center; gap: 2px; padding: 14px 28px 16px; border-radius: 22px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(122, 26, 18, 0.95), rgba(22, 13, 11, 0.95)); box-shadow: 0 0 40px rgba(255, 200, 110, 0.55), 0 18px 40px rgba(0, 0, 0, 0.7); pointer-events: none; transform: translate(-50%, -50%); animation: fn-gain-arrivee 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both, fn-gain-depart 0.5s ease-in 2.4s both; }
+.fn-gain.gros { padding: 18px 36px 22px; animation: fn-gain-arrivee 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both, fn-gain-depart 0.6s ease-in 3.7s both; }
+.fn-gain span { font-size: 13px; font-weight: 900; letter-spacing: 0.24em; text-transform: uppercase; color: #ffcf6b; }
+.fn-gain strong { font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 8vw, 46px); line-height: 1.05; color: #fff1c4; font-variant-numeric: tabular-nums; white-space: nowrap; text-shadow: 0 0 18px rgba(255, 200, 110, 0.9), 0 3px 8px rgba(0, 0, 0, 0.8); }
+.fn-gain.gros strong { font-size: clamp(38px, 11vw, 74px); }
+@keyframes fn-gain-arrivee { from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } }
+@keyframes fn-gain-depart { to { opacity: 0; transform: translate(-50%, -62%) scale(0.92); } }
+
 /* La Happy Hour */
 .fn-happy-pastille { flex: none; display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; background: linear-gradient(90deg, #ff5f8f, #ffcf6b); color: #2a0c12; font-family: var(--texte, inherit); font-size: 11px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: none; box-shadow: 0 0 14px rgba(255, 120, 160, 0.6); animation: fn-happy 1.4s ease-in-out infinite; }
 @keyframes fn-happy { 50% { box-shadow: 0 0 24px rgba(255, 200, 110, 0.9); filter: brightness(1.15); } }
@@ -174,16 +211,20 @@
 .fn-pile-valeurs span { padding: 6px 12px; border-radius: 12px; border: 1px solid var(--filet); background: rgba(10, 6, 4, 0.8); font-size: 14px; }
 .fn-pile-valeurs strong { font-family: var(--titre); font-size: 20px; color: var(--or-vif); }
 .fn-pile-valeurs span.gagne { border-color: var(--or-vif); box-shadow: 0 0 18px rgba(233, 173, 91, 0.6); }
-.fn-piece { position: relative; width: min(52vw, 230px); aspect-ratio: 1; margin: 10px 0 14px; transform-style: preserve-3d; perspective: 900px; }
-.fn-piece-face { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1c4, #e9ad5b 45%, #7a4a12 100%); border: 4px solid #7a4a12; box-shadow: inset 0 0 0 6px rgba(255, 241, 196, 0.35), 0 12px 26px rgba(0, 0, 0, 0.6); backface-visibility: hidden; overflow: hidden; }
+/* La pièce en 3D : deux faces et une tranche (des disques empilés), posée sur son lanceur. */
+.fn-lanceur { position: relative; width: min(44vw, 190px); aspect-ratio: 1 / 2.45; margin: 4px 0 8px; perspective: 900px; }
+.fn-lanceur-socle { position: absolute; left: 50%; bottom: 0; width: 118%; height: 12%; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse at 50% 35%, #e9ad5b, #7a4a12 55%, #2a1408 100%); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 0 rgba(255, 241, 196, 0.5); }
+.fn-lanceur-ombre { position: absolute; left: 50%; bottom: 4%; width: 80%; height: 8%; border-radius: 50%; background: radial-gradient(ellipse, rgba(0, 0, 0, 0.75), transparent 70%); transform: translateX(-50%); }
+.fn-piece3d { position: absolute; left: 0; bottom: 7%; width: 100%; aspect-ratio: 1; transform-style: preserve-3d; will-change: transform; }
+.fn-piece-tranche { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, #b98428 60%, #8a5a18 85%, #5a3410); }
+.fn-piece-face { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: radial-gradient(circle at 35% 30%, #fff1c4, #e9ad5b 45%, #7a4a12 100%); }
+.fn-piece-face.avant { transform: translateZ(8.3px); }
+.fn-piece-face.arriere { transform: rotateX(180deg) translateZ(8.3px); }
+.fn-piece-face:has(img) { background: none; }
 .fn-piece-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.fn-piece-face:has(img) { background: none; border: 0; box-shadow: 0 12px 26px rgba(0, 0, 0, 0.6); }
 .fn-piece-face span { font-size: 70px; color: #5a3410; }
-.fn-piece-face b { position: absolute; bottom: 14%; padding: 1px 10px; border-radius: 99px; background: rgba(22, 13, 11, 0.85); color: #fff1c4; font-family: var(--titre); font-weight: 400; font-size: 20px; }
-.fn-piece-face.dos { transform: rotateY(180deg); }
-.fn-piece.lancee { animation: fn-lancer var(--duree) cubic-bezier(0.2, 0.7, 0.25, 1) forwards; }
-.fn-piece.posee { transform: rotateY(var(--fin)); }
-@keyframes fn-lancer { 0% { transform: translateY(0) rotateY(0); } 35% { transform: translateY(-14%) scale(1.08) rotateY(calc(var(--fin) * 0.5)); } 100% { transform: translateY(0) rotateY(var(--fin)); } }
+.fn-piece-face b { position: absolute; bottom: 13%; padding: 1px 10px; border-radius: 99px; background: rgba(22, 13, 11, 0.85); color: #fff1c4; font-family: var(--titre); font-weight: 400; font-size: 20px; }
+.fn-lanceur.posee .fn-piece3d { filter: drop-shadow(0 0 22px rgba(255, 214, 120, 0.85)); }
 
 /* Chasse au butin */
 .fn-mur { display: grid; gap: 3px; width: 100%; max-width: 760px; }
@@ -260,6 +301,5 @@
   .fn-bulle { font-size: 11.5px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fn-presentateur, .fn-happy-pastille, .fn-happy.actif strong, .fn-direct::before, .fn-bandeau-roue, .fn-topslot.touche, .fn-topslot.touche::before, .fn-case.sortie, .fn-case-boost, .fn-case-gagnante, .fn-bras-x { animation: none; }
-  .fn-piece.lancee { animation: none; transform: rotateY(var(--fin)); }
+  .fn-chargement, .fn-chargement *, .fn-gain, .fn-presentateur, .fn-happy-pastille, .fn-happy.actif strong, .fn-direct::before, .fn-bandeau-roue, .fn-topslot.touche, .fn-topslot.touche::before, .fn-case.sortie, .fn-case-boost, .fn-case-gagnante, .fn-bras-x { animation: none; }
 }

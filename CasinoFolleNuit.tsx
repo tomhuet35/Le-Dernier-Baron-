@@ -37,7 +37,7 @@ import type { Appel } from './App';
 import { CHOIX_AUTO, dollars, LINGOTS_PALIER, PluieLingots } from './casinoOutils';
 import { socket } from './socket';
 import { tr } from './traduction';
-import { jouerEffet, mouvementReduit } from './ui';
+import { jouerEffet, mouvementReduit, useCompteur } from './ui';
 import './folleNuit.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
@@ -489,27 +489,114 @@ function Animateur({ v }: { v: VueFolleNuit }) {
 // ---------------------------------------------------------------------------------------------------------------
 // Les jeux bonus
 
+/** Couches de la tranche de la pièce (son épaisseur, vue de profil quand elle tourne). */
+const TRANCHE_PIECE = 14;
+
+/**
+ * Pile ou face : une vraie pièce (deux faces et une tranche dorée) posée sur son lanceur. Elle se ramasse, part en
+ * l'air en tournant sur elle-même, retombe, rebondit un peu en vacillant, puis montre le côté gagnant. Le mouvement
+ * suit l'horloge du serveur : un joueur qui arrive en cours de lancer la voit au bon endroit.
+ */
 function BonusPile({ b, v, etape }: { b: Extract<VueBonusFN, { type: 'pile' }>; v: VueFolleNuit; etape: { fin: number | null; duree: number } }) {
   const couronne = useImage('/cartes/fn-piece-couronne.webp');
   const chapeau = useImage('/cartes/fn-piece-chapeau.webp');
   const top = facteurTopSlot(v.topSlot?.touche, 'pile');
-  const lancee = b.cote !== null;
-  const reste = v.phase === 'jeu' && etape.fin ? Math.max(0, etape.fin - Date.now()) : 0;
-  const style = { '--duree': `${Math.max(300, reste * 0.85)}ms`, '--fin': b.cote === 'chapeau' ? '1980deg' : '1800deg' } as CSSProperties;
+  const piece = useRef<HTMLDivElement>(null);
+  const ombre = useRef<HTMLSpanElement>(null);
+  const [posee, setPosee] = useState(v.phase === 'finBonus');
+  const debut = useDebutEtape(v, etape);
+  const cle = `${v.manche}:${v.phase}`;
+  useEffect(() => {
+    const el = piece.current;
+    const sol = ombre.current;
+    if (!el || !sol) return;
+    const finale = b.cote === 'chapeau' ? 180 : 0;
+    /** y : hauteur (en % de la pièce), a : rotation (degrés), s : échelle (la pièce grandit en montant vers nous). */
+    const poser = (y: number, a: number, s: number) => {
+      el.style.transform = `translateY(${(-y).toFixed(2)}%) rotateX(${a.toFixed(2)}deg) scale(${s.toFixed(3)})`;
+      const k = Math.min(1, y / 110);
+      sol.style.transform = `translateX(-50%) scale(${(1 - 0.6 * k).toFixed(3)})`;
+      sol.style.opacity = (0.6 - 0.4 * k).toFixed(2);
+    };
+    if (v.phase !== 'jeu' || !b.cote || !debut.fin || mouvementReduit()) {
+      poser(0, b.cote ? finale : 0, 1);
+      setPosee(!!b.cote);
+      return;
+    }
+    setPosee(false);
+    const t0 = debut.fin - debut.duree;
+    const D = debut.duree;
+    const DEPART = 0.12;
+    const VOL = 0.58;
+    const REBOND = 0.1;
+    const tours = 360 * 7 + finale;
+    let id = 0;
+    let lancee = false;
+    let tombee = false;
+    const image = () => {
+      const p = (Date.now() - t0) / D;
+      if (p < DEPART) {
+        // Sur le lanceur : la pièce se ramasse avant de partir.
+        poser(0, 0, 1 - 0.07 * Math.sin((p / DEPART) * Math.PI));
+      } else if (p < DEPART + VOL) {
+        if (!lancee) {
+          lancee = true;
+          if (p < DEPART + 0.05) jouerEffet('machine_levier');
+        }
+        const u = (p - DEPART) / VOL;
+        const y = 110 * 4 * u * (1 - u);
+        poser(y, tours * u, 1 + 0.2 * (y / 110));
+      } else if (p < DEPART + VOL + REBOND) {
+        if (!tombee) {
+          tombee = true;
+          jouerEffet('machine_pieces');
+        }
+        const u = (p - DEPART - VOL) / REBOND;
+        poser(16 * Math.abs(Math.sin(u * Math.PI * 2)) * (1 - u), tours + 16 * Math.sin(u * Math.PI * 5) * (1 - u), 1);
+      } else {
+        poser(0, tours, 1);
+        setPosee(true);
+        return;
+      }
+      id = requestAnimationFrame(image);
+    };
+    id = requestAnimationFrame(image);
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cle, b.cote]);
+  const gagne = (c: 'couronne' | 'chapeau') => (posee && b.cote === c ? 'gagne' : '');
   return (
     <div className="fn-bonus fn-pile">
       <div className="fn-pile-valeurs">
-        <span className={b.cote === 'couronne' && v.phase !== 'jeu' ? 'gagne' : ''}>
+        <span className={gagne('couronne')}>
           {tr('Couronne', 'Crown')} <strong>×{b.couronne * top}</strong>
         </span>
-        <span className={b.cote === 'chapeau' && v.phase !== 'jeu' ? 'gagne' : ''}>
+        <span className={gagne('chapeau')}>
           {tr('Chapeau', 'Hat')} <strong>×{b.chapeau * top}</strong>
         </span>
       </div>
-      <div className={`fn-piece ${lancee ? (v.phase === 'jeu' && reste > 400 ? 'lancee' : 'posee') : ''}`} style={style}>
-        <div className="fn-piece-face">{couronne ? <img src="/cartes/fn-piece-couronne.webp" alt="" /> : <span>♛</span>}<b>×{b.couronne * top}</b></div>
-        <div className="fn-piece-face dos">{chapeau ? <img src="/cartes/fn-piece-chapeau.webp" alt="" /> : <span>🎩</span>}<b>×{b.chapeau * top}</b></div>
+      <div className={`fn-lanceur ${posee && b.cote ? 'posee' : ''}`}>
+        <span className="fn-lanceur-socle" />
+        <span className="fn-lanceur-ombre" ref={ombre} />
+        <div className="fn-piece3d" ref={piece}>
+          {Array.from({ length: TRANCHE_PIECE }, (_, k) => (
+            <i key={k} className="fn-piece-tranche" style={{ transform: `translateZ(${((k - (TRANCHE_PIECE - 1) / 2) * 1.15).toFixed(2)}px)` }} />
+          ))}
+          <div className="fn-piece-face avant">
+            {couronne ? <img src="/cartes/fn-piece-couronne.webp" alt="" draggable={false} /> : <span>♛</span>}
+            <b>×{b.couronne * top}</b>
+          </div>
+          <div className="fn-piece-face arriere">
+            {chapeau ? <img src="/cartes/fn-piece-chapeau.webp" alt="" draggable={false} /> : <span>🎩</span>}
+            <b>×{b.chapeau * top}</b>
+          </div>
+        </div>
       </div>
+      {posee && b.cote && (
+        <p className="fn-bonus-aide gros">
+          {b.cote === 'couronne' ? tr('Couronne !', 'Crown!') : tr('Chapeau !', 'Hat!')} ×{(b.cote === 'couronne' ? b.couronne : b.chapeau) * top}
+        </p>
+      )}
       {top > 1 && <p className="fn-bonus-top">{tr(`Top Slot ×${top} sur Pile ou face !`, `Top Slot ×${top} on Coin flip!`)}</p>}
     </div>
   );
@@ -809,6 +896,64 @@ function BonusFolle({ b, v, etape, peutChoisir, onChoix }: { b: Extract<VueBonus
   );
 }
 
+/** Ce qu'on prépare pendant le chargement de chaque mini-jeu. */
+const CHARGEMENT: Record<BonusFN, [string, string]> = {
+  pile: ['On prépare la pièce', 'Getting the coin ready'],
+  chasse: ['On installe le mur du butin', 'Setting up the loot wall'],
+  billes: ['On plante les clous de la planche', 'Setting the pegs'],
+  folle: ['On allume la roue géante', 'Lighting up the giant wheel'],
+};
+
+/**
+ * Le chargement d'un mini-jeu (pendant l'« intro ») : rayons de lumière, l'emblème du bonus qui arrive, son nom, une
+ * barre qui se remplit jusqu'au début du jeu. Il s'efface en fondu quand le jeu commence.
+ */
+function ChargementBonus({ v, etape }: { v: VueFolleNuit; etape: { fin: number | null; duree: number } }) {
+  const actif = v.phase === 'intro' && !!v.bonus;
+  const [visible, setVisible] = useState(actif);
+  const type = useRef<BonusFN | null>(null);
+  if (actif && v.bonus) type.current = v.bonus.type;
+  const debut = useDebutEtape(v, etape);
+  const duree = useMemo(() => (actif && debut.fin ? Math.max(400, debut.fin - Date.now()) : 3000), [actif, debut]);
+  useEffect(() => {
+    if (actif) return setVisible(true);
+    const t = window.setTimeout(() => setVisible(false), 500);
+    return () => window.clearTimeout(t);
+  }, [actif]);
+  const c = type.current;
+  if (!visible || !c) return null;
+  const mise = v.mesMises[c] ?? 0;
+  return (
+    <div className={`fn-chargement fn-chargement-${c} ${actif ? '' : 'sort'}`} role="status">
+      <span className="fn-chargement-rayons" />
+      <span className="fn-chargement-etincelles" aria-hidden="true">
+        {Array.from({ length: 14 }, (_, k) => (
+          <i key={k} style={{ '--a': `${k * 25.7}deg`, '--d': `${(k % 5) * 0.22}s` } as CSSProperties} />
+        ))}
+      </span>
+      <Embleme c={c} className="fn-chargement-embleme" />
+      <p className="fn-chargement-bonus">{tr('Bonus !', 'Bonus!')}</p>
+      <h2>{nomCase(c)}</h2>
+      <div className="fn-chargement-barre">
+        <span style={{ animationDuration: `${duree}ms` }} />
+      </div>
+      <p className="fn-chargement-texte">{tr(...CHARGEMENT[c])}</p>
+      <small>{mise ? tr(`Tu joues ce bonus · ${dollars(mise)}`, `You're in this bonus · ${dollars(mise)}`) : tr('Tu regardes ce bonus', 'You are watching this bonus')}</small>
+    </div>
+  );
+}
+
+/** La somme gagnée, en grand au milieu de l'écran (elle défile jusqu'au total), par-dessus la pluie de lingots. */
+function AnnonceGain({ montant, gros }: { montant: number; gros: boolean }) {
+  const valeur = useCompteur(montant, Math.round(montant / 20), 0, gros ? 1700 : 900);
+  return (
+    <div className={`fn-gain ${gros ? 'gros' : ''}`} aria-live="polite">
+      <span>{gros ? tr('Gros gain !', 'Big win!') : tr('Gagné !', 'You win!')}</span>
+      <strong>+{dollars(valeur)}</strong>
+    </div>
+  );
+}
+
 function SceneBonus({ v, etape, appel }: { v: VueFolleNuit; etape: { fin: number | null; duree: number }; appel: Appel }) {
   const b = v.bonus!;
   const c = v.arret !== null ? ROUE_FN[v.arret] : null;
@@ -922,10 +1067,18 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
   const [jeton, setJeton] = useState(JETONS_FN[1]);
   const [erreur, setErreur] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  /** Gros gain : une pluie de lingots sur tout l'écran. */
+  /** Gros gain : une pluie de lingots sur tout l'écran ; et pour chaque gain, la somme en grand. */
   const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
+  const [annonce, setAnnonce] = useState<{ montant: number; gros: boolean; id: number } | null>(null);
   const minuteriePluie = useRef(0);
-  useEffect(() => () => window.clearTimeout(minuteriePluie.current), []);
+  const minuterieAnnonce = useRef(0);
+  useEffect(
+    () => () => {
+      window.clearTimeout(minuteriePluie.current);
+      window.clearTimeout(minuterieAnnonce.current);
+    },
+    [],
+  );
   const plateau = useImage('/cartes/fn-plateau.webp');
   const precedente = useRef<VueFolleNuit | null>(null);
   /** Mode automatique : mes mises de la manche d'avant, rejouées à chaque manche (10 à 100, ou sans fin). */
@@ -968,7 +1121,13 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
     if (v.phase === 'intro' && p.phase !== 'intro') jouerEffet('suspense');
     if (v.monGain !== null && p.monGain === null) {
       const mise = Object.values(v.mesMises).reduce((s, x) => s + (x ?? 0), 0);
-      if (v.monGain >= 1_000_000 || (mise && v.monGain >= mise * 50)) {
+      const gros = v.monGain >= 1_000_000 || (!!mise && v.monGain >= mise * 50);
+      if (v.monGain > 0) {
+        setAnnonce({ montant: v.monGain, gros, id: Date.now() });
+        window.clearTimeout(minuterieAnnonce.current);
+        minuterieAnnonce.current = window.setTimeout(() => setAnnonce(null), gros ? 4300 : 2900);
+      }
+      if (gros) {
         jouerEffet('roulette_gros_lot');
         if (!mouvementReduit()) {
           const n = v.monGain >= 50_000_000 ? LINGOTS_PALIER.colossal : v.monGain >= 5_000_000 ? LINGOTS_PALIER.enorme : LINGOTS_PALIER.gros;
@@ -1070,6 +1229,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
         <div className="fn-scene">
           <TopSlot v={v} etape={etape} />
           {enBonus ? <SceneBonus v={v} etape={etape} appel={appel} /> : <GrandeRoue v={v} etape={etape} />}
+          <ChargementBonus v={v} etape={etape} />
           <Animateur v={v} />
         </div>
         <div className="fn-infos">
@@ -1205,6 +1365,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
       </section>
 
       {pluie && <PluieLingots key={pluie.id} n={pluie.n} />}
+      {annonce && <AnnonceGain key={annonce.id} montant={annonce.montant} gros={annonce.gros} />}
     </div>
   );
 }
