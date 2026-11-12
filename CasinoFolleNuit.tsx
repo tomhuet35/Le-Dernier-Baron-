@@ -4,10 +4,16 @@
  * envoie les mises. Les animations se calent sur le temps qu'il reste à chaque étape : un joueur qui arrive en cours
  * de route voit la suite au bon moment.
  *
- * Visuels attendus (sinon, un dessin de remplacement) : fn-plateau.webp (décor), fn-animateur.webp (l'animateur),
- * fn-piece-couronne.webp et fn-piece-chapeau.webp (la pièce), fn-icones.webp (les 12 symboles du mur, 4 × 3).
+ * Visuels : fn-plateau.webp et fn-folle-decor.webp (décors), fn-animateur.webp, fn-logo.webp, fn-roue-jante.webp,
+ * fn-roue-moyeu.webp, fn-roue-fleche.webp, fn-velours.webp (texture des cases de la roue), fn-topslot.webp,
+ * fn-bonus-{pile,chasse,billes,folle}.webp (emblèmes), fn-case-cadre.webp, fn-billes-fond.webp,
+ * fn-fleche-{or,bordeaux,ivoire}.webp, fn-piece-couronne.webp, fn-piece-chapeau.webp, fn-icones.webp (le mur, 4 × 3)
+ * et fn-gros-gain.webp.
+ *
+ * Les roues sont animées image par image (requestAnimationFrame) sur l'horloge du serveur : petit élan, lancer, long
+ * freinage, léger dépassement puis retour ; la flèche claque (et le son « tic ») à chaque case qui passe sous elle.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   CASES_FN,
   COLONNES_BILLES,
@@ -27,7 +33,7 @@ import {
 } from '../../shared/folleNuit';
 import type { VueCasino } from '../../shared/casino';
 import type { Appel } from './App';
-import { dollars } from './casinoOutils';
+import { CHOIX_AUTO, dollars } from './casinoOutils';
 import { socket } from './socket';
 import { tr } from './traduction';
 import { Celebration, jouerEffet, mouvementReduit } from './ui';
@@ -48,11 +54,17 @@ export const CASES: Record<CaseFN, { nom: [string, string]; court: string; coule
   folle: { nom: ['Folle Nuit', 'Crazy Night'], court: 'FOLLE', couleur: '#160d0b', texte: '#e9ad5b' },
 };
 export const nomCase = (c: CaseFN) => tr(...CASES[c].nom);
-const FLECHES: { nom: [string, string]; couleur: string }[] = [
-  { nom: ['Or', 'Gold'], couleur: '#e9ad5b' },
-  { nom: ['Bordeaux', 'Burgundy'], couleur: '#b3261c' },
-  { nom: ['Ivoire', 'Ivory'], couleur: '#f3e7cf' },
+const FLECHES: { nom: [string, string]; couleur: string; image: string }[] = [
+  { nom: ['Or', 'Gold'], couleur: '#e9ad5b', image: 'or' },
+  { nom: ['Bordeaux', 'Burgundy'], couleur: '#b3261c', image: 'bordeaux' },
+  { nom: ['Ivoire', 'Ivory'], couleur: '#f3e7cf', image: 'ivoire' },
 ];
+const mod = (a: number, n: number) => ((a % n) + n) % n;
+/** Petit générateur pseudo-aléatoire : les rouleaux du Top Slot défilent pareil d'un rendu à l'autre. */
+function suite(graine: number) {
+  let s = (Math.imul(graine + 1, 2654435761) >>> 0) || 1;
+  return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32;
+}
 const SYMBOLES_REPLI = ['♠', '♥', '♦', '♣', '★', '✦', '●', '▲', '■', '◆', '♛', '☾'];
 
 /** Une image du show est-elle en ligne ? (null : on ne sait pas encore). */
@@ -91,37 +103,9 @@ function useSecondes(fin: number | null): number {
 // ---------------------------------------------------------------------------------------------------------------
 // Petits dessins
 
-function IconeBonus({ c, taille = 10 }: { c: BonusFN; taille?: number }) {
-  const s = taille;
-  if (c === 'pile')
-    return (
-      <g>
-        <circle r={s * 0.55} fill="#e9ad5b" stroke="#7a4a12" strokeWidth={s * 0.08} />
-        <circle r={s * 0.34} fill="none" stroke="#7a4a12" strokeWidth={s * 0.06} />
-      </g>
-    );
-  if (c === 'chasse')
-    return (
-      <g stroke="#f3d48e" strokeWidth={s * 0.09} fill="none">
-        <circle r={s * 0.45} />
-        <circle r={s * 0.18} fill="#f3d48e" />
-        <path d={`M${-s * 0.65} 0H${-s * 0.3}M${s * 0.3} 0H${s * 0.65}M0 ${-s * 0.65}V${-s * 0.3}M0 ${s * 0.3}V${s * 0.65}`} />
-      </g>
-    );
-  if (c === 'billes')
-    return (
-      <g fill="#f3d48e">
-        <circle cx={-s * 0.32} cy={s * 0.22} r={s * 0.18} />
-        <circle cx={s * 0.32} cy={s * 0.22} r={s * 0.18} />
-        <circle cy={-s * 0.3} r={s * 0.18} />
-      </g>
-    );
-  const pts = Array.from({ length: 10 }, (_, i) => {
-    const r = i % 2 ? s * 0.26 : s * 0.62;
-    const a = (i * Math.PI) / 5 - Math.PI / 2;
-    return `${(r * Math.cos(a)).toFixed(2)},${(r * Math.sin(a)).toFixed(2)}`;
-  }).join(' ');
-  return <polygon points={pts} fill="#e9ad5b" stroke="#7a1a12" strokeWidth={s * 0.06} />;
+/** L'emblème d'un bonus (pièce, coffre-fort, planche, étoile). */
+function Embleme({ c, className = '' }: { c: BonusFN; className?: string }) {
+  return <img className={`fn-embleme ${className}`} src={`/cartes/fn-bonus-${c}.webp`} alt="" draggable={false} />;
 }
 
 function arc(cx: number, cy: number, r1: number, r2: number, a1: number, a2: number) {
@@ -130,55 +114,153 @@ function arc(cx: number, cy: number, r1: number, r2: number, a1: number, a2: num
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Le mouvement des roues
+
+/**
+ * Angle parcouru à l'instant p (0 → 1) d'un lancer : petit élan en arrière, lancer, long freinage jusqu'à dépasser un
+ * peu la case, puis retour en douceur sur l'arrêt (le clapet la repousse).
+ */
+function profilLancer(p: number, total: number, depasse: number): number {
+  const ELAN = 0.06;
+  const RETOUR = 0.1;
+  const RECUL = 3.5;
+  if (p <= 0) return 0;
+  if (p < ELAN) return -RECUL * Math.sin(((p / ELAN) * Math.PI) / 2);
+  if (p < 1 - RETOUR) {
+    const u = (p - ELAN) / (1 - ELAN - RETOUR);
+    return -RECUL + (total + depasse + RECUL) * (1 - Math.pow(1 - u, 3.4));
+  }
+  if (p < 1) {
+    const u = (p - (1 - RETOUR)) / RETOUR;
+    return total + depasse * (1 - (1 - Math.cos(u * Math.PI)) / 2);
+  }
+  return total;
+}
+
+/**
+ * Le clapet : à chaque case qui passe sous la flèche, elle est chassée de côté (puis revient) et on entend « tic ».
+ * Renvoie la fonction à appeler à chaque image avec l'angle de la roue.
+ */
+function clapet(pas: number, fleches: () => (HTMLElement | null)[]) {
+  let precedent = performance.now();
+  let case_: number | null = null;
+  let angle: number | null = null;
+  let coup = 0;
+  let dernierSon = 0;
+  return (a: number) => {
+    const t = performance.now();
+    const dt = Math.min(64, t - precedent);
+    precedent = t;
+    const ici = Math.floor(mod(-a, 360) / pas);
+    const sens = angle === null ? 0 : Math.sign(a - angle);
+    angle = a;
+    coup *= Math.exp(-dt / 85);
+    if (case_ !== null && ici !== case_) {
+      coup = -sens * 14;
+      if (t - dernierSon > 55) {
+        dernierSon = t;
+        jouerEffet('roulette_tic');
+      }
+    }
+    case_ = ici;
+    for (const f of fleches()) if (f) f.style.transform = `rotate(${coup.toFixed(2)}deg)`;
+    return Math.abs(coup) > 0.15;
+  };
+}
+
+/** L'étape de la vue au moment où elle a commencé (les vues suivantes de la même étape ne relancent rien). */
+function useDebutEtape(v: VueFolleNuit, etape: { fin: number | null; duree: number }) {
+  const cle = `${v.manche}:${v.phase}`;
+  const ref = useRef({ cle: '', fin: null as number | null, duree: 0 });
+  if (ref.current.cle !== cle) ref.current = { cle, fin: etape.fin, duree: etape.duree };
+  return ref.current;
+}
+
+/** État des ampoules de la jante : chenillard lent, rapide pendant le lancer, toutes qui clignotent au résultat. */
+type Lumieres = 'attente' | 'tourne' | 'gagne';
+
+function Jante({ lumieres }: { lumieres: Lumieres }) {
+  return (
+    <>
+      <span className="fn-roue-ombre" />
+      <img className="fn-roue-jante" src="/cartes/fn-roue-jante.webp" alt="" draggable={false} />
+      {!mouvementReduit() && (
+        <span className={`fn-roue-lumieres ${lumieres}`}>
+          <img src="/cartes/fn-roue-jante.webp" alt="" draggable={false} />
+        </span>
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // La grande roue (54 cases)
 
 const PAS = 360 / ROUE_FN.length;
+/** Où la roue s'arrête dans la case (le même sur tous les écrans) : jamais pile au milieu. */
+const decalageArret = (manche: number) => ((mod(manche * 7919, 101) / 101) - 0.5) * 0.56;
+/** Dernier angle de la grande roue : elle repart d'où elle s'est arrêtée, même après un bonus. */
+let angleRoue = 0;
 
 function GrandeRoue({ v, etape }: { v: VueFolleNuit; etape: { fin: number | null; duree: number } }) {
-  const [angle, setAngle] = useState(0);
-  const [transition, setTransition] = useState('none');
-  const angleRef = useRef(0);
-  const lance = useRef<number | null>(null);
+  const disque = useRef<HTMLDivElement>(null);
+  const fleche = useRef<HTMLImageElement>(null);
+  const debut = useDebutEtape(v, etape);
+  const cle = `${v.manche}:${v.phase}`;
   useEffect(() => {
-    if (v.arret === null || v.phase === 'mises' || v.phase === 'topSlot') return;
-    if (lance.current === v.manche) return;
-    lance.current = v.manche;
-    const cible = -(v.arret + 0.5) * PAS;
-    const reste = v.phase === 'roue' && etape.fin ? Math.max(0, etape.fin - Date.now()) : 0;
-    const depart = angleRef.current;
-    const delta = (((cible - depart) % 360) + 360) % 360;
-    const tours = reste > 1500 && !mouvementReduit() ? 360 * 5 : 0;
-    const final = depart + tours + delta;
-    angleRef.current = final;
-    if (tours) {
-      jouerEffet('roulette_depart');
-      setTransition(`transform ${reste * 0.94}ms cubic-bezier(0.12, 0.6, 0.15, 1)`);
-    } else setTransition('none');
-    setAngle(final);
-  }, [v.arret, v.manche, v.phase, etape.fin]);
+    const d = disque.current;
+    if (!d) return;
+    const poser = (a: number) => {
+      angleRoue = a;
+      d.style.transform = `rotate(${a}deg)`;
+    };
+    if (v.arret === null || v.phase === 'mises' || v.phase === 'topSlot') return poser(angleRoue);
+    const cible = -(v.arret + 0.5 + decalageArret(v.manche)) * PAS;
+    if (v.phase !== 'roue' || !debut.fin || mouvementReduit()) return poser(cible);
+    const t0 = debut.fin - debut.duree;
+    const duree = debut.duree * 0.94;
+    const depart = angleRoue;
+    const total = 360 * 5 + mod(cible - depart, 360);
+    const tic = clapet(PAS, () => [fleche.current]);
+    if (Date.now() - t0 < 600) jouerEffet('roulette_depart');
+    let id = 0;
+    const image = () => {
+      const p = (Date.now() - t0) / duree;
+      const a = depart + profilLancer(p, total, PAS * 0.42);
+      poser(a);
+      const bouge = tic(a);
+      if (p < 1 || bouge) id = requestAnimationFrame(image);
+    };
+    id = requestAnimationFrame(image);
+    return () => {
+      cancelAnimationFrame(id);
+      if (fleche.current) fleche.current.style.transform = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cle, v.arret]);
 
   const segments = useMemo(
     () =>
       ROUE_FN.map((c, i) => {
         const a1 = ((i * PAS - 90) * Math.PI) / 180;
         const a2 = (((i + 1) * PAS - 90) * Math.PI) / 180;
-        const am = (a1 + a2) / 2;
+        const am = (((a1 + a2) / 2) * 180) / Math.PI + 90;
         const info = CASES[c];
         return (
           <g key={i}>
-            <path d={arc(0, 0, 30, 95, a1, a2)} fill={info.couleur} stroke="#e7c27a" strokeWidth="0.5" />
-            <g transform={`rotate(${(am * 180) / Math.PI + 90}) translate(0 -80)`}>
+            <path d={arc(0, 0, 29, 100, a1, a2)} fill={info.couleur} stroke="#e7c27a" strokeWidth="0.55" />
+            <g transform={`rotate(${am}) translate(0 -85)`}>
               {estBonus(c) ? (
-                <IconeBonus c={c} taille={8.5} />
+                <image href={`/cartes/fn-bonus-${c}.webp`} x="-7.5" y="-7.5" width="15" height="15" />
               ) : (
-                <text textAnchor="middle" dominantBaseline="central" fontSize={c === '10' ? 8.5 : 10} fontFamily="Limelight, Georgia, serif" fill={info.texte}>
+                <text textAnchor="middle" dominantBaseline="central" fontSize={c === '10' ? 10 : 12.5} fontFamily="Limelight, Georgia, serif" fill={info.texte} stroke="rgba(0,0,0,0.35)" strokeWidth="0.4">
                   {c}
                 </text>
               )}
             </g>
             {estBonus(c) && (
-              <g transform={`rotate(${(am * 180) / Math.PI + 90}) translate(0 -56)`}>
-                <text textAnchor="middle" dominantBaseline="central" fontSize="4.2" fontWeight="800" fill={info.texte} transform="rotate(-90)" letterSpacing="0.3">
+              <g transform={`rotate(${am}) translate(0 -58)`}>
+                <text textAnchor="middle" dominantBaseline="central" fontSize="5.2" fontWeight="800" fill={info.texte} transform="rotate(-90)" letterSpacing="0.35">
                   {info.court}
                 </text>
               </g>
@@ -188,62 +270,110 @@ function GrandeRoue({ v, etape }: { v: VueFolleNuit; etape: { fin: number | null
       }),
     [],
   );
-  const gagnante = v.arret !== null && (v.phase === 'resultat' || v.phase === 'intro');
+  const gagnante = v.arret !== null && (v.phase === 'resultat' || v.phase === 'intro') ? v.arret : null;
+  const lumieres: Lumieres = v.phase === 'roue' ? 'tourne' : gagnante !== null ? 'gagne' : 'attente';
   return (
-    <svg className="fn-roue" viewBox="-100 -108 200 210" role="img" aria-label={tr('La roue de la Folle Nuit', 'The Crazy Night wheel')}>
-      <defs>
-        <radialGradient id="fn-moyeu" cx="40%" cy="35%" r="70%">
-          <stop offset="0" stopColor="#fff1c4" />
-          <stop offset="0.5" stopColor="#d2a85a" />
-          <stop offset="1" stopColor="#7a4a12" />
-        </radialGradient>
-      </defs>
-      <circle r="99" fill="#2a1a0c" stroke="#e9ad5b" strokeWidth="3" />
-      <g style={{ transform: `rotate(${angle}deg)`, transition }}>
-        {segments}
-        {Array.from({ length: ROUE_FN.length }, (_, i) => {
-          const a = ((i * PAS - 90) * Math.PI) / 180;
-          return <circle key={i} cx={97 * Math.cos(a)} cy={97 * Math.sin(a)} r="1.3" fill="#fff1c4" />;
-        })}
-      </g>
-      <circle r="30" fill="#160d0b" stroke="#e9ad5b" strokeWidth="1.5" />
-      <circle r="24" fill="url(#fn-moyeu)" />
-      <text textAnchor="middle" y="-4" fontSize="6.2" fontFamily="Limelight, Georgia, serif" fill="#3a1a08">
-        LA FOLLE
-      </text>
-      <text textAnchor="middle" y="5" fontSize="8.5" fontFamily="Limelight, Georgia, serif" fill="#3a1a08">
-        NUIT
-      </text>
-      <path d="M0 -94 L-7 -107 L7 -107 Z" fill="#e9ad5b" stroke="#5a3d12" strokeWidth="1" className={gagnante ? 'fn-fleche-gagne' : ''} />
-    </svg>
+    <div className={`fn-roue ${lumieres}`} role="img" aria-label={tr('La roue de la Folle Nuit', 'The Crazy Night wheel')}>
+      <div className="fn-roue-disque" ref={disque}>
+        <svg viewBox="-100 -100 200 200" aria-hidden="true">
+          {segments}
+          {gagnante !== null && <path className="fn-case-gagnante" d={arc(0, 0, 29, 100, ((gagnante * PAS - 90) * Math.PI) / 180, (((gagnante + 1) * PAS - 90) * Math.PI) / 180)} />}
+        </svg>
+        <span className="fn-roue-velours" />
+      </div>
+      <Jante lumieres={lumieres} />
+      <img className="fn-roue-moyeu" src="/cartes/fn-roue-moyeu.webp" alt="" draggable={false} />
+      <img className="fn-roue-fleche" ref={fleche} src="/cartes/fn-roue-fleche.webp" alt="" draggable={false} />
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Le Top Slot
+// Le Top Slot : deux vrais rouleaux (les cases, les multiplicateurs) qui défilent et s'arrêtent l'un après l'autre.
 
-function TopSlot({ v }: { v: VueFolleNuit }) {
-  const t = v.topSlot;
-  const tourne = v.phase === 'topSlot' && !mouvementReduit();
-  const montre = !!t && v.phase !== 'mises';
-  const touche = t?.touche;
+const X_ROULEAU = [2, 3, 4, 5, 7, 10, 15, 20, 25, 50];
+
+function Rouleau({ items, debut, arret, rate }: { items: ReactNode[]; debut: number | null; arret: number; rate: boolean }) {
+  const bande = useRef<HTMLSpanElement>(null);
+  const n = items.length;
+  // Raté : le rouleau s'arrête entre deux cases, hors de la ligne.
+  const finY = -((n - 1 - (rate ? 0.5 : 0)) / n) * 100;
+  useLayoutEffect(() => {
+    const el = bande.current;
+    if (!el) return;
+    el.style.transform = `translateY(${finY}%)`;
+    if (debut === null || typeof el.animate !== 'function') return;
+    const ecoule = Date.now() - debut;
+    if (ecoule >= arret) return;
+    const options: KeyframeAnimationOptions = { duration: arret, fill: 'both' };
+    const defile = el.animate([{ transform: 'translateY(0%)' }, { transform: `translateY(${finY}%)` }], { ...options, easing: 'cubic-bezier(0.12, 0.55, 0.22, 1.07)' });
+    const flou = el.animate([{ filter: 'blur(0px)' }, { filter: 'blur(2.4px)', offset: 0.08 }, { filter: 'blur(1.6px)', offset: 0.7 }, { filter: 'blur(0px)' }], options);
+    defile.currentTime = ecoule;
+    flou.currentTime = ecoule;
+    const son = window.setTimeout(() => jouerEffet('machine_arret'), arret - ecoule);
+    return () => {
+      defile.cancel();
+      flou.cancel();
+      window.clearTimeout(son);
+    };
+  }, [debut, arret, finY, n]);
   return (
-    <div className={`fn-topslot ${tourne ? 'tourne' : ''} ${montre && touche && !tourne ? 'touche' : ''}`} aria-live="polite">
-      <span className="fn-topslot-titre">Top Slot</span>
-      <span className="fn-topslot-rouleau">
-        {montre ? (
-          <span key={`c${v.manche}`} className="fn-topslot-case" style={{ background: CASES[t.affiche.case].couleur, color: CASES[t.affiche.case].texte }}>
-            {estBonus(t.affiche.case) ? CASES[t.affiche.case].court : t.affiche.case}
-          </span>
-        ) : (
-          <span className="fn-topslot-case vide">?</span>
-        )}
-      </span>
-      <span className="fn-topslot-rouleau">
-        <span key={`x${v.manche}`} className="fn-topslot-x">
-          {montre ? `×${t.affiche.x}` : '×?'}
+    <span className="fn-ts-bande" ref={bande} style={{ '--n': n } as CSSProperties}>
+      {items.map((x, i) => (
+        <span key={i} className="fn-ts-item">
+          {x}
         </span>
+      ))}
+    </span>
+  );
+}
+
+function ItemCase({ c }: { c: CaseFN }) {
+  return (
+    <span className={`fn-ts-case ${estBonus(c) ? 'bonus' : ''}`} style={{ background: CASES[c].couleur, color: CASES[c].texte }}>
+      {estBonus(c) ? <Embleme c={c} /> : c}
+    </span>
+  );
+}
+
+function TopSlot({ v, etape }: { v: VueFolleNuit; etape: { fin: number | null; duree: number } }) {
+  const t = v.topSlot;
+  const montre = !!t && v.phase !== 'mises';
+  const e = useDebutEtape(v, etape);
+  const debut = v.phase === 'topSlot' && e.fin && !mouvementReduit() ? e.fin - e.duree : null;
+  const duree = e.duree || 3200;
+  const arrets = [Math.round(duree * 0.55), Math.round(duree * 0.83)];
+  const [fini, setFini] = useState(true);
+  useEffect(() => {
+    if (debut === null) return setFini(true);
+    const ecoule = Date.now() - debut;
+    if (ecoule < 500) jouerEffet('machine_levier');
+    if (ecoule >= arrets[1]) return setFini(true);
+    setFini(false);
+    const m = window.setTimeout(() => setFini(true), arrets[1] - ecoule + 150);
+    return () => window.clearTimeout(m);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debut]);
+  const bandes = useMemo(() => {
+    if (!t) return null;
+    const h = suite(v.manche);
+    const cases: ReactNode[] = Array.from({ length: 18 }, (_, i) => <ItemCase key={i} c={CASES_FN[Math.floor(h() * CASES_FN.length)]} />);
+    const xs: ReactNode[] = Array.from({ length: 22 }, (_, i) => <span key={i} className="fn-ts-x">×{X_ROULEAU[Math.floor(h() * X_ROULEAU.length)]}</span>);
+    cases.push(<ItemCase key="fin" c={t.affiche.case} />, <ItemCase key="apres" c={CASES_FN[Math.floor(h() * CASES_FN.length)]} />);
+    xs.push(<span key="fin" className="fn-ts-x">×{t.affiche.x}</span>);
+    return { cases, xs };
+  }, [t, v.manche]);
+  const touche = montre && fini && !!t?.touche;
+  const rate = montre && !t?.touche;
+  const vide = [<span key="v" className="fn-ts-vide">?</span>];
+  return (
+    <div className={`fn-topslot ${touche ? 'touche' : ''} ${rate && fini ? 'rate' : ''}`} aria-live="polite" aria-label={montre && t ? (t.touche ? `Top Slot : ×${t.touche.x} ${nomCase(t.touche.case)}` : 'Top Slot') : 'Top Slot'}>
+      <span className="fn-topslot-fenetre g">
+        {/* Le rouleau des cases a une case de plus après l'arrêt : un raté s'arrête entre les deux. */}
+        {montre && bandes ? <Rouleau items={bandes.cases.slice(0, rate ? bandes.cases.length : bandes.cases.length - 1)} debut={debut} arret={arrets[0]} rate={rate} /> : <Rouleau items={vide} debut={null} arret={0} rate={false} />}
       </span>
+      <span className="fn-topslot-fenetre d">{montre && bandes ? <Rouleau items={bandes.xs} debut={debut} arret={arrets[1]} rate={false} /> : <Rouleau items={vide} debut={null} arret={0} rate={false} />}</span>
+      <img className="fn-topslot-cadre" src="/cartes/fn-topslot.webp" alt="" draggable={false} />
     </div>
   );
 }
@@ -373,46 +503,62 @@ function BonusChasse({ b, v, peutChoisir, onChoix }: { b: Extract<VueBonusFN, { 
   );
 }
 
-const LARGEUR_COL = 20;
+/** Géométrie de la planche, sur le fond fn-billes-fond.webp (600 × 480) : l'intérieur bleu canard du cadre doré. */
+const BILLES = { W: 600, H: 480, x0: 26, larg: 34.25, y0: 98, rang: 25, caseY: 404, caseH: 40 };
 function BonusBilles({ b, v, etape }: { b: Extract<VueBonusFN, { type: 'billes' }>; v: VueFolleNuit; etape: { fin: number | null; duree: number } }) {
   const top = facteurTopSlot(v.topSlot?.touche, 'billes');
   const [bille, setBille] = useState<{ x: number; y: number; k: number } | null>(null);
   const [lancer, setLancer] = useState(0);
-  const W = COLONNES_BILLES * LARGEUR_COL;
-  const H = (RANGEES_BILLES + 3) * 18;
-  const cx = (col: number) => col * LARGEUR_COL + LARGEUR_COL / 2;
-  const cy = (r: number) => 14 + (r + 1) * 18;
+  const debut = useDebutEtape(v, etape);
+  const cle = `${v.manche}:${v.phase}`;
+  const { W, H, x0, larg, y0, rang, caseY, caseH } = BILLES;
+  const cx = (col: number) => x0 + col * larg + larg / 2;
+  const cy = (r: number) => y0 + r * rang;
   useEffect(() => {
     const lancers = b.lancers;
-    if (!lancers || v.phase !== 'jeu' || !etape.fin) return;
-    const fin = etape.fin;
-    const debut = fin - etape.duree;
-    const par = etape.duree / lancers.length;
+    if (!lancers || v.phase !== 'jeu' || !debut.fin) return;
+    const fin = debut.fin;
+    const t0 = fin - debut.duree;
+    const par = debut.duree / lancers.length;
     let id = 0;
-    const pas = () => {
-      const t = Date.now() - debut;
+    let segment = -1;
+    let pose = -1;
+    const image = () => {
+      const t = Date.now() - t0;
       const k = Math.min(lancers.length - 1, Math.max(0, Math.floor(t / par)));
       const l = lancers[k];
       const f = Math.min(1, Math.max(0, (t - k * par) / (par * 0.8)));
       // Points de passage : départ au-dessus de la planche, puis une colonne par rangée, puis la case.
       const cols = [l.depart];
       for (const p of l.chemin) cols.push(cols[cols.length - 1] + p);
-      const n = cols.length; // rangées 0..n-1
-      const pos = f * (n - 1 + 1);
+      const n = cols.length;
+      const pos = f * n;
       const i = Math.min(n - 1, Math.floor(pos));
-      const u = pos - i;
+      const u = Math.min(1, pos - i);
       const x1 = cx(cols[i]);
       const x2 = cx(cols[Math.min(n - 1, i + 1)]);
-      const y1 = i === 0 ? 4 : cy(i - 1);
-      const y2 = i + 1 >= n ? cy(RANGEES_BILLES) + 6 : cy(i);
-      const e = u * u * (3 - 2 * u);
-      setBille({ x: x1 + (x2 - x1) * e, y: y1 + (y2 - y1) * u, k });
+      const y1 = i === 0 ? y0 - rang : cy(i - 1);
+      const y2 = i + 1 >= n ? caseY + caseH / 2 : cy(i);
+      // La bille rebondit sur le clou (petit saut), retombe en accélérant et glisse de côté.
+      const saut = i === 0 ? 0 : rang * 0.45 * 4 * u * (1 - u);
+      const glisse = u * u * (3 - 2 * u);
+      setBille({ x: x1 + (x2 - x1) * glisse, y: y1 + (y2 - y1) * u * u - saut, k });
       setLancer(k);
-      if (Date.now() < fin) id = requestAnimationFrame(pas);
+      const s = k * 100 + i;
+      if (s !== segment && f < 1) {
+        segment = s;
+        if (i > 0) jouerEffet('roulette_tic');
+      }
+      if (f >= 1 && pose !== k) {
+        pose = k;
+        jouerEffet('machine_arret');
+      }
+      if (Date.now() < fin) id = requestAnimationFrame(image);
     };
-    id = requestAnimationFrame(pas);
+    id = requestAnimationFrame(image);
     return () => cancelAnimationFrame(id);
-  }, [b.lancers, v.phase, etape.fin, etape.duree]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cle, b.lancers]);
   const termine = v.phase === 'finBonus' && b.lancers;
   const l = b.lancers ? b.lancers[termine ? b.lancers.length - 1 : lancer] : null;
   const cases = l?.cases ?? b.cases;
@@ -420,19 +566,41 @@ function BonusBilles({ b, v, etape }: { b: Extract<VueBonusFN, { type: 'billes' 
   return (
     <div className="fn-bonus fn-billes">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={tr('La planche à billes', 'The ball board')}>
-        <rect x="0" y="0" width={W} height={H} rx="8" fill="#0b2a31" stroke="#e9ad5b" strokeWidth="2" />
+        <defs>
+          <radialGradient id="fn-clou" cx="35%" cy="30%" r="70%">
+            <stop offset="0" stopColor="#fff6d2" />
+            <stop offset="0.45" stopColor="#e9ad5b" />
+            <stop offset="1" stopColor="#6b4210" />
+          </radialGradient>
+          <radialGradient id="fn-bille" cx="35%" cy="30%" r="75%">
+            <stop offset="0" stopColor="#ffffff" />
+            <stop offset="0.3" stopColor="#ffe9a8" />
+            <stop offset="0.75" stopColor="#d79a35" />
+            <stop offset="1" stopColor="#6b4210" />
+          </radialGradient>
+        </defs>
+        <image href="/cartes/fn-billes-fond.webp" x="0" y="0" width={W} height={H} preserveAspectRatio="none" />
         {Array.from({ length: RANGEES_BILLES }, (_, r) =>
-          Array.from({ length: COLONNES_BILLES + 1 }, (_, c) => <circle key={`${r}-${c}`} cx={c * LARGEUR_COL + (r % 2 ? LARGEUR_COL / 2 : 0)} cy={cy(r) + 9} r="1.8" fill="#e9ad5b" opacity="0.85" />),
+          Array.from({ length: COLONNES_BILLES + 1 }, (_, c) => <circle key={`${r}-${c}`} cx={x0 + c * larg + (r % 2 ? larg / 2 : 0)} cy={cy(r) + rang / 2} r="3.4" fill="url(#fn-clou)" />),
         )}
-        {cases.map((x, i) => (
-          <g key={i} transform={`translate(${i * LARGEUR_COL} ${cy(RANGEES_BILLES) + 2})`}>
-            <rect x="1" y="0" width={LARGEUR_COL - 2} height="26" rx="3" fill={x === 0 ? '#e9ad5b' : arrivee === i ? '#7a1a12' : '#160d0b'} stroke="#e9ad5b" strokeWidth="0.8" />
-            <text x={LARGEUR_COL / 2} y="16" textAnchor="middle" fontSize={x === 0 ? 5.2 : 6.4} fontWeight="800" fill={x === 0 ? '#160d0b' : '#f3e7cf'}>
-              {x === 0 ? 'DOUBLE' : `×${x * top}`}
-            </text>
+        {cases.map((x, i) => {
+          const dbl = x === 0;
+          const ici = arrivee === i;
+          return (
+            <g key={i} transform={`translate(${x0 + i * larg} ${caseY})`} className={ici ? 'fn-billes-arrivee' : ''}>
+              <rect x="1.5" y="0" width={larg - 3} height={caseH} rx="5" fill={dbl ? '#e9ad5b' : ici ? '#8e1c14' : 'rgba(10, 8, 6, 0.82)'} stroke="#e9ad5b" strokeWidth="1.2" />
+              <text x={larg / 2} y={caseH / 2 + 1} textAnchor="middle" dominantBaseline="central" fontSize={dbl ? 6.4 : x * top >= 100 ? 8.5 : 10} fontWeight="800" fill={dbl ? '#160d0b' : '#f3e7cf'}>
+                {dbl ? 'DOUBLE' : `×${x * top}`}
+              </text>
+            </g>
+          );
+        })}
+        {bille && v.phase === 'jeu' && (
+          <g>
+            <ellipse cx={bille.x + 2} cy={bille.y + 9} rx="7" ry="2.4" fill="rgba(0,0,0,0.35)" />
+            <circle cx={bille.x} cy={bille.y} r="8.5" fill="url(#fn-bille)" stroke="#6b4210" strokeWidth="0.8" />
           </g>
-        ))}
-        {bille && v.phase === 'jeu' && <circle cx={bille.x} cy={bille.y} r="6" fill="#f3e7cf" stroke="#7a4a12" strokeWidth="1.2" />}
+        )}
       </svg>
       {b.lancers && b.lancers.length > 1 && <p className="fn-bonus-aide">{tr(`Lancer ${Math.min(lancer, b.lancers.length - 1) + 1} sur ${b.lancers.length} : chaque DOUBLE double toute la planche.`, `Drop ${Math.min(lancer, b.lancers.length - 1) + 1} of ${b.lancers.length}: each DOUBLE doubles the whole board.`)}</p>}
       {b.x !== null && <p className="fn-bonus-aide gros">×{b.x * top}</p>}
@@ -446,43 +614,67 @@ function BonusFolle({ b, v, etape, peutChoisir, onChoix }: { b: Extract<VueBonus
   const top = facteurTopSlot(v.topSlot?.touche, 'folle');
   /** Tours de roue terminés (le multiplicateur de chaque flèche en dépend). */
   const [faits, setFaits] = useState(0);
-  const [angle, setAngle] = useState(0);
-  const [transition, setTransition] = useState('none');
-  const angleRef = useRef(0);
+  const [tourne, setTourne] = useState(false);
+  const disque = useRef<HTMLDivElement>(null);
+  const fleches = useRef<(HTMLImageElement | null)[]>([]);
+  const debut = useDebutEtape(v, etape);
+  const cle = `${v.manche}:${v.phase}`;
   useEffect(() => {
+    const d = disque.current;
+    if (!d) return;
+    const poser = (a: number) => (d.style.transform = `rotate(${a}deg)`);
     const arrets = b.arrets;
-    if (!arrets) return;
-    if (v.phase !== 'jeu' || !etape.fin) {
-      // Arrivé après la fin : la roue est déjà sur le dernier arrêt.
-      const final = -(arrets[arrets.length - 1]) * PAS_FOLLE;
-      angleRef.current = final;
-      setTransition('none');
-      setAngle(final);
-      setFaits(arrets.length);
+    if (!arrets) {
+      poser(0);
+      setFaits(0);
       return;
     }
-    const debut = etape.fin - etape.duree;
-    const par = etape.duree / arrets.length;
-    const minuteries: number[] = [];
-    arrets.forEach((a, k) => {
-      const quand = debut + k * par - Date.now();
-      const lancer = () => {
-        setFaits(k);
-        const depart = angleRef.current;
-        const cible = -a * PAS_FOLLE;
-        const delta = (((cible - depart) % 360) + 360) % 360;
-        const final = depart + (mouvementReduit() ? 0 : 720) + delta;
-        angleRef.current = final;
-        setTransition(`transform ${par * 0.75}ms cubic-bezier(0.15, 0.6, 0.2, 1)`);
-        setAngle(final);
-        jouerEffet('roulette_depart');
-        minuteries.push(window.setTimeout(() => setFaits(k + 1), par * 0.78));
-      };
-      if (quand <= 0 && k < arrets.length - 1 && debut + (k + 1) * par < Date.now()) return; // tour déjà passé
-      minuteries.push(window.setTimeout(lancer, Math.max(0, quand)));
-    });
-    return () => minuteries.forEach((m) => window.clearTimeout(m));
-  }, [b.arrets, v.phase, etape.fin, etape.duree]);
+    // Angles d'arrêt successifs, les mêmes sur tous les écrans : deux tours au moins, puis la case.
+    const A: number[] = [];
+    let a = 0;
+    for (const s of arrets) {
+      a = a + 720 + mod(-s * PAS_FOLLE - a, 360);
+      A.push(a);
+    }
+    if (v.phase !== 'jeu' || !debut.fin || mouvementReduit()) {
+      poser(A[A.length - 1]);
+      setFaits(arrets.length);
+      setTourne(false);
+      return;
+    }
+    const t0 = debut.fin - debut.duree;
+    const fin = debut.fin;
+    const par = debut.duree / arrets.length;
+    const tic = clapet(PAS_FOLLE, () => fleches.current);
+    let id = 0;
+    let tour = -1;
+    let fait = -1;
+    let enMouvement: boolean | null = null;
+    const image = () => {
+      const t = Date.now() - t0;
+      const k = Math.min(arrets.length - 1, Math.max(0, Math.floor(t / par)));
+      const p = (t - k * par) / (par * 0.75);
+      const depart = k ? A[k - 1] : 0;
+      const ang = depart + profilLancer(p, A[k] - depart, PAS_FOLLE * 0.4);
+      poser(ang);
+      tic(ang);
+      if (k !== tour) {
+        tour = k;
+        if (p < 0.08) jouerEffet('roulette_depart');
+      }
+      const f = t >= k * par + par * 0.78 ? k + 1 : k;
+      if (f !== fait) setFaits((fait = f));
+      const m = p > 0 && p < 1;
+      if (m !== enMouvement) setTourne((enMouvement = m));
+      if (Date.now() < fin) id = requestAnimationFrame(image);
+    };
+    id = requestAnimationFrame(image);
+    return () => {
+      cancelAnimationFrame(id);
+      for (const f of fleches.current) if (f) f.style.transform = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cle, b.arrets]);
 
   /** Facteur et résultat de chaque flèche, au tour affiché. */
   const etatFleche = (k: number) => {
@@ -492,54 +684,64 @@ function BonusFolle({ b, v, etape, peutChoisir, onChoix }: { b: Extract<VueBonus
     return { facteur: f.facteurs[faits] ?? 1, x: null as number | null };
   };
   const label = (s: SegmentFolle) => (s === 'double' ? 'DOUBLE' : s === 'triple' ? 'TRIPLE' : `×${s}`);
+  const segments = useMemo(
+    () =>
+      b.segments.map((s, i) => {
+        const a1 = (((i - 0.5) * PAS_FOLLE - 90) * Math.PI) / 180;
+        const a2 = (((i + 0.5) * PAS_FOLLE - 90) * Math.PI) / 180;
+        const special = typeof s !== 'number';
+        const fond = special ? '#e9ad5b' : typeof s === 'number' && s >= 100 ? '#4e1d5c' : i % 2 ? '#7a1a12' : '#24120e';
+        return (
+          <g key={i}>
+            <path d={arc(0, 0, 25, 100, a1, a2)} fill={fond} stroke="#e7c27a" strokeWidth="0.4" />
+            <g transform={`rotate(${i * PAS_FOLLE}) translate(0 -70)`}>
+              <text textAnchor="middle" dominantBaseline="central" transform="rotate(-90)" fontSize={special ? 6 : 7.2} fontWeight="800" fill={special ? '#160d0b' : '#f3e7cf'} letterSpacing="0.2">
+                {label(s)}
+              </text>
+            </g>
+          </g>
+        );
+      }),
+    [b.segments],
+  );
+  const lumieres: Lumieres = tourne ? 'tourne' : v.phase === 'finBonus' ? 'gagne' : 'attente';
   return (
     <div className="fn-bonus fn-folle">
-      <div className="fn-folle-roue">
-        <svg viewBox="-100 -112 200 214" role="img" aria-label={tr('La roue géante de la Folle Nuit', 'The giant Crazy Night wheel')}>
-          <circle r="99" fill="#160d0b" stroke="#e9ad5b" strokeWidth="3" />
-          <g style={{ transform: `rotate(${angle}deg)`, transition }}>
-            {b.segments.map((s, i) => {
-              const a1 = (((i - 0.5) * PAS_FOLLE - 90) * Math.PI) / 180;
-              const a2 = (((i + 0.5) * PAS_FOLLE - 90) * Math.PI) / 180;
-              const special = typeof s !== 'number';
-              const fond = special ? '#e9ad5b' : i % 2 ? '#7a1a12' : '#2a1410';
-              return (
-                <g key={i}>
-                  <path d={arc(0, 0, 22, 96, a1, a2)} fill={fond} stroke="#e7c27a" strokeWidth="0.35" />
-                  <g transform={`rotate(${i * PAS_FOLLE}) translate(0 -70)`}>
-                    <text textAnchor="middle" dominantBaseline="central" transform="rotate(-90)" fontSize={special ? 5 : 6} fontWeight="800" fill={special ? '#160d0b' : '#f3e7cf'}>
-                      {label(s)}
-                    </text>
-                  </g>
-                </g>
-              );
-            })}
-          </g>
-          <circle r="22" fill="#e9ad5b" stroke="#7a4a12" strokeWidth="1.5" />
-          <text textAnchor="middle" y="3" fontSize="8" fontFamily="Limelight, Georgia, serif" fill="#3a1a08">
-            ★
-          </text>
-          {DECALAGES_FLECHES.map((d, k) => {
-            const e = etatFleche(k);
-            return (
-              <g key={k} transform={`rotate(${d * PAS_FOLLE})`} className={b.choix === k ? 'fn-fleche-moi' : ''}>
-                <path d="M0 -92 L-5.5 -106 L5.5 -106 Z" fill={FLECHES[k].couleur} stroke="#160d0b" strokeWidth="1" />
-                {e.facteur > 1 && (
-                  <text y="-109" textAnchor="middle" fontSize="6" fontWeight="800" fill={FLECHES[k].couleur}>
-                    ×{e.facteur}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </svg>
+      <div className={`fn-roue fn-roue-folle ${lumieres}`} role="img" aria-label={tr('La roue géante de la Folle Nuit', 'The giant Crazy Night wheel')}>
+        <div className="fn-roue-disque" ref={disque}>
+          <svg viewBox="-100 -100 200 200" aria-hidden="true">
+            {segments}
+          </svg>
+          <span className="fn-roue-velours" />
+        </div>
+        <Jante lumieres={lumieres} />
+        <span className="fn-roue-moyeu-folle">
+          <Embleme c="folle" />
+        </span>
+        {DECALAGES_FLECHES.map((d, k) => {
+          const e = etatFleche(k);
+          return (
+            <span key={k} className={`fn-roue-bras ${b.choix === k ? 'moi' : ''}`} style={{ transform: `rotate(${d * PAS_FOLLE}deg)` }}>
+              <img
+                className="fn-roue-fleche"
+                ref={(el) => {
+                  fleches.current[k] = el;
+                }}
+                src={`/cartes/fn-fleche-${FLECHES[k].image}.webp`}
+                alt=""
+                draggable={false}
+              />
+              {e.facteur > 1 && <b className="fn-bras-x">×{e.facteur}</b>}
+            </span>
+          );
+        })}
       </div>
       <div className="fn-fleches" role="group" aria-label={tr('Les trois flèches', 'The three flappers')}>
         {FLECHES.map((f, k) => {
           const e = etatFleche(k);
           return (
             <button key={k} type="button" className={`fn-fleche ${b.choix === k ? 'moi' : ''}`} style={{ '--couleur': f.couleur } as CSSProperties} disabled={!peutChoisir} onClick={() => onChoix(k)} aria-pressed={b.choix === k}>
-              <span className="fn-fleche-pastille" />
+              <img className="fn-fleche-pastille" src={`/cartes/fn-fleche-${f.image}.webp`} alt="" draggable={false} />
               <strong>{tr(...f.nom)}</strong>
               <small>{e.x !== null ? `×${e.x * top}` : e.facteur > 1 ? `×${e.facteur} …` : b.choix === k ? tr('Ta flèche', 'Your flapper') : ''}</small>
             </button>
@@ -570,9 +772,7 @@ function SceneBonus({ v, etape, appel }: { v: VueFolleNuit; etape: { fin: number
   return (
     <section className={`fn-scene-bonus fn-bonus-${b.type}`}>
       <header>
-        <svg viewBox="-12 -12 24 24" aria-hidden="true">
-          <IconeBonus c={b.type} taille={20} />
-        </svg>
+        <Embleme c={b.type} />
         <h2>{nomCase(b.type)}</h2>
         {v.phase === 'choix' && <span className="fn-bonus-temps">{secondes} s</span>}
         {!aMise && <small>{tr('Tu regardes', 'Watching')}</small>}
@@ -606,9 +806,7 @@ function Tapis({ v, ouvertes, onMiser }: { v: VueFolleNuit; ouvertes: boolean; o
           >
             {estBonus(c) ? (
               <>
-                <svg viewBox="-12 -12 24 24" aria-hidden="true">
-                  <IconeBonus c={c} taille={18} />
-                </svg>
+                <Embleme c={c} />
                 <span className="fn-case-nom">{nomCase(c)}</span>
               </>
             ) : (
@@ -640,6 +838,14 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
   const [fete, setFete] = useState<number | null>(null);
   const plateau = useImage('/cartes/fn-plateau.webp');
   const precedente = useRef<VueFolleNuit | null>(null);
+  /** Mode automatique : mes mises de la manche d'avant, rejouées à chaque manche (10 à 100, ou sans fin). */
+  const [auto, setAuto] = useState({ actif: false, restants: 0 });
+  const [choixAuto, setChoixAuto] = useState(false);
+  const autoRef = useRef(auto);
+  autoRef.current = auto;
+  const autoManche = useRef(-1);
+  const minuterieAuto = useRef(0);
+  useEffect(() => () => window.clearTimeout(minuterieAuto.current), []);
 
   useEffect(() => {
     let vivant = true;
@@ -680,6 +886,29 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
     }
   }, [v]);
 
+  // Mode automatique : dès que les mises ouvrent, on rejoue celles de la manche d'avant (sauf si j'ai déjà misé).
+  useEffect(() => {
+    if (!v || !auto.actif || v.phase !== 'mises' || v.closes || autoManche.current === v.manche) return;
+    autoManche.current = v.manche;
+    if (Object.values(v.mesMises).some((x) => x)) return;
+    if (!v.peutRefaire) {
+      setAuto({ actif: false, restants: 0 });
+      return;
+    }
+    window.clearTimeout(minuterieAuto.current);
+    minuterieAuto.current = window.setTimeout(async () => {
+      if (!autoRef.current.actif) return;
+      const r = await appel('casino_fn_refaire');
+      if (r.ok) {
+        jouerEffet('jeton');
+        setAuto((a) => (a.actif ? { actif: a.restants - 1 > 0, restants: a.restants - 1 } : a));
+      } else {
+        setAuto({ actif: false, restants: 0 });
+        setErreur(tr(`Mode auto arrêté : ${r.erreur ?? 'mise impossible.'}`, `Auto play stopped: ${r.erreur ?? 'bet not allowed.'}`));
+      }
+    }, 650);
+  }, [v, auto.actif, appel]);
+
   const etape = useEtape(v ?? ({ reste: null, duree: null } as VueFolleNuit));
   const secondes = useSecondes(v?.phase === 'mises' ? etape.fin : null);
 
@@ -690,7 +919,9 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
           <button type="button" className="cas-retour" onClick={onRetour}>
             ‹ {tr('Salon', 'Lounge')}
           </button>
-          <h1>{tr('La Folle Nuit', 'Crazy Night')}</h1>
+          <h1 className="fn-titre">
+            <img className="fn-logo" src="/cartes/fn-logo.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
+          </h1>
           <span className="cas-barre-vide" />
         </header>
         <div className="chargement">{erreur ?? tr('Le show commence…', 'The show is starting…')}</div>
@@ -720,7 +951,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
   else if (sortie)
     statut = (
       <span className="fn-sortie" style={{ '--couleur': CASES[sortie].couleur, '--texte': CASES[sortie].texte } as CSSProperties}>
-        <span className="fn-sortie-case">{estBonus(sortie) ? CASES[sortie].court : sortie}</span>
+        <span className="fn-sortie-case">{estBonus(sortie) ? <Embleme c={sortie} /> : sortie}</span>
         <strong>{estBonus(sortie) ? nomCase(sortie) : tr(`Le ${sortie} paie ${Number(sortie) * facteurTopSlot(v.topSlot?.touche, sortie)} pour 1`, `${sortie} pays ${Number(sortie) * facteurTopSlot(v.topSlot?.touche, sortie)} to 1`)}</strong>
       </span>
     );
@@ -732,14 +963,15 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
           ‹ {tr('Salon', 'Lounge')}
         </button>
         <h1 className="fn-titre">
-          {tr('La Folle Nuit', 'Crazy Night')} <span className="fn-direct">{tr('En direct', 'Live')}</span>
+          <img className="fn-logo" src="/cartes/fn-logo.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
+          <span className="fn-direct">{tr('En direct', 'Live')}</span>
         </h1>
         <span className="cas-solde-petit">{dollars(v.solde)}</span>
       </header>
 
-      <div className={`fn-plateau ${plateau ? 'decor' : ''}`}>
+      <div className={`fn-plateau ${plateau ? 'decor' : ''} ${enBonus && v.bonus?.type === 'folle' ? 'decor-folle' : ''}`}>
         <div className="fn-scene">
-          <TopSlot v={v} />
+          <TopSlot v={v} etape={etape} />
           {enBonus ? <SceneBonus v={v} etape={etape} appel={appel} /> : <GrandeRoue v={v} etape={etape} />}
           <Animateur v={v} />
         </div>
@@ -756,7 +988,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
           <ol className="fn-historique" aria-label={tr('Derniers résultats', 'Last results')}>
             {v.historique.map((h, i) => (
               <li key={`${v.manche}-${i}`} style={{ '--couleur': CASES[h.case].couleur, '--texte': CASES[h.case].texte } as CSSProperties} title={nomCase(h.case)}>
-                <span>{estBonus(h.case) ? CASES[h.case].court : h.case}</span>
+                {estBonus(h.case) ? <Embleme c={h.case} /> : <span>{h.case}</span>}
                 {(estBonus(h.case) || h.x > Number(h.case)) && <small>×{h.x}</small>}
               </li>
             ))}
@@ -777,20 +1009,53 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
         <p className="bj-mise-encours">
           {tr('Ta mise', 'Your bet')} <strong>{dollars(maMise)}</strong>
         </p>
-        <div className="bj-boutons">
-          <button type="button" onClick={() => void envoyer('casino_fn_annuler')} disabled={!ouvertes || !maMise}>
-            {tr('Annuler', 'Undo')}
-          </button>
-          <button type="button" onClick={() => void envoyer('casino_fn_annuler', { tout: true })} disabled={!ouvertes || !maMise}>
-            {tr('Effacer', 'Clear')}
-          </button>
-          <button type="button" onClick={() => void envoyer('casino_fn_doubler').then((ok) => ok && jouerEffet('jeton'))} disabled={!ouvertes || !maMise}>
-            {tr('Doubler', 'Double')}
-          </button>
-          <button type="button" className="bj-principal" onClick={() => void envoyer('casino_fn_refaire').then((ok) => ok && jouerEffet('jeton'))} disabled={!ouvertes || !!maMise || !v.peutRefaire}>
-            {tr('Refaire', 'Rebet')}
-          </button>
-        </div>
+        {choixAuto && !auto.actif ? (
+          <div className="bj-boutons fn-auto-choix" role="group" aria-label={tr('Mode automatique', 'Auto play')}>
+            <span>{tr('Rejouer mes mises', 'Repeat my bets')}</span>
+            {CHOIX_AUTO.map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => {
+                  jouerEffet('jeton');
+                  setChoixAuto(false);
+                  autoManche.current = -1;
+                  setAuto({ actif: true, restants: n });
+                }}
+              >
+                {n === Infinity ? '∞' : n}
+              </button>
+            ))}
+            <button type="button" className="fn-auto-fermer" onClick={() => setChoixAuto(false)} aria-label={tr('Fermer', 'Close')}>
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div className="bj-boutons">
+            <button type="button" onClick={() => void envoyer('casino_fn_annuler')} disabled={!ouvertes || !maMise}>
+              {tr('Annuler', 'Undo')}
+            </button>
+            <button type="button" onClick={() => void envoyer('casino_fn_annuler', { tout: true })} disabled={!ouvertes || !maMise}>
+              {tr('Effacer', 'Clear')}
+            </button>
+            <button type="button" onClick={() => void envoyer('casino_fn_doubler').then((ok) => ok && jouerEffet('jeton'))} disabled={!ouvertes || !maMise}>
+              {tr('Doubler', 'Double')}
+            </button>
+            <button type="button" className="bj-principal" onClick={() => void envoyer('casino_fn_refaire').then((ok) => ok && jouerEffet('jeton'))} disabled={!ouvertes || !!maMise || !v.peutRefaire}>
+              {tr('Refaire', 'Rebet')}
+            </button>
+            {auto.actif ? (
+              <button type="button" className="fn-auto actif" onClick={() => setAuto({ actif: false, restants: 0 })} aria-label={tr('Arrêter le mode automatique', 'Stop auto play')}>
+                {tr('Stop', 'Stop')} · {auto.restants === Infinity ? '∞' : auto.restants}
+              </button>
+            ) : (
+              <button type="button" className="fn-auto" onClick={() => setChoixAuto(true)} disabled={!maMise && !v.peutRefaire}>
+                {tr('Auto ▾', 'Auto ▾')}
+              </button>
+            )}
+          </div>
+        )}
+        {auto.actif && <p className="fn-auto-etat">{auto.restants === Infinity ? tr('Mode auto : tes mises sont rejouées à chaque manche.', 'Auto play: your bets are repeated every round.') : tr(`Mode auto : encore ${auto.restants} manche${auto.restants > 1 ? 's' : ''}.`, `Auto play: ${auto.restants} more round${auto.restants > 1 ? 's' : ''}.`)}</p>}
         {erreur && <p className="cas-erreur">{erreur}</p>}
       </section>
 
@@ -842,13 +1107,15 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
       </section>
 
       {fete !== null && (
-        <Celebration
-          titre={tr('Gros gain !', 'Big win!')}
-          etiquette={tr(`Gain : ${dollars(fete)}`, `Win: ${dollars(fete)}`)}
-          medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(fete)}</strong>}
-          legende={sortie ? tr(`La Folle Nuit · ${nomCase(sortie)}`, `Crazy Night · ${nomCase(sortie)}`) : tr('La Folle Nuit', 'Crazy Night')}
-          onFermer={() => setFete(null)}
-        />
+        <div className="fn-fete">
+          <Celebration
+            titre={tr('Gros gain !', 'Big win!')}
+            etiquette={tr(`Gain : ${dollars(fete)}`, `Win: ${dollars(fete)}`)}
+            medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(fete)}</strong>}
+            legende={sortie ? tr(`La Folle Nuit · ${nomCase(sortie)}`, `Crazy Night · ${nomCase(sortie)}`) : tr('La Folle Nuit', 'Crazy Night')}
+            onFermer={() => setFete(null)}
+          />
+        </div>
       )}
     </div>
   );
@@ -894,7 +1161,8 @@ export function BandeauFolleNuit({ vue, onOuvrir }: { vue: VueCasino; onOuvrir: 
       )}
       <span className="fn-bandeau-texte">
         <strong>
-          {tr('La Folle Nuit', 'Crazy Night')} <span className="fn-direct">{tr('En direct', 'Live')}</span>
+          <img className="fn-logo" src="/cartes/fn-logo.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
+          <span className="fn-direct">{tr('En direct', 'Live')}</span>
         </strong>
         <small>
           {fn?.enDirect
@@ -905,7 +1173,7 @@ export function BandeauFolleNuit({ vue, onOuvrir }: { vue: VueCasino; onOuvrir: 
           <span className="fn-bandeau-resultats">
             {fn.historique.map((h, i) => (
               <i key={i} style={{ '--couleur': CASES[h.case].couleur, '--texte': CASES[h.case].texte } as CSSProperties}>
-                {estBonus(h.case) ? CASES[h.case].court : h.case}
+                {estBonus(h.case) ? <Embleme c={h.case} /> : h.case}
               </i>
             ))}
           </span>
