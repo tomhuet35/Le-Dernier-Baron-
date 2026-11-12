@@ -15,7 +15,8 @@
 .fn-plateau.decor { background: linear-gradient(180deg, rgba(22, 13, 11, 0.15), rgba(22, 13, 11, 0.75)), url('/cartes/fn-plateau.webp') center / cover no-repeat, #160d0b; }
 .fn-scene { position: relative; display: grid; justify-items: center; gap: 6px; min-height: 0; }
 /* Les roues : un disque qui tourne (les cases), la jante dorée et ses ampoules par-dessus, le moyeu, la flèche. */
-.fn-roue { position: relative; width: min(100%, 540px); aspect-ratio: 1; margin-top: 4%; }
+/* Marges en vw (et non en %) : un % de marge dans une grille fausse la hauteur de la rangée et le bas déborde. */
+.fn-roue { position: relative; width: min(100%, 540px); aspect-ratio: 1; margin-top: clamp(14px, 4vw, 24px); }
 .fn-roue > * { position: absolute; }
 .fn-roue-disque { inset: 6.9%; border-radius: 50%; overflow: hidden; isolation: isolate; will-change: transform; background: #2a1a0c; }
 .fn-roue-disque svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -65,6 +66,8 @@
 
 /* L'animateur */
 .fn-animateur { position: absolute; left: 0; bottom: 0; display: flex; align-items: flex-end; gap: 4px; width: min(46%, 300px); pointer-events: none; }
+.fn-presentateur { animation: fn-relais 0.6s ease-out; }
+@keyframes fn-relais { from { opacity: 0; transform: translateX(-12px); } }
 .fn-animateur img, .fn-animateur-repli { width: 42%; max-width: 130px; height: auto; flex: none; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.7)); }
 .fn-bulle { position: relative; margin: 0 0 30% 0; padding: 7px 10px; border-radius: 12px 12px 12px 3px; background: #f6eedc; color: #241a12; font-size: 12.5px; font-weight: 600; line-height: 1.3; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45); animation: fn-bulle 0.35s ease-out; }
 @keyframes fn-bulle { from { opacity: 0; transform: translateY(6px) scale(0.96); } }
@@ -200,9 +203,13 @@
 
 /* Folle Nuit */
 .fn-plateau.decor-folle { background: linear-gradient(180deg, rgba(8, 8, 22, 0.1), rgba(8, 8, 22, 0.7)), url('/cartes/fn-folle-decor.webp') center / cover no-repeat, #0b0a14; }
-.fn-roue-folle { width: min(100%, 470px); margin-top: 7%; }
+.fn-roue-folle { width: min(100%, 470px); margin-top: clamp(24px, 7vw, 34px); }
 .fn-roue-moyeu-folle { left: 37%; top: 37%; width: 26%; height: 26%; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #4a1410, #160d0b 70%); box-shadow: 0 0 0 3px #e9ad5b, 0 6px 16px rgba(0, 0, 0, 0.7); }
 .fn-roue-moyeu-folle .fn-embleme { width: 76%; height: 76%; }
+.fn-roue-hote { left: -17%; bottom: -3%; width: 30%; height: auto; z-index: 3; pointer-events: none; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.7)); }
+/* Pendant la Folle Nuit, la croupière est au pied de la roue : sous le jeu, il ne reste que sa bulle. */
+.fn-scene-bonus.fn-bonus-folle ~ .fn-animateur > img { display: none; }
+@media (max-width: 560px) { .fn-roue-hote { left: -7%; width: 27%; } }
 .fn-roue-bras { inset: 0; pointer-events: none; }
 .fn-roue-bras > * { position: absolute; }
 .fn-roue-bras .fn-roue-fleche { width: 8%; margin-left: -4%; top: -4.5%; transform-origin: 50% 20%; }
@@ -229,9 +236,6 @@
 .fn-bandeau-resultats { display: flex; gap: 4px; flex-wrap: wrap; }
 .fn-bandeau-resultats i { padding: 1px 6px; border-radius: 6px; border: 1px solid rgba(231, 194, 122, 0.5); background: var(--couleur); color: var(--texte); font-style: normal; font-size: 11px; font-weight: 800; }
 
-/* Gros gain : l'explosion de pièces et de jetons derrière la célébration (le noir disparaît en « screen »). */
-.fn-fete .celebration::before { content: ''; position: absolute; inset: -4%; background: url('/cartes/fn-gros-gain.webp') center / cover no-repeat; mix-blend-mode: screen; pointer-events: none; animation: fn-explosion 7s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
-@keyframes fn-explosion { from { opacity: 0; transform: scale(0.55); } 10% { opacity: 1; } to { opacity: 0.9; transform: scale(1.14); } }
 
 /* Grand écran : la scène à gauche, le tapis à droite */
 @media (min-aspect-ratio: 1 / 1) and (min-width: 900px) {
@@ -256,6 +260,6 @@
   .fn-bulle { font-size: 11.5px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fn-happy-pastille, .fn-happy.actif strong, .fn-direct::before, .fn-bandeau-roue, .fn-topslot.touche, .fn-topslot.touche::before, .fn-case.sortie, .fn-case-boost, .fn-case-gagnante, .fn-bras-x, .fn-fete .celebration::before { animation: none; }
+  .fn-presentateur, .fn-happy-pastille, .fn-happy.actif strong, .fn-direct::before, .fn-bandeau-roue, .fn-topslot.touche, .fn-topslot.touche::before, .fn-case.sortie, .fn-case-boost, .fn-case-gagnante, .fn-bras-x { animation: none; }
   .fn-piece.lancee { animation: none; transform: rotateY(var(--fin)); }
 }

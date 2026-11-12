@@ -34,10 +34,10 @@ import {
 } from '../../shared/folleNuit';
 import type { VueCasino } from '../../shared/casino';
 import type { Appel } from './App';
-import { CHOIX_AUTO, dollars } from './casinoOutils';
+import { CHOIX_AUTO, dollars, LINGOTS_PALIER, PluieLingots } from './casinoOutils';
 import { socket } from './socket';
 import { tr } from './traduction';
-import { Celebration, jouerEffet, mouvementReduit } from './ui';
+import { jouerEffet, mouvementReduit } from './ui';
 import './folleNuit.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
@@ -441,13 +441,31 @@ function ligneAnimateur(v: VueFolleNuit): string {
   return '';
 }
 
+/** Toutes les 30 minutes (à l'heure et à la demie), l'animateur et la croupière se relaient au micro. */
+const RELAIS_PRESENTATEUR = 30 * 60_000;
+function useRelais(): number {
+  const [tranche, setTranche] = useState(() => Math.floor(Date.now() / RELAIS_PRESENTATEUR));
+  useEffect(() => {
+    const t = window.setTimeout(() => setTranche(Math.floor(Date.now() / RELAIS_PRESENTATEUR)), (tranche + 1) * RELAIS_PRESENTATEUR - Date.now() + 200);
+    return () => window.clearTimeout(t);
+  }, [tranche]);
+  return tranche;
+}
+
+/** Qui présente : l'animateur ou la croupière selon la demi-heure, et la croupière blonde pour la roue de la Folle Nuit. */
+function presentateur(v: VueFolleNuit, tranche: number): string {
+  if (v.bonus?.type === 'folle' && ['intro', 'choix', 'jeu', 'finBonus'].includes(v.phase)) return '/cartes/fn-croupiere-blonde.webp';
+  return tranche % 2 ? '/cartes/fn-croupiere.webp' : '/cartes/fn-animateur.webp';
+}
+
 function Animateur({ v }: { v: VueFolleNuit }) {
-  const image = useImage('/cartes/fn-animateur.webp');
+  const src = presentateur(v, useRelais());
+  const image = useImage(src);
   const ligne = ligneAnimateur(v);
   return (
     <div className="fn-animateur">
       {image ? (
-        <img src="/cartes/fn-animateur.webp" alt="" draggable={false} />
+        <img key={src} className="fn-presentateur" src={src} alt="" draggable={false} />
       ) : (
         <svg viewBox="0 0 60 90" aria-hidden="true" className="fn-animateur-repli">
           <path d="M18 14 Q30 2 42 14 L40 20 L20 20 Z" fill="#160d0b" />
@@ -753,6 +771,8 @@ function BonusFolle({ b, v, etape, peutChoisir, onChoix }: { b: Extract<VueBonus
         <span className="fn-roue-moyeu-folle">
           <Embleme c="folle" />
         </span>
+        {/* La croupière blonde présente la roue géante, au pied de la roue comme l'animateur pour la grande. */}
+        <img className="fn-roue-hote fn-presentateur" src="/cartes/fn-croupiere-blonde.webp" alt="" draggable={false} />
         {DECALAGES_FLECHES.map((d, k) => {
           const e = etatFleche(k);
           return (
@@ -902,7 +922,10 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
   const [jeton, setJeton] = useState(JETONS_FN[1]);
   const [erreur, setErreur] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const [fete, setFete] = useState<number | null>(null);
+  /** Gros gain : une pluie de lingots sur tout l'écran. */
+  const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
+  const minuteriePluie = useRef(0);
+  useEffect(() => () => window.clearTimeout(minuteriePluie.current), []);
   const plateau = useImage('/cartes/fn-plateau.webp');
   const precedente = useRef<VueFolleNuit | null>(null);
   /** Mode automatique : mes mises de la manche d'avant, rejouées à chaque manche (10 à 100, ou sans fin). */
@@ -946,8 +969,14 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
     if (v.monGain !== null && p.monGain === null) {
       const mise = Object.values(v.mesMises).reduce((s, x) => s + (x ?? 0), 0);
       if (v.monGain >= 1_000_000 || (mise && v.monGain >= mise * 50)) {
-        setFete(v.monGain);
         jouerEffet('roulette_gros_lot');
+        if (!mouvementReduit()) {
+          const n = v.monGain >= 50_000_000 ? LINGOTS_PALIER.colossal : v.monGain >= 5_000_000 ? LINGOTS_PALIER.enorme : LINGOTS_PALIER.gros;
+          setPluie({ n, id: Date.now() });
+          window.setTimeout(() => jouerEffet('lingots_pluie'), 250);
+          window.clearTimeout(minuteriePluie.current);
+          minuteriePluie.current = window.setTimeout(() => setPluie(null), 3800);
+        }
       } else if (v.monGain > 0) jouerEffet('roulette_gain');
       else if (v.monGain < 0) jouerEffet('echec');
     }
@@ -1175,17 +1204,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
         </p>
       </section>
 
-      {fete !== null && (
-        <div className="fn-fete">
-          <Celebration
-            titre={tr('Gros gain !', 'Big win!')}
-            etiquette={tr(`Gain : ${dollars(fete)}`, `Win: ${dollars(fete)}`)}
-            medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(fete)}</strong>}
-            legende={sortie ? tr(`La Folle Nuit · ${nomCase(sortie)}`, `Crazy Night · ${nomCase(sortie)}`) : tr('La Folle Nuit', 'Crazy Night')}
-            onFermer={() => setFete(null)}
-          />
-        </div>
-      )}
+      {pluie && <PluieLingots key={pluie.id} n={pluie.n} />}
     </div>
   );
 }
