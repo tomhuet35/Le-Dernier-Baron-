@@ -1389,14 +1389,27 @@ function Barre({ fin, duree, presse }: { fin: number | null; duree: number; pres
   );
 }
 
-/** Le bandeau du show dans le salon : en direct, combien regardent, les derniers résultats. */
+/**
+ * Le bandeau du show dans le salon : l'affiche (le logo et les deux présentateurs), en direct, combien regardent, les
+ * derniers résultats. Sans l'affiche, une petite roue et le logo.
+ */
 export function BandeauFolleNuit({ vue, onOuvrir }: { vue: VueCasino; onOuvrir: () => void }) {
   const fn = vue.folleNuit;
-  const vignette = useImage('/cartes/casino-folle-nuit.webp');
+  // Tant qu'on ne sait pas, on prévoit l'affiche (pas de saut de mise en page) ; sans elle, la petite roue.
+  const affiche = useImage('/cartes/casino-folle-nuit.webp') !== false;
+  const pastilles = (
+    <>
+      <span className="fn-direct">{tr('En direct', 'Live')}</span>
+      {fn?.happyHour?.active && <span className="fn-happy-pastille">Happy Hour</span>}
+    </>
+  );
   return (
-    <button type="button" className="fn-bandeau" onClick={onOuvrir}>
-      {vignette ? (
-        <img src="/cartes/casino-folle-nuit.webp" alt="" draggable={false} />
+    <button type="button" className={`fn-bandeau ${affiche ? 'affiche' : ''}`} onClick={onOuvrir}>
+      {affiche ? (
+        <span className="fn-bandeau-affiche">
+          <img src="/cartes/casino-folle-nuit.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
+          <span className="fn-bandeau-pastilles">{pastilles}</span>
+        </span>
       ) : (
         <svg viewBox="-50 -50 100 100" aria-hidden="true" className="fn-bandeau-roue">
           {ROUE_FN.map((c, i) => {
@@ -1409,11 +1422,12 @@ export function BandeauFolleNuit({ vue, onOuvrir }: { vue: VueCasino; onOuvrir: 
         </svg>
       )}
       <span className="fn-bandeau-texte">
-        <strong>
-          <img className="fn-logo" src="/cartes/fn-logo.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
-          <span className="fn-direct">{tr('En direct', 'Live')}</span>
-          {fn?.happyHour?.active && <span className="fn-happy-pastille">Happy Hour</span>}
-        </strong>
+        {!affiche && (
+          <strong>
+            <img className="fn-logo" src="/cartes/fn-logo.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
+            {pastilles}
+          </strong>
+        )}
         <small>
           {fn?.happyHour?.active
             ? tr('Happy Hour jusqu’à 12 h : le Top Slot donne de ×10 à ×100 à chaque manche !', 'Happy Hour until noon: the Top Slot gives ×10 to ×100 every round!')

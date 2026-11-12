@@ -229,6 +229,19 @@
 .cas-pluie { position: fixed; inset: 0; z-index: 22; overflow: hidden; pointer-events: none; }
 .cas-pluie img { position: absolute; top: -14vh; width: calc(58px * var(--t)); height: auto; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); animation-name: cas-lingot; animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.55); animation-fill-mode: both; }
 @keyframes cas-lingot { 0% { opacity: 0; transform: translateY(0) rotate(0); } 8% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0.85; transform: translateY(122vh) rotate(var(--tour)); } }
+/* Le butin des Coffres : billets (qui virevoltent), rubis et lingots. */
+.cas-pluie img.rubis { width: calc(46px * var(--t)); }
+.cas-pluie img.lingot-butin { width: calc(56px * var(--t)); }
+.cas-pluie img.billet { width: calc(80px * var(--t)); animation-name: cas-billet; animation-timing-function: linear; }
+@keyframes cas-billet {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0) rotateX(0); }
+  6% { opacity: 1; }
+  25% { transform: translate(-26px, 29vh) rotate(calc(var(--tour) * 0.25)) rotateX(55deg); }
+  50% { transform: translate(22px, 59vh) rotate(calc(var(--tour) * 0.5)) rotateX(-45deg); }
+  75% { transform: translate(-16px, 89vh) rotate(calc(var(--tour) * 0.75)) rotateX(50deg); }
+  90% { opacity: 1; }
+  100% { opacity: 0.85; transform: translate(8px, 122vh) rotate(var(--tour)) rotateX(0); }
+}
 
 /* Résultat, mise et options (communs) */
 .cas-resultat { display: grid; justify-items: center; gap: 2px; min-height: 52px; padding: 0 12px; text-align: center; font-size: 13.5px; }

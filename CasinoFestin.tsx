@@ -4,13 +4,14 @@
  * monter le multiplicateur, un badge fait tout perdre. On encaisse quand on veut. Le serveur place les badges et tient
  * la partie ; l'écran ne voit le contenu d'un coffre qu'une fois ouvert.
  *
- * Visuels : festin-coffre.webp, festin-butin.webp, festin-police.webp (détourés) et festin-table.webp (la caisse).
+ * Visuels : festin-coffre.webp, festin-butin.webp, festin-police.webp (détourés) et festin-table.webp (la caisse) ;
+ * à l'encaissement tombent butin-billet.webp, butin-rubis.webp et butin-lingot.webp.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { MULTIPLE_GROS_GAIN, type VueCasino } from '../../shared/casino';
 import { BADGES_MAX, BADGES_MIN, BADGES_RAPIDES, COFFRES, echelleCoffres, MISES_COFFRES, type ContenuCoffre, type VueCoffres } from '../../shared/festin';
 import type { Appel } from './App';
-import { dollars, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
+import { BUTIN_PLUIE, dollars, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
 import { tr } from './traduction';
 import { jouerEffet, mouvementReduit, useCompteur } from './ui';
 import './festin.css';
@@ -82,12 +83,14 @@ function Coffre({
 // ---------------------------------------------------------------------------------------------------------------
 // La somme encaissée, en grand
 
-function AnnonceCoffres({ montant, gros }: { montant: number; gros: boolean }) {
+function AnnonceCoffres({ montant, x, gros }: { montant: number; x: number; gros: boolean }) {
   const valeur = useCompteur(montant, Math.round(montant / 20), 0, gros ? 1600 : 900);
   return (
     <div className={`fe-gain ${gros ? 'gros' : ''}`} aria-live="polite">
       <span>{gros ? tr('Gros butin !', 'Big loot!') : tr('Encaissé !', 'Cashed out!')}</span>
+      <em>{x2(x)}</em>
       <strong>+{dollars(valeur)}</strong>
+      <small>{tr('ajoutés à ton solde', 'added to your balance')}</small>
     </div>
   );
 }
@@ -101,8 +104,10 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
   const [attente, setAttente] = useState<number | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [annonce, setAnnonce] = useState<{ montant: number; gros: boolean; id: number } | null>(null);
+  const [annonce, setAnnonce] = useState<{ montant: number; x: number; gros: boolean; id: number } | null>(null);
   const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
+  /** Le gain qui vient d'arriver sur le solde (affiché sous le solde, en haut à droite). */
+  const [credit, setCredit] = useState<{ montant: number; id: number } | null>(null);
   /** Numéro de la partie lancée : les coffres repartent de zéro à chaque partie. */
   const [numero, setNumero] = useState(0);
   const minuteries = useRef<number[]>([]);
@@ -111,6 +116,9 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
   const solde = useSoldeAnime(vue.solde);
   const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
   useEffect(() => () => minuteries.current.forEach((m) => window.clearTimeout(m)), []);
+
+  // On arrive du salon (souvent descendu jusqu'aux vignettes) : l'écran s'ouvre en haut, la caisse en entier.
+  useEffect(() => window.scrollTo(0, 0), []);
 
   // Une partie en cours attend peut-être le joueur.
   useEffect(() => {
@@ -145,12 +153,16 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
     const gros = c.gain >= MULTIPLE_GROS_GAIN * c.mise || c.gain >= 1_000_000;
     jouerEffet(gros ? 'roulette_gros_lot' : 'roulette_gain');
     plusTard(() => jouerEffet('machine_pieces'), 200);
-    setAnnonce({ montant: c.gain, gros, id: Date.now() });
+    setAnnonce({ montant: c.gain, x: c.x, gros, id: Date.now() });
     plusTard(() => setAnnonce(null), gros ? 3600 : 2400);
-    if (gros && !mouvementReduit()) {
-      setPluie({ n: c.gain >= 50 * MULTIPLE_GROS_GAIN * c.mise ? LINGOTS_PALIER.colossal : LINGOTS_PALIER.enorme, id: Date.now() });
-      plusTard(() => jouerEffet('lingots_pluie'), 250);
-      plusTard(() => setPluie(null), 3800);
+    setCredit({ montant: c.gain, id: Date.now() });
+    plusTard(() => setCredit(null), 2600);
+    // Chaque butin encaissé fait pleuvoir billets, rubis et lingots : plus le gain est gros, plus il en tombe.
+    if (!mouvementReduit()) {
+      const n = c.gain >= 50 * MULTIPLE_GROS_GAIN * c.mise ? LINGOTS_PALIER.colossal : gros ? LINGOTS_PALIER.enorme : c.x >= 10 ? LINGOTS_PALIER.gros : 20;
+      setPluie({ n, id: Date.now() });
+      if (gros) plusTard(() => jouerEffet('lingots_pluie'), 250);
+      plusTard(() => setPluie(null), 4400);
     }
   };
 
@@ -250,7 +262,14 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         <h1 className="fe-titre">
           <span>{tr('Les Coffres', 'The Baron’s')}</span> <span>{tr('du Baron', 'Safes')}</span>
         </h1>
-        <span className="cas-solde-petit">{dollars(solde)}</span>
+        <span className={`cas-solde-petit fe-solde ${credit ? 'credite' : ''}`}>
+          {dollars(solde)}
+          {credit && (
+            <b key={credit.id} className="fe-credit">
+              +{dollars(credit.montant)}
+            </b>
+          )}
+        </span>
       </header>
 
       <section className="fe-table">
@@ -367,8 +386,8 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         </p>
       </section>
 
-      {pluie && <PluieLingots key={pluie.id} n={pluie.n} />}
-      {annonce && <AnnonceCoffres key={annonce.id} montant={annonce.montant} gros={annonce.gros} />}
+      {pluie && <PluieLingots key={pluie.id} n={pluie.n} objets={BUTIN_PLUIE} />}
+      {annonce && <AnnonceCoffres key={annonce.id} montant={annonce.montant} x={annonce.x} gros={annonce.gros} />}
     </div>
   );
 }

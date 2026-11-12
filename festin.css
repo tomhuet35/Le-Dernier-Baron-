@@ -5,10 +5,14 @@
 .fe-ecran > * { min-width: 0; }
 .fe-titre { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; line-height: 1; font-size: clamp(20px, 5.4vw, 30px) !important; color: var(--or-vif); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 18px rgba(233, 173, 91, 0.35); }
 
-/* La caisse du contrebandier (le fond), et la grille des coffres posée sur son panneau de bois. */
+/*
+ * La caisse du contrebandier (le fond, carrée), et la grille des coffres posée sur son panneau de bois. La grille est
+ * placée en position absolue (et non par un padding en %) : Safari sur iPad calculait mal la hauteur d'une grille
+ * à 100 % dans une boîte à aspect-ratio avec padding, et la 5e rangée sortait de la caisse.
+ */
 .fe-table {
-  position: relative; aspect-ratio: 1; padding: 17% 12.5% 17.5%; border-radius: 14px; overflow: hidden;
-  background: url('/cartes/festin-table.webp') center / 100% 100% no-repeat, #2a1408;
+  position: relative; aspect-ratio: 1 / 1; border-radius: 14px; overflow: hidden;
+  background: url('/cartes/festin-table.webp') center / cover no-repeat, #2a1408;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
 }
 .fe-ecran[data-etat='perdu'] .fe-table { animation: fe-secousse 0.5s ease-in-out; }
@@ -18,12 +22,12 @@
 .fe-ecran[data-etat='perdu'] .fe-gyrophare { animation: fe-gyrophare 0.7s linear 4; background: radial-gradient(60% 70% at 0% 50%, rgba(255, 30, 30, 0.55), transparent 70%), radial-gradient(60% 70% at 100% 50%, rgba(40, 90, 255, 0.55), transparent 70%); }
 @keyframes fe-gyrophare { 0%, 100% { opacity: 0.9; filter: hue-rotate(0deg); } 50% { opacity: 0.9; transform: scaleX(-1); } }
 
-.fe-grille { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(5, minmax(0, 1fr)); gap: 2% 2.2%; width: 100%; height: 100%; }
+.fe-grille { position: absolute; top: 17%; bottom: 17.5%; left: 12.5%; right: 12.5%; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(5, minmax(0, 1fr)); }
 
 /* Un coffre : la porte (l'image du coffre) qui pivote sur ses gonds, et ce qu'il y a dedans. */
-.fe-case { position: relative; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 10px; background: none; cursor: pointer; perspective: 600px; transition: background 0.3s, box-shadow 0.3s; }
+.fe-case { position: relative; min-width: 0; min-height: 0; margin: 4%; padding: 0; border: 0; border-radius: 10px; background: none; cursor: pointer; perspective: 600px; transition: background 0.3s, box-shadow 0.3s; }
 .fe-case:disabled { opacity: 1; cursor: default; }
-.fe-porte, .fe-contenu { position: absolute; inset: 3%; display: block; pointer-events: none; }
+.fe-porte, .fe-contenu { position: absolute; inset: 5%; display: block; pointer-events: none; }
 .fe-porte img, .fe-contenu img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .fe-porte { z-index: 2; transform-origin: 92% 50%; transition: transform 0.25s ease-out; filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.6)); }
 .fe-ecran.en-cours .fe-case.fermee:not(:disabled):hover .fe-porte { transform: translateY(-4%) scale(1.04); filter: drop-shadow(0 0 10px rgba(255, 214, 120, 0.7)) drop-shadow(0 5px 6px rgba(0, 0, 0, 0.6)); }
@@ -92,6 +96,12 @@
 .fe-gain span { font-size: 13px; font-weight: 900; letter-spacing: 0.24em; text-transform: uppercase; color: #ffcf6b; }
 .fe-gain strong { font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 8vw, 46px); line-height: 1.05; color: #fff1c4; font-variant-numeric: tabular-nums; white-space: nowrap; text-shadow: 0 0 18px rgba(255, 200, 110, 0.9), 0 3px 8px rgba(0, 0, 0, 0.8); }
 .fe-gain.gros strong { font-size: clamp(38px, 11vw, 70px); }
+.fe-gain em { font-family: var(--titre); font-style: normal; font-size: clamp(22px, 6vw, 30px); line-height: 1; color: #ffcf6b; }
+.fe-gain small { font-size: 12px; letter-spacing: 0.06em; color: var(--creme-doux); }
+.fe-solde { position: relative; z-index: 25; transition: color 0.3s, box-shadow 0.3s, border-color 0.3s; } /* au-dessus de la pluie de butin */
+.fe-solde.credite { color: #fff1c4; border-color: #ffcf6b; box-shadow: 0 0 16px rgba(255, 200, 110, 0.75); }
+.fe-credit { position: absolute; right: 8px; top: calc(100% + 4px); padding: 2px 10px; border-radius: 99px; background: linear-gradient(180deg, #2f7d45, #1d5530); border: 1px solid #8fd18a; font-family: var(--titre); font-weight: 400; font-size: 15px; color: #eaffe6; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); animation: fe-credit 2.6s ease-out both; pointer-events: none; z-index: 5; }
+@keyframes fe-credit { 0% { opacity: 0; transform: translateY(8px) scale(0.8); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
 @keyframes fe-gain-arrivee { from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } }
 @keyframes fe-gain-depart { to { opacity: 0; transform: translate(-50%, -62%) scale(0.92); } }
 
@@ -102,7 +112,7 @@
   .fe-table { width: min(100%, calc(100vh - 110px)); justify-self: center; }
 }
 /* Sur téléphone, la grille déborde un peu sur le cadre de la caisse : des coffres plus grands sous le doigt. */
-@media (max-width: 560px) { .fe-table { padding: 15% 8% 15.5%; } .fe-grille { gap: 1.6% 1.8%; } }
+@media (max-width: 560px) { .fe-grille { top: 15%; bottom: 15.5%; left: 8%; right: 8%; } .fe-case { margin: 3%; } .fe-porte, .fe-contenu { inset: 4%; } }
 @media (max-width: 420px) {
   .fe-compteur > div { padding: 6px 2px; }
   .fe-choix-badges { grid-template-columns: auto 38px minmax(40px, auto) 38px; gap: 6px; }

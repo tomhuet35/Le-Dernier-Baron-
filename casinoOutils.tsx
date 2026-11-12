@@ -49,22 +49,39 @@ export function palierDe(gain: number, mise: number): Palier {
 export const LINGOTS_PALIER: Record<Palier, number> = { aucun: 0, petit: 0, joli: 10, gros: 26, enorme: 42, colossal: 64 };
 
 /** Pluie de lingots d'or : quelques-uns sur la machine pour un joli gain, tout l'écran pour un gros. */
-export function PluieLingots({ n }: { n: number }) {
+/** Ce qui peut tomber : les lingots des machines (par défaut), ou le butin des Coffres (billets, rubis, lingots). */
+export type ObjetPluie = 'lingot' | 'billet' | 'rubis' | 'lingot-butin';
+const IMAGES_PLUIE: Record<ObjetPluie, string> = {
+  lingot: '/cartes/machine-lingot.webp',
+  billet: '/cartes/butin-billet.webp',
+  rubis: '/cartes/butin-rubis.webp',
+  'lingot-butin': '/cartes/butin-lingot.webp',
+};
+export const BUTIN_PLUIE: ObjetPluie[] = ['billet', 'rubis', 'lingot-butin'];
+
+export function PluieLingots({ n, objets = ['lingot'] }: { n: number; objets?: ObjetPluie[] }) {
   const [lingots] = useState(() =>
-    Array.from({ length: n }, (_, k) => ({
-      x: 3 + Math.random() * 94,
-      delai: (k / n) * 0.9 + Math.random() * 0.35,
-      duree: 1.5 + Math.random() * 0.9,
-      taille: 0.7 + Math.random() * 0.6,
-      tour: (Math.random() * 2 - 1) * 520,
-    })),
+    Array.from({ length: n }, (_, k) => {
+      const objet = objets[(k + Math.floor(Math.random() * objets.length)) % objets.length];
+      // Les billets tombent plus lentement, en virevoltant.
+      const billet = objet === 'billet';
+      return {
+        objet,
+        x: 3 + Math.random() * 94,
+        delai: (k / n) * 0.9 + Math.random() * 0.35,
+        duree: billet ? 2.3 + Math.random() * 1.1 : 1.5 + Math.random() * 0.9,
+        taille: 0.7 + Math.random() * 0.6,
+        tour: (Math.random() * 2 - 1) * (billet ? 160 : 520),
+      };
+    }),
   );
   return (
     <div className="cas-pluie" aria-hidden="true">
       {lingots.map((l, k) => (
         <img
           key={k}
-          src="/cartes/machine-lingot.webp"
+          className={l.objet}
+          src={IMAGES_PLUIE[l.objet]}
           alt=""
           draggable={false}
           style={{ left: `${l.x}%`, animationDelay: `${l.delai}s`, animationDuration: `${l.duree}s`, '--t': l.taille, '--tour': `${l.tour}deg` } as CSSProperties}

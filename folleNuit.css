@@ -268,6 +268,15 @@
 .fn-bandeau { position: relative; display: grid; grid-template-columns: 86px minmax(0, 1fr); align-items: center; gap: 12px; width: 100%; padding: 8px 14px 8px 8px; border-radius: 18px; border: 2px solid var(--or-vif); background: linear-gradient(120deg, rgba(122, 26, 18, 0.95), rgba(22, 13, 11, 0.95) 70%); text-align: left; box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6), 0 0 22px rgba(233, 173, 91, 0.25); }
 .fn-bandeau > img, .fn-bandeau-roue { width: 86px; height: 86px; border-radius: 14px; object-fit: cover; }
 .fn-bandeau-roue { animation: fn-tourne 30s linear infinite; }
+/* Avec l'affiche : elle occupe toute la largeur du bandeau, le texte et les derniers résultats dessous. */
+.fn-bandeau.affiche { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; overflow: hidden; }
+.fn-bandeau-affiche { position: relative; display: block; aspect-ratio: 2 / 1; overflow: hidden; }
+.fn-bandeau-affiche > img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+.fn-bandeau.affiche:hover .fn-bandeau-affiche > img { transform: scale(1.03); }
+.fn-bandeau-affiche::after { content: ''; position: absolute; inset: auto 0 0; height: 26%; background: linear-gradient(transparent, rgba(22, 13, 11, 0.9)); pointer-events: none; }
+.fn-bandeau-pastilles { position: absolute; left: 12px; top: 10px; z-index: 1; display: flex; gap: 6px; }
+.fn-bandeau-pastilles .fn-direct { font-size: 12px; padding: 3px 10px 3px 7px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6); }
+.fn-bandeau.affiche .fn-bandeau-texte { padding: 8px 14px 12px; }
 @keyframes fn-tourne { to { transform: rotate(360deg); } }
 .fn-bandeau-texte { display: grid; gap: 4px; min-width: 0; }
 .fn-bandeau-texte strong { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: var(--titre); font-weight: 400; font-size: 21px; color: var(--or-vif); }
