@@ -38,6 +38,7 @@ import type { VueTableBJ } from '../../shared/blackjack';
 import type { Appel } from './App';
 import { TableBlackjack } from './CasinoBlackjack';
 import { BandeauFolleNuit, ShowFolleNuit } from './CasinoFolleNuit';
+import { JeuFestin } from './CasinoFestin';
 import { MachineNuits } from './CasinoNuits';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
@@ -1083,10 +1084,11 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // ---------------------------------------------------------------------------------------------------------------
 // Le salon
 
-const JEUX: { id: 'machines' | 'roulette' | 'blackjack' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+const JEUX: { id: 'machines' | 'roulette' | 'blackjack' | 'festin' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
   { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines.webp', repli: '/cartes/casino-machine.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
   { id: 'blackjack', nom: ['Blackjack', 'Blackjack'], image: '/cartes/casino-blackjack.webp', repli: '/cartes/billets_05.webp' },
+  { id: 'festin', nom: ['Le Festin du Baron', 'The Baron’s Feast'], image: '/cartes/casino-festin.webp', repli: '/cartes/baron.webp' },
   { id: 'poker', nom: ['Poker', 'Poker'], image: '/cartes/casino-poker.webp', repli: '/cartes/baron.webp' },
 ];
 
@@ -1151,14 +1153,15 @@ function ChoixMachines({ vue, onMachine, onRetour }: { vue: VueCasino; onMachine
   );
 }
 
-function Vignette({ jeu, onOuvrir }: { jeu: (typeof JEUX)[number]; onOuvrir?: () => void }) {
+function Vignette({ jeu, onOuvrir, ruban }: { jeu: (typeof JEUX)[number]; onOuvrir?: () => void; ruban?: string }) {
   const [src, setSrc] = useState(jeu.image);
   const bientot = !onOuvrir;
   return (
-    <button type="button" className={`cas-vignette ${bientot ? 'bientot' : ''}`} onClick={onOuvrir} disabled={bientot}>
+    <button type="button" className={`cas-vignette ${jeu.id} ${bientot ? 'bientot' : ''}`} onClick={onOuvrir} disabled={bientot}>
       <img src={src} alt="" draggable={false} onError={() => setSrc(jeu.repli)} />
       <span className="cas-vignette-nom">{tr(...jeu.nom)}</span>
       {bientot && <span className="cas-bientot">{tr('Bientôt', 'Soon')}</span>}
+      {!bientot && ruban && <span className="cas-bientot cas-nouveau">{ruban}</span>}
     </button>
   );
 }
@@ -1173,6 +1176,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
         ? tr(`${annonce.nom} a décroché le ${annonce.jackpot === 'grand' ? 'GRAND' : 'MAJOR'} des Nuits du Baron : ${dollars(annonce.gain)} !`, `${annonce.nom} hit the ${annonce.jackpot === 'grand' ? 'GRAND' : 'MAJOR'} on the Baron’s Nights: ${dollars(annonce.gain)}!`)
       : annonce.jeu === 'nuits'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} aux Nuits du Baron !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Baron’s Nights!`)
+      : annonce.jeu === 'festin'
+        ? tr(`${annonce.nom} a encaissé ${dollars(annonce.gain)} au Festin du Baron !`, `${annonce.nom} cashed out ${dollars(annonce.gain)} at the Baron’s Feast!`)
       : annonce.jeu === 'folleNuit'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la Folle Nuit !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Crazy Night!`)
       : annonce.jeu === 'casse'
@@ -1314,6 +1319,7 @@ function Salon({
   onBlackjack,
   onRoulette,
   onFolleNuit,
+  onFestin,
   onCadeau,
   onCadeauFini,
   onQuitter,
@@ -1324,6 +1330,7 @@ function Salon({
   onBlackjack: () => void;
   onRoulette: () => void;
   onFolleNuit: () => void;
+  onFestin: () => void;
   onCadeau: () => void;
   onCadeauFini: () => void;
   onQuitter: () => void;
@@ -1368,7 +1375,12 @@ function Salon({
       <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} />
       <div className="cas-jeux">
         {JEUX.map((j) => (
-          <Vignette key={j.id} jeu={j} onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : undefined} />
+          <Vignette
+            key={j.id}
+            jeu={j}
+            onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : j.id === 'festin' ? onFestin : undefined}
+            ruban={j.id === 'festin' ? (vue.festin?.enCours ? tr('En cours', 'In play') : tr('Nouveau', 'New')) : undefined}
+          />
         ))}
       </div>
       <p className="cas-gros-lot">
@@ -1414,7 +1426,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin'>('salon');
   const [roue, setRoue] = useState(false);
   const [fenetreTables, setFenetreTables] = useState<JeuTable | null>(null);
   const [table, setTable] = useState<TableActive | null>(null);
@@ -1543,6 +1555,21 @@ export default function Casino({
   else if (ecran === 'nuits') contenu = <MachineNuits vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
   else if (ecran === 'table' && table?.jeu === 'blackjack') contenu = <TableBlackjack v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
   else if (ecran === 'table' && table?.jeu === 'roulette') contenu = <TableRoulette v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
+  else if (ecran === 'festin')
+    contenu = (
+      <JeuFestin
+        vue={vue}
+        appel={appel}
+        onVue={setVue}
+        onRetour={() => {
+          setEcran('salon');
+          void appel('casino_vue').then((r) => {
+            const casino = (r as unknown as { casino?: VueCasino }).casino;
+            if (r.ok && casino) setVue(casino);
+          });
+        }}
+      />
+    );
   else if (ecran === 'folleNuit')
     contenu = (
       <ShowFolleNuit
@@ -1565,6 +1592,7 @@ export default function Casino({
         onBlackjack={() => setFenetreTables('blackjack')}
         onRoulette={() => setFenetreTables('roulette')}
         onFolleNuit={() => setEcran('folleNuit')}
+        onFestin={() => setEcran('festin')}
         onCadeau={() => void recupererCadeau()}
         onCadeauFini={() =>
           void (async () => {

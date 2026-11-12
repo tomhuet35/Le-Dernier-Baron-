@@ -3,11 +3,11 @@ import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs';
 
 const dossiers = {
   client: ['index.html', 'confidentialite.html'],
-  'client/src': ['App.tsx', 'Casino.tsx', 'casinoOutils.tsx', 'CasinoBlackjack.tsx', 'CasinoFolleNuit.tsx', 'CasinoNuits.tsx', 'folleNuit.css', 'CasinoRoulette.tsx', 'casino.css', 'Classement.tsx', 'Table.tsx', 'Profil.tsx', 'Regles.tsx', 'Reglages.tsx', 'reglages.ts', 'RouletteDuJour.tsx', 'appli.ts', 'Tutoriel.tsx', 'connexion.ts', 'main.tsx', 'Moderation.tsx', 'socket.ts', 'styles.css', 'textes.ts', 'traduction.ts', 'ui.tsx'],
+  'client/src': ['App.tsx', 'Casino.tsx', 'casinoOutils.tsx', 'CasinoBlackjack.tsx', 'CasinoFolleNuit.tsx', 'CasinoFestin.tsx', 'festin.css', 'CasinoNuits.tsx', 'folleNuit.css', 'CasinoRoulette.tsx', 'casino.css', 'Classement.tsx', 'Table.tsx', 'Profil.tsx', 'Regles.tsx', 'Reglages.tsx', 'reglages.ts', 'RouletteDuJour.tsx', 'appli.ts', 'Tutoriel.tsx', 'connexion.ts', 'main.tsx', 'Moderation.tsx', 'socket.ts', 'styles.css', 'textes.ts', 'traduction.ts', 'ui.tsx'],
   'client/public': ['boite.webp', 'dos.webp', 'icone-192.png', 'icone-512.png', 'icone-maskable.png', 'icone-apple.png', 'icone-badge.png', 'manifest.webmanifest', 'sw.js'],
-  shared: ['blackjack.ts', 'cartes.ts', 'casino.ts', 'config.ts', 'folleNuit.ts', 'langue.ts', 'machineASous.ts', 'machineNuits.ts', 'moderation.ts', 'moteur.ts', 'niveaux.ts', 'regles.ts', 'rng.ts', 'robot.ts', 'roulette.ts', 'rouletteCasino.ts', 'types.ts', 'vue.ts'],
-  server: ['classement.ts', 'comptes.ts', 'fictifs.ts', 'index.ts', 'notifications.ts', 'salonCasino.ts', 'serveur.ts', 'showFolleNuit.ts', 'tablesCasino.ts', 'tablesRoulette.ts'],
-  tests: ['blackjack.test.ts', 'casino.test.ts', 'classement.test.ts', 'comptes.test.ts', 'folleNuit.test.ts', 'machineNuits.test.ts', 'regles.test.ts', 'rouletteCasino.test.ts', 'serveur.test.ts', 'simulation.test.ts'],
+  shared: ['blackjack.ts', 'cartes.ts', 'casino.ts', 'config.ts', 'folleNuit.ts', 'festin.ts', 'langue.ts', 'machineASous.ts', 'machineNuits.ts', 'moderation.ts', 'moteur.ts', 'niveaux.ts', 'regles.ts', 'rng.ts', 'robot.ts', 'roulette.ts', 'rouletteCasino.ts', 'types.ts', 'vue.ts'],
+  server: ['classement.ts', 'comptes.ts', 'fictifs.ts', 'index.ts', 'notifications.ts', 'salonCasino.ts', 'serveur.ts', 'showFolleNuit.ts', 'festinCasino.ts', 'tablesCasino.ts', 'tablesRoulette.ts'],
+  tests: ['blackjack.test.ts', 'casino.test.ts', 'classement.test.ts', 'comptes.test.ts', 'folleNuit.test.ts', 'festin.test.ts', 'machineNuits.test.ts', 'regles.test.ts', 'rouletteCasino.test.ts', 'serveur.test.ts', 'simulation.test.ts'],
 };
 let deplaces = 0;
 const ranger = (fichier, dossier) => {

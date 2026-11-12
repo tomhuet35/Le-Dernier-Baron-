@@ -1,0 +1,118 @@
+/* Le Festin du Baron : les cloches d'argent sur la table du banquet. */
+
+#racine:has(.fe-ecran) { max-width: 1180px; }
+.cas-ecran.fe-ecran { width: 100%; max-width: 1140px; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.fe-ecran > * { min-width: 0; }
+.fe-titre { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; line-height: 1; font-size: clamp(20px, 5.4vw, 30px) !important; color: var(--or-vif); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 18px rgba(233, 173, 91, 0.35); }
+
+/* La table du banquet : velours bordeaux, motif Art déco, double filet doré. */
+.fe-table {
+  position: relative; padding: clamp(10px, 3vw, 22px); border-radius: 22px; border: 2px solid var(--or-vif);
+  background:
+    radial-gradient(70% 60% at 50% 40%, rgba(255, 190, 120, 0.16), transparent 70%),
+    repeating-conic-gradient(from 0deg at 50% 110%, rgba(233, 173, 91, 0.07) 0deg 3deg, transparent 3deg 9deg),
+    radial-gradient(120% 100% at 50% 0%, #7a1a12, #3a0b08 70%, #1c0604);
+  box-shadow: 0 0 0 4px #1c0f0a, 0 0 0 6px rgba(233, 173, 91, 0.55), 0 18px 40px rgba(0, 0, 0, 0.7), inset 0 0 60px rgba(0, 0, 0, 0.55);
+}
+.fe-table.decor { background: linear-gradient(rgba(30, 6, 4, 0.25), rgba(30, 6, 4, 0.45)), url('/cartes/festin-table.webp') center / cover no-repeat, #3a0b08; }
+.fe-table::before, .fe-table::after { content: ''; position: absolute; left: 50%; width: 46%; height: 10px; transform: translateX(-50%); background: linear-gradient(90deg, transparent, #e9ad5b 20%, #fff1c4 50%, #e9ad5b 80%, transparent); clip-path: polygon(0 50%, 8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%); opacity: 0.85; }
+.fe-table::before { top: 4px; }
+.fe-table::after { bottom: 4px; }
+.fe-ecran[data-etat='perdu'] .fe-table { animation: fe-secousse 0.5s ease-in-out; }
+@keyframes fe-secousse { 20%, 60% { transform: translateX(-7px) rotate(-0.4deg); } 40%, 80% { transform: translateX(7px) rotate(0.4deg); } }
+
+.fe-grille { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(4px, 1.4vw, 12px); }
+
+/* Une place du banquet : l'assiette, ce qu'il y a dessus, et la cloche par-dessus. */
+.fe-case { position: relative; aspect-ratio: 1; padding: 0; border: 0; border-radius: 16px; background: radial-gradient(circle at 50% 70%, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.08) 70%); box-shadow: inset 0 0 0 1px rgba(233, 173, 91, 0.22); cursor: pointer; overflow: visible; transition: background 0.3s, box-shadow 0.3s; }
+.fe-case:disabled { opacity: 1; cursor: default; }
+.fe-dome, .fe-contenu { position: absolute; inset: 0; display: block; pointer-events: none; }
+.fe-dome svg, .fe-dome img, .fe-contenu svg, .fe-contenu img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.fe-dome { z-index: 2; transform-origin: 50% 80%; transition: transform 0.25s ease-out; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); }
+.fe-ecran.en-cours .fe-case.fermee:not(:disabled):hover .fe-dome { transform: translateY(-5%) rotate(-3deg); }
+.fe-ecran.en-cours .fe-case.fermee:not(:disabled) .fe-dome { animation: fe-attend 2.6s ease-in-out infinite; animation-delay: var(--retard); }
+@keyframes fe-attend { 0%, 86%, 100% { transform: none; } 92% { transform: translateY(-3%) rotate(-2deg); } }
+.fe-case.attente .fe-dome { animation: fe-souleve 0.26s ease-out forwards !important; }
+@keyframes fe-souleve { to { transform: translateY(-14%) rotate(-7deg); } }
+/* Soulevée : la cloche s'envole, le contenu apparaît (en cascade pour celles dévoilées à la fin). */
+.fe-case.devoilee .fe-dome { animation: fe-envol 0.55s cubic-bezier(0.3, 0.7, 0.4, 1) forwards; }
+.fe-case.reste .fe-dome { animation-delay: var(--retard); }
+@keyframes fe-envol { from { transform: translateY(-14%) rotate(-7deg); opacity: 1; } to { transform: translateY(-85%) rotate(-28deg) scale(0.9); opacity: 0; } }
+.fe-case.devoilee .fe-contenu { animation: fe-apparait 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.fe-case.reste .fe-contenu { animation-delay: var(--retard); }
+@keyframes fe-apparait { from { transform: scale(0.55); opacity: 0; } }
+.fe-case.choisie.poulet { background: radial-gradient(circle at 50% 65%, rgba(255, 210, 120, 0.5), rgba(233, 173, 91, 0.1) 70%); box-shadow: inset 0 0 0 2px #e9ad5b, 0 0 18px rgba(255, 200, 110, 0.55); }
+.fe-case.reste { filter: saturate(0.6) brightness(0.62); }
+.fe-case.reste.os { filter: saturate(0.7) brightness(0.8); }
+.fe-case.perdante { z-index: 3; background: radial-gradient(circle at 50% 65%, rgba(255, 60, 40, 0.6), rgba(120, 10, 0, 0.2) 70%); box-shadow: inset 0 0 0 2px #ff6a50, 0 0 26px rgba(255, 60, 40, 0.8); }
+.fe-case.perdante .fe-contenu { animation: fe-apparait 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both, fe-tremble 0.4s ease-in-out 0.45s 2; }
+@keyframes fe-tremble { 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+.fe-vapeur path { stroke-dasharray: 3 4; opacity: 0; animation: fe-vapeur 2.2s ease-in-out infinite; }
+.fe-vapeur path:nth-child(2) { animation-delay: 0.6s; }
+.fe-vapeur path:nth-child(3) { animation-delay: 1.2s; }
+@keyframes fe-vapeur { 0% { opacity: 0; transform: translateY(6px); } 40% { opacity: 0.85; } 100% { opacity: 0; transform: translateY(-8px); } }
+.fe-case.reste .fe-vapeur { display: none; }
+
+/* Le panneau : multiplicateurs, échelle, mise, os, servir / encaisser. */
+.fe-commandes { display: grid; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.9); align-content: start; }
+.fe-compteur { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fe-compteur > div { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; border: 1px solid rgba(231, 194, 122, 0.3); background: linear-gradient(180deg, rgba(122, 26, 18, 0.45), rgba(10, 6, 4, 0.6)); text-align: center; }
+.fe-compteur small { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--creme-doux); }
+.fe-compteur strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 5.4vw, 28px); line-height: 1.1; color: var(--or-vif); white-space: nowrap; }
+.fe-compteur strong.monte { animation: fe-monte 0.5s cubic-bezier(0.3, 1.6, 0.5, 1); color: #fff1c4; text-shadow: 0 0 16px rgba(255, 200, 110, 0.8); }
+@keyframes fe-monte { from { transform: scale(1.45); } }
+.fe-compteur strong.suivant { color: #f6eedc; }
+.fe-compteur strong.os { color: #f3e7cf; }
+.fe-echelle { position: relative; list-style: none; margin: 0; padding: 2px 2px 6px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(233, 173, 91, 0.5) transparent; }
+.fe-echelle li { flex: none; display: grid; justify-items: center; min-width: 62px; padding: 4px 8px; border-radius: 10px; border: 1px solid rgba(231, 194, 122, 0.3); background: rgba(10, 6, 4, 0.6); font-family: var(--titre); font-size: 14px; color: var(--creme-doux); }
+.fe-echelle li small { font-family: var(--texte, inherit); font-size: 9.5px; color: rgba(246, 238, 220, 0.55); }
+.fe-echelle li.atteint { border-color: #e9ad5b; background: linear-gradient(180deg, #e9ad5b, #a8742a); color: #1b120c; }
+.fe-echelle li.atteint small { color: rgba(27, 18, 12, 0.7); }
+.fe-echelle li.prochain { border-color: #fff1c4; color: #fff1c4; box-shadow: 0 0 12px rgba(255, 214, 120, 0.55); }
+.fe-message { margin: 0; min-height: 2.6em; text-align: center; font-size: 14px; color: var(--creme); }
+.fe-message.perdu { color: #ff9b85; font-weight: 700; }
+.fe-message.encaisse { color: #8fd18a; font-weight: 700; }
+.fe-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: stretch; }
+.fe-encaisser { display: grid; justify-items: center; gap: 2px; min-height: 66px; padding: 8px 14px; border-radius: 14px; border: 2px solid #fff1c4; background: radial-gradient(120% 140% at 50% 0%, #ffe9a8, #e9ad5b 50%, #a8742a); color: #1b120c; box-shadow: 0 0 0 3px rgba(22, 16, 12, 0.9), 0 0 22px rgba(255, 200, 110, 0.45), 0 10px 24px rgba(0, 0, 0, 0.6); }
+.fe-encaisser span { font-size: 12px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; }
+.fe-encaisser strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 5.6vw, 28px); line-height: 1.05; white-space: nowrap; }
+.fe-encaisser:disabled { opacity: 0.55; filter: grayscale(0.4); }
+.fe-encaisser:active:not(:disabled) { transform: scale(0.97); }
+.fe-hasard { min-width: 96px; padding: 6px 12px; border-radius: 14px; font-size: 14px; }
+.fe-mise-cours { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 13px; }
+.fe-mise-cours strong { color: var(--or-vif); }
+.fe-reglages { display: grid; gap: 12px; justify-items: center; }
+.fe-choix-os { display: grid; grid-template-columns: auto 42px minmax(44px, auto) 42px; align-items: center; justify-content: center; gap: 8px; }
+.fe-choix-os-titre { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--creme-doux); }
+.fe-choix-os-titre svg { width: 34px; height: 34px; }
+.fe-pas { min-height: 42px; padding: 0; border-radius: 50%; font-size: 22px; line-height: 1; background: var(--nuit-3); border-color: var(--or); }
+.fe-nb-os { min-width: 44px; text-align: center; font-family: var(--titre); font-weight: 400; font-size: 30px; color: #f3e7cf; }
+.fe-rapides { grid-column: 1 / -1; display: flex; justify-content: center; gap: 6px; }
+.fe-rapides button { min-width: 44px; min-height: 34px; padding: 2px 10px; border-radius: 99px; font-family: var(--titre); font-size: 16px; color: var(--or-vif); border-color: var(--filet); background: rgba(10, 6, 4, 0.6); }
+.fe-rapides button.choisi { border-color: var(--or-vif); background: linear-gradient(180deg, #e9ad5b, #a8742a); color: #1b120c; }
+.fe-servir { width: min(100%, 380px); }
+
+/* La somme encaissée, en grand */
+.fe-gain { position: fixed; left: 50%; top: 42%; z-index: 30; display: grid; justify-items: center; gap: 2px; padding: 14px 28px 16px; border-radius: 22px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(122, 26, 18, 0.96), rgba(22, 13, 11, 0.96)); box-shadow: 0 0 40px rgba(255, 200, 110, 0.55), 0 18px 40px rgba(0, 0, 0, 0.7); pointer-events: none; transform: translate(-50%, -50%); animation: fe-gain-arrivee 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both, fe-gain-depart 0.5s ease-in 1.9s both; }
+.fe-gain.gros { padding: 18px 36px 22px; animation: fe-gain-arrivee 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both, fe-gain-depart 0.6s ease-in 3s both; }
+.fe-gain span { font-size: 13px; font-weight: 900; letter-spacing: 0.24em; text-transform: uppercase; color: #ffcf6b; }
+.fe-gain strong { font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 8vw, 46px); line-height: 1.05; color: #fff1c4; font-variant-numeric: tabular-nums; white-space: nowrap; text-shadow: 0 0 18px rgba(255, 200, 110, 0.9), 0 3px 8px rgba(0, 0, 0, 0.8); }
+.fe-gain.gros strong { font-size: clamp(38px, 11vw, 70px); }
+@keyframes fe-gain-arrivee { from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } }
+@keyframes fe-gain-depart { to { opacity: 0; transform: translate(-50%, -62%) scale(0.92); } }
+
+/* Grand écran : la table à gauche, le panneau à droite. */
+@media (min-aspect-ratio: 1 / 1) and (min-width: 900px) {
+  .cas-ecran.fe-ecran { grid-template-columns: minmax(0, 1fr) minmax(330px, 400px); align-items: start; }
+  .fe-ecran > .cas-barre { grid-column: 1 / -1; }
+  .fe-table { width: min(100%, calc(100vh - 110px)); justify-self: center; }
+}
+@media (max-width: 420px) {
+  .fe-case { border-radius: 10px; }
+  .fe-compteur > div { padding: 6px 2px; }
+  .fe-choix-os { grid-template-columns: auto 38px minmax(40px, auto) 38px; gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fe-ecran *, .fe-gain { animation: none !important; transition: none !important; }
+  .fe-case.devoilee .fe-dome { opacity: 0; }
+}

@@ -43,7 +43,9 @@
 
 /* Les jeux : deux par ligne sur téléphone, quatre de front sur grand écran */
 .cas-jeux { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (min-width: 700px) { .cas-jeux { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 700px) { .cas-jeux { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; } .cas-jeux .cas-vignette-nom { font-size: 17px; } }
+/* Sur téléphone, 5 vignettes sur 2 colonnes : la dernière prend toute la largeur. */
+@media (max-width: 699px) { .cas-jeux > .cas-vignette:last-child:nth-child(odd) { grid-column: 1 / -1; aspect-ratio: 2 / 1.1; } }
 
 /* Le menu des machines à sous */
 .cas-choix-machines { gap: 10px; }
@@ -72,6 +74,7 @@
 .cas-vignette.bientot { opacity: 1; }
 .cas-vignette.bientot img { filter: grayscale(0.7) brightness(0.55); }
 .cas-bientot { position: absolute; top: 10px; right: -30px; rotate: 35deg; width: 120px; padding: 3px 0; background: var(--rouge); border-top: 1px solid var(--or-vif); border-bottom: 1px solid var(--or-vif); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #fff1d0; }
+.cas-nouveau { background: linear-gradient(90deg, #a8742a, #e9ad5b, #a8742a); color: #1b120c; }
 
 .cas-gros-lot { margin: 0; text-align: center; font-size: 14px; color: var(--creme-doux); }
 .cas-gros-lot strong { color: var(--or-vif); font-family: var(--titre); font-weight: 400; font-size: 17px; }
