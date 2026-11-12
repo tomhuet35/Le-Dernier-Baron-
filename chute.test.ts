@@ -22,15 +22,27 @@ describe('La Chute des Écus : les tables', () => {
     expect(multiplicateursChute(7, 'moyen')).toEqual([]);
   });
 
-  it('rend environ 97 % des mises sur chaque table', () => {
+  it('rend environ 93 % des mises sur chaque table, et le milieu fait perdre', () => {
+    const gagnants: Record<string, number[]> = { faible: [], moyen: [], eleve: [] };
     for (let n = RANGEES_MIN; n <= RANGEES_MAX; n++) {
-      expect(chancesChute(n).reduce((s, p) => s + p, 0)).toBeCloseTo(1, 12);
+      const p = chancesChute(n);
+      expect(p.reduce((s, x) => s + x, 0)).toBeCloseTo(1, 12);
       for (const risque of RISQUES_CHUTE) {
         const rtp = rtpChute(n, risque);
-        expect(rtp).toBeGreaterThan(0.965);
-        expect(rtp).toBeLessThan(0.973);
+        expect(rtp).toBeGreaterThan(0.92);
+        expect(rtp).toBeLessThan(0.935);
+        const x = multiplicateursChute(n, risque);
+        expect(x.includes(1)).toBe(false); // aucune case ne rend tout juste la mise
+        expect(x[Math.floor(n / 2)]).toBeLessThan(1); // le milieu fait perdre
+        gagnants[risque].push(p.reduce((s, q, k) => s + (x[k] > 1 ? q : 0), 0));
       }
     }
+    const moyenne = (t: number[]) => t.reduce((s, x) => s + x, 0) / t.length;
+    // Un écu sur quatre gagne en risque faible, un sur sept en moyen, un sur quinze en élevé (en moyenne sur les rangées).
+    expect(moyenne(gagnants.faible)).toBeCloseTo(0.24, 1);
+    expect(moyenne(gagnants.moyen)).toBeCloseTo(0.15, 1);
+    expect(moyenne(gagnants.eleve)).toBeCloseTo(0.065, 1);
+    expect(Math.max(...gagnants.faible)).toBeLessThan(0.35);
     expect(gainChute(10_000, 0.2)).toBe(2_000);
     expect(gainChute(1_000, 1.1)).toBe(1_100);
     expect(gainChute(25_000, 8.9)).toBe(222_500);

@@ -184,6 +184,7 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
   const [historique, setHistorique] = useState<{ id: number; x: number; gain: number; mise: number }[]>([]);
   const [annonce, setAnnonce] = useState<{ montant: number; x: number; gros: boolean; id: number } | null>(null);
   const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
+  /** Ce que l'écu a vraiment fait gagner ou perdre (gain − mise), affiché sous le solde. */
   const [credit, setCredit] = useState<{ montant: number; id: number } | null>(null);
   const [auto, setAuto] = useState<{ actif: boolean; restants: number }>({ actif: false, restants: 0 });
   const [choixAuto, setChoixAuto] = useState(false);
@@ -272,7 +273,7 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
     const gros = r.gain >= MULTIPLE_GROS_GAIN * r.mise || r.gain >= 1_000_000;
     if (r.x < 1) jouerEffet('chute_case_bas', { vitesse: 0.95 + Math.random() * 0.1 });
     else jouerEffet(gros ? 'chute_gros' : 'chute_case', { vitesse: gros ? 1 : Math.min(1.35, 0.9 + Math.log10(r.x + 1) * 0.35) });
-    if (r.gain > 0) setCredit({ montant: r.gain, id: r.id });
+    if (r.gain !== r.mise) setCredit({ montant: r.gain - r.mise, id: r.id });
     if (r.x >= 10 || gros) {
       setAnnonce({ montant: r.gain, x: r.x, gros, id: r.id });
       plusTard(() => setAnnonce((a) => (a?.id === r.id ? null : a)), gros ? 3600 : 2200);
@@ -357,7 +358,7 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
     const geo = geometrie(chute.rangees);
     if (mouvementReduit()) {
       setHistorique((h) => [{ id: chute.id, x: chute.x, gain: chute.gain, mise: chute.mise }, ...h].slice(0, 12));
-      if (chute.gain > 0) setCredit({ montant: chute.gain, id: chute.id });
+      if (chute.gain !== chute.mise) setCredit({ montant: chute.gain - chute.mise, id: chute.id });
       jouerEffet(chute.x < 1 ? 'chute_case_bas' : 'chute_case');
       return 'parti';
     }
@@ -420,11 +421,12 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
         <h1 className="cdc-titre">
           <span>{tr('La Chute', 'The Falling')}</span> <span>{tr('des Écus', 'Crowns')}</span>
         </h1>
-        <span className={`cas-solde-petit cdc-solde ${credit ? 'credite' : ''}`}>
+        <span className={`cas-solde-petit cdc-solde ${credit && credit.montant > 0 ? 'credite' : ''}`}>
           {dollars(solde)}
           {credit && (
-            <b key={credit.id} className="cdc-credit">
-              +{dollars(credit.montant)}
+            <b key={credit.id} className={`cdc-credit ${credit.montant < 0 ? 'perte' : ''}`}>
+              {credit.montant > 0 ? '+' : '−'}
+              {dollars(Math.abs(credit.montant))}
             </b>
           )}
         </span>
@@ -582,8 +584,8 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
         {erreur && <p className="cas-erreur">{erreur}</p>}
         <p className="cas-mention">
           {tr(
-            'L’écu rebondit au hasard à chaque clou et tombe dans une case : ta mise × son multiplicateur. Plus de rangées et de risque : des bords plus riches (jusqu’à ×1 000) et un milieu plus maigre (jusqu’à ×0,2). Mise de 1 000 à 500 000 $ par écu.',
-            'The coin bounces at random off each peg and lands in a slot: your bet × its multiplier. More rows and risk: richer edges (up to ×1,000) and a leaner middle (down to ×0.2). Bets from $1,000 to $500,000 per coin.',
+            'L’écu rebondit au hasard à chaque clou et tombe dans une case : ta mise × son multiplicateur. Le milieu, où il tombe le plus souvent, rend moins que la mise ; seuls les côtés font gagner. Plus de risque : des bords plus riches (jusqu’à ×1 000) et un milieu plus maigre (×0,2). Mise de 1 000 à 500 000 $ par écu.',
+            'The coin bounces at random off each peg and lands in a slot: your bet × its multiplier. The middle, where it lands most often, pays back less than the bet; only the sides win. More risk: richer edges (up to ×1,000) and a leaner middle (×0.2). Bets from $1,000 to $500,000 per coin.',
           )}
         </p>
       </section>

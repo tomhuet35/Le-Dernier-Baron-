@@ -3,15 +3,17 @@
  * rangée, l'écu rebondit à gauche ou à droite (une chance sur deux) et finit dans une des cases du bas, qui multiplie
  * la mise.
  *
- * Le joueur choisit sa mise, le nombre de rangées (8 à 16) et le risque :
- * - faible : presque toutes les cases rendent la mise ou un peu plus, le bord paie jusqu'à ×16 ;
- * - moyen : le milieu reprend un peu, le bord paie jusqu'à ×110 ;
- * - élevé : le milieu ne rend que ×0,2, mais le bord paie jusqu'à ×1 000 (16 rangées).
+ * Le joueur choisit sa mise, le nombre de rangées (8 à 16) et le risque. Les cases du milieu (là où l'écu tombe le
+ * plus souvent) rendent moins que la mise ; seules celles des côtés font gagner :
+ * - faible : le milieu rend de ×0,4 à ×0,9, environ un écu sur quatre gagne, le bord paie jusqu'à ×16 ;
+ * - moyen : le milieu rend de ×0,3 à ×0,6, environ un écu sur sept gagne, le bord paie jusqu'à ×110 ;
+ * - élevé : le milieu ne rend que ×0,2 ou ×0,3, environ un écu sur quinze gagne, mais le bord paie jusqu'à ×1 000.
  *
  * Le serveur tire le chemin de chaque écu (crypto) au moment du lâcher, débite la mise et crédite le gain d'un bloc :
  * il n'y a jamais de mise « en l'air » à rendre. L'écran ne fait que montrer la chute.
  *
- * Chaque table rend environ 97 % des mises en moyenne (de 96,7 % à 97,2 %), comme les autres jeux du salon.
+ * Chaque table rend environ 93 % des mises en moyenne (de 92,3 % à 93,4 %) : la Chute est plus dure que les autres jeux
+ * du salon (97 %).
  */
 
 export type RisqueChute = 'faible' | 'moyen' | 'eleve';
@@ -25,41 +27,41 @@ export const LACHERS_PAR_SECONDE = 8;
 
 /**
  * Multiplicateurs du bord vers le milieu (la moitié gauche ; la droite est son reflet). Pour n rangées, il y a n + 1
- * cases : la case k (k écus partis à droite) a la chance C(n, k) / 2^n.
+ * cases : la case k (k rebonds à droite) a la chance C(n, k) / 2^n. Aucune case ne rend tout juste la mise.
  */
 const DEMI: Record<RisqueChute, Record<number, number[]>> = {
   faible: {
-    8: [5.6, 2.1, 1, 1, 0.5],
-    9: [5.6, 1.8, 1.5, 1, 0.7],
-    10: [8.9, 2.9, 1.2, 1.1, 1, 0.5],
-    11: [8.4, 3, 1.8, 1.2, 1, 0.7],
-    12: [10, 2.9, 1.4, 1.3, 1.1, 1, 0.5],
-    13: [8.1, 3.8, 2.9, 1.9, 1.1, 0.9, 0.7],
-    14: [7.1, 3.8, 1.7, 1.3, 1.2, 1.1, 1, 0.5],
-    15: [15, 7.7, 2.9, 1.9, 1.3, 1.1, 1, 0.7],
-    16: [16, 8.8, 1.9, 1.4, 1.4, 1.2, 1.1, 1, 0.4],
+    8: [5.6, 1.9, 1.2, 0.9, 0.4],
+    9: [5.6, 3.4, 2.1, 0.9, 0.4],
+    10: [8.9, 2.5, 1.3, 1.2, 0.9, 0.4],
+    11: [8.4, 4.4, 2.4, 1.7, 0.9, 0.4],
+    12: [10, 5.7, 3.4, 1.9, 0.9, 0.7, 0.4],
+    13: [8.1, 4.5, 2.7, 1.9, 1.6, 0.9, 0.4],
+    14: [7.1, 4.4, 2.9, 2.2, 1.9, 0.9, 0.7, 0.4],
+    15: [15, 7.4, 4, 2.4, 1.7, 1.4, 0.9, 0.4],
+    16: [16, 8.8, 5.1, 3.1, 2, 1.5, 0.9, 0.7, 0.4],
   },
   moyen: {
-    8: [13, 3, 1.2, 0.7, 0.4],
-    9: [18, 3.8, 1.6, 0.9, 0.5],
-    10: [22, 4.9, 1.8, 1.4, 0.6, 0.4],
-    11: [24, 5.7, 3, 1.7, 0.7, 0.5],
-    12: [33, 10, 3.9, 1.9, 1.1, 0.6, 0.3],
-    13: [43, 13, 5.9, 3, 1.2, 0.7, 0.4],
-    14: [58, 15, 6.7, 3.9, 1.8, 1, 0.5, 0.2],
-    15: [88, 17, 11, 4.9, 2.8, 1.3, 0.5, 0.3],
-    16: [110, 41, 9.9, 5, 3, 1.5, 1, 0.5, 0.2],
+    8: [13, 7.1, 0.6, 0.4, 0.3],
+    9: [18, 4.2, 2.6, 0.6, 0.3],
+    10: [22, 8, 4, 0.6, 0.4, 0.3],
+    11: [24, 6.4, 2.9, 2.2, 0.6, 0.3],
+    12: [33, 9.2, 4.3, 3.3, 0.6, 0.4, 0.3],
+    13: [43, 16, 7.5, 5.3, 0.6, 0.4, 0.3],
+    14: [58, 21, 8.3, 3.8, 2.2, 0.6, 0.4, 0.3],
+    15: [88, 28, 11, 5.5, 3.9, 0.6, 0.4, 0.3],
+    16: [110, 34, 11, 5.2, 2.8, 2.1, 0.6, 0.4, 0.3],
   },
   eleve: {
-    8: [29, 4, 1.4, 0.3, 0.2],
-    9: [43, 6.8, 1.9, 0.6, 0.2],
-    10: [76, 9.4, 2.9, 0.9, 0.3, 0.2],
-    11: [120, 14, 5.1, 1.3, 0.4, 0.2],
-    12: [170, 24, 7.8, 1.9, 0.7, 0.2, 0.2],
-    13: [260, 35, 11, 3.8, 1, 0.2, 0.2],
-    14: [420, 54, 18, 4.9, 1.8, 0.3, 0.2, 0.2],
-    15: [620, 80, 26, 7.9, 2.9, 0.5, 0.2, 0.2],
-    16: [1000, 130, 26, 8.9, 3.9, 1.9, 0.2, 0.2, 0.2],
+    8: [29, 7.9, 0.3, 0.2, 0.2],
+    9: [43, 16, 0.2, 0.2, 0.2],
+    10: [76, 13, 3.7, 0.3, 0.2, 0.2],
+    11: [120, 27, 5.9, 0.3, 0.2, 0.2],
+    12: [170, 23, 15, 0.3, 0.3, 0.2, 0.2],
+    13: [260, 58, 14, 3.1, 0.3, 0.2, 0.2],
+    14: [420, 78, 19, 7, 0.3, 0.3, 0.2, 0.2],
+    15: [620, 81, 24, 16, 0.3, 0.3, 0.2, 0.2],
+    16: [1000, 230, 54, 12, 2.9, 0.3, 0.3, 0.2, 0.2],
   },
 };
 

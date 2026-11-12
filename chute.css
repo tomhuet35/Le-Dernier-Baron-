@@ -67,6 +67,8 @@
 .cdc-solde { position: relative; z-index: 25; transition: color 0.3s, box-shadow 0.3s, border-color 0.3s; }
 .cdc-solde.credite { color: #fff1c4; border-color: #ffcf6b; box-shadow: 0 0 16px rgba(255, 200, 110, 0.75); }
 .cdc-credit { position: absolute; right: 8px; top: calc(100% + 4px); padding: 2px 10px; border-radius: 99px; background: linear-gradient(180deg, #2f7d45, #1d5530); border: 1px solid #8fd18a; font-family: var(--titre); font-weight: 400; font-size: 15px; color: #eaffe6; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); animation: cdc-credit 1.8s ease-out both; pointer-events: none; z-index: 5; }
+/* Écu tombé au milieu : ce qui a été perdu, en rouge. */
+.cdc-credit.perte { background: linear-gradient(180deg, #8e2a22, #5a1410); border-color: #ff9b85; color: #ffe4dc; }
 @keyframes cdc-credit { 0% { opacity: 0; transform: translateY(8px) scale(0.8); } 12% { opacity: 1; transform: none; } 75% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
 
 /* Belle chute (×10 et plus) ou pluie d'écus (gros gain), en grand au milieu. */
