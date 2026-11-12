@@ -37,6 +37,8 @@ export interface CadeauSalon {
   duree?: number;
 }
 export const CADEAUX_SALON: CadeauSalon[] = [
+  // 50 millions pendant 30 minutes, dès la mise en ligne.
+  { id: 'cadeau-50m-30min-2026-11-12', montant: 50_000_000, duree: 30 * 60_000 },
   // 30 millions pendant 30 minutes, dès la mise en ligne.
   { id: 'cadeau-30m-30min-2026-11-10', montant: 30_000_000, duree: 30 * 60_000 },
   // 9 millions pendant 30 minutes, dès la mise en ligne.
