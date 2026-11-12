@@ -1,4 +1,4 @@
-import { Children, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Children, Component, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { BONUS_BARON_HOMME_DE_MAIN, BONUS_BRAQUAGE } from '../../shared/config';
 import type { DuelPli } from '../../shared/regles';
 import type { CartePosee, VueSalon } from '../../shared/types';
@@ -276,6 +276,46 @@ export function Defilant(props: { children: ReactNode; libelle: string; parRange
       )}
     </div>
   );
+}
+
+/**
+ * Filet de sécurité de l'affichage : si un écran plante (donnée imprévue), on le remplace par un message avec « Retour »
+ * et « Recharger », au lieu d'une page blanche.
+ */
+export class Garde extends Component<{ children: ReactNode; onRetour?: () => void; libelleRetour?: string }, { erreur: boolean }> {
+  state = { erreur: false };
+  static getDerivedStateFromError() {
+    return { erreur: true };
+  }
+  componentDidCatch(e: unknown) {
+    console.error('Écran en erreur :', e);
+  }
+  render() {
+    if (!this.state.erreur) return this.props.children;
+    const { onRetour, libelleRetour } = this.props;
+    return (
+      <div className="garde-erreur" role="alert">
+        <p>{tr('Oups, cet écran a rencontré un problème.', 'Oops, this screen ran into a problem.')}</p>
+        <div>
+          {onRetour && (
+            <button
+              type="button"
+              className="principal"
+              onClick={() => {
+                this.setState({ erreur: false });
+                onRetour();
+              }}
+            >
+              {libelleRetour ?? tr('Retour', 'Back')}
+            </button>
+          )}
+          <button type="button" onClick={() => window.location.reload()}>
+            {tr('Recharger', 'Reload')}
+          </button>
+        </div>
+      </div>
+    );
+  }
 }
 
 export function Fenetre({ titre, onFermer, children, large }: { titre: string; onFermer?: () => void; children: ReactNode; large?: boolean }) {

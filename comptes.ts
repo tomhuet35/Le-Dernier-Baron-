@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { estLangue, type Langue } from '../shared/langue';
 import { estTapis, niveauDepuisXp, tapisActif, tapisDebloque, TAPIS_PAR_DEFAUT, type IdTapis, type ResultatJoueur } from '../shared/niveaux';
 import { CASES_ROUE_SALON, SOLDE_DEPART, SOLDE_MAX } from '../shared/casino';
+import { AMIS_MAX_CASINO, estJeuCasino, JOURNAL_MAX, type BilanDefis, type EntreeJournalCasino, type JeuCasino, type StatsJeuCasino } from '../shared/profilCasino';
 import { gainDeCase, PERSONNAGES_ROULETTE, type GainRoulette } from '../shared/roulette';
 import type { EntreeHistorique, ProfilCompte } from '../shared/types';
 import { normaliserEntree, stockageClassementMemoire, type EntreeClassement, type StockageClassement } from './classement';
@@ -76,6 +77,56 @@ export interface CasinoCompte {
   plusGrosGain?: number;
   /** Cadeaux du Baron déjà récupérés (identifiants). */
   cadeaux?: string[];
+  /** Profil du casino : total misé (l'XP en découle), total des gains versés, et par jeu. */
+  mise?: number;
+  gagne?: number;
+  jeux?: Partial<Record<JeuCasino, StatsJeuCasino>>;
+  /** Dernier niveau dont le bonus a été versé. */
+  niveauPaye?: number;
+  /** Amis du casino (à part de ceux du jeu de cartes), et demandes. */
+  amis?: string[];
+  demandesRecues?: string[];
+  demandesEnvoyees?: string[];
+  /** Argent envoyé à des amis ce jour-là (heure de Paris). */
+  envois?: { jour: string; total: number };
+  /** Activité récente (envois, défis, niveaux), la plus récente d'abord. */
+  journal?: EntreeJournalCasino[];
+  defis?: BilanDefis;
+}
+
+/** Ce qu'une écriture du casino ajoute au compte, en plus du solde. */
+export interface ExtraCasino {
+  /** Misé et gagné, par jeu (s'ajoute aux totaux). */
+  activite?: { mise: Partial<Record<JeuCasino, number>>; gain: Partial<Record<JeuCasino, number>> };
+  niveauPaye?: number;
+  envois?: { jour: string; total: number };
+  /** Nouvelles entrées du journal, la plus récente d'abord. */
+  journal?: EntreeJournalCasino[];
+  /** Défis à ajouter au bilan. */
+  defis?: BilanDefis;
+}
+
+/** Lien d'amitié du casino : demander, accepter, refuser ou retirer. */
+export type ActionLienCasino = 'demander' | 'accepter' | 'refuser' | 'retirer';
+export type ResultatLienCasino = 'envoyee' | 'amis' | 'deja_amis' | 'deja_envoyee' | 'retire' | 'refusee' | 'aucune' | 'limite' | 'introuvable' | 'soi_meme';
+
+const entierCasino = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
+const textesCasino = (v: unknown, max = AMIS_MAX_CASINO * 2) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length < 200))].slice(0, max) : []);
+
+function normaliserJournal(v: unknown): EntreeJournalCasino[] {
+  if (!Array.isArray(v)) return [];
+  const r: EntreeJournalCasino[] = [];
+  for (const e of v) {
+    if (!e || typeof e !== 'object') continue;
+    const x = e as Record<string, unknown>;
+    const t = entierCasino(x.t);
+    const montant = entierCasino(x.montant);
+    const nom = typeof x.nom === 'string' ? x.nom.slice(0, 40) : '';
+    if (x.type === 'envoi' || x.type === 'recu') r.push({ t, type: x.type, nom, montant });
+    else if (x.type === 'defi' && (x.resultat === 'gagne' || x.resultat === 'perdu' || x.resultat === 'nul')) r.push({ t, type: 'defi', nom, resultat: x.resultat, montant });
+    else if (x.type === 'niveau') r.push({ t, type: 'niveau', niveau: entierCasino(x.niveau), montant });
+  }
+  return r.slice(0, JOURNAL_MAX);
 }
 
 /** Relit le casino d'un compte (entiers positifs, solde plafonné). */
@@ -89,7 +140,59 @@ function normaliserCasino(brut: unknown): CasinoCompte | null {
     depuis: entier(c.depuis),
     ...(typeof c.plusGrosGain === 'number' ? { plusGrosGain: entier(c.plusGrosGain) } : {}),
     ...(Array.isArray(c.cadeaux) ? { cadeaux: c.cadeaux.filter((x): x is string => typeof x === 'string').slice(-20) } : {}),
+    ...(c.mise !== undefined ? { mise: entier(c.mise) } : {}),
+    ...(c.gagne !== undefined ? { gagne: entier(c.gagne) } : {}),
+    ...(c.jeux && typeof c.jeux === 'object'
+      ? {
+          jeux: Object.fromEntries(
+            Object.entries(c.jeux as Record<string, unknown>)
+              .filter(([j, s]) => estJeuCasino(j) && !!s && typeof s === 'object')
+              .map(([j, s]) => [j, { mise: entier((s as Record<string, unknown>).mise), gain: entier((s as Record<string, unknown>).gain) }]),
+          ),
+        }
+      : {}),
+    ...(c.niveauPaye !== undefined ? { niveauPaye: entier(c.niveauPaye) } : {}),
+    ...(c.amis !== undefined ? { amis: textesCasino(c.amis, AMIS_MAX_CASINO) } : {}),
+    ...(c.demandesRecues !== undefined ? { demandesRecues: textesCasino(c.demandesRecues) } : {}),
+    ...(c.demandesEnvoyees !== undefined ? { demandesEnvoyees: textesCasino(c.demandesEnvoyees) } : {}),
+    ...(c.envois && typeof c.envois === 'object' && typeof (c.envois as Record<string, unknown>).jour === 'string'
+      ? { envois: { jour: (c.envois as Record<string, unknown>).jour as string, total: entier((c.envois as Record<string, unknown>).total) } }
+      : {}),
+    ...(c.journal !== undefined ? { journal: normaliserJournal(c.journal) } : {}),
+    ...(c.defis && typeof c.defis === 'object'
+      ? { defis: { gagnes: entier((c.defis as Record<string, unknown>).gagnes), perdus: entier((c.defis as Record<string, unknown>).perdus), nuls: entier((c.defis as Record<string, unknown>).nuls) } }
+      : {}),
   };
+}
+
+/** Ajoute à un casino ce qu'une écriture apporte (activité, niveau payé, envois, journal, défis). */
+export function appliquerExtraCasino(c: CasinoCompte, extra: ExtraCasino | undefined): CasinoCompte {
+  if (!extra) return c;
+  const r: CasinoCompte = { ...c };
+  if (extra.activite) {
+    const jeux: Partial<Record<JeuCasino, StatsJeuCasino>> = { ...(c.jeux ?? {}) };
+    let mise = 0;
+    let gain = 0;
+    for (const [j, m] of Object.entries(extra.activite.mise) as [JeuCasino, number][]) {
+      jeux[j] = { mise: Math.max(0, (jeux[j]?.mise ?? 0) + m), gain: jeux[j]?.gain ?? 0 };
+      mise += m;
+    }
+    for (const [j, g] of Object.entries(extra.activite.gain) as [JeuCasino, number][]) {
+      jeux[j] = { mise: jeux[j]?.mise ?? 0, gain: Math.max(0, (jeux[j]?.gain ?? 0) + g) };
+      gain += g;
+    }
+    r.jeux = jeux;
+    r.mise = Math.max(0, Math.round((c.mise ?? 0) + mise));
+    r.gagne = Math.max(0, Math.round((c.gagne ?? 0) + gain));
+  }
+  if (extra.niveauPaye !== undefined) r.niveauPaye = Math.max(c.niveauPaye ?? 1, extra.niveauPaye);
+  if (extra.envois) r.envois = extra.envois;
+  if (extra.journal?.length) r.journal = [...extra.journal, ...(c.journal ?? [])].slice(0, JOURNAL_MAX);
+  if (extra.defis) {
+    const d = c.defis ?? { gagnes: 0, perdus: 0, nuls: 0 };
+    r.defis = { gagnes: d.gagnes + extra.defis.gagnes, perdus: d.perdus + extra.defis.perdus, nuls: d.nuls + extra.defis.nuls };
+  }
+  return r;
 }
 
 /** Signalement d'un joueur par un autre (gardé 6 mois pour vérification). */
@@ -180,7 +283,9 @@ export interface ServiceComptes {
   /** Salon privé : ouvre le casino du compte au premier passage (1 000 000 $) ; null sans compte. */
   entrerCasino(uid: string): Promise<StatsCompte | null>;
   /** Ajoute (ou retire) de l'argent au casino du compte, sans jamais passer sous zéro ; null sans casino. */
-  mouvementCasino(uid: string, delta: number, plusGrosGain?: number): Promise<StatsCompte | null>;
+  mouvementCasino(uid: string, delta: number, plusGrosGain?: number, extra?: ExtraCasino): Promise<StatsCompte | null>;
+  /** Amis du casino : demande, acceptation, refus, retrait (les deux comptes ensemble). */
+  lienCasino(uid: string, autre: string, action: ActionLienCasino): Promise<{ resultat: ResultatLienCasino; comptes: Record<string, CasinoCompte> }>;
   /** Cadeau du Baron : ajoute la somme une seule fois ; « deja » s'il est déjà récupéré, null sans casino. */
   recupererCadeauCasino(uid: string, id: string, montant: number): Promise<StatsCompte | 'deja' | null>;
   /** Roulette du salon : ajoute le gain de la case ; « deja » si elle a déjà été tournée ce jour-là, null sans casino. */
@@ -501,15 +606,66 @@ export function creerServiceComptes(parties: {
         return base.casino ? base : { ...base, casino: { solde: SOLDE_DEPART, depuis: Date.now() } };
       });
     },
-    mouvementCasino: async (uid, delta, plusGrosGain) => {
+    mouvementCasino: async (uid, delta, plusGrosGain, extra) => {
       const actuel = await stockage.lire(uid);
       if (!actuel?.casino) return null;
       return stockage.modifier(uid, (avant) => {
         const base = avant ?? actuel;
         const c = base.casino ?? { solde: SOLDE_DEPART, depuis: Date.now() };
         const record = Math.max(c.plusGrosGain ?? 0, plusGrosGain ?? 0);
-        return { ...base, casino: { ...c, solde: Math.min(SOLDE_MAX, Math.max(0, Math.round(c.solde + delta))), ...(record ? { plusGrosGain: record } : {}) } };
+        const nouveau = { ...c, solde: Math.min(SOLDE_MAX, Math.max(0, Math.round(c.solde + delta))), ...(record ? { plusGrosGain: record } : {}) };
+        return { ...base, casino: appliquerExtraCasino(nouveau, extra) };
       });
+    },
+    lienCasino: async (uid, autre, action) => {
+      if (uid === autre) return { resultat: 'soi_meme', comptes: {} };
+      let resultat: ResultatLienCasino = 'aucune';
+      const stats = await stockage.modifierPlusieurs([uid, autre], (avant) => {
+        const sa = avant[uid];
+        const sb = avant[autre];
+        if (!sa?.casino || !sb?.casino) {
+          resultat = 'introuvable';
+          const res: Record<string, StatsCompte> = {};
+          if (sa) res[uid] = sa;
+          if (sb) res[autre] = sb;
+          return res;
+        }
+        const a = { amis: sa.casino.amis ?? [], recues: sa.casino.demandesRecues ?? [], envoyees: sa.casino.demandesEnvoyees ?? [] };
+        const b = { amis: sb.casino.amis ?? [], recues: sb.casino.demandesRecues ?? [], envoyees: sb.casino.demandesEnvoyees ?? [] };
+        const sansLien = (x: typeof a, y: string) => ({ amis: sans(x.amis, y), recues: sans(x.recues, y), envoyees: sans(x.envoyees, y) });
+        let na = a;
+        let nb = b;
+        const devenirAmis = () => {
+          if (a.amis.length >= AMIS_MAX_CASINO || b.amis.length >= AMIS_MAX_CASINO) return void (resultat = 'limite');
+          na = { ...sansLien(a, autre), amis: avec(a.amis, autre) };
+          nb = { ...sansLien(b, uid), amis: avec(b.amis, uid) };
+          resultat = 'amis';
+        };
+        if (action === 'demander') {
+          if (a.amis.includes(autre)) resultat = 'deja_amis';
+          else if (a.recues.includes(autre)) devenirAmis(); // l'autre avait déjà demandé
+          else if (a.envoyees.includes(autre)) resultat = 'deja_envoyee';
+          else if (a.amis.length >= AMIS_MAX_CASINO || a.envoyees.length >= AMIS_MAX_CASINO || b.recues.length >= AMIS_MAX_CASINO) resultat = 'limite';
+          else {
+            na = { ...a, envoyees: avec(a.envoyees, autre) };
+            nb = { ...b, recues: avec(b.recues, uid) };
+            resultat = 'envoyee';
+          }
+        } else if (action === 'accepter') {
+          if (a.recues.includes(autre)) devenirAmis();
+          else resultat = a.amis.includes(autre) ? 'deja_amis' : 'aucune';
+        } else {
+          // Refuser, annuler une demande ou retirer un ami : plus aucun lien entre les deux.
+          resultat = action === 'refuser' ? 'refusee' : 'retire';
+          na = sansLien(a, autre);
+          nb = sansLien(b, uid);
+        }
+        const ecrire = (s: StatsCompte, x: typeof a): StatsCompte => ({ ...s, casino: { ...s.casino!, amis: x.amis, demandesRecues: x.recues, demandesEnvoyees: x.envoyees } });
+        return { [uid]: ecrire(sa, na), [autre]: ecrire(sb, nb) };
+      });
+      const comptesCasino: Record<string, CasinoCompte> = {};
+      for (const [u, s] of Object.entries(stats)) if (s?.casino) comptesCasino[u] = s.casino;
+      return { resultat, comptes: comptesCasino };
     },
     recupererCadeauCasino: async (uid, id, montant) => {
       const actuel = await stockage.lire(uid);

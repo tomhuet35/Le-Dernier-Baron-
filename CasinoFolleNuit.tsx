@@ -1100,11 +1100,16 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
 
   useEffect(() => {
     let vivant = true;
-    const entrer = async () => {
+    // Après une coupure, le salon peut mettre quelques secondes à se rouvrir : on réessaie avant d'afficher l'erreur.
+    const entrer = async (essai = 0): Promise<void> => {
       const r = (await appel('casino_fn_entrer')) as { ok: boolean; erreur?: string; show?: VueFolleNuit };
       if (!vivant) return;
-      if (r.ok && r.show) setV(r.show);
-      else setErreur(r.erreur ?? tr('Le show est indisponible pour le moment.', 'The show is unavailable right now.'));
+      if (r.ok && r.show) {
+        setErreur(null);
+        return setV(r.show);
+      }
+      if (essai < 5) return void window.setTimeout(() => void entrer(essai + 1), 1200);
+      setErreur(r.erreur ?? tr('Le show est indisponible pour le moment.', 'The show is unavailable right now.'));
     };
     void entrer();
     const surVue = (x: VueFolleNuit) => setV(x);

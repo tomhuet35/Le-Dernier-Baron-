@@ -1451,3 +1451,8 @@ button.bouton-regarder:hover:not(:disabled) { background: rgba(231, 194, 122, 0.
 /* Menu : entrée du Salon privé (comptes Créateur) */
 .menu-icone.menu-icone-salon { width: 52px; height: 52px; }
 .menu-entree.menu-entree-salon { border-color: rgba(231, 194, 122, 0.75); background: linear-gradient(180deg, #3c0107, var(--nuit-3)); }
+
+/* Un écran en erreur (filet de sécurité de l'affichage) */
+.garde-erreur { display: grid; gap: 14px; justify-items: center; width: min(92vw, 420px); margin: 18vh auto 0; padding: 22px 18px; border-radius: 16px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.94); text-align: center; color: var(--creme); }
+.garde-erreur p { margin: 0; font-size: 16px; }
+.garde-erreur div { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }

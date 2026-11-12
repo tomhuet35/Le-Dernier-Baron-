@@ -287,7 +287,7 @@ export function creerVolCouronne(options: {
       if (!j || !m) return erreur(rappel, 'Aucune mise à annuler.', 'No bet to cancel.');
       if (phase !== 'mises') return erreur(rappel, 'Trop tard : la couronne s’est envolée.', 'Too late: the crown has taken off.');
       j.mises[i] = null;
-      banque.crediter(id.uid, m.mise);
+      banque.rembourser(id.uid, m.mise);
       diffuser();
       repondre(rappel, { ok: true, couronne: vue(id.uid) });
     });
@@ -320,5 +320,15 @@ export function creerVolCouronne(options: {
     return !!j && enVol(j);
   };
 
-  return { brancher, sortir, fermer: arreterMinuteries, resume, misesEnVol };
+  /** Arrêt du serveur : les mises encore en vol (ou posées avant l'envol) sont rendues. */
+  const rendreMisesEnCours = () => {
+    arreterMinuteries();
+    for (const j of joueurs.values())
+      j.mises = j.mises.map((m) => {
+        if (m?.etat === 'enVol') banque.rembourser(j.uid, m.mise);
+        return m?.etat === 'enVol' ? null : m;
+      });
+  };
+
+  return { brancher, sortir, fermer: arreterMinuteries, rendreMisesEnCours, resume, misesEnVol };
 }

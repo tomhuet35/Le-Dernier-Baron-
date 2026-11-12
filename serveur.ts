@@ -809,6 +809,33 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     const langue: Langue = estLangue(socket.handshake.auth?.langue) ? socket.handshake.auth.langue : 'fr';
     socket.data.langue = langue;
     const L = (fr: string, en: string) => selon(langue, fr, en);
+    // Filet de sécurité pour tous les événements (jeu de cartes et casino) : une erreur imprévue dans un gestionnaire est
+    // notée, et le téléphone reçoit une réponse au lieu d'attendre pour rien. Une seule réponse part, jamais deux.
+    const surEvenement = socket.on.bind(socket);
+    socket.on = ((evenement: string, gestionnaire: (...args: unknown[]) => unknown) =>
+      surEvenement(evenement, (...args: unknown[]) => {
+        const rappel = args[args.length - 1];
+        let repondu = false;
+        if (typeof rappel === 'function')
+          args[args.length - 1] = (...r: unknown[]) => {
+            if (repondu) return;
+            repondu = true;
+            (rappel as (...x: unknown[]) => void)(...r);
+          };
+        const echec = (e: unknown) => {
+          console.error(`Erreur imprévue (« ${evenement} ») :`, e);
+          if (typeof rappel === 'function' && !repondu) {
+            repondu = true;
+            (rappel as Rappel)({ ok: false, erreur: L('Erreur du serveur : réessaie dans un instant.', 'Server error: try again in a moment.') });
+          }
+        };
+        try {
+          const r = gestionnaire(...args);
+          if (r instanceof Promise) r.catch(echec);
+        } catch (e) {
+          echec(e);
+        }
+      })) as typeof socket.on;
     const contexte = () => {
       const lien = socketsVersJoueur.get(socket.id);
       const salon = lien ? salons.get(lien.code) : undefined;
@@ -1682,12 +1709,13 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       repondre(rappel, { ok: true, message: L('Invitation envoyée !', 'Invitation sent!') });
     });
 
-    // Salon privé : la liste des amis créateurs (eux seuls ont accès au casino), et l'invitation à sa table.
+    // Salon privé : la liste des amis créateurs (eux seuls ont accès au casino) — amis du jeu de cartes et amis du
+    // casino —, et l'invitation à sa table.
     socket.on('casino_amis', async (_data: unknown, rappel?: Rappel) => {
       if (!comptes || !identite || !casino || !(await casino.estCreateur(identite.uid))) return repondre(rappel, { ok: false, erreur: 'Introuvable.' });
       try {
         const moi = await comptes.lire(identite.uid);
-        const lus = await comptes.lirePlusieurs(moi?.amis ?? []);
+        const lus = await comptes.lirePlusieurs([...new Set([...(moi?.amis ?? []), ...(moi?.casino?.amis ?? [])])]);
         const rang: Record<StatutAmi, number> = { en_ligne: 0, en_partie: 1, hors_ligne: 2 };
         const amis = Object.entries(lus)
           .filter(([, st]) => st?.createur && st.codeAmi)
@@ -1708,7 +1736,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (!table) return repondre(rappel, { ok: false, erreur: L('Assieds-toi d’abord à une table pour inviter tes amis.', 'Sit at a table first to invite your friends.') });
       const ami = await uidDuCode(data?.code, rappel);
       if (!ami) return;
-      if (!(amisParUid.get(a.uid)?.has(ami) ?? (await a.comptes.lire(a.uid))?.amis.includes(ami))) {
+      const moi = amisParUid.get(a.uid)?.has(ami) ? null : await a.comptes.lire(a.uid);
+      if (moi && !moi.amis.includes(ami) && !moi.casino?.amis?.includes(ami)) {
         return repondre(rappel, { ok: false, erreur: L('Ce joueur n’est pas dans tes amis.', 'This player is not in your friends.') });
       }
       if (!(await casino.estCreateur(ami))) return repondre(rappel, { ok: false, erreur: L('Cet ami n’a pas accès au Salon privé.', 'This friend has no access to the private lounge.') });
@@ -1757,10 +1786,11 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const port = (http.address() as AddressInfo).port;
       resolve({
         port,
-        fermer: () =>
-          new Promise<void>((fin) => {
-            ferme = true;
-            void casino?.vider();
+        fermer: async () => {
+          ferme = true;
+          // Les soldes du casino (et les mises rendues) sont écrits avant de fermer.
+          await casino?.vider().catch((e) => console.error('Casino : écriture finale impossible :', e));
+          await new Promise<void>((fin) => {
             clearInterval(menage);
             clearInterval(purgeQuotidienne);
             for (const s of salons.values()) {
@@ -1770,7 +1800,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
             }
             io.close();
             http.close(() => fin());
-          }),
+          });
+        },
       });
     });
   });

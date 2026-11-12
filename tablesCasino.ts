@@ -42,8 +42,12 @@ type Rappel = (r: Reponse) => void;
 /** Le porte-monnaie du salon, vu par les tables. */
 export interface BanqueCasino {
   solde(uid: string): number;
+  /** Prend une mise (elle compte pour l'XP et les défis). */
   debiter(uid: string, montant: number): boolean;
+  /** Verse un gain (mise rendue comprise). */
   crediter(uid: string, montant: number): void;
+  /** Rend une mise annulée avant d'être jouée (elle ne compte plus). */
+  rembourser(uid: string, montant: number): void;
   joueur(uid: string): { nom: string; avatar: number } | null;
 }
 
@@ -207,7 +211,7 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
       // Personne (de vrai) n'a misé : on attend la prochaine donne.
       for (const m of mises) {
         const s = t.sieges.find((x) => x.id === m.id);
-        if (s && !s.bot && s.uid) banque.crediter(s.uid, m.mise);
+        if (s && !s.bot && s.uid) banque.rembourser(s.uid, m.mise);
       }
       return ouvrirMises(t);
     }
@@ -508,6 +512,18 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
     clearInterval(menage);
     for (const t of tables.values()) if (t.minuterie) clearTimeout(t.minuterie);
   };
+  /** Arrêt du serveur : les mises d'une donne pas encore payée (doubles, séparations, assurance comprises) sont rendues. */
+  const rendreMisesEnCours = () => {
+    for (const t of tables.values()) {
+      if (!t.donne || t.paye) continue;
+      t.paye = true;
+      for (const p of t.donne.places) {
+        const s = t.sieges.find((x) => x.id === p.id);
+        const engage = p.mains.reduce((r, m) => r + m.mise, 0) + p.assurance;
+        if (s && !s.bot && s.uid && engage > 0) banque.rembourser(s.uid, engage);
+      }
+    }
+  };
 
-  return { brancher, resume, sortir, fermer, tableDe, existe, complete };
+  return { brancher, resume, sortir, fermer, rendreMisesEnCours, tableDe, existe, complete };
 }

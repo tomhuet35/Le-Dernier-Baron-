@@ -9,12 +9,16 @@
  * - Le solde de chaque créateur est tenu en mémoire pendant qu'il joue ; les mouvements sont écrits dans Firestore par
  *   transaction, regroupés (au plus une écriture toutes les 5 s, et à la sortie du salon ou à la déconnexion).
  * - Gros lot et « plus riches du salon » : document « casino » de la collection « parametres ».
+ * - Profil du casino (à part du jeu de cartes) : chaque mise et chaque gain de chaque jeu passe par « suivre » (XP,
+ *   niveaux et leurs bonus, statistiques par jeu, scores des défis). Amis du casino, envois d'argent entre amis, et
+ *   défis 1 contre 1 (defisCasino.ts, gardés avec les réglages du serveur).
  */
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import {
   cadeauDisponible,
   CADEAUX_SALON,
+  formatDollars,
   CASES_ROUE_SALON,
   GROS_GAIN_ROUE,
   GROS_LOT_DEPART,
@@ -30,7 +34,26 @@ import {
 } from '../shared/casino';
 import { gainCasse, MISES_MACHINE, nouveauCasse, ouvrirCasse, ROUE_BARON, TOURS_GRATUITS_MAX, tirerMachine, type EtatCasse } from '../shared/machineASous';
 import { jourParis, lendemainParis } from '../shared/roulette';
-import type { Identite, ServiceComptes, StatsCompte } from './comptes';
+import type { ExtraCasino, Identite, ServiceComptes, StatsCompte } from './comptes';
+import {
+  bonusNiveauCasino,
+  ENVOI_MAX_JOUR,
+  estJeuCasino,
+  JOURNAL_MAX,
+  MONTANTS_ENVOI,
+  niveauCasino,
+  progressionCasino,
+  xpDeMises,
+  type BilanDefis,
+  type EntreeJournalCasino,
+  type JeuCasino,
+  type JoueurCasino,
+  type PositionCasino,
+  type ProfilCasino,
+  type StatsJeuCasino,
+  type VueAmisCasino,
+} from '../shared/profilCasino';
+import { creerDefis } from './defisCasino';
 import { creerTablesBlackjack, type BanqueCasino, type DelaisTables } from './tablesCasino';
 import { creerTablesRoulette, type DelaisRoulette } from './tablesRoulette';
 import { dureeAnimationNuits, etatNuitsVide, jouerNuits, meilleurJackpot, type EtatNuits, type ForcerNuits } from '../shared/machineNuits';
@@ -82,6 +105,8 @@ export interface OptionsCasino {
   delaisCouronne?: Partial<DureesCouronne>;
   kCouronne?: number;
   tirageCouronne?: () => number | undefined;
+  /** Défis entre amis : durées accélérées (tests). */
+  echelleDefis?: number;
 }
 
 /** Porte-monnaie d'un créateur, tenu en mémoire pendant qu'il joue. */
@@ -105,6 +130,28 @@ interface Porte {
   /** Un tour à la fois : un double appui ne débite jamais deux fois. */
   occupe: boolean;
   dernierTour: number;
+  /** Profil du casino : premier passage, totaux misé et gagné (l'XP en découle), par jeu, plus gros gain écrit. */
+  depuis: number;
+  mise: number;
+  gagne: number;
+  jeux: Partial<Record<JeuCasino, StatsJeuCasino>>;
+  plusGrosGain: number;
+  niveauPaye: number;
+  amis: string[];
+  recues: string[];
+  envoyees: string[];
+  envois: { jour: string; total: number };
+  journal: EntreeJournalCasino[];
+  defisBilan: BilanDefis;
+  /** Ce qui attend d'être écrit, en plus du solde. */
+  activite: NonNullable<ExtraCasino['activite']> | null;
+  journalAjouts: EntreeJournalCasino[];
+  defisAjouts: BilanDefis | null;
+  niveauAEcrire: boolean;
+  envoisAEcrire: boolean;
+  /** Écritures lancées (compteur) et en cours : pas de recalage sur un compte lu pendant une écriture. */
+  ecrituresLancees: number;
+  ecrituresEnVol: number;
 }
 
 type BonusMachine = { type: 'casse'; mise: number; etat: EtatCasse } | { type: 'roue'; mise: number };
@@ -128,9 +175,12 @@ export function creerCasino(options: OptionsCasino) {
   const ouvertures: Record<string, number> = {};
 
   const portes = new Map<string, Porte>();
+  /** Téléphones au salon, par compte (en ligne), et où joue chacun (le téléphone qui l'a dit en dernier). */
+  const presents = new Map<string, Set<string>>();
+  const positions = new Map<string, { ecran: PositionCasino['ecran']; sid: string }>();
   const createurs = new Map<string, { ok: boolean; t: number }>();
   let grosLot = GROS_LOT_DEPART;
-  const riches = new Map<string, { nom: string; avatar: number; solde: number }>();
+  const riches = new Map<string, { nom: string; avatar: number; solde: number; niveau?: number }>();
   let minuterieSalon: ReturnType<typeof setTimeout> | null = null;
   let dernierGrosLotDiffuse = 0;
 
@@ -138,16 +188,18 @@ export function creerCasino(options: OptionsCasino) {
   const chargement = comptes
     .lireParametre('casino')
     .then((brut) => {
-      const d = (brut ?? {}) as { grosLot?: unknown; riches?: unknown; ouvertures?: unknown };
+      const d = (brut ?? {}) as { grosLot?: unknown; riches?: unknown; ouvertures?: unknown; defis?: unknown };
       if (d.ouvertures && typeof d.ouvertures === 'object')
         for (const [k, v] of Object.entries(d.ouvertures as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v)) ouvertures[k] = v;
       if (typeof d.grosLot === 'number' && Number.isFinite(d.grosLot) && d.grosLot >= GROS_LOT_DEPART) grosLot = Math.floor(d.grosLot);
       if (d.riches && typeof d.riches === 'object') {
         for (const [uid, r] of Object.entries(d.riches as Record<string, unknown>)) {
-          const x = r as { nom?: unknown; avatar?: unknown; solde?: unknown };
-          if (typeof x?.solde === 'number' && !riches.has(uid)) riches.set(uid, { nom: typeof x.nom === 'string' ? x.nom : '', avatar: typeof x.avatar === 'number' ? x.avatar : 1, solde: x.solde });
+          const x = r as { nom?: unknown; avatar?: unknown; solde?: unknown; niveau?: unknown };
+          if (typeof x?.solde === 'number' && !riches.has(uid))
+            riches.set(uid, { nom: typeof x.nom === 'string' ? x.nom : '', avatar: typeof x.avatar === 'number' ? x.avatar : 1, solde: x.solde, ...(typeof x.niveau === 'number' ? { niveau: x.niveau } : {}) });
         }
       }
+      defis.importer(d.defis);
     })
     .catch((e) => console.error('Casino : lecture des réglages impossible :', e))
     .then(() => {
@@ -161,9 +213,10 @@ export function creerCasino(options: OptionsCasino) {
     if (minuterieSalon) return;
     minuterieSalon = setTimeout(() => {
       minuterieSalon = null;
-      void comptes.ecrireParametre('casino', { grosLot, riches: Object.fromEntries(riches), ouvertures }).catch((e) => console.error('Casino : écriture impossible :', e));
+      void comptes.ecrireParametre('casino', reglagesSalon()).catch((e) => console.error('Casino : écriture impossible :', e));
     }, delaiEcriture);
   };
+  const reglagesSalon = () => ({ grosLot, riches: Object.fromEntries(riches), ouvertures, defis: defis.exporter() });
 
   async function estCreateur(uid: string): Promise<boolean> {
     const c = createurs.get(uid);
@@ -182,26 +235,125 @@ export function creerCasino(options: OptionsCasino) {
     p.minuterie = null;
     const delta = p.enAttente;
     const record = p.record;
-    if (!delta && !record) return p.ecriture;
+    const extra: ExtraCasino = {};
+    if (p.activite) extra.activite = p.activite;
+    if (p.niveauAEcrire) extra.niveauPaye = p.niveauPaye;
+    if (p.envoisAEcrire) extra.envois = { ...p.envois };
+    if (p.journalAjouts.length) extra.journal = p.journalAjouts;
+    if (p.defisAjouts) extra.defis = p.defisAjouts;
+    if (!delta && !record && !Object.keys(extra).length) return p.ecriture;
     p.enAttente = 0;
     p.record = 0;
+    p.plusGrosGain = Math.max(p.plusGrosGain, record);
+    p.activite = null;
+    p.niveauAEcrire = false;
+    p.envoisAEcrire = false;
+    p.journalAjouts = [];
+    p.defisAjouts = null;
+    p.ecrituresLancees += 1;
+    p.ecrituresEnVol += 1;
     p.ecriture = p.ecriture
-      .then(() => comptes.mouvementCasino(uid, delta, record || undefined))
+      .then(() => comptes.mouvementCasino(uid, delta, record || undefined, Object.keys(extra).length ? extra : undefined))
       .then(() => undefined)
       .catch((e) => {
         console.error('Casino : écriture du solde impossible :', e);
-        p.enAttente += delta; // réessayé à la prochaine écriture
+        // Réessayé à la prochaine écriture : tout ce qui n'est pas parti y retourne.
+        p.enAttente += delta;
         p.record = Math.max(p.record, record);
+        if (extra.activite) {
+          const a = p.activite ?? (p.activite = { mise: {}, gain: {} });
+          for (const [j, m] of Object.entries(extra.activite.mise) as [JeuCasino, number][]) a.mise[j] = (a.mise[j] ?? 0) + m;
+          for (const [j, g] of Object.entries(extra.activite.gain) as [JeuCasino, number][]) a.gain[j] = (a.gain[j] ?? 0) + g;
+        }
+        if (extra.niveauPaye !== undefined) p.niveauAEcrire = true;
+        if (extra.envois) p.envoisAEcrire = true;
+        if (extra.journal) p.journalAjouts = [...p.journalAjouts, ...extra.journal].slice(0, JOURNAL_MAX);
+        if (extra.defis) p.defisAjouts = ajouterBilan(p.defisAjouts, extra.defis);
+        planifier(uid, p);
+      })
+      .finally(() => {
+        p.ecrituresEnVol -= 1;
       });
     return p.ecriture;
+  }
+
+  /** Une écriture dans quelques secondes (regroupée avec les suivantes). */
+  function planifier(uid: string, p: Porte) {
+    if (!p.minuterie) p.minuterie = setTimeout(() => void ecrire(uid), delaiEcriture);
+  }
+  const ajouterBilan = (a: BilanDefis | null, b: BilanDefis): BilanDefis => ({ gagnes: (a?.gagnes ?? 0) + b.gagnes, perdus: (a?.perdus ?? 0) + b.perdus, nuls: (a?.nuls ?? 0) + b.nuls });
+  const niveauDe = (p: Porte) => niveauCasino(xpDeMises(p.mise));
+  const majRiche = (uid: string, p: Porte) => riches.set(uid, { nom: p.nom, avatar: p.avatar, solde: p.solde, niveau: niveauDe(p) });
+
+  /** Envoie un événement aux téléphones d'un joueur qui sont au salon. */
+  function notifier(uid: string, evenement: string, data: unknown) {
+    for (const sid of presents.get(uid) ?? []) io.to(sid).emit(evenement, data);
+  }
+
+  /** Ajoute une ligne au journal d'un joueur (écrite avec son solde, ou tout de suite s'il n'est pas là). */
+  function noterJournal(uid: string, e: EntreeJournalCasino, bilan?: BilanDefis) {
+    const p = portes.get(uid);
+    if (!p) return void comptes.mouvementCasino(uid, 0, undefined, { journal: [e], ...(bilan ? { defis: bilan } : {}) }).catch((x) => console.error('Casino : journal perdu :', x));
+    p.journal = [e, ...p.journal].slice(0, JOURNAL_MAX);
+    p.journalAjouts = [e, ...p.journalAjouts].slice(0, JOURNAL_MAX);
+    if (bilan) {
+      p.defisBilan = ajouterBilan(p.defisBilan, bilan);
+      p.defisAjouts = ajouterBilan(p.defisAjouts, bilan);
+    }
+    planifier(uid, p);
+  }
+
+  /** Verse de l'argent hors jeu (envoi d'un ami, défi) : au porte-monnaie s'il est en mémoire, sinon dans Firestore. */
+  function verserHorsJeu(uid: string, montant: number) {
+    if (montant <= 0) return;
+    const p = portes.get(uid);
+    if (p) {
+      mouvement(uid, p, montant);
+      notifier(uid, 'casino_solde', p.solde);
+    } else void comptes.mouvementCasino(uid, montant).catch((e) => console.error('Casino : versement perdu :', e));
+  }
+
+  /**
+   * Chaque mise et chaque gain des jeux passe ici : totaux et statistiques par jeu (profil), XP et niveaux (avec leur
+   * bonus), scores des défis. Une mise rendue (annulée avant d'être jouée) arrive en négatif.
+   */
+  function suivre(uid: string, jeu: JeuCasino, misee: number, gagnee: number) {
+    const p = portes.get(uid);
+    if (p) {
+      const avant = niveauDe(p);
+      p.mise = Math.max(0, p.mise + misee);
+      p.gagne = Math.max(0, p.gagne + gagnee);
+      const s = p.jeux[jeu] ?? { mise: 0, gain: 0 };
+      p.jeux[jeu] = { mise: Math.max(0, s.mise + misee), gain: Math.max(0, s.gain + gagnee) };
+      const a = p.activite ?? (p.activite = { mise: {}, gain: {} });
+      if (misee) a.mise[jeu] = (a.mise[jeu] ?? 0) + misee;
+      if (gagnee) a.gain[jeu] = (a.gain[jeu] ?? 0) + gagnee;
+      planifier(uid, p);
+      const apres = niveauDe(p);
+      if (apres > p.niveauPaye) monterNiveau(uid, p, apres);
+      if (apres !== avant) majRiche(uid, p);
+    }
+    defis.noter(uid, jeu, gagnee - misee);
+  }
+
+  /** Nouveau niveau : les bonus des niveaux franchis (chacun versé une seule fois), et la fête sur le téléphone. */
+  function monterNiveau(uid: string, p: Porte, niveau: number) {
+    const avant = p.niveauPaye;
+    let bonus = 0;
+    for (let n = avant + 1; n <= niveau; n++) bonus += bonusNiveauCasino(n);
+    p.niveauPaye = niveau;
+    p.niveauAEcrire = true;
+    if (bonus) mouvement(uid, p, bonus);
+    noterJournal(uid, { t: horloge(), type: 'niveau', niveau, montant: bonus });
+    notifier(uid, 'casino_niveau', { niveau, avant, bonus });
   }
 
   function mouvement(uid: string, p: Porte, delta: number) {
     p.solde = Math.min(SOLDE_MAX, Math.max(0, p.solde + delta));
     p.enAttente += delta;
-    riches.set(uid, { nom: p.nom, avatar: p.avatar, solde: p.solde });
+    majRiche(uid, p);
     sauverSalon();
-    if (!p.minuterie) p.minuterie = setTimeout(() => void ecrire(uid), delaiEcriture);
+    planifier(uid, p);
   }
 
   // Le porte-monnaie, vu par les tables de blackjack.
@@ -214,21 +366,70 @@ export function creerCasino(options: OptionsCasino) {
       return true;
     },
     crediter: (uid, montant) => {
+      if (!(montant > 0)) return;
       const p = portes.get(uid);
-      if (!p) return void comptes.mouvementCasino(uid, montant).catch((e) => console.error('Casino : gain perdu :', e));
+      if (!p) return void comptes.mouvementCasino(uid, montant, montant).catch((e) => console.error('Casino : gain perdu :', e));
       mouvement(uid, p, montant);
       p.record = Math.max(p.record, montant);
+    },
+    rembourser: (uid, montant) => {
+      if (!(montant > 0)) return;
+      const p = portes.get(uid);
+      if (!p) return void comptes.mouvementCasino(uid, montant).catch((e) => console.error('Casino : remboursement perdu :', e));
+      mouvement(uid, p, montant);
     },
     joueur: (uid) => {
       const p = portes.get(uid);
       return p ? { nom: p.nom, avatar: p.avatar } : null;
     },
   };
-  const tables = creerTablesBlackjack({ io, banque, horloge, delais: options.delaisTables, sabot: options.sabotBlackjack });
-  const roulettes = creerTablesRoulette({ io, banque, horloge, delais: options.delaisRoulette, tirage: options.tirageRoulette, annoncer: (a) => annoncer(a) });
-  const coffres = creerCoffres({ banque, hasard: options.hasardCoffres, placer: options.placerBadgesCoffres, annoncer: (a) => annoncer(a) });
-  const show = creerShowFolleNuit({ io, banque, horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, happyHour: options.happyHourFolleNuit, annoncer: (a) => annoncer(a) });
-  const couronne = creerVolCouronne({ io, banque, horloge, delais: options.delaisCouronne, k: options.kCouronne, tirage: options.tirageCouronne, annoncer: (a) => annoncer(a) });
+  /** Le porte-monnaie vu par un jeu : chaque mise, gain et remboursement y est suivi (XP, statistiques, défis). */
+  const banqueDe = (jeu: JeuCasino): BanqueCasino => ({
+    solde: banque.solde,
+    joueur: banque.joueur,
+    debiter: (uid, montant) => {
+      if (!banque.debiter(uid, montant)) return false;
+      suivre(uid, jeu, montant, 0);
+      return true;
+    },
+    crediter: (uid, montant) => {
+      if (!(montant > 0)) return;
+      if (!portes.has(uid)) {
+        // Joueur parti (sans porte-monnaie en mémoire) : gain et statistiques écrits ensemble.
+        void comptes.mouvementCasino(uid, montant, montant, { activite: { mise: {}, gain: { [jeu]: montant } } }).catch((e) => console.error('Casino : gain perdu :', e));
+        return defis.noter(uid, jeu, montant);
+      }
+      banque.crediter(uid, montant);
+      suivre(uid, jeu, 0, montant);
+    },
+    rembourser: (uid, montant) => {
+      if (!(montant > 0)) return;
+      banque.rembourser(uid, montant);
+      suivre(uid, jeu, -montant, 0);
+    },
+  });
+  const defis = creerDefis({
+    horloge,
+    prelever: (uid, montant) => {
+      const p = portes.get(uid);
+      if (!p || montant <= 0 || p.solde < montant) return false;
+      mouvement(uid, p, -montant);
+      return true;
+    },
+    verser: verserHorsJeu,
+    resultat: (uid, adversaire, r, montant) =>
+      noterJournal(uid, { t: horloge(), type: 'defi', nom: adversaire, resultat: r, montant }, { gagnes: r === 'gagne' ? 1 : 0, perdus: r === 'perdu' ? 1 : 0, nuls: r === 'nul' ? 1 : 0 }),
+    sontAmis: (a, b) => !!portes.get(a)?.amis.includes(b),
+    notifier: (uid, d) => notifier(uid, 'casino_defi', d),
+    annoncer: (a) => annoncer(a),
+    sauver: () => sauverSalon(),
+    echelle: options.echelleDefis,
+  });
+  const tables = creerTablesBlackjack({ io, banque: banqueDe('blackjack'), horloge, delais: options.delaisTables, sabot: options.sabotBlackjack });
+  const roulettes = creerTablesRoulette({ io, banque: banqueDe('roulette'), horloge, delais: options.delaisRoulette, tirage: options.tirageRoulette, annoncer: (a) => annoncer(a) });
+  const coffres = creerCoffres({ banque: banqueDe('coffres'), hasard: options.hasardCoffres, placer: options.placerBadgesCoffres, annoncer: (a) => annoncer(a) });
+  const show = creerShowFolleNuit({ io, banque: banqueDe('folleNuit'), horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, happyHour: options.happyHourFolleNuit, annoncer: (a) => annoncer(a) });
+  const couronne = creerVolCouronne({ io, banque: banqueDe('couronne'), horloge, delais: options.delaisCouronne, k: options.kCouronne, tirage: options.tirageCouronne, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
     const p = portes.get(uid);
@@ -236,7 +437,7 @@ export function creerCasino(options: OptionsCasino) {
     const liste: RicheSalon[] = [...riches.entries()]
       .sort(([, a], [, b]) => b.solde - a.solde)
       .slice(0, 10)
-      .map(([u, r]) => ({ nom: r.nom, avatar: r.avatar, solde: r.solde, ...(u === uid ? { moi: true as const } : {}) }));
+      .map(([u, r]) => ({ nom: r.nom, avatar: r.avatar, solde: r.solde, ...(r.niveau ? { niveau: r.niveau } : {}), ...(u === uid ? { moi: true as const } : {}) }));
     return {
       nom: p?.nom ?? '',
       avatar: p?.avatar ?? 1,
@@ -252,6 +453,7 @@ export function creerCasino(options: OptionsCasino) {
       folleNuit: show.resume(),
       coffres: { enCours: coffres.enCours(uid) },
       couronne: couronne.resume(),
+      ...(p ? { profil: { ...progressionCasino(p.mise), demandes: p.recues.length, invitations: defis.invitations(uid), defi: defis.enCours(uid) } } : {}),
       nuits: p ? { gratuits: p.nuits.gratuits, miseGratuite: p.nuits.miseGratuite, collantes: p.nuits.collantes } : { gratuits: 0, miseGratuite: 0, collantes: null },
       cadeau: (() => {
         const c = p ? cadeauDisponible(cadeaux, ouvertures, p.cadeaux, t) : null;
@@ -300,10 +502,32 @@ export function creerCasino(options: OptionsCasino) {
       }
       return id;
     };
-    const porteDe = (id: Identite, stats: StatsCompte): Porte => {
+    /** lancees : le compteur d'écritures au moment où le compte a été relu (recalage seulement s'il n'a pas bougé). */
+    const porteDe = (id: Identite, stats: StatsCompte, lancees?: number): Porte => {
       let p = portes.get(id.uid);
       if (!p) {
+        const c = stats.casino;
+        const mise = c?.mise ?? 0;
         p = {
+          depuis: c?.depuis ?? horloge(),
+          mise,
+          gagne: c?.gagne ?? 0,
+          jeux: { ...(c?.jeux ?? {}) },
+          plusGrosGain: c?.plusGrosGain ?? 0,
+          niveauPaye: Math.max(c?.niveauPaye ?? 1, 1),
+          amis: [...(c?.amis ?? [])],
+          recues: [...(c?.demandesRecues ?? [])],
+          envoyees: [...(c?.demandesEnvoyees ?? [])],
+          envois: c?.envois ? { ...c.envois } : { jour: '', total: 0 },
+          journal: [...(c?.journal ?? [])],
+          defisBilan: c?.defis ? { ...c.defis } : { gagnes: 0, perdus: 0, nuls: 0 },
+          activite: null,
+          journalAjouts: [],
+          defisAjouts: null,
+          niveauAEcrire: false,
+          envoisAEcrire: false,
+          ecrituresLancees: 0,
+          ecrituresEnVol: 0,
           nom: stats.nom || id.nom || '',
           avatar: stats.avatar,
           solde: stats.casino?.solde ?? 0,
@@ -324,8 +548,40 @@ export function creerCasino(options: OptionsCasino) {
       }
       p.nom = stats.nom || p.nom;
       p.avatar = stats.avatar;
-      riches.set(id.uid, { nom: p.nom, avatar: p.avatar, solde: p.solde });
+      // Rien n'attend d'être écrit : le porte-monnaie se recale sur le compte (au cas où un autre serveur, le temps
+      // d'une mise à jour du site, ou un versement hors salon l'aurait changé).
+      const c = stats.casino;
+      const calme = lancees === p.ecrituresLancees && !p.ecrituresEnVol && !p.occupe;
+      if (c && calme && !p.enAttente && !p.record && !p.activite && !p.journalAjouts.length && !p.defisAjouts && !p.niveauAEcrire && !p.envoisAEcrire) {
+        p.solde = c.solde;
+        p.mise = c.mise ?? 0;
+        p.gagne = c.gagne ?? 0;
+        p.jeux = { ...(c.jeux ?? {}) };
+        p.plusGrosGain = c.plusGrosGain ?? 0;
+        p.niveauPaye = Math.max(c.niveauPaye ?? 1, 1);
+        p.journal = [...(c.journal ?? [])];
+        p.defisBilan = c.defis ? { ...c.defis } : { gagnes: 0, perdus: 0, nuls: 0 };
+        p.envois = c.envois ? { ...c.envois } : { jour: '', total: 0 };
+        p.roue = c.roue;
+        p.cadeaux = c.cadeaux ?? [];
+      }
+      p.amis = [...(c?.amis ?? p.amis)];
+      p.recues = [...(c?.demandesRecues ?? p.recues)];
+      p.envoyees = [...(c?.demandesEnvoyees ?? p.envoyees)];
+      majRiche(id.uid, p);
       return p;
+    };
+    /** Le compte de ce téléphone, une fois entré au salon (présence, notifications). */
+    let monUid: string | null = null;
+    const partir = () => {
+      if (!monUid) return;
+      const set = presents.get(monUid);
+      set?.delete(socket.id);
+      if (!set?.size) {
+        presents.delete(monUid);
+        positions.delete(monUid);
+      } else if (positions.get(monUid)?.sid === socket.id) positions.set(monUid, { ecran: 'salon', sid: [...set][0] });
+      monUid = null;
     };
     let dans = false;
     tables.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
@@ -339,12 +595,19 @@ export function creerCasino(options: OptionsCasino) {
       if (!id) return;
       try {
         await chargement;
+        // Ce qui attend part d'abord : le compte relu juste après est à jour.
+        if (portes.has(id.uid)) await ecrire(id.uid);
+        const lancees = portes.get(id.uid)?.ecrituresLancees;
         const stats = await comptes.entrerCasino(id.uid);
         if (!stats) return repondre(rappel, INTROUVABLE);
-        porteDe(id, stats);
+        porteDe(id, stats, lancees);
         sauverSalon();
         void socket.join(SALLE);
         dans = true;
+        if (monUid && monUid !== id.uid) partir();
+        monUid = id.uid;
+        presents.set(id.uid, (presents.get(id.uid) ?? new Set()).add(socket.id));
+        if (!positions.has(id.uid)) positions.set(id.uid, { ecran: 'salon', sid: socket.id });
         repondre(rappel, { ok: true, casino: vue(id.uid) });
       } catch (e) {
         console.error('Casino : entrée impossible :', e);
@@ -360,6 +623,7 @@ export function creerCasino(options: OptionsCasino) {
       couronne.sortir(socket.id);
       void socket.leave(SALLE);
       dans = false;
+      partir();
       if (id) await ecrire(id.uid);
       repondre(rappel, { ok: true });
     });
@@ -393,7 +657,7 @@ export function creerCasino(options: OptionsCasino) {
         }
         p.solde = r.casino?.solde ?? p.solde + cadeau.montant;
         p.cadeaux = r.casino?.cadeaux ?? [...p.cadeaux, cadeau.id];
-        riches.set(id.uid, { nom: p.nom, avatar: p.avatar, solde: p.solde });
+        majRiche(id.uid, p);
         sauverSalon();
         repondre(rappel, { ok: true, cadeau: cadeau.montant, casino: vue(id.uid) });
       } catch (e) {
@@ -419,7 +683,7 @@ export function creerCasino(options: OptionsCasino) {
         if (r === 'deja') return repondre(rappel, { ok: false, erreur: L('Tu as déjà tourné la roulette du salon aujourd’hui : reviens demain !', 'You have already spun the lounge wheel today: come back tomorrow!') });
         p.solde = r.stats.casino?.solde ?? p.solde + r.gain;
         p.roue = r.stats.casino?.roue;
-        riches.set(id.uid, { nom: p.nom, avatar: p.avatar, solde: p.solde });
+        majRiche(id.uid, p);
         sauverSalon();
         if (r.gain >= GROS_GAIN_ROUE) annoncer({ nom: p.nom, jeu: 'roue', gain: r.gain });
         repondre(rappel, { ok: true, roue: { case: tirage, gain: r.gain }, casino: vue(id.uid) });
@@ -449,6 +713,7 @@ export function creerCasino(options: OptionsCasino) {
       try {
         if (!gratuit) {
           mouvement(id.uid, p, -mise);
+          suivre(id.uid, 'machine', mise, 0);
           grosLot += Math.round(mise * PART_GROS_LOT);
         } else {
           p.toursGratuits -= 1;
@@ -460,8 +725,11 @@ export function creerCasino(options: OptionsCasino) {
           gainGrosLot = prendreGrosLot(mise);
           gain += gainGrosLot;
         } else diffuserGrosLot();
-        if (gain) mouvement(id.uid, p, gain);
-        if (gain > 0) p.record = Math.max(p.record, gain);
+        if (gain > 0) {
+          mouvement(id.uid, p, gain);
+          p.record = Math.max(p.record, gain);
+          suivre(id.uid, 'machine', 0, gain);
+        }
         // Bonus : le Casse du coffre (3 Coffres), puis la Roue du Baron (Couronne sur le premier et le dernier rouleau).
         if (r.casse) p.bonus.push({ type: 'casse', mise, etat: nouveauCasse(hasardCasse) });
         if (r.roue) p.bonus.push({ type: 'roue', mise });
@@ -497,11 +765,15 @@ export function creerCasino(options: OptionsCasino) {
       p.occupe = true;
       p.dernierTour = t;
       try {
-        if (!gratuit) mouvement(id.uid, p, -mise);
+        if (!gratuit) {
+          mouvement(id.uid, p, -mise);
+          suivre(id.uid, 'nuits', mise, 0);
+        }
         const { resultat } = jouerNuits(hasardNuits, mise, e, options.forcerNuits?.());
-        if (resultat.gain) {
+        if (resultat.gain > 0) {
           mouvement(id.uid, p, resultat.gain);
           p.record = Math.max(p.record, resultat.gain);
+          suivre(id.uid, 'nuits', 0, resultat.gain);
         }
         // Annonce au salon : gros gain, ou jackpot MAJOR / GRAND du bonus Jetons du Baron.
         const jackpot = resultat.bonusJetons ? meilleurJackpot(resultat.bonusJetons) : null;
@@ -529,9 +801,10 @@ export function creerCasino(options: OptionsCasino) {
       let gain = 0;
       if (b.etat.fini) {
         gain = gainCasse(b.etat) * b.mise;
-        if (gain) {
+        if (gain > 0) {
           mouvement(id.uid, p, gain);
           p.record = Math.max(p.record, gain);
+          suivre(id.uid, 'machine', 0, gain);
         }
         p.bonus.shift();
         if (gain >= MULTIPLE_GROS_GAIN * b.mise) annoncer({ nom: p.nom, jeu: 'casse', gain });
@@ -565,9 +838,10 @@ export function creerCasino(options: OptionsCasino) {
         p.miseGratuite = b.mise;
       }
       p.bonus.shift();
-      if (gain) {
+      if (gain > 0) {
         mouvement(id.uid, p, gain);
         p.record = Math.max(p.record, gain);
+        suivre(id.uid, 'machine', 0, gain);
       }
       if (c.type === 'grosLot') annoncer({ nom: p.nom, jeu: 'roueBaron', gain, grosLot: true });
       else if (gain >= MULTIPLE_GROS_GAIN * b.mise) annoncer({ nom: p.nom, jeu: 'roueBaron', gain });
@@ -578,21 +852,36 @@ export function creerCasino(options: OptionsCasino) {
 
     socket.on('disconnect', () => {
       const id = ctx.identite();
+      partir();
       if (id && portes.has(id.uid)) void ecrire(id.uid);
     });
+
+    brancherSocial(socket, { acces, identite: ctx.identite, L, auSalon: (uid: string) => dans && portes.has(uid) && monUid === uid });
   }
 
-  /** Écrit tout ce qui attend (arrêt du serveur, tests). */
+  /**
+   * Écrit tout ce qui attend (arrêt du serveur, tests). Render arrête le serveur à chaque mise à jour du site : les
+   * mises encore en jeu (donne, tour, manche, envol, partie des Coffres) sont rendues avant, pour que personne ne perde
+   * une mise dont le coup ne sera jamais joué.
+   */
   async function vider() {
+    for (const jeu of [tables, roulettes, show, couronne, coffres]) {
+      try {
+        jeu.rendreMisesEnCours();
+      } catch (e) {
+        console.error('Casino : mises en cours non rendues :', e);
+      }
+    }
     tables.fermer();
     roulettes.fermer();
     show.fermer();
     couronne.fermer();
+    defis.fermer();
     await Promise.all([...portes.keys()].map((uid) => ecrire(uid)));
     if (minuterieSalon) {
       clearTimeout(minuterieSalon);
       minuterieSalon = null;
-      await comptes.ecrireParametre('casino', { grosLot, riches: Object.fromEntries(riches), ouvertures }).catch(() => undefined);
+      await comptes.ecrireParametre('casino', reglagesSalon()).catch(() => undefined);
     }
   }
 
@@ -604,6 +893,212 @@ export function creerCasino(options: OptionsCasino) {
     return rl ? { jeu: 'roulette', code: rl } : null;
   }
   const tableComplete = (jeu: 'blackjack' | 'roulette', code: string) => (jeu === 'blackjack' ? tables.complete(code) : roulettes.complete(code));
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Profil, amis, envois et défis du casino
+
+  /** Où joue quelqu'un (s'il est au salon) ; à une table, avec son code pour le rejoindre. */
+  function positionDe(uid: string): PositionCasino | null {
+    if (!presents.has(uid)) return null;
+    const pos = positions.get(uid);
+    if (!pos) return { ecran: 'salon' };
+    if (pos.ecran === 'blackjack' || pos.ecran === 'roulette') {
+      const t = tableDe(pos.sid);
+      return t && t.jeu === pos.ecran ? { ecran: pos.ecran, table: t.code } : { ecran: 'salon' };
+    }
+    return { ecran: pos.ecran };
+  }
+
+  /** Un joueur du salon, en bref : son porte-monnaie s'il est en mémoire, sinon la liste des riches (null si inconnu). */
+  function joueurCasino(uid: string): JoueurCasino | null {
+    const p = portes.get(uid);
+    const r = riches.get(uid);
+    if (!p && !r) return null;
+    return { uid, nom: p?.nom ?? r?.nom ?? '', avatar: p?.avatar ?? r?.avatar ?? 1, niveau: p ? niveauDe(p) : (r?.niveau ?? 1), enLigne: presents.has(uid), ou: positionDe(uid) };
+  }
+  /** Les mêmes, en allant lire Firestore pour ceux que le salon ne connaît pas encore. */
+  async function joueursCasino(uids: string[]): Promise<Record<string, JoueurCasino>> {
+    const res: Record<string, JoueurCasino> = {};
+    const manquants: string[] = [];
+    for (const u of uids) {
+      const j = joueurCasino(u);
+      if (j) res[u] = j;
+      else manquants.push(u);
+    }
+    if (manquants.length) {
+      const lus = await comptes.lirePlusieurs(manquants).catch(() => ({}) as Record<string, StatsCompte | null>);
+      for (const u of manquants) {
+        const s = lus[u];
+        if (s?.casino) res[u] = { uid: u, nom: s.nom, avatar: s.avatar, niveau: niveauCasino(xpDeMises(s.casino.mise ?? 0)), enLigne: false, ou: null };
+      }
+    }
+    return res;
+  }
+
+  const envoisDuJour = (p: Porte) => (p.envois.jour === jourParis(horloge()) ? p.envois.total : 0);
+
+  async function vueAmis(uid: string): Promise<VueAmisCasino> {
+    const p = portes.get(uid)!;
+    const connus = new Set([...p.amis, ...p.recues, ...p.envoyees]);
+    const autres = [...riches.keys()].filter((u) => u !== uid && !connus.has(u));
+    const fiches = await joueursCasino([...connus, ...autres]);
+    const liste = (us: string[]) => us.map((u) => fiches[u]).filter((j): j is JoueurCasino => !!j);
+    const parNiveau = (a: JoueurCasino, b: JoueurCasino) => Number(b.enLigne) - Number(a.enLigne) || b.niveau - a.niveau || a.nom.localeCompare(b.nom);
+    return {
+      amis: liste(p.amis).sort(parNiveau),
+      recues: liste(p.recues),
+      envoyees: liste(p.envoyees),
+      autres: liste(autres).sort(parNiveau).slice(0, 40),
+      envoisRestants: Math.max(0, ENVOI_MAX_JOUR - envoisDuJour(p)),
+    };
+  }
+
+  function brancherSocial(
+    socket: Socket,
+    ctx: { acces: (rappel: unknown) => Promise<Identite | null>; identite: () => Identite | null; L: (fr: string, en: string) => string; auSalon: (uid: string) => boolean },
+  ) {
+    const { L } = ctx;
+    const repondre = (rappel: unknown, r: Reponse) => {
+      if (typeof rappel === 'function') (rappel as Rappel)(r);
+    };
+    const erreur = (rappel: unknown, fr: string, en: string) => repondre(rappel, { ok: false, erreur: L(fr, en) });
+    /** Le joueur et son porte-monnaie, s'il est bien entré au salon ; sinon « Introuvable. » est déjà envoyé. */
+    const auSalon = async (rappel: unknown): Promise<{ id: Identite; p: Porte } | null> => {
+      const id = await ctx.acces(rappel);
+      if (!id) return null;
+      const p = portes.get(id.uid);
+      if (!p || !ctx.auSalon(id.uid)) return repondre(rappel, INTROUVABLE), null;
+      return { id, p };
+    };
+
+    // Où je joue (pour que mes amis puissent me rejoindre).
+    socket.on('casino_position', (data: { ecran?: unknown } = {}) => {
+      const id = ctx.identite();
+      const ecran = data?.ecran;
+      if (!id || !ctx.auSalon(id.uid) || !(ecran === 'salon' || estJeuCasino(ecran))) return;
+      positions.set(id.uid, { ecran, sid: socket.id });
+    });
+
+    socket.on('casino_profil', async (data: { uid?: unknown } = {}, rappel?: Rappel) => {
+      const m = await auSalon(rappel);
+      if (!m) return;
+      const { id, p } = m;
+      const cible = typeof data?.uid === 'string' && data.uid ? data.uid : id.uid;
+      const q = portes.get(cible);
+      let base: Omit<ProfilCasino, 'uid' | 'niveau' | 'xp' | 'xpNiveau' | 'xpSuivant' | 'bonusSuivant' | 'enLigne' | 'ou' | 'relation'> & { journal: EntreeJournalCasino[] };
+      if (q) base = { nom: q.nom, avatar: q.avatar, solde: q.solde, mise: q.mise, gagne: q.gagne, plusGrosGain: Math.max(q.plusGrosGain, q.record), jeux: q.jeux, defis: q.defisBilan, depuis: q.depuis, journal: q.journal };
+      else {
+        const s = await comptes.lire(cible).catch(() => null);
+        const c = s?.casino;
+        if (!s || !c) return erreur(rappel, 'Joueur introuvable.', 'Player not found.');
+        base = { nom: s.nom, avatar: s.avatar, solde: c.solde, mise: c.mise ?? 0, gagne: c.gagne ?? 0, plusGrosGain: c.plusGrosGain ?? 0, jeux: c.jeux ?? {}, defis: c.defis ?? { gagnes: 0, perdus: 0, nuls: 0 }, depuis: c.depuis, journal: c.journal ?? [] };
+      }
+      const relation: ProfilCasino['relation'] =
+        cible === id.uid ? 'moi' : p.amis.includes(cible) ? 'ami' : p.envoyees.includes(cible) ? 'demande_envoyee' : p.recues.includes(cible) ? 'demande_recue' : 'aucune';
+      const { journal, ...reste } = base;
+      const profil: ProfilCasino = { uid: cible, ...reste, ...progressionCasino(base.mise), enLigne: presents.has(cible), ou: positionDe(cible), relation, ...(relation === 'moi' ? { journal } : {}) };
+      repondre(rappel, { ok: true, profil });
+    });
+
+    socket.on('casino_mes_amis', async (_data: unknown, rappel?: Rappel) => {
+      const m = await auSalon(rappel);
+      if (!m) return;
+      repondre(rappel, { ok: true, amis: await vueAmis(m.id.uid) });
+    });
+
+    socket.on('casino_ami', async (data: { uid?: unknown; action?: unknown } = {}, rappel?: Rappel) => {
+      const m = await auSalon(rappel);
+      if (!m) return;
+      const { id, p } = m;
+      const autre = data?.uid;
+      const action = data?.action;
+      if (typeof autre !== 'string' || !autre || (action !== 'demander' && action !== 'accepter' && action !== 'refuser' && action !== 'retirer')) return erreur(rappel, 'Demande impossible.', 'Invalid request.');
+      try {
+        const r = await comptes.lienCasino(id.uid, autre, action);
+        for (const [u, c] of Object.entries(r.comptes)) {
+          const q = portes.get(u);
+          if (!q) continue;
+          q.amis = [...(c.amis ?? [])];
+          q.recues = [...(c.demandesRecues ?? [])];
+          q.envoyees = [...(c.demandesEnvoyees ?? [])];
+        }
+        if (r.resultat === 'introuvable' || r.resultat === 'soi_meme') return erreur(rappel, 'Joueur introuvable.', 'Player not found.');
+        if (r.resultat === 'limite') return erreur(rappel, 'Liste d’amis pleine (50 au plus).', 'Friend list full (50 at most).');
+        if (r.resultat === 'envoyee') notifier(autre, 'casino_social', { type: 'demande', nom: p.nom });
+        if (r.resultat === 'amis') notifier(autre, 'casino_social', { type: 'ami', nom: p.nom });
+        for (const u of [id.uid, autre]) notifier(u, 'casino_amis_maj', null);
+        repondre(rappel, { ok: true, resultat: r.resultat, amis: await vueAmis(id.uid), casino: vue(id.uid) });
+      } catch (e) {
+        console.error('Casino : amis indisponibles :', e);
+        erreur(rappel, 'Les amis sont indisponibles pour le moment, réessaie plus tard.', 'Friends are unavailable right now, try again later.');
+      }
+    });
+
+    // Envoyer de l'argent à un ami du casino (sommes fixes, plafond par jour).
+    socket.on('casino_envoyer', async (data: { uid?: unknown; montant?: unknown } = {}, rappel?: Rappel) => {
+      const m = await auSalon(rappel);
+      if (!m) return;
+      const { id, p } = m;
+      const dest = data?.uid;
+      const montant = Number(data?.montant);
+      if (typeof dest !== 'string' || !MONTANTS_ENVOI.includes(montant)) return erreur(rappel, 'Envoi impossible.', 'Invalid transfer.');
+      if (!p.amis.includes(dest)) return erreur(rappel, 'Tu ne peux envoyer de l’argent qu’à tes amis du casino.', 'You can only send money to your casino friends.');
+      const fiche = (await joueursCasino([dest]))[dest];
+      if (!fiche) return erreur(rappel, 'Joueur introuvable.', 'Player not found.');
+      // Vérifié et débité d'un bloc (sans attente) : deux envois simultanés ne dépassent jamais le plafond.
+      const jour = jourParis(horloge());
+      const deja = envoisDuJour(p);
+      if (deja + montant > ENVOI_MAX_JOUR) {
+        const reste = Math.max(0, ENVOI_MAX_JOUR - deja);
+        return erreur(rappel, `Plafond du jour : tu peux encore envoyer ${formatDollars(reste)}.`, `Daily limit: you can still send ${formatDollars(reste, true)}.`);
+      }
+      if (p.solde < montant) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
+      mouvement(id.uid, p, -montant);
+      p.envois = { jour, total: deja + montant };
+      p.envoisAEcrire = true;
+      const t = horloge();
+      noterJournal(id.uid, { t, type: 'envoi', nom: fiche.nom, montant });
+      verserHorsJeu(dest, montant);
+      noterJournal(dest, { t, type: 'recu', nom: p.nom, montant });
+      notifier(dest, 'casino_social', { type: 'recu', nom: p.nom, montant });
+      repondre(rappel, { ok: true, envoisRestants: ENVOI_MAX_JOUR - deja - montant, casino: vue(id.uid) });
+    });
+
+    socket.on('casino_defis', async (_data: unknown, rappel?: Rappel) => {
+      const m = await auSalon(rappel);
+      if (!m) return;
+      repondre(rappel, { ok: true, defis: defis.vuesDe(m.id.uid) });
+    });
+
+    socket.on('casino_defi_lancer', async (data: { uid?: unknown; jeu?: unknown; duree?: unknown; mise?: unknown } = {}, rappel?: Rappel) => {
+      const m = await auSalon(rappel);
+      if (!m) return;
+      const { id, p } = m;
+      const dest = data?.uid;
+      if (typeof dest !== 'string') return erreur(rappel, 'Défi impossible.', 'Invalid challenge.');
+      const fiche = (await joueursCasino([dest]))[dest];
+      if (!fiche) return erreur(rappel, 'Joueur introuvable.', 'Player not found.');
+      const r = defis.lancer({ uid: id.uid, nom: p.nom, avatar: p.avatar }, { uid: dest, nom: fiche.nom, avatar: fiche.avatar }, data?.jeu, data?.duree, data?.mise);
+      if (!r.ok) return erreur(rappel, ...r.erreur);
+      repondre(rappel, { ok: true, defi: r.defi, casino: vue(id.uid) });
+    });
+
+    socket.on('casino_defi_repondre', async (data: { id?: unknown; accepter?: unknown } = {}, rappel?: Rappel) => {
+      const m = await auSalon(rappel);
+      if (!m) return;
+      const r = defis.repondre(m.id.uid, data?.id, data?.accepter === true);
+      if (!r.ok) return erreur(rappel, ...r.erreur);
+      repondre(rappel, { ok: true, defi: r.defi, casino: vue(m.id.uid) });
+    });
+
+    socket.on('casino_defi_annuler', async (data: { id?: unknown } = {}, rappel?: Rappel) => {
+      const m = await auSalon(rappel);
+      if (!m) return;
+      const r = defis.annuler(m.id.uid, data?.id);
+      if (!r.ok) return erreur(rappel, ...r.erreur);
+      repondre(rappel, { ok: true, defi: r.defi, casino: vue(m.id.uid) });
+    });
+  }
 
   return { brancher, vider, estCreateur, tableDe, tableComplete };
 }

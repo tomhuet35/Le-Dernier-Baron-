@@ -17,9 +17,30 @@ const contact = process.env.CONTACT_EMAIL?.trim() || 'ledernierbaron@gmail.com';
 // Joueurs de remplissage du classement de la semaine : JOUEURS_FICTIFS=non sur Render pour les retirer.
 const joueursFictifs = process.env.JOUEURS_FICTIFS !== 'non';
 
-demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes, notifications, contact, joueursFictifs }).then(({ port: p }) => {
+// Une erreur imprévue est notée, sans faire tomber le serveur (et avec lui toutes les parties et le casino en cours).
+process.on('unhandledRejection', (e) => console.error('Erreur non rattrapée (promesse) :', e));
+process.on('uncaughtException', (e) => console.error('Erreur non rattrapée :', e));
+
+demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes, notifications, contact, joueursFictifs }).then(({ port: p, fermer }) => {
   console.log(`Le Dernier Baron est en ligne sur http://localhost:${p}`);
   garderEveille();
+  // Render arrête le serveur (SIGTERM) à chaque mise à jour du site : les soldes du casino sont écrits et les mises
+  // encore en jeu rendues avant de s'arrêter (10 secondes au plus).
+  let arret = false;
+  const arreter = (signal: string) => {
+    if (arret) return;
+    arret = true;
+    console.log(`${signal} reçu : sauvegarde avant l'arrêt…`);
+    const limite = setTimeout(() => process.exit(0), 10_000);
+    void fermer()
+      .catch((e) => console.error('Arrêt : sauvegarde incomplète :', e))
+      .finally(() => {
+        clearTimeout(limite);
+        process.exit(0);
+      });
+  };
+  process.on('SIGTERM', () => arreter('SIGTERM'));
+  process.on('SIGINT', () => arreter('SIGINT'));
 });
 
 /**

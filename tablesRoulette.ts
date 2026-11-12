@@ -378,7 +378,7 @@ export function creerTablesRoulette(options: {
       if (!mes.length) return repondre(rappel, { ok: true });
       const retirees = data?.tout ? mes : [mes[mes.length - 1]];
       m.t.poses = m.t.poses.filter((p) => !retirees.includes(p));
-      banque.crediter(m.id.uid, total(retirees));
+      banque.rembourser(m.id.uid, total(retirees));
       diffuser(m.t);
       repondre(rappel, { ok: true });
     });
@@ -456,6 +456,17 @@ export function creerTablesRoulette(options: {
       arreterBots(t);
     }
   };
+  /** Arrêt du serveur : les jetons d'un tour pas encore payé sont rendus. */
+  const rendreMisesEnCours = () => {
+    for (const t of tables.values()) {
+      if (t.etape === 'resultat' || !t.poses.length) continue;
+      for (const s of t.sieges) {
+        const mes = posesDe(t, s.id);
+        if (!s.bot && s.uid && mes.length) banque.rembourser(s.uid, total(mes));
+      }
+      t.poses = [];
+    }
+  };
 
-  return { brancher, resume, sortir, fermer, tableDe, existe, complete };
+  return { brancher, resume, sortir, fermer, rendreMisesEnCours, tableDe, existe, complete };
 }

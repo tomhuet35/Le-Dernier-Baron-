@@ -1,0 +1,188 @@
+/* Profil du casino : avatars encadrés, profil, amis, défis, puce du défi en cours. */
+
+/* ---------- L'avatar encadré (un cadre tous les 10 niveaux) ---------- */
+.cs-avatar {
+  --taille: 48px;
+  --anneau: linear-gradient(135deg, #6b5135, #3a2a1c);
+  --lueur: transparent;
+  position: relative; isolation: isolate; flex: none; display: inline-grid; place-items: center;
+  width: var(--taille); height: var(--taille); padding: calc(var(--taille) * 0.075);
+  border-radius: 50%; background: var(--anneau);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 0 calc(var(--taille) * 0.22) var(--lueur), 0 3px 8px rgba(0, 0, 0, 0.55);
+}
+.cs-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #1b120c; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5); }
+.cs-niveau {
+  position: absolute; left: 50%; bottom: calc(var(--taille) * -0.08); transform: translateX(-50%);
+  min-width: calc(var(--taille) * 0.42); padding: 0 calc(var(--taille) * 0.07); border-radius: 99px;
+  border: 1px solid rgba(255, 241, 196, 0.8); background: linear-gradient(180deg, #7a1a12, #3b0d08);
+  font-family: var(--titre); font-weight: 400; font-size: max(10px, calc(var(--taille) * 0.2)); line-height: 1.3; color: #fff1c4; text-align: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+}
+.cs-avatar.cadre-bronze { --anneau: conic-gradient(from 30deg, #7a4a1f, #e0a46a, #8a5a2b, #c98a4b, #7a4a1f); --lueur: rgba(224, 164, 106, 0.35); }
+.cs-avatar.cadre-argent { --anneau: conic-gradient(from 30deg, #7d8790, #f2f5f7, #9aa3ad, #dfe5ea, #7d8790); --lueur: rgba(230, 236, 242, 0.4); }
+.cs-avatar.cadre-or { --anneau: conic-gradient(from 30deg, #a8742a, #ffe9a8, #e9ad5b, #fff1c4, #a8742a); --lueur: rgba(255, 210, 120, 0.55); }
+.cs-avatar.cadre-rubis { --anneau: conic-gradient(from 30deg, #6b0f1a, #ff4d6d, #b3132f, #ffd0d8, #6b0f1a); --lueur: rgba(255, 60, 90, 0.6); }
+.cs-avatar.cadre-saphir { --anneau: conic-gradient(from 30deg, #0b2a6b, #4d8dff, #123c99, #cfe0ff, #0b2a6b); --lueur: rgba(77, 141, 255, 0.6); }
+.cs-avatar.cadre-emeraude { --anneau: conic-gradient(from 30deg, #0b5a3a, #4dffb0, #0f7a4f, #d4ffeb, #0b5a3a); --lueur: rgba(77, 255, 176, 0.5); }
+.cs-avatar.cadre-amethyste { --anneau: conic-gradient(from 30deg, #3d1260, #c77dff, #6a1fa3, #f0dcff, #3d1260); --lueur: rgba(199, 125, 255, 0.6); }
+.cs-avatar.cadre-perle { --anneau: conic-gradient(from 0deg, #e8e2d4, #ffffff, #d6c8f0, #ffffff, #c8e6f0, #ffffff, #e8e2d4); --lueur: rgba(255, 255, 255, 0.55); }
+.cs-avatar.cadre-flamme { --anneau: conic-gradient(from 0deg, #ff3d00, #ffd54f, #ff6d00, #ff1744, #ffd54f, #ff3d00); --lueur: rgba(255, 109, 0, 0.75); }
+.cs-avatar.cadre-baron { --anneau: conic-gradient(from 0deg, #a8742a, #fff1c4, #e9ad5b, #b3132f, #ffe9a8, #a8742a); --lueur: rgba(255, 214, 120, 0.85); }
+/* Les deux derniers cadres tournent (sauf mouvement réduit), et la couronne coiffe le dernier. */
+.cs-avatar.cadre-flamme::before, .cs-avatar.cadre-baron::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%; z-index: -1;
+  background: inherit; filter: blur(calc(var(--taille) * 0.05)); animation: cs-tourne 4s linear infinite;
+}
+.cs-avatar.cadre-baron::after {
+  content: ''; position: absolute; top: calc(var(--taille) * -0.26); left: 50%; width: calc(var(--taille) * 0.46); height: calc(var(--taille) * 0.3); transform: translateX(-50%);
+  background: url('/cartes/couronne.webp') center / contain no-repeat; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+}
+@keyframes cs-tourne { to { transform: rotate(360deg); } }
+
+/* ---------- Écrans du profil, des amis et des défis ---------- */
+.cs-ecran { gap: 14px; }
+.cs-centre { margin: 0; text-align: center; }
+.cs-ok { color: #8fd18a; font-weight: 700; }
+.cs-bloc { display: grid; gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.88); }
+.cs-bloc h3 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: 18px; color: var(--or-vif); }
+.cs-bloc h3 small { font-family: var(--texte); font-size: 13px; color: var(--creme-doux); }
+.cs-bloc-demandes { border-color: rgba(255, 207, 107, 0.7); box-shadow: 0 0 18px rgba(255, 200, 110, 0.2); }
+
+.cs-carte-profil {
+  display: flex; align-items: center; gap: 18px; padding: 18px 16px; border-radius: 18px; border: 2px solid var(--or);
+  background: radial-gradient(120% 140% at 0% 0%, rgba(122, 26, 18, 0.92), rgba(22, 13, 11, 0.95) 70%);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+}
+.cs-identite { display: grid; gap: 4px; min-width: 0; }
+.cs-identite h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 30px); color: #fff1c4; overflow-wrap: anywhere; }
+.cs-identite p { margin: 0; }
+.cs-titre-casino { font-family: var(--titre); font-size: 17px; color: var(--or-vif); letter-spacing: 0.03em; }
+.cs-statut { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--creme-doux); }
+.cs-statut.en-ligne { color: #9fe0b8; }
+.cs-statut.en-ligne i, .cs-point { width: 8px; height: 8px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 8px #3ddc84; }
+
+.cs-progression { display: grid; gap: 8px; padding: 14px; border-radius: 16px; border: 1px solid rgba(231, 194, 122, 0.4); background: rgba(22, 16, 12, 0.88); }
+.cs-progression p { margin: 0; font-size: 13px; }
+.cs-progression-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.cs-progression-tete strong { font-family: var(--titre); font-weight: 400; font-size: 20px; color: var(--or-vif); }
+.cs-progression-tete span { font-size: 13px; color: var(--creme-doux); font-variant-numeric: tabular-nums; }
+.cs-barre-xp { display: block; height: 12px; border-radius: 99px; background: rgba(0, 0, 0, 0.55); box-shadow: inset 0 0 0 1px rgba(231, 194, 122, 0.35); overflow: hidden; }
+.cs-barre-xp.fine { height: 6px; }
+.cs-barre-xp i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a8742a, #ffe9a8, #e9ad5b); box-shadow: 0 0 10px rgba(255, 210, 120, 0.7); transition: width 0.8s cubic-bezier(0.3, 0.8, 0.3, 1); }
+
+.cs-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.cs-actions button { min-height: 42px; }
+
+.cs-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cs-stats > div { display: grid; gap: 2px; padding: 10px 8px; border-radius: 12px; border: 1px solid rgba(231, 194, 122, 0.3); background: rgba(22, 16, 12, 0.88); text-align: center; }
+.cs-stats small { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--creme-doux); }
+.cs-stats strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 3.8vw, 19px); color: var(--or-vif); overflow-wrap: anywhere; }
+.positif { color: #8fd18a !important; }
+.negatif { color: #ff9b85 !important; }
+
+.cs-jeux { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cs-jeux li { display: grid; grid-template-columns: minmax(0, 9.5em) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13.5px; }
+.cs-jeux i { display: block; height: 10px; border-radius: 99px; background: rgba(0, 0, 0, 0.5); position: relative; overflow: hidden; }
+.cs-jeux i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--part); border-radius: inherit; background: linear-gradient(90deg, #7a1a12, #e9ad5b); }
+.cs-jeux small { color: var(--creme-doux); font-variant-numeric: tabular-nums; }
+
+.cs-cadres { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px 6px; }
+.cs-cadres li { display: grid; justify-items: center; gap: 2px; text-align: center; opacity: 0.4; filter: grayscale(0.85); }
+.cs-cadres li.gagne { opacity: 1; filter: none; }
+.cs-cadres strong { margin-top: 4px; font-size: 12px; color: var(--creme); }
+.cs-cadres small { font-size: 11px; color: var(--creme-doux); }
+.cs-cadres .cs-cadre-titre { font-size: 10.5px; color: var(--or-vif); }
+
+.cs-journal { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cs-journal li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 6px 0; border-bottom: 1px solid rgba(231, 194, 122, 0.12); font-size: 13.5px; }
+.cs-journal strong { font-family: var(--titre); font-weight: 400; }
+.cs-journal small { grid-column: 1 / -1; font-size: 11px; color: var(--creme-doux); }
+
+/* Listes de joueurs */
+.cs-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cs-joueur { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 14px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(231, 194, 122, 0.15); }
+.cs-joueur-fiche { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 4px; border: 0; background: none; text-align: left; color: inherit; }
+.cs-joueur-info { display: grid; gap: 1px; min-width: 0; }
+.cs-joueur-fiche strong { font-size: 15px; color: var(--creme); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-joueur-fiche small { font-size: 12px; color: var(--or-vif); }
+.cs-joueur-actions { flex: none; display: flex; gap: 6px; }
+.cs-joueur-actions button { min-height: 36px; min-width: 40px; padding: 4px 10px; }
+
+/* Choix (sommes, jeux, durées, amis) */
+.cs-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.cs-choix button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 12px; border-radius: 99px; border-color: var(--filet); background: rgba(10, 6, 4, 0.6); font-size: 13.5px; color: var(--creme); }
+.cs-choix button.choisi { border-color: var(--or-vif); background: linear-gradient(180deg, #e9ad5b, #a8742a); color: #1b120c; font-weight: 700; }
+.cs-choix button:disabled { opacity: 0.4; }
+.cs-choix-amis button { padding-left: 4px; }
+.cs-etiquette { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--creme-doux); }
+.cs-envoi { display: grid; gap: 12px; }
+.cs-envoi p { margin: 0; }
+.cs-lancer .cs-defier { justify-self: center; width: min(100%, 380px); margin-top: 6px; }
+
+/* Défis */
+.cs-defis { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.cs-defi { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(231, 194, 122, 0.25); background: rgba(0, 0, 0, 0.32); }
+.cs-defi p { margin: 0; font-size: 13px; }
+.cs-defi.etat-enCours { border-color: #ffcf6b; box-shadow: 0 0 16px rgba(255, 200, 110, 0.25); }
+.cs-defi.res-gagne { border-color: #8fd18a; }
+.cs-defi.res-perdu, .cs-defi.etat-refuse, .cs-defi.etat-expire, .cs-defi.etat-annule { opacity: 0.8; }
+.cs-defi-tete { display: flex; align-items: center; gap: 10px; }
+.cs-defi-info { flex: 1; display: grid; min-width: 0; }
+.cs-defi-tete strong { font-size: 15px; color: var(--creme); }
+.cs-defi-tete small { font-size: 12px; color: var(--creme-doux); }
+.cs-defi-tete em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--or-vif); }
+.cs-defi.res-gagne .cs-defi-tete em { color: #8fd18a; }
+.cs-defi.res-perdu .cs-defi-tete em { color: #ff9b85; }
+.cs-defi-scores { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; text-align: center; }
+.cs-defi-scores span { display: grid; padding: 6px; border-radius: 10px; background: rgba(0, 0, 0, 0.35); }
+.cs-defi-scores span.devant { box-shadow: inset 0 0 0 1px #8fd18a; }
+.cs-defi-scores small { font-size: 11px; color: var(--creme-doux); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-defi-scores strong { font-family: var(--titre); font-weight: 400; font-size: 19px; color: #fff1c4; font-variant-numeric: tabular-nums; }
+.cs-defi-temps { font-family: var(--titre); font-weight: 400; font-size: 20px; color: #ffcf6b; font-variant-numeric: tabular-nums; }
+.cs-defi-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-defi-actions button { flex: 1; min-height: 40px; }
+
+/* La puce du défi en cours, sur tous les écrans du casino */
+.cs-puce-defi {
+  position: fixed; z-index: 26; left: max(10px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 8px; max-width: min(320px, calc(100vw - 20px)); padding: 6px 12px 6px 8px; border-radius: 99px;
+  border: 1px solid #ffcf6b; background: linear-gradient(100deg, rgba(122, 26, 18, 0.95), rgba(22, 13, 11, 0.95)); color: #fff1c4; text-align: left;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.65), 0 0 14px rgba(255, 200, 110, 0.3);
+}
+.cs-puce-defi > b { font-size: 18px; }
+.cs-puce-info { display: grid; min-width: 0; }
+.cs-puce-defi small { font-size: 10.5px; color: var(--creme-doux); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-puce-defi strong { font-family: var(--titre); font-weight: 400; font-size: 14px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cs-puce-defi strong em { font-style: normal; color: var(--creme-doux); }
+.cs-puce-defi > i { font-style: normal; font-family: var(--titre); font-size: 15px; color: #ffcf6b; font-variant-numeric: tabular-nums; }
+.cs-puce-defi.devant { border-color: #8fd18a; }
+.cs-puce-defi.derriere { border-color: #ff9b85; }
+
+/* Le salon : mon niveau, et les boutons Profil / Amis / Défis */
+.cs-tresor-niveau { display: grid; gap: 4px; min-width: 0; }
+.cs-tresor-niveau small { font-size: 12px; color: var(--or-vif); }
+.cs-boutons-salon { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cs-boutons-salon button { position: relative; display: grid; justify-items: center; gap: 2px; min-height: 58px; padding: 6px 4px; border-radius: 14px; border: 1px solid var(--or); background: linear-gradient(180deg, rgba(122, 26, 18, 0.85), rgba(22, 13, 11, 0.92)); color: var(--creme); }
+.cs-boutons-salon button strong { font-family: var(--titre); font-weight: 400; font-size: 16px; color: var(--or-vif); }
+.cs-boutons-salon button small { font-size: 11px; color: var(--creme-doux); }
+.cs-boutons-salon .pastille-nombre { position: absolute; top: -6px; right: -4px; }
+
+.celebration-medaillon:has(.cs-fete) { background: none; box-shadow: none; }
+
+@media (max-width: 420px) {
+  .cs-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cs-cadres { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 2px; }
+  .cs-cadres strong { font-size: 10.5px; }
+  .cs-cadres .cs-cadre-titre { display: none; }
+  .cs-carte-profil { gap: 12px; padding: 14px 12px; }
+  .cs-joueur-actions button { padding: 4px 8px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-avatar::before { animation: none !important; }
+  .cs-barre-xp i { transition: none; }
+}
+
+/* Le trésor du salon est un bouton (il ouvre mon profil) ; le bandeau social aussi. */
+button.cas-tresor { width: 100%; min-height: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+button.cas-tresor:active { transform: scale(0.99); }
+.cs-toast { cursor: pointer; border: 1px solid #ffcf6b; font: inherit; }

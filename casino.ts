@@ -5,6 +5,7 @@
 import type { ResumeTableBJ } from './blackjack';
 import type { CaseFN, HappyHourFN } from './folleNuit';
 import type { ContenuCasse } from './machineASous';
+import type { VueDefi } from './profilCasino';
 
 /** Bonus de la machine à sous en cours (à finir avant de rejouer) : le Casse du coffre ou la Roue du Baron. */
 export type VueBonusMachine =
@@ -83,6 +84,8 @@ export interface RicheSalon {
   nom: string;
   avatar: number;
   solde: number;
+  /** Niveau du casino (cadre d'avatar). */
+  niveau?: number;
   moi?: true;
 }
 
@@ -113,13 +116,17 @@ export interface VueCasino {
   folleNuit?: { enDirect: boolean; spectateurs: number; historique: { case: CaseFN; x: number }[]; happyHour?: HappyHourFN };
   /** Les Coffres du Baron : une partie attend-elle le joueur ? */
   coffres?: { enCours: boolean };
+  /** Mon profil du casino, en bref : niveau et XP, demandes d'amis et invitations à un défi, défi en cours. */
+  profil?: { niveau: number; xp: number; xpNiveau: number; xpSuivant: number | null; bonusSuivant: number | null; demandes: number; invitations: number; defi: VueDefi | null };
   /** Le Vol de la Couronne : en direct ou non, combien regardent, les derniers envols. */
   couronne?: { enDirect: boolean; spectateurs: number; historique: number[] };
 }
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'defi';
+  /** Défi gagné : contre qui. */
+  contre?: string;
   gain: number;
   grosLot?: boolean;
   /** Les Nuits du Baron : le jackpot décroché (MAJOR ou GRAND). */

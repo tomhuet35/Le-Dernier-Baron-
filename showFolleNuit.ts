@@ -316,7 +316,7 @@ export function creerShowFolleNuit(options: {
       if (!m) return;
       if (!m.j.poses.length) return repondre(rappel, { ok: true });
       const retirees = data?.tout ? m.j.poses.splice(0) : m.j.poses.splice(-1);
-      banque.crediter(m.id.uid, total(retirees));
+      banque.rembourser(m.id.uid, total(retirees));
       diffuser();
       repondre(rappel, { ok: true });
     });
@@ -373,8 +373,18 @@ export function creerShowFolleNuit(options: {
     if (minuterie) clearTimeout(minuterie);
     minuterie = null;
   };
+  /** Arrêt du serveur : les mises d'une manche pas encore payée sont rendues. */
+  const rendreMisesEnCours = () => {
+    if (paye) return;
+    paye = true;
+    for (const j of joueurs.values()) {
+      const t = total(j.poses);
+      if (t > 0) banque.rembourser(j.uid, t);
+      j.poses = [];
+    }
+  };
   /** Ce que l'accueil du salon montre du show : en direct ou non, les derniers résultats. */
   const resume = () => ({ enDirect: enCours, spectateurs: uidsSpectateurs().size, historique: historique.slice(0, 6), happyHour: happyHour() });
 
-  return { brancher, sortir, fermer: fermerShow, resume, estBonus };
+  return { brancher, sortir, fermer: fermerShow, rendreMisesEnCours, resume, estBonus };
 }

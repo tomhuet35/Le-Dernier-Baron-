@@ -527,11 +527,16 @@ export function JeuCouronne({ vue, appel, onVue, onRetour }: { vue: VueCasino; a
 
   useEffect(() => {
     let vivant = true;
-    const entrer = async () => {
+    // Après une coupure, le salon peut mettre quelques secondes à se rouvrir : on réessaie avant d'afficher l'erreur.
+    const entrer = async (essai = 0): Promise<void> => {
       const r = (await appel('casino_cv_entrer')) as { ok: boolean; erreur?: string; couronne?: VueCouronne };
       if (!vivant) return;
-      if (r.ok && r.couronne) setV(r.couronne);
-      else setErreur(r.erreur ?? tr('La couronne est indisponible pour le moment.', 'The crown is unavailable right now.'));
+      if (r.ok && r.couronne) {
+        setErreur(null);
+        return setV(r.couronne);
+      }
+      if (essai < 5) return void window.setTimeout(() => void entrer(essai + 1), 1200);
+      setErreur(r.erreur ?? tr('La couronne est indisponible pour le moment.', 'The crown is unavailable right now.'));
     };
     void entrer();
     const surVue = (x: VueCouronne) => setV(x);

@@ -158,5 +158,14 @@ export function creerCoffres(options: OptionsCoffres) {
   /** Une partie est-elle en cours pour ce joueur ? (le salon l'affiche sur la vignette) */
   const enCours = (uid: string) => parties.get(uid)?.etat === 'enCours';
 
-  return { brancher, enCours };
+  /** Arrêt du serveur : une partie pas finie est annulée et sa mise rendue (le joueur la rejouera). */
+  const rendreMisesEnCours = () => {
+    for (const [uid, p] of parties) {
+      if (p.etat !== 'enCours') continue;
+      banque.rembourser(uid, p.mise);
+      parties.delete(uid);
+    }
+  };
+
+  return { brancher, enCours, rendreMisesEnCours };
 }

@@ -40,6 +40,8 @@ import { TableBlackjack } from './CasinoBlackjack';
 import { BandeauFolleNuit, ShowFolleNuit } from './CasinoFolleNuit';
 import { JeuFestin } from './CasinoFestin';
 import { JeuCouronne } from './CasinoCouronne';
+import { BarreXp, CadreAvatar, CelebrationNiveau, EcranAmis, EcranDefis, EcranProfil, PuceDefi, texteDefi, texteSocial, type FeteNiveau } from './CasinoSocial';
+import { titreCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
 import { MachineNuits } from './CasinoNuits';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
@@ -47,7 +49,7 @@ import type { EtatCompte } from './Profil';
 import { ANGLE_ROUE, COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRoue } from './RouletteDuJour';
 import { socket } from './socket';
 import { EN, tr } from './traduction';
-import { BoutonMusique, Celebration, Fenetre, jouerEffet, mouvementReduit, musiqueDuSalon, useCompteur } from './ui';
+import { BoutonMusique, Celebration, Fenetre, Garde, jouerEffet, mouvementReduit, musiqueDuSalon, useCompteur } from './ui';
 import { dollars, GainDefilant, Jeton, LINGOTS_PALIER, OptionsMachine, palierDe, PluieLingots, useSoldeAnime, useToursAuto, type Palier } from './casinoOutils';
 import './casino.css';
 
@@ -1170,7 +1172,9 @@ function Vignette({ jeu, onOuvrir, ruban }: { jeu: (typeof JEUX)[number]; onOuvr
 
 function Annonce({ annonce }: { annonce: AnnonceCasino }) {
   const texte =
-    annonce.jeu === 'roue'
+    annonce.jeu === 'defi'
+      ? tr(`${annonce.nom} a battu ${annonce.contre ?? '?'} en défi : ${dollars(annonce.gain)} !`, `${annonce.nom} beat ${annonce.contre ?? '?'} in a challenge: ${dollars(annonce.gain)}!`)
+      : annonce.jeu === 'roue'
       ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la roulette du salon !`, `${annonce.nom} won ${dollars(annonce.gain)} on the lounge wheel!`)
       : annonce.jeu === 'roulette'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la roulette !`, `${annonce.nom} won ${dollars(annonce.gain)} at roulette!`)
@@ -1328,8 +1332,14 @@ function Salon({
   onCadeau,
   onCadeauFini,
   onQuitter,
+  onProfil,
+  onAmis,
+  onDefis,
 }: {
   vue: VueCasino;
+  onProfil: () => void;
+  onAmis: () => void;
+  onDefis: () => void;
   onRoue: () => void;
   onMachines: () => void;
   onBlackjack: () => void;
@@ -1352,13 +1362,37 @@ function Salon({
         <h1>{tr('Salon privé', 'Private lounge')}</h1>
         <span className="cas-barre-vide" />
       </header>
-      <section className="cas-tresor">
-        <img className="cas-tresor-avatar" src={`/cartes/avatar-${vue.avatar}.webp`} alt="" />
-        <div>
+      <button type="button" className="cas-tresor" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
+        {vue.profil ? <CadreAvatar avatar={vue.avatar} niveau={vue.profil.niveau} taille={62} /> : <img className="cas-tresor-avatar" src={`/cartes/avatar-${vue.avatar}.webp`} alt="" />}
+        <div className="cs-tresor-niveau">
           <small>{tr('Ton solde', 'Your balance')}</small>
           <strong className="cas-solde">{dollars(solde)}</strong>
+          {vue.profil && (
+            <>
+              <small>
+                {tr(`Niveau ${vue.profil.niveau}`, `Level ${vue.profil.niveau}`)} · {tr(...titreCasino(vue.profil.niveau))}
+              </small>
+              <BarreXp xp={vue.profil.xp} xpNiveau={vue.profil.xpNiveau} xpSuivant={vue.profil.xpSuivant} fine />
+            </>
+          )}
         </div>
-      </section>
+      </button>
+      <div className="cs-boutons-salon">
+        <button type="button" onClick={onProfil}>
+          <strong>{tr('Profil', 'Profile')}</strong>
+          <small>{vue.profil ? tr(`Niv. ${vue.profil.niveau}`, `Lvl ${vue.profil.niveau}`) : '—'}</small>
+        </button>
+        <button type="button" onClick={onAmis}>
+          <strong>{tr('Amis', 'Friends')}</strong>
+          <small>{tr('Envois, rejoindre', 'Gifts, join')}</small>
+          {!!vue.profil?.demandes && <span className="pastille-nombre">{vue.profil.demandes}</span>}
+        </button>
+        <button type="button" onClick={onDefis}>
+          <strong>{tr('Défis', 'Challenges')}</strong>
+          <small>{vue.profil?.defi ? tr('En cours !', 'Live!') : tr('1 contre 1', '1 vs 1')}</small>
+          {!!vue.profil?.invitations && <span className="pastille-nombre">{vue.profil.invitations}</span>}
+        </button>
+      </div>
       {vue.cadeau && <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} />}
       <button type="button" className={`cas-bouton-roue ${attente ? '' : 'prete'}`} onClick={onRoue}>
         <svg className="bouton-roulette-icone" viewBox="0 0 40 40" aria-hidden="true">
@@ -1409,7 +1443,7 @@ function Salon({
             {vue.riches.map((r, i) => (
               <li key={`${i}-${r.nom}`} className={r.moi ? 'moi' : ''}>
                 <span className="cas-riche-rang">{i + 1}</span>
-                <img src={`/cartes/avatar-${r.avatar}.webp`} alt="" />
+                <CadreAvatar avatar={r.avatar} niveau={r.niveau ?? 1} taille={34} sansNiveau />
                 <span className="cas-riche-nom">{r.nom || tr('Créateur', 'Creator')}</span>
                 <strong>{dollars(r.solde)}</strong>
               </li>
@@ -1442,7 +1476,19 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'profil' | 'amis' | 'defis'>('salon');
+  /** Profil du casino : le mien (null) ou celui d'un ami ; l'ami présélectionné pour un défi. */
+  const [profilUid, setProfilUid] = useState<string | null>(null);
+  const [cibleDefi, setCibleDefi] = useState<string | null>(null);
+  const [defis, setDefis] = useState<VueDefi[]>([]);
+  const [fete, setFete] = useState<FeteNiveau | null>(null);
+  const [toastSocial, setToastSocial] = useState<{ texte: string; vers: 'amis' | 'defis'; id: number } | null>(null);
+  const minuterieToast = useRef(0);
+  const moi = compte.utilisateur?.uid ?? '';
+  /** Chaque (re)entrée au salon : le serveur repart de zéro pour ce téléphone (position, présence). */
+  const [entrees, setEntrees] = useState(0);
+  const defisRef = useRef<VueDefi[]>([]);
+  defisRef.current = defis;
   const [roue, setRoue] = useState(false);
   const [fenetreTables, setFenetreTables] = useState<JeuTable | null>(null);
   const [table, setTable] = useState<TableActive | null>(null);
@@ -1466,6 +1512,7 @@ export default function Casino({
         if (!entreRef.current) jouerEffet('casino_entree');
         entreRef.current = true;
         setVue(r.casino);
+        setEntrees((n) => n + 1);
         // Retour après une coupure : on reprend sa place à la table.
         if (tableRef.current) {
           const { jeu, code } = tableRef.current;
@@ -1506,7 +1553,48 @@ export default function Casino({
     socket.on('casino_annonce', surAnnonce);
     socket.on('casino_gros_lot', surGrosLot);
     socket.on('connect', surConnexion);
+    // Profil du casino : niveau, amis, envois et défis arrivent en direct.
+    const rafraichir = () =>
+      void appel('casino_vue').then((r) => {
+        const casino = (r as unknown as { casino?: VueCasino }).casino;
+        if (r.ok && casino) setVue(casino);
+      });
+    const montrer = (texte: string, vers: 'amis' | 'defis') => {
+      if (!texte) return;
+      setToastSocial({ texte, vers, id: Date.now() });
+      window.clearTimeout(minuterieToast.current);
+      minuterieToast.current = window.setTimeout(() => setToastSocial(null), 5000);
+    };
+    const surNiveau = (f: Omit<FeteNiveau, 'id'>) => {
+      setFete({ ...f, id: Date.now() });
+      rafraichir();
+    };
+    const surSocial = (e: { type: string; nom: string; montant?: number }) => {
+      jouerEffet(e.type === 'recu' ? 'machine_pieces' : 'casino_annonce');
+      montrer(texteSocial(e), 'amis');
+      rafraichir();
+    };
+    const surSolde = (solde: number) => setVue((v) => (v ? { ...v, solde } : v));
+    const surDefi = (d: VueDefi) => {
+      const avant = defisRef.current.find((x) => x.id === d.id);
+      setDefis((l) => [d, ...l.filter((x) => x.id !== d.id)]);
+      const texte = texteDefi(d, moi, avant);
+      if (texte) {
+        jouerEffet(d.etat === 'fini' ? 'roulette_gain' : 'casino_annonce');
+        montrer(texte, 'defis');
+        rafraichir();
+      }
+    };
+    socket.on('casino_niveau', surNiveau);
+    socket.on('casino_social', surSocial);
+    socket.on('casino_solde', surSolde);
+    socket.on('casino_defi', surDefi);
     return () => {
+      socket.off('casino_niveau', surNiveau);
+      socket.off('casino_social', surSocial);
+      socket.off('casino_solde', surSolde);
+      socket.off('casino_defi', surDefi);
+      window.clearTimeout(minuterieToast.current);
       socket.off('casino_annonce', surAnnonce);
       socket.off('casino_gros_lot', surGrosLot);
       socket.off('casino_bj', surTable);
@@ -1515,7 +1603,49 @@ export default function Casino({
       window.clearTimeout(minuterieAnnonce.current);
       socket.emit('casino_quitter');
     };
-  }, [entrer]);
+  }, [entrer, appel, moi]);
+
+  // Le défi en cours vu à l'entrée du salon (ensuite, les événements le tiennent à jour).
+  const defiVue = vue?.profil?.defi ?? null;
+  useEffect(() => {
+    if (defiVue && !defisRef.current.some((x) => x.id === defiVue.id)) setDefis((l) => [defiVue, ...l]);
+  }, [defiVue]);
+  const defiActif = defis.find((d) => d.etat === 'enCours') ?? null;
+
+  // Où je joue, pour que mes amis puissent me rejoindre.
+  const position: PositionCasino['ecran'] =
+    ecran === 'machine' ? 'machine' : ecran === 'nuits' ? 'nuits' : ecran === 'folleNuit' ? 'folleNuit' : ecran === 'festin' ? 'coffres' : ecran === 'couronne' ? 'couronne' : ecran === 'table' && table ? table.jeu : 'salon';
+  useEffect(() => {
+    if (entrees) socket.emit('casino_position', { ecran: position });
+  }, [position, entrees]);
+
+  const ouvrirProfil = (uid: string | null) => {
+    setProfilUid(uid);
+    setEcran('profil');
+  };
+  const ouvrirDefis = (cible: string | null = null) => {
+    setCibleDefi(cible);
+    setEcran('defis');
+  };
+  const retourSalon = () => {
+    setEcran('salon');
+    void appel('casino_vue').then((r) => {
+      const casino = (r as unknown as { casino?: VueCasino }).casino;
+      if (r.ok && casino) setVue(casino);
+    });
+  };
+  /** Rejoindre un ami : son jeu (et sa table, au blackjack ou à la roulette). */
+  const rejoindre = async (p: PositionCasino) => {
+    if ((p.ecran === 'blackjack' || p.ecran === 'roulette') && p.table) {
+      if (tableRef.current) await appel(`${EVT_TABLE[tableRef.current.jeu]}_quitter`);
+      const r = (await appel(`${EVT_TABLE[p.ecran]}_rejoindre`, { code: p.table })) as { ok: boolean; erreur?: string; table?: VueTableBJ & VueTableRoulette };
+      if (r.ok && r.table) return allerTable({ jeu: p.ecran, v: r.table } as TableActive);
+      setInfo(r.erreur ?? tr('Cette table est fermée.', 'This table is closed.'));
+      window.setTimeout(() => setInfo(null), 4000);
+      return;
+    }
+    setEcran(p.ecran === 'machine' ? 'machine' : p.ecran === 'nuits' ? 'nuits' : p.ecran === 'folleNuit' ? 'folleNuit' : p.ecran === 'coffres' ? 'festin' : p.ecran === 'couronne' ? 'couronne' : 'salon');
+  };
 
   const allerTable = (t: TableActive) => {
     tableRef.current = { jeu: t.jeu, code: t.v.code };
@@ -1601,6 +1731,22 @@ export default function Casino({
         }}
       />
     );
+  else if (ecran === 'profil')
+    contenu = (
+      <EcranProfil
+        key={profilUid ?? 'moi'}
+        uid={profilUid}
+        appel={appel}
+        vue={vue}
+        onVue={setVue}
+        onRetour={() => (profilUid ? setEcran('amis') : retourSalon())}
+        onRejoindre={(p) => void rejoindre(p)}
+        onDefier={(uid) => ouvrirDefis(uid)}
+      />
+    );
+  else if (ecran === 'amis')
+    contenu = <EcranAmis appel={appel} vue={vue} onVue={setVue} onRetour={retourSalon} onProfil={(uid) => ouvrirProfil(uid)} onRejoindre={(p) => void rejoindre(p)} onDefier={(uid) => ouvrirDefis(uid)} />;
+  else if (ecran === 'defis') contenu = <EcranDefis appel={appel} vue={vue} moi={moi} defis={defis} cible={cibleDefi} onDefis={setDefis} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'folleNuit')
     contenu = (
       <ShowFolleNuit
@@ -1625,6 +1771,9 @@ export default function Casino({
         onFolleNuit={() => setEcran('folleNuit')}
         onFestin={() => setEcran('festin')}
         onCouronne={() => setEcran('couronne')}
+        onProfil={() => ouvrirProfil(null)}
+        onAmis={() => setEcran('amis')}
+        onDefis={() => ouvrirDefis()}
         onCadeau={() => void recupererCadeau()}
         onCadeauFini={() =>
           void (async () => {
@@ -1637,7 +1786,9 @@ export default function Casino({
     );
   return (
     <div className="cas">
-      {contenu}
+      <Garde key={ecran} onRetour={retourSalon} libelleRetour={tr('Retour au salon', 'Back to the lounge')}>
+        {contenu}
+      </Garde>
       {fenetreTables && vue && <FenetreTables key={fenetreTables} jeu={fenetreTables} vue={vue} appel={appel} onTable={allerTable} onVue={setVue} onFermer={() => setFenetreTables(null)} />}
       {info && <div className="toast">{info}</div>}
       {cadeau !== null && (
@@ -1651,6 +1802,13 @@ export default function Casino({
       )}
       {annonce && <Annonce annonce={annonce} />}
       {roue && vue && <FenetreRoueSalon vue={vue} appel={appel} onVue={setVue} onFermer={() => setRoue(false)} />}
+      {defiActif && ecran !== 'defis' && <PuceDefi d={defiActif} moi={moi} onOuvrir={() => ouvrirDefis()} />}
+      {toastSocial && (
+        <button type="button" key={toastSocial.id} className="toast cs-toast" onClick={() => (setToastSocial(null), toastSocial.vers === 'amis' ? setEcran('amis') : ouvrirDefis())}>
+          {toastSocial.texte}
+        </button>
+      )}
+      {fete && vue && <CelebrationNiveau key={fete.id} fete={fete} avatar={vue.avatar} onFermer={() => setFete(null)} />}
     </div>
   );
 }
