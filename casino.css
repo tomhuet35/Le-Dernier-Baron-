@@ -43,7 +43,9 @@
 
 /* Les jeux : deux par ligne sur téléphone, quatre de front sur grand écran */
 .cas-jeux { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (min-width: 700px) { .cas-jeux { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; } .cas-jeux .cas-vignette-nom { font-size: 17px; } }
+/* Six jeux : trois par rangée sur grand écran (vignettes plus larges que hautes), deux sur téléphone. */
+@media (min-width: 700px) { .cas-jeux { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } .cas-jeux .cas-vignette { aspect-ratio: 1.25 / 1; } .cas-jeux .cas-vignette-nom { font-size: 18px; } }
+.cas-vignette.couronne img { object-position: 50% 30%; }
 /* Sur téléphone, 5 vignettes sur 2 colonnes : la dernière prend toute la largeur. */
 @media (max-width: 699px) { .cas-jeux > .cas-vignette:last-child:nth-child(odd) { grid-column: 1 / -1; aspect-ratio: 2 / 1.1; } }
 

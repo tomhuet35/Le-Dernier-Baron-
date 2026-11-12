@@ -39,6 +39,7 @@ import type { Appel } from './App';
 import { TableBlackjack } from './CasinoBlackjack';
 import { BandeauFolleNuit, ShowFolleNuit } from './CasinoFolleNuit';
 import { JeuFestin } from './CasinoFestin';
+import { JeuCouronne } from './CasinoCouronne';
 import { MachineNuits } from './CasinoNuits';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
@@ -1025,7 +1026,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
           {!peutJouer && !enCours && gratuits === 0 && !vue.bonus && <p className="cas-erreur">{tr('Solde insuffisant : baisse la mise ou tourne la roulette du salon.', 'Not enough money: lower the bet or spin the lounge wheel.')}</p>}
         </div>
       </div>
-      {pluie && <PluieLingots key={pluie.id} n={pluie.n} />}
+      {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} />}
       {gains && <TableDesGains onFermer={() => setGains(false)} />}
       {bonus &&
         !enCours &&
@@ -1084,10 +1085,11 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // ---------------------------------------------------------------------------------------------------------------
 // Le salon
 
-const JEUX: { id: 'machines' | 'roulette' | 'blackjack' | 'festin' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+const JEUX: { id: 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
   { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines.webp', repli: '/cartes/casino-machine.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
   { id: 'blackjack', nom: ['Blackjack', 'Blackjack'], image: '/cartes/casino-blackjack.webp', repli: '/cartes/billets_05.webp' },
+  { id: 'couronne', nom: ['Le Vol de la Couronne', 'The Flight of the Crown'], image: '/cartes/casino-couronne.webp', repli: '/cartes/baron.webp' },
   { id: 'festin', nom: ['Les Coffres du Baron', 'The Baron’s Safes'], image: '/cartes/casino-festin.webp', repli: '/cartes/baron.webp' },
   { id: 'poker', nom: ['Poker', 'Poker'], image: '/cartes/casino-poker.webp', repli: '/cartes/baron.webp' },
 ];
@@ -1178,6 +1180,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} aux Nuits du Baron !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Baron’s Nights!`)
       : annonce.jeu === 'coffres'
         ? tr(`${annonce.nom} a raflé ${dollars(annonce.gain)} aux Coffres du Baron !`, `${annonce.nom} grabbed ${dollars(annonce.gain)} from the Baron’s Safes!`)
+      : annonce.jeu === 'couronne'
+        ? tr(`${annonce.nom} a récupéré ${dollars(annonce.gain)} au Vol de la Couronne !`, `${annonce.nom} cashed out ${dollars(annonce.gain)} on the Flight of the Crown!`)
       : annonce.jeu === 'folleNuit'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la Folle Nuit !`, `${annonce.nom} won ${dollars(annonce.gain)} on the Crazy Night!`)
       : annonce.jeu === 'casse'
@@ -1320,6 +1324,7 @@ function Salon({
   onRoulette,
   onFolleNuit,
   onFestin,
+  onCouronne,
   onCadeau,
   onCadeauFini,
   onQuitter,
@@ -1331,6 +1336,7 @@ function Salon({
   onRoulette: () => void;
   onFolleNuit: () => void;
   onFestin: () => void;
+  onCouronne: () => void;
   onCadeau: () => void;
   onCadeauFini: () => void;
   onQuitter: () => void;
@@ -1378,8 +1384,18 @@ function Salon({
           <Vignette
             key={j.id}
             jeu={j}
-            onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : j.id === 'festin' ? onFestin : undefined}
-            ruban={j.id === 'festin' ? (vue.coffres?.enCours ? tr('En cours', 'In play') : tr('Nouveau', 'New')) : undefined}
+            onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : j.id === 'festin' ? onFestin : j.id === 'couronne' ? onCouronne : undefined}
+            ruban={
+              j.id === 'festin'
+                ? vue.coffres?.enCours
+                  ? tr('En cours', 'In play')
+                  : tr('Nouveau', 'New')
+                : j.id === 'couronne'
+                  ? vue.couronne?.spectateurs
+                    ? tr('En direct', 'Live')
+                    : tr('Nouveau', 'New')
+                  : undefined
+            }
           />
         ))}
       </div>
@@ -1426,7 +1442,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne'>('salon');
   const [roue, setRoue] = useState(false);
   const [fenetreTables, setFenetreTables] = useState<JeuTable | null>(null);
   const [table, setTable] = useState<TableActive | null>(null);
@@ -1570,6 +1586,21 @@ export default function Casino({
         }}
       />
     );
+  else if (ecran === 'couronne')
+    contenu = (
+      <JeuCouronne
+        vue={vue}
+        appel={appel}
+        onVue={setVue}
+        onRetour={() => {
+          setEcran('salon');
+          void appel('casino_vue').then((r) => {
+            const casino = (r as unknown as { casino?: VueCasino }).casino;
+            if (r.ok && casino) setVue(casino);
+          });
+        }}
+      />
+    );
   else if (ecran === 'folleNuit')
     contenu = (
       <ShowFolleNuit
@@ -1593,6 +1624,7 @@ export default function Casino({
         onRoulette={() => setFenetreTables('roulette')}
         onFolleNuit={() => setEcran('folleNuit')}
         onFestin={() => setEcran('festin')}
+        onCouronne={() => setEcran('couronne')}
         onCadeau={() => void recupererCadeau()}
         onCadeauFini={() =>
           void (async () => {

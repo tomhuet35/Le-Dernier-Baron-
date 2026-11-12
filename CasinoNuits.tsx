@@ -766,7 +766,7 @@ export function MachineNuits({ vue, appel, onVue, onRetour }: { vue: VueCasino; 
           </p>
         </div>
       )}
-      {pluie && <PluieLingots key={pluie.id} n={pluie.n} />}
+      {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} />}
       {gains && <TableNuits mise={miseTour} onFermer={() => setGains(false)} />}
       {fete && (
         <Celebration

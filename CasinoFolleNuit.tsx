@@ -1364,8 +1364,8 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
         </p>
       </section>
 
-      {pluie && <PluieLingots key={pluie.id} n={pluie.n} />}
-      {annonce && <AnnonceGain key={annonce.id} montant={annonce.montant} gros={annonce.gros} />}
+      {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} />}
+      {annonce && <AnnonceGain key={`annonce-${annonce.id}`} montant={annonce.montant} gros={annonce.gros} />}
     </div>
   );
 }

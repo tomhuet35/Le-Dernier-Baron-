@@ -386,8 +386,8 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         </p>
       </section>
 
-      {pluie && <PluieLingots key={pluie.id} n={pluie.n} objets={BUTIN_PLUIE} />}
-      {annonce && <AnnonceCoffres key={annonce.id} montant={annonce.montant} x={annonce.x} gros={annonce.gros} />}
+      {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={BUTIN_PLUIE} />}
+      {annonce && <AnnonceCoffres key={`annonce-${annonce.id}`} montant={annonce.montant} x={annonce.x} gros={annonce.gros} />}
     </div>
   );
 }

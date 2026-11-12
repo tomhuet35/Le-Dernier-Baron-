@@ -113,11 +113,13 @@ export interface VueCasino {
   folleNuit?: { enDirect: boolean; spectateurs: number; historique: { case: CaseFN; x: number }[]; happyHour?: HappyHourFN };
   /** Les Coffres du Baron : une partie attend-elle le joueur ? */
   coffres?: { enCours: boolean };
+  /** Le Vol de la Couronne : en direct ou non, combien regardent, les derniers envols. */
+  couronne?: { enDirect: boolean; spectateurs: number; historique: number[] };
 }
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne';
   gain: number;
   grosLot?: boolean;
   /** Les Nuits du Baron : le jackpot décroché (MAJOR ou GRAND). */

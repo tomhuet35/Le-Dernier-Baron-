@@ -1,0 +1,137 @@
+/* Le Vol de la Couronne : le ciel de la ville, la couronne ailée, la pie voleuse, et les deux mises. */
+
+#racine:has(.cv-ecran) { max-width: 1400px; }
+.cas-ecran.cv-ecran { width: 100%; max-width: 1340px; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.cv-ecran > * { min-width: 0; }
+.cv-titre { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; line-height: 1; font-size: clamp(20px, 5.4vw, 30px) !important; color: var(--or-vif); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 18px rgba(233, 173, 91, 0.35); }
+
+/* Les derniers envols : bleu (moins de ×2), violet (moins de ×10), or (moins de ×100), rouge (au-delà). */
+.cv-historique { list-style: none; margin: 0; padding: 2px 2px 4px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); min-height: 30px; }
+.cv-historique::-webkit-scrollbar { display: none; }
+.cv-historique li { flex: none; padding: 3px 10px; border-radius: 99px; border: 1px solid; font-family: var(--titre); font-size: 14px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.cv-historique li.bas { color: #a9c0f0; border-color: rgba(120, 150, 220, 0.45); background: rgba(16, 26, 66, 0.75); }
+.cv-historique li.moyen { color: #e6c2ff; border-color: rgba(190, 130, 255, 0.5); background: rgba(56, 18, 86, 0.7); }
+.cv-historique li.haut { color: #1b120c; border-color: #fff1c4; background: linear-gradient(180deg, #ffe08a, #d79a36); }
+.cv-historique li.enorme { color: #fff6e6; border-color: #ffcf6b; background: linear-gradient(180deg, #ff7a6b, #b3261c); box-shadow: 0 0 10px rgba(255, 120, 90, 0.6); }
+.cv-historique li:first-child { animation: cv-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes cv-arrive { from { opacity: 0; transform: scale(0.5); } }
+
+/* La scène : trois décors empilés (les toits, les nuages, les étoiles) qui défilent quand la couronne monte. */
+.cv-scene { position: relative; aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; isolation: isolate; background: linear-gradient(180deg, #050a2a, #00051f); border: 2px solid rgba(231, 194, 122, 0.55); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7); }
+.cv-decor { position: absolute; inset: 0; background-repeat: no-repeat; background-size: cover; will-change: transform; pointer-events: none; }
+.cv-decor.ville { background-image: url('/cartes/couronne-ville.webp'); background-position: 50% 100%; }
+.cv-decor.nuages { background-image: url('/cartes/couronne-nuages.webp'); background-position: 18% 50%; -webkit-mask-image: linear-gradient(to top, transparent, #000 24%); mask-image: linear-gradient(to top, transparent, #000 24%); }
+.cv-decor.etoiles { background-image: url('/cartes/couronne-etoiles.webp'); background-position: 72% 50%; -webkit-mask-image: linear-gradient(to top, transparent, #000 20%); mask-image: linear-gradient(to top, transparent, #000 20%); }
+.cv-trace { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
+.cv-couronne { position: absolute; left: 0; top: 0; z-index: 3; width: 30%; height: auto; will-change: transform; pointer-events: none; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 12px rgba(255, 200, 100, 0.3)); }
+.cv-scene.vol .cv-couronne { filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 22px rgba(255, 210, 120, 0.65)); }
+.cv-pie { position: absolute; left: 0; top: 0; z-index: 6; width: 38%; height: auto; opacity: 0; will-change: transform, opacity; pointer-events: none; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6)); }
+.cv-direct { position: absolute; left: 10px; top: 10px; z-index: 7; display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 7px; border-radius: 99px; background: #b3261c; color: #fff3df; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6); }
+.cv-direct::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #fff3df; animation: cv-pouls 1.2s ease-in-out infinite; }
+@keyframes cv-pouls { 50% { opacity: 0.25; } }
+
+/* Le multiplicateur (et le compte à rebours avant l'envol), en haut au centre. */
+.cv-centre { position: absolute; left: 0; right: 0; top: 6%; z-index: 5; display: grid; justify-items: center; gap: 2px; pointer-events: none; text-align: center; }
+.cv-x { font-family: var(--titre); font-weight: 400; font-size: clamp(46px, 13vw, 112px); line-height: 1; color: #fff1c4; font-variant-numeric: tabular-nums; white-space: nowrap; text-shadow: 0 0 26px rgba(255, 200, 110, 0.85), 0 4px 10px rgba(0, 0, 0, 0.85); }
+.cv-scene.mises .cv-x { display: none; }
+.cv-scene.volee .cv-x { color: #ff8f7d; text-shadow: 0 0 26px rgba(255, 60, 40, 0.85), 0 4px 10px #000; animation: cv-choc 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.cv-scene.volee.etoiles .cv-x { color: #fff1c4; text-shadow: 0 0 30px rgba(255, 220, 140, 1), 0 4px 10px #000; }
+@keyframes cv-choc { from { transform: scale(1.35); } }
+.cv-legende { display: none; padding: 4px 14px; border-radius: 99px; background: rgba(60, 8, 6, 0.82); border: 1px solid #ff8f7d; color: #ffe2da; font-weight: 800; font-size: clamp(13px, 3.4vw, 17px); letter-spacing: 0.02em; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); }
+.cv-scene.volee .cv-legende { display: block; animation: cv-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.15s both; }
+.cv-scene.volee.etoiles .cv-legende { background: rgba(40, 26, 6, 0.85); border-color: #ffcf6b; color: #fff1c4; }
+.cv-attente { display: none; justify-items: center; gap: 2px; padding: 8px 18px 10px; border-radius: 16px; background: rgba(4, 8, 30, 0.7); border: 1px solid rgba(231, 194, 122, 0.45); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); }
+.cv-scene.mises .cv-attente { display: grid; }
+.cv-attente small { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--creme-doux); }
+.cv-attente strong { font-family: var(--titre); font-weight: 400; font-size: clamp(34px, 9vw, 58px); line-height: 1; color: #fff1c4; text-shadow: 0 0 18px rgba(255, 200, 110, 0.7); }
+.cv-barre { display: block; width: clamp(120px, 30vw, 220px); height: 6px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, 0.15); }
+.cv-barre i { display: block; height: 100%; background: linear-gradient(90deg, #e9ad5b, #fff1c4); transform-origin: left; }
+
+/* Les deux mises */
+.cv-mises { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cv-mise { display: grid; gap: 8px; justify-items: center; padding: 10px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.92); }
+.cv-mise.enVol { border-color: rgba(231, 194, 122, 0.7); }
+.cv-montant { grid-template-columns: 42px minmax(0, 180px) 42px; }
+.cv-montant button { min-height: 42px; }
+.cv-options { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; font-size: 13px; }
+.cv-interrupteur { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--creme); user-select: none; }
+.cv-interrupteur input { appearance: none; -webkit-appearance: none; position: relative; width: 34px; height: 20px; margin: 0; border-radius: 99px; border: 1px solid var(--or); background: rgba(10, 6, 4, 0.8); cursor: pointer; transition: background 0.2s; }
+.cv-interrupteur input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--creme-doux); transition: transform 0.2s, background 0.2s; }
+.cv-interrupteur input:checked { background: linear-gradient(180deg, #e9ad5b, #a8742a); }
+.cv-interrupteur input:checked::after { transform: translateX(14px); background: #fff1c4; }
+.cv-interrupteur input:disabled { opacity: 0.5; cursor: default; }
+.cv-auto { display: inline-flex; align-items: center; gap: 4px; }
+.cv-auto button { width: 30px; min-height: 30px; padding: 0; border-radius: 50%; font-size: 17px; line-height: 1; background: var(--nuit-3); border-color: var(--or); }
+.cv-auto strong { min-width: 62px; text-align: center; font-family: var(--titre); font-weight: 400; font-size: 17px; color: var(--or-vif); }
+.cv-auto.eteint strong { opacity: 0.45; }
+.cv-bouton { display: grid; justify-items: center; align-content: center; gap: 1px; width: 100%; min-height: 66px; padding: 6px 12px; border-radius: 14px; border: 2px solid; text-align: center; }
+.cv-bouton span { font-size: 12.5px; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; }
+.cv-bouton strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 5.4vw, 26px); line-height: 1.05; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cv-bouton small { font-size: 11.5px; opacity: 0.85; }
+.cv-bouton.miser { border-color: #9fe0b8; background: radial-gradient(120% 140% at 50% 0%, #3f9a5d, #1d5c34 60%, #123d22); color: #eaffef; box-shadow: 0 0 0 3px rgba(22, 16, 12, 0.9), 0 8px 18px rgba(0, 0, 0, 0.55); }
+.cv-bouton.annuler { border-color: #ff9a8a; background: radial-gradient(120% 140% at 50% 0%, #a3362a, #6e1a12 60%, #4a0f0a); color: #fff0ea; }
+.cv-bouton.recuperer { border-color: #fff1c4; background: radial-gradient(120% 140% at 50% 0%, #ffe9a8, #e9ad5b 50%, #a8742a); color: #1b120c; box-shadow: 0 0 0 3px rgba(22, 16, 12, 0.9), 0 0 24px rgba(255, 200, 110, 0.55), 0 10px 24px rgba(0, 0, 0, 0.6); animation: cv-appel 1.1s ease-in-out infinite; }
+@keyframes cv-appel { 50% { box-shadow: 0 0 0 3px rgba(22, 16, 12, 0.9), 0 0 36px rgba(255, 210, 120, 0.85), 0 10px 24px rgba(0, 0, 0, 0.6); } }
+.cv-bouton.gagne { border-color: #8fd18a; background: rgba(29, 85, 48, 0.55); color: #d9ffd6; }
+.cv-bouton.vole { border-color: #ff8f7d; background: rgba(110, 26, 18, 0.55); color: #ffd9d0; }
+.cv-bouton:active:not(:disabled) { transform: scale(0.97); }
+.cv-bouton:disabled { opacity: 0.6; }
+.cv-erreur { margin: 0; text-align: center; }
+
+/* Cette manche : qui a misé, qui a récupéré, à combien. */
+.cv-joueurs { display: grid; gap: 8px; align-content: start; padding: 12px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.9); }
+.cv-joueurs h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: 18px; color: var(--or-vif); }
+.cv-joueurs h2 small { font-family: var(--texte, inherit); font-size: 12px; color: var(--creme-doux); }
+.cv-joueurs ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.cv-joueurs li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; grid-template-areas: 'av nom res' 'av mise res'; align-items: center; column-gap: 8px; padding: 5px 8px; border-radius: 10px; border: 1px solid rgba(231, 194, 122, 0.18); background: rgba(10, 6, 4, 0.55); font-size: 13px; }
+.cv-joueurs li img { grid-area: av; width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.cv-joueurs .cv-nom { grid-area: nom; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--creme); font-weight: 700; }
+.cv-joueurs .cv-mise-joueur { grid-area: mise; font-size: 11.5px; color: var(--creme-doux); }
+.cv-joueurs li strong { grid-area: res; display: grid; justify-items: end; font-size: 12.5px; color: var(--creme-doux); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cv-joueurs li strong span:first-child { font-family: var(--titre); font-weight: 400; font-size: 14px; }
+.cv-joueurs li.gagne { border-color: rgba(143, 209, 138, 0.55); background: rgba(29, 85, 48, 0.35); }
+.cv-joueurs li.gagne strong { color: #b8f0b4; }
+.cv-joueurs li.vole strong { color: #ff9b85; }
+.cv-joueurs li.moi { box-shadow: inset 0 0 0 1px var(--or-vif); }
+
+/* La somme récupérée, en grand (en bas de la scène, sous la couronne) ; le solde qui la reçoit. */
+.cv-gain { position: absolute; left: 50%; bottom: 6%; z-index: 7; display: grid; justify-items: center; gap: 2px; padding: 10px 24px 12px; border-radius: 22px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(16, 30, 92, 0.96), rgba(6, 10, 30, 0.96)); box-shadow: 0 0 40px rgba(255, 200, 110, 0.55), 0 18px 40px rgba(0, 0, 0, 0.7); pointer-events: none; transform: translateX(-50%); animation: cv-gain-arrivee 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both, cv-gain-depart 0.5s ease-in 1.7s both; }
+.cv-gain.gros { padding: 18px 36px 22px; animation: cv-gain-arrivee 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both, cv-gain-depart 0.6s ease-in 3s both; }
+.cv-gain span { font-size: 13px; font-weight: 900; letter-spacing: 0.24em; text-transform: uppercase; color: #ffcf6b; }
+.cv-gain em { font-family: var(--titre); font-style: normal; font-size: clamp(22px, 6vw, 30px); line-height: 1; color: #ffcf6b; }
+.cv-gain strong { font-family: var(--titre); font-weight: 400; font-size: clamp(26px, 7vw, 42px); line-height: 1.05; color: #fff1c4; font-variant-numeric: tabular-nums; white-space: nowrap; text-shadow: 0 0 18px rgba(255, 200, 110, 0.9), 0 3px 8px rgba(0, 0, 0, 0.8); }
+.cv-gain.gros strong { font-size: clamp(32px, 9vw, 60px); }
+.cv-gain small { font-size: 12px; letter-spacing: 0.06em; color: var(--creme-doux); }
+@keyframes cv-gain-arrivee { from { opacity: 0; transform: translateX(-50%) scale(0.4); } }
+@keyframes cv-gain-depart { to { opacity: 0; transform: translateX(-50%) translateY(-14%) scale(0.92); } }
+.cv-solde { position: relative; z-index: 25; transition: color 0.3s, box-shadow 0.3s, border-color 0.3s; }
+.cv-solde.credite { color: #fff1c4; border-color: #ffcf6b; box-shadow: 0 0 16px rgba(255, 200, 110, 0.75); }
+.cv-credit { position: absolute; right: 8px; top: calc(100% + 4px); padding: 2px 10px; border-radius: 99px; background: linear-gradient(180deg, #2f7d45, #1d5530); border: 1px solid #8fd18a; font-family: var(--titre); font-weight: 400; font-size: 15px; color: #eaffe6; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); animation: cv-credit 2.6s ease-out both; pointer-events: none; }
+@keyframes cv-credit { 0% { opacity: 0; transform: translateY(8px) scale(0.8); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
+
+/* Grand écran : la scène (16:9) et les deux mises à gauche, la manche à droite. */
+@media (min-aspect-ratio: 1 / 1) and (min-width: 900px) {
+  .cas-ecran.cv-ecran { grid-template-columns: minmax(0, 1fr) 290px; grid-template-areas: 'barre barre' 'histo joueurs' 'scene joueurs' 'mises joueurs' 'erreur joueurs'; align-items: start; }
+  .cv-ecran > .cas-barre { grid-area: barre; }
+  .cv-historique { grid-area: histo; }
+  .cv-scene { grid-area: scene; aspect-ratio: 16 / 9; width: min(100%, calc((100vh - 330px) * 16 / 9)); justify-self: center; }
+  .cv-mises { grid-area: mises; }
+  .cv-erreur { grid-area: erreur; }
+  .cv-joueurs { grid-area: joueurs; }
+  .cv-couronne { width: 22%; }
+  .cv-pie { width: 27%; }
+  .cv-centre { top: 5%; }
+}
+/* Téléphone : les deux mises l'une sous l'autre, et la somme récupérée en petit pour ne pas cacher la couronne. */
+@media (max-width: 600px) {
+  .cv-mises { grid-template-columns: minmax(0, 1fr); }
+  .cv-mise { grid-template-columns: minmax(0, 1fr); }
+  .cv-gain, .cv-gain.gros { bottom: 4%; padding: 4px 16px 6px; border-radius: 14px; gap: 0; }
+  .cv-gain span { font-size: 10px; letter-spacing: 0.18em; }
+  .cv-gain em { font-size: 15px; }
+  .cv-gain strong, .cv-gain.gros strong { font-size: 24px; }
+  .cv-gain small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cv-ecran *, .cv-gain { animation: none !important; }
+}
