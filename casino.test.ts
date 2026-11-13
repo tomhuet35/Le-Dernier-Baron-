@@ -190,6 +190,7 @@ beforeAll(async () => {
     servirClient: false,
     comptes: service,
     casino: {
+      jeuALaffiche: () => null,
       tirageRoue: () => 3, // la case verte : le million
       tirageRoueBaron: () => 10, // la case des tours gratuits
       hasardMachine: (n) => (arretsImposes ? arretsImposes[k++ % 5] : hasardGraine(n)),

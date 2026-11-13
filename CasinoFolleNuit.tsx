@@ -1416,6 +1416,7 @@ export function BandeauFolleNuit({ vue, onOuvrir }: { vue: VueCasino; onOuvrir: 
     <>
       <span className="fn-direct">{tr('En direct', 'Live')}</span>
       {fn?.happyHour?.active && <span className="fn-happy-pastille">Happy Hour</span>}
+      {vue.affiche?.jeu === 'folleNuit' && <span className="fn-happy-pastille cas-pastille-affiche">★ {tr('À l’affiche', 'Featured')}</span>}
     </>
   );
   return (

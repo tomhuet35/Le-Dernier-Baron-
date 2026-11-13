@@ -351,7 +351,7 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
       setErreur(rep.erreur ?? tr('Action impossible.', 'Action not allowed.'));
       return 'refuse';
     }
-    const { chute, solde } = rep as unknown as { chute: ResultatChute; solde: number };
+    const { chute, solde, credite } = rep as unknown as { chute: ResultatChute; solde: number; credite?: number };
     jouerEffet('chute_lacher', { vitesse: 0.95 + Math.random() * 0.1 });
     distributeur.current?.animate?.([{ transform: 'scale(1)' }, { transform: 'scale(1.06, 0.94)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
     onVue({ ...vueRef.current, solde });
@@ -362,7 +362,7 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
       jouerEffet(chute.x < 1 ? 'chute_case_bas' : 'chute_case');
       return 'parti';
     }
-    setEcus((l) => [...l, { id: chute.id, gain: chute.gain }]);
+    setEcus((l) => [...l, { id: chute.id, gain: credite ?? chute.gain }]);
     enVol.current.set(chute.id, { r: chute, troncons: trajet(geo, chute.chemin), debut: performance.now(), etape: 0, angle: Math.random() * 360, sens: 1 });
     lancerBoucle();
     return 'parti';

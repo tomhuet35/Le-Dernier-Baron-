@@ -2,6 +2,7 @@
  * Salon privé du Baron : le casino réservé aux comptes qui ont le badge Créateur.
  * Argent fictif, sans aucune valeur réelle : rien ne s'achète et rien ne s'échange.
  */
+import type { VueAffiche } from './afficheCasino';
 import type { ResumeTableBJ } from './blackjack';
 import type { CaseFN, HappyHourFN } from './folleNuit';
 import type { ContenuCasse } from './machineASous';
@@ -120,6 +121,8 @@ export interface VueCasino {
   profil?: { niveau: number; xp: number; xpNiveau: number; xpSuivant: number | null; bonusSuivant: number | null; demandes: number; invitations: number; defi: VueDefi | null };
   /** Le Vol de la Couronne : en direct ou non, combien regardent, les derniers envols. */
   couronne?: { enDirect: boolean; spectateurs: number; historique: number[] };
+  /** Le jeu à l'affiche (XP doublée, bonus sur les gains) et le bonus déjà touché pendant son créneau. */
+  affiche?: VueAffiche;
 }
 
 export interface AnnonceCasino {

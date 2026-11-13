@@ -82,7 +82,7 @@ beforeAll(async () => {
     port: 0,
     servirClient: false,
     comptes: service,
-    casino: { delaiEcriture: 30, delaisRoulette: { mises: 1800, fermeture: 300, tirage: 150, resultat: 250 }, tirageRoulette: () => numero },
+    casino: { jeuALaffiche: () => null, delaiEcriture: 30, delaisRoulette: { mises: 1800, fermeture: 300, tirage: 150, resultat: 250 }, tirageRoulette: () => numero },
   });
 });
 afterAll(async () => {

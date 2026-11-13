@@ -230,6 +230,7 @@ beforeAll(async () => {
     servirClient: false,
     comptes: service,
     casino: {
+      jeuALaffiche: () => null,
       delaiEcriture: 30,
       delaisFolleNuit: { mises: 1200, fermeture: 200, topSlot: 40, roue: 40, resultat: 150, intro: 60, choix: 500, piece: 40, chasse: 40, bille: 20, tourFolle: 20, finBonus: 150 },
       tirageFolleNuit: () => force,

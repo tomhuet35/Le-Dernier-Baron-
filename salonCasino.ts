@@ -1,6 +1,7 @@
 /**
  * Salon privé du Baron (casino des comptes Créateur) : solde, roulette du salon, machines à sous, tables, le show
- * La Folle Nuit, les Coffres du Baron, le Vol de la Couronne, la Chute des Écus et le gros lot progressif.
+ * La Folle Nuit, les Coffres du Baron, le Vol de la Couronne, la Chute des Écus, le gros lot progressif, et le jeu à
+ * l'affiche (toutes les 3 heures, un jeu compte double pour l'XP et donne 10 % de bonus sur ses gains).
  *
  * - Chaque événement casino_* vérifie que le compte connecté a le badge Créateur ; sinon « Introuvable. », sans dire
  *   que le casino existe.
@@ -63,6 +64,7 @@ import { creerShowFolleNuit, type TirageImpose } from './showFolleNuit';
 import { creerCoffres } from './festinCasino';
 import { creerVolCouronne } from './couronneCasino';
 import { creerChute } from './chuteCasino';
+import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type AfficheCasino } from '../shared/afficheCasino';
 import type { DureesCouronne } from '../shared/couronne';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
@@ -112,6 +114,8 @@ export interface OptionsCasino {
   delaiAnnonceChute?: number;
   /** Défis entre amis : durées accélérées (tests). */
   echelleDefis?: number;
+  /** Le jeu à l'affiche à l'instant t (remplaçable pour les tests et la démonstration ; null : aucun). */
+  jeuALaffiche?: (t: number) => AfficheCasino | null;
 }
 
 /** Porte-monnaie d'un créateur, tenu en mémoire pendant qu'il joue. */
@@ -138,6 +142,10 @@ interface Porte {
   /** Profil du casino : premier passage, totaux misé et gagné (l'XP en découle), par jeu, plus gros gain écrit. */
   depuis: number;
   mise: number;
+  /** Mises comptées en plus pour l'XP (jeu à l'affiche). */
+  bonusXp: number;
+  /** Bonus de gains déjà touché pendant le créneau du jeu à l'affiche (début du créneau). */
+  affiche: { debut: number; bonus: number };
   gagne: number;
   jeux: Partial<Record<JeuCasino, StatsJeuCasino>>;
   plusGrosGain: number;
@@ -176,6 +184,7 @@ export function creerCasino(options: OptionsCasino) {
   const tirageRoueBaron = options.tirageRoueBaron ?? (() => randomInt(ROUE_BARON.length));
   const hasardCasse = options.hasardCasse ?? ((n: number) => randomInt(n));
   const cadeaux = options.cadeaux ?? CADEAUX_SALON;
+  const jeuALaffiche = options.jeuALaffiche ?? afficheCasino;
   /** Heure d'ouverture des cadeaux à durée (gardée avec les réglages du serveur). */
   const ouvertures: Record<string, number> = {};
 
@@ -269,6 +278,7 @@ export function creerCasino(options: OptionsCasino) {
           const a = p.activite ?? (p.activite = { mise: {}, gain: {} });
           for (const [j, m] of Object.entries(extra.activite.mise) as [JeuCasino, number][]) a.mise[j] = (a.mise[j] ?? 0) + m;
           for (const [j, g] of Object.entries(extra.activite.gain) as [JeuCasino, number][]) a.gain[j] = (a.gain[j] ?? 0) + g;
+          if (extra.activite.bonusXp) a.bonusXp = (a.bonusXp ?? 0) + extra.activite.bonusXp;
         }
         if (extra.niveauPaye !== undefined) p.niveauAEcrire = true;
         if (extra.envois) p.envoisAEcrire = true;
@@ -287,7 +297,7 @@ export function creerCasino(options: OptionsCasino) {
     if (!p.minuterie) p.minuterie = setTimeout(() => void ecrire(uid), delaiEcriture);
   }
   const ajouterBilan = (a: BilanDefis | null, b: BilanDefis): BilanDefis => ({ gagnes: (a?.gagnes ?? 0) + b.gagnes, perdus: (a?.perdus ?? 0) + b.perdus, nuls: (a?.nuls ?? 0) + b.nuls });
-  const niveauDe = (p: Porte) => niveauCasino(xpDeMises(p.mise));
+  const niveauDe = (p: Porte) => niveauCasino(xpDeMises(p.mise + p.bonusXp));
   const majRiche = (uid: string, p: Porte) => riches.set(uid, { nom: p.nom, avatar: p.avatar, solde: p.solde, niveau: niveauDe(p) });
 
   /** Envoie un événement aux téléphones d'un joueur qui sont au salon. */
@@ -333,6 +343,25 @@ export function creerCasino(options: OptionsCasino) {
       const a = p.activite ?? (p.activite = { mise: {}, gain: {} });
       if (misee) a.mise[jeu] = (a.mise[jeu] ?? 0) + misee;
       if (gagnee) a.gain[jeu] = (a.gain[jeu] ?? 0) + gagnee;
+      // Le jeu à l'affiche : ses mises comptent double pour l'XP (une mise rendue est retirée aussi), et ses gains
+      // reçoivent 10 % de bonus, jusqu'au plafond du créneau.
+      const aff = jeuALaffiche(horloge());
+      if (aff?.jeu === jeu) {
+        if (misee) {
+          const extra = misee > 0 ? misee * (XP_AFFICHE - 1) : Math.max(misee * (XP_AFFICHE - 1), -p.bonusXp);
+          p.bonusXp += extra;
+          a.bonusXp = (a.bonusXp ?? 0) + extra;
+        }
+        if (gagnee > 0) {
+          if (p.affiche.debut !== aff.debut) p.affiche = { debut: aff.debut, bonus: 0 };
+          const bonus = Math.min(PLAFOND_BONUS_AFFICHE - p.affiche.bonus, Math.floor(gagnee * BONUS_AFFICHE));
+          if (bonus > 0) {
+            p.affiche.bonus += bonus;
+            mouvement(uid, p, bonus);
+            notifier(uid, 'casino_affiche', { jeu, bonus, total: p.affiche.bonus, debut: aff.debut });
+          }
+        }
+      }
       planifier(uid, p);
       const apres = niveauDe(p);
       if (apres > p.niveauPaye) monterNiveau(uid, p, apres);
@@ -459,7 +488,11 @@ export function creerCasino(options: OptionsCasino) {
       folleNuit: show.resume(),
       coffres: { enCours: coffres.enCours(uid) },
       couronne: couronne.resume(),
-      ...(p ? { profil: { ...progressionCasino(p.mise), demandes: p.recues.length, invitations: defis.invitations(uid), defi: defis.enCours(uid) } } : {}),
+      ...(p ? { profil: { ...progressionCasino(p.mise + p.bonusXp), demandes: p.recues.length, invitations: defis.invitations(uid), defi: defis.enCours(uid) } } : {}),
+      ...(() => {
+        const a = jeuALaffiche(t);
+        return a ? { affiche: { ...a, bonus: p && p.affiche.debut === a.debut ? p.affiche.bonus : 0 } } : {};
+      })(),
       nuits: p ? { gratuits: p.nuits.gratuits, miseGratuite: p.nuits.miseGratuite, collantes: p.nuits.collantes } : { gratuits: 0, miseGratuite: 0, collantes: null },
       cadeau: (() => {
         const c = p ? cadeauDisponible(cadeaux, ouvertures, p.cadeaux, t) : null;
@@ -517,6 +550,8 @@ export function creerCasino(options: OptionsCasino) {
         p = {
           depuis: c?.depuis ?? horloge(),
           mise,
+          bonusXp: c?.bonusXp ?? 0,
+          affiche: { debut: 0, bonus: 0 },
           gagne: c?.gagne ?? 0,
           jeux: { ...(c?.jeux ?? {}) },
           plusGrosGain: c?.plusGrosGain ?? 0,
@@ -561,6 +596,7 @@ export function creerCasino(options: OptionsCasino) {
       if (c && calme && !p.enAttente && !p.record && !p.activite && !p.journalAjouts.length && !p.defisAjouts && !p.niveauAEcrire && !p.envoisAEcrire) {
         p.solde = c.solde;
         p.mise = c.mise ?? 0;
+        p.bonusXp = c.bonusXp ?? 0;
         p.gagne = c.gagne ?? 0;
         p.jeux = { ...(c.jeux ?? {}) };
         p.plusGrosGain = c.plusGrosGain ?? 0;
@@ -937,7 +973,7 @@ export function creerCasino(options: OptionsCasino) {
       const lus = await comptes.lirePlusieurs(manquants).catch(() => ({}) as Record<string, StatsCompte | null>);
       for (const u of manquants) {
         const s = lus[u];
-        if (s?.casino) res[u] = { uid: u, nom: s.nom, avatar: s.avatar, niveau: niveauCasino(xpDeMises(s.casino.mise ?? 0)), enLigne: false, ou: null };
+        if (s?.casino) res[u] = { uid: u, nom: s.nom, avatar: s.avatar, niveau: niveauCasino(xpDeMises((s.casino.mise ?? 0) + (s.casino.bonusXp ?? 0))), enLigne: false, ou: null };
       }
     }
     return res;
@@ -994,17 +1030,20 @@ export function creerCasino(options: OptionsCasino) {
       const cible = typeof data?.uid === 'string' && data.uid ? data.uid : id.uid;
       const q = portes.get(cible);
       let base: Omit<ProfilCasino, 'uid' | 'niveau' | 'xp' | 'xpNiveau' | 'xpSuivant' | 'bonusSuivant' | 'enLigne' | 'ou' | 'relation'> & { journal: EntreeJournalCasino[] };
+      /** Mises comptées en plus pour l'XP (jeu à l'affiche). */
+      let bonusXp = q?.bonusXp ?? 0;
       if (q) base = { nom: q.nom, avatar: q.avatar, solde: q.solde, mise: q.mise, gagne: q.gagne, plusGrosGain: Math.max(q.plusGrosGain, q.record), jeux: q.jeux, defis: q.defisBilan, depuis: q.depuis, journal: q.journal };
       else {
         const s = await comptes.lire(cible).catch(() => null);
         const c = s?.casino;
         if (!s || !c) return erreur(rappel, 'Joueur introuvable.', 'Player not found.');
+        bonusXp = c.bonusXp ?? 0;
         base = { nom: s.nom, avatar: s.avatar, solde: c.solde, mise: c.mise ?? 0, gagne: c.gagne ?? 0, plusGrosGain: c.plusGrosGain ?? 0, jeux: c.jeux ?? {}, defis: c.defis ?? { gagnes: 0, perdus: 0, nuls: 0 }, depuis: c.depuis, journal: c.journal ?? [] };
       }
       const relation: ProfilCasino['relation'] =
         cible === id.uid ? 'moi' : p.amis.includes(cible) ? 'ami' : p.envoyees.includes(cible) ? 'demande_envoyee' : p.recues.includes(cible) ? 'demande_recue' : 'aucune';
       const { journal, ...reste } = base;
-      const profil: ProfilCasino = { uid: cible, ...reste, ...progressionCasino(base.mise), enLigne: presents.has(cible), ou: positionDe(cible), relation, ...(relation === 'moi' ? { journal } : {}) };
+      const profil: ProfilCasino = { uid: cible, ...reste, ...progressionCasino(base.mise + bonusXp), enLigne: presents.has(cible), ou: positionDe(cible), relation, ...(relation === 'moi' ? { journal } : {}) };
       repondre(rappel, { ok: true, profil });
     });
 

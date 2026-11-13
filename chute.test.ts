@@ -70,7 +70,7 @@ const attendre = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 beforeAll(async () => {
   for (const id of Object.values(identites)) await service.preparer(id.uid, id.nom);
   await service.donnerBadgeCreateur('uid-a');
-  serveur = await demarrerServeur({ port: 0, servirClient: false, comptes: service, casino: { delaiEcriture: 30, cheminChute: (n: number) => chemin?.slice(0, n), delaiAnnonceChute: 60 } });
+  serveur = await demarrerServeur({ port: 0, servirClient: false, comptes: service, casino: { jeuALaffiche: () => null, delaiEcriture: 30, cheminChute: (n: number) => chemin?.slice(0, n), delaiAnnonceChute: 60 } });
 });
 afterAll(async () => {
   await serveur.fermer();

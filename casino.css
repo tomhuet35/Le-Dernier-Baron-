@@ -788,3 +788,67 @@
 .cas-cadeau.urgent span { font-variant-numeric: tabular-nums; color: #ffd774; font-weight: 700; }
 @keyframes cas-cadeau-urgent { 50% { box-shadow: 0 0 0 2px rgba(255, 215, 116, 0.9), 0 0 26px rgba(255, 196, 70, 0.7); } }
 @media (prefers-reduced-motion: reduce) { .cas-cadeau.urgent { animation: none; } }
+
+/* ---------- Le jeu à l'affiche ---------- */
+
+/* Le bandeau du salon : la vignette du jeu, ses atouts, le temps qui reste, le suivant (ou le bonus déjà touché). */
+.cas-affiche {
+  position: relative; display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  width: 100%; min-height: 0; padding: 8px 14px 8px 8px; border-radius: 16px; overflow: hidden; text-align: left;
+  border: 2px solid #ffcf6b; background: linear-gradient(100deg, rgba(122, 26, 18, 0.96), rgba(40, 18, 10, 0.96) 60%, rgba(22, 13, 11, 0.96));
+  box-shadow: 0 0 22px rgba(255, 200, 110, 0.35), 0 10px 24px rgba(0, 0, 0, 0.6); color: var(--creme);
+}
+.cas-affiche::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 30%, rgba(255, 230, 160, 0.22) 45%, transparent 60%); background-size: 250% 100%; animation: cas-affiche-reflet 4s ease-in-out infinite; }
+@keyframes cas-affiche-reflet { 0% { background-position: 150% 0; } 60%, 100% { background-position: -100% 0; } }
+.cas-affiche > img { width: 74px; height: 74px; object-fit: cover; border-radius: 12px; border: 1px solid rgba(255, 207, 107, 0.7); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6); }
+.cas-affiche-texte { display: grid; gap: 2px; min-width: 0; }
+.cas-affiche-texte small { font-size: 11.5px; color: var(--creme-doux); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cas-affiche-texte small b { color: #ffcf6b; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.cas-affiche-texte strong { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 5vw, 23px); line-height: 1.1; color: #fff1c4; text-shadow: 0 0 12px rgba(255, 200, 110, 0.45); }
+.cas-affiche-atouts { display: flex; flex-wrap: wrap; gap: 5px; }
+.cas-affiche-atouts b { padding: 1px 8px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #d79a36); color: #2a1608; font-size: 11.5px; font-weight: 900; white-space: nowrap; }
+.cas-affiche-texte em { font-style: normal; font-size: 12px; color: var(--creme-doux); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cas-affiche-jouer { padding: 8px 14px; border-radius: 99px; border: 1px solid #fff1c4; background: radial-gradient(120% 140% at 50% 0%, #ffe9a8, #e9ad5b 50%, #a8742a); color: #1b120c; font-weight: 900; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+@media (max-width: 420px) {
+  .cas-affiche { grid-template-columns: 60px minmax(0, 1fr); gap: 10px; }
+  .cas-affiche > img { width: 60px; height: 60px; }
+  .cas-affiche-jouer { display: none; }
+}
+
+/* Le ruban doré sur la vignette (et la carte de la machine) du jeu à l'affiche. */
+/* (Une pastille plutôt qu'un ruban en biais : « À l'affiche » est trop long pour le coin.) */
+.cas-bientot.cas-ruban-affiche {
+  top: 8px; left: 8px; right: auto; rotate: none; width: auto; padding: 3px 11px; z-index: 2; border-radius: 99px;
+  border: 1px solid #fff1c4; background: linear-gradient(180deg, #ffe08a, #d79a36); color: #2a0c08; font-weight: 900; font-size: 11px; letter-spacing: 0.08em;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 200, 110, 0.6);
+}
+.cas-bientot.cas-ruban-affiche::before { content: '★ '; }
+.cas-vignette.a-l-affiche, .cas-carte-machine.a-l-affiche { border-color: #ffcf6b; animation: cas-affiche-lueur 2.2s ease-in-out infinite; }
+@keyframes cas-affiche-lueur { 50% { box-shadow: 0 0 22px rgba(255, 200, 110, 0.75), 0 10px 24px rgba(0, 0, 0, 0.6); } }
+.cas-pastille-affiche { background: linear-gradient(90deg, #ffe08a, #d79a36); box-shadow: 0 0 14px rgba(255, 200, 110, 0.6); }
+
+/* Dans le jeu à l'affiche : la puce dorée, en bas à droite (au-dessus de celle du défi s'il y en a un). */
+.cas-puce-affiche {
+  position: fixed; z-index: 26; right: max(10px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 9px; border-radius: 99px; pointer-events: none;
+  border: 1px solid #ffcf6b; background: linear-gradient(100deg, rgba(122, 26, 18, 0.95), rgba(22, 13, 11, 0.95)); color: #fff1c4;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.65), 0 0 14px rgba(255, 200, 110, 0.35);
+}
+.cas-puce-affiche.avec-defi { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 56px); }
+.cas-puce-affiche > b { color: #ffcf6b; font-size: 17px; }
+.cas-puce-affiche > span { display: grid; }
+.cas-puce-affiche small { font-size: 10.5px; color: var(--creme-doux); white-space: nowrap; }
+.cas-puce-affiche strong { font-family: var(--titre); font-weight: 400; font-size: 14px; white-space: nowrap; }
+.cas-puce-affiche > i { font-style: normal; padding: 1px 8px; border-radius: 99px; background: linear-gradient(180deg, #2f7d45, #1d5530); border: 1px solid #8fd18a; color: #eaffe6; font-family: var(--titre); font-size: 14px; white-space: nowrap; animation: cas-affiche-bonus 0.6s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.cas-puce-affiche > i.plein { background: linear-gradient(180deg, #ffe08a, #d79a36); border-color: #fff1c4; color: #2a1608; }
+@keyframes cas-affiche-bonus { from { transform: scale(1.5); } }
+/* Téléphone : la puce se fait petite (l'étoile et le bonus) pour ne pas cacher les boutons du jeu. */
+@media (max-width: 560px) {
+  .cas-puce-affiche { gap: 6px; padding: 4px 6px 4px 8px; }
+  .cas-puce-affiche > span { display: none; }
+  .cas-puce-affiche > b::after { content: ' ×2'; font-family: var(--titre); font-size: 13px; color: #fff1c4; }
+  .cas-puce-affiche > i { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cas-affiche::after, .cas-vignette.a-l-affiche, .cas-carte-machine.a-l-affiche, .cas-puce-affiche > i { animation: none; }
+}

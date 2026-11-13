@@ -79,6 +79,8 @@ export interface CasinoCompte {
   cadeaux?: string[];
   /** Profil du casino : total misé (l'XP en découle), total des gains versés, et par jeu. */
   mise?: number;
+  /** Mises comptées en plus pour l'XP (le jeu à l'affiche compte double). */
+  bonusXp?: number;
   gagne?: number;
   jeux?: Partial<Record<JeuCasino, StatsJeuCasino>>;
   /** Dernier niveau dont le bonus a été versé. */
@@ -97,7 +99,7 @@ export interface CasinoCompte {
 /** Ce qu'une écriture du casino ajoute au compte, en plus du solde. */
 export interface ExtraCasino {
   /** Misé et gagné, par jeu (s'ajoute aux totaux). */
-  activite?: { mise: Partial<Record<JeuCasino, number>>; gain: Partial<Record<JeuCasino, number>> };
+  activite?: { mise: Partial<Record<JeuCasino, number>>; gain: Partial<Record<JeuCasino, number>>; bonusXp?: number };
   niveauPaye?: number;
   envois?: { jour: string; total: number };
   /** Nouvelles entrées du journal, la plus récente d'abord. */
@@ -141,6 +143,7 @@ function normaliserCasino(brut: unknown): CasinoCompte | null {
     ...(typeof c.plusGrosGain === 'number' ? { plusGrosGain: entier(c.plusGrosGain) } : {}),
     ...(Array.isArray(c.cadeaux) ? { cadeaux: c.cadeaux.filter((x): x is string => typeof x === 'string').slice(-20) } : {}),
     ...(c.mise !== undefined ? { mise: entier(c.mise) } : {}),
+    ...(c.bonusXp !== undefined ? { bonusXp: entier(c.bonusXp) } : {}),
     ...(c.gagne !== undefined ? { gagne: entier(c.gagne) } : {}),
     ...(c.jeux && typeof c.jeux === 'object'
       ? {
@@ -184,6 +187,7 @@ export function appliquerExtraCasino(c: CasinoCompte, extra: ExtraCasino | undef
     r.jeux = jeux;
     r.mise = Math.max(0, Math.round((c.mise ?? 0) + mise));
     r.gagne = Math.max(0, Math.round((c.gagne ?? 0) + gain));
+    if (extra.activite.bonusXp) r.bonusXp = Math.max(0, Math.round((c.bonusXp ?? 0) + extra.activite.bonusXp));
   }
   if (extra.niveauPaye !== undefined) r.niveauPaye = Math.max(c.niveauPaye ?? 1, extra.niveauPaye);
   if (extra.envois) r.envois = extra.envois;

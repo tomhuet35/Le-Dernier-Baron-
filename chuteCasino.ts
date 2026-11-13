@@ -68,6 +68,7 @@ export function creerChute(options: OptionsChute) {
       if (!banque.debiter(id.uid, mise)) return erreur(rappel, 'Solde insuffisant pour cette mise.', 'Not enough money for this bet.');
       liste.push(t);
       recents.set(id.uid, liste);
+      const avant = banque.solde(id.uid);
       const chemin = tirer(rangees);
       const k = caseDuChemin(chemin);
       const x = multiplicateursChute(rangees, risque)[k];
@@ -84,7 +85,10 @@ export function creerChute(options: OptionsChute) {
         annonces.add(m);
       }
       const resultat: ResultatChute = { id: numero, mise, rangees, risque, chemin, case: k, x, gain };
-      repondre(rappel, { ok: true, chute: resultat, solde: banque.solde(id.uid) });
+      // Tout ce que ce lâcher a versé (le gain, et les bonus qu'il a déclenchés : jeu à l'affiche, niveau) : l'écran ne
+      // l'ajoute au solde affiché qu'une fois l'écu arrivé en bas.
+      const solde = banque.solde(id.uid);
+      repondre(rappel, { ok: true, chute: resultat, solde, credite: Math.max(0, solde - avant) });
     });
   }
 

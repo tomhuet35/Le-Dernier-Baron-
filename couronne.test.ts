@@ -78,7 +78,7 @@ beforeAll(async () => {
     port: 0,
     servirClient: false,
     comptes: service,
-    casino: { delaiEcriture: 30, delaisCouronne: { mises: 400, pause: 150, pas: 10 }, kCouronne: K, tirageCouronne: () => pointImpose },
+    casino: { jeuALaffiche: () => null, delaiEcriture: 30, delaisCouronne: { mises: 400, pause: 150, pas: 10 }, kCouronne: K, tirageCouronne: () => pointImpose },
   });
 });
 afterAll(async () => {

@@ -41,8 +41,9 @@ import { BandeauFolleNuit, ShowFolleNuit } from './CasinoFolleNuit';
 import { JeuFestin } from './CasinoFestin';
 import { JeuCouronne } from './CasinoCouronne';
 import { JeuChute } from './CasinoChute';
+import { BandeauAffiche, PuceAffiche } from './CasinoAffiche';
 import { BarreXp, CadreAvatar, CelebrationNiveau, EcranAmis, EcranDefis, EcranProfil, PuceDefi, texteDefi, texteSocial, type FeteNiveau } from './CasinoSocial';
-import { titreCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
+import { titreCasino, type JeuCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
 import { MachineNuits } from './CasinoNuits';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
@@ -1133,8 +1134,9 @@ function ChoixMachines({ vue, onMachine, onRetour }: { vue: VueCasino; onMachine
       </p>
       <div className="cas-machines">
         {MACHINES.map((m) => (
-          <button key={m.id} type="button" className={`cas-carte-machine ${m.id}`} onClick={() => onMachine(m.id)}>
+          <button key={m.id} type="button" className={`cas-carte-machine ${m.id} ${vue.affiche?.jeu === m.id ? 'a-l-affiche' : ''}`} onClick={() => onMachine(m.id)}>
             <img src={m.image} alt="" draggable={false} />
+            {vue.affiche?.jeu === m.id && <span className="cas-bientot cas-ruban-affiche">{tr('À l’affiche', 'Featured')}</span>}
             <span className="cas-carte-machine-texte">
               <strong>{tr(...m.nom)}</strong>
               <span>{tr(...m.texte)}</span>
@@ -1159,18 +1161,31 @@ function ChoixMachines({ vue, onMachine, onRetour }: { vue: VueCasino; onMachine
   );
 }
 
-function Vignette({ jeu, onOuvrir, ruban }: { jeu: (typeof JEUX)[number]; onOuvrir?: () => void; ruban?: string }) {
+function Vignette({ jeu, onOuvrir, ruban, affiche }: { jeu: (typeof JEUX)[number]; onOuvrir?: () => void; ruban?: string; affiche?: boolean }) {
   const [src, setSrc] = useState(jeu.image);
   const bientot = !onOuvrir;
   return (
-    <button type="button" className={`cas-vignette ${jeu.id} ${bientot ? 'bientot' : ''}`} onClick={onOuvrir} disabled={bientot}>
+    <button type="button" className={`cas-vignette ${jeu.id} ${bientot ? 'bientot' : ''} ${affiche ? 'a-l-affiche' : ''}`} onClick={onOuvrir} disabled={bientot}>
       <img src={src} alt="" draggable={false} onError={() => setSrc(jeu.repli)} />
       <span className="cas-vignette-nom">{tr(...jeu.nom)}</span>
       {bientot && <span className="cas-bientot">{tr('Bientôt', 'Soon')}</span>}
-      {!bientot && ruban && <span className="cas-bientot cas-nouveau">{ruban}</span>}
+      {!bientot && affiche && <span className="cas-bientot cas-ruban-affiche">{tr('À l’affiche', 'Featured')}</span>}
+      {!bientot && !affiche && ruban && <span className="cas-bientot cas-nouveau">{ruban}</span>}
     </button>
   );
 }
+
+/** La vignette du salon qui mène à ce jeu (les deux machines sont derrière la même). */
+const VIGNETTE_DU_JEU: Record<JeuCasino, (typeof JEUX)[number]['id'] | null> = {
+  machine: 'machines',
+  nuits: 'machines',
+  blackjack: 'blackjack',
+  roulette: 'roulette',
+  folleNuit: null,
+  coffres: 'festin',
+  couronne: 'couronne',
+  chute: 'chute',
+};
 
 function Annonce({ annonce }: { annonce: AnnonceCasino }) {
   const texte =
@@ -1334,6 +1349,8 @@ function Salon({
   onFestin,
   onCouronne,
   onChute,
+  onAffiche,
+  onRafraichir,
   onCadeau,
   onCadeauFini,
   onQuitter,
@@ -1353,6 +1370,9 @@ function Salon({
   onFestin: () => void;
   onCouronne: () => void;
   onChute: () => void;
+  /** Ouvrir le jeu à l'affiche ; relire le salon (le jeu à l'affiche a changé). */
+  onAffiche: (j: JeuCasino) => void;
+  onRafraichir: () => void;
   onCadeau: () => void;
   onCadeauFini: () => void;
   onQuitter: () => void;
@@ -1400,6 +1420,7 @@ function Salon({
         </button>
       </div>
       {vue.cadeau && <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} />}
+      {vue.affiche && <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} />}
       <button type="button" className={`cas-bouton-roue ${attente ? '' : 'prete'}`} onClick={onRoue}>
         <svg className="bouton-roulette-icone" viewBox="0 0 40 40" aria-hidden="true">
           <circle cx="20" cy="20" r="19.5" fill="#d2a85a" />
@@ -1424,6 +1445,7 @@ function Salon({
           <Vignette
             key={j.id}
             jeu={j}
+            affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id}
             onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : j.id === 'festin' ? onFestin : j.id === 'couronne' ? onCouronne : j.id === 'chute' ? onChute : undefined}
             ruban={
               j.id === 'festin'
@@ -1583,6 +1605,9 @@ export default function Casino({
       rafraichir();
     };
     const surSolde = (solde: number) => setVue((v) => (v ? { ...v, solde } : v));
+    // Bonus du jeu à l'affiche : montré un peu après (le temps que le coup se termine à l'écran, pour ne rien gâcher).
+    const surAffiche = (e: { total: number; debut: number }) =>
+      window.setTimeout(() => setVue((v) => (v?.affiche && v.affiche.debut === e.debut ? { ...v, affiche: { ...v.affiche, bonus: Math.max(v.affiche.bonus, e.total) } } : v)), 3000);
     const surDefi = (d: VueDefi) => {
       const avant = defisRef.current.find((x) => x.id === d.id);
       setDefis((l) => [d, ...l.filter((x) => x.id !== d.id)]);
@@ -1596,11 +1621,13 @@ export default function Casino({
     socket.on('casino_niveau', surNiveau);
     socket.on('casino_social', surSocial);
     socket.on('casino_solde', surSolde);
+    socket.on('casino_affiche', surAffiche);
     socket.on('casino_defi', surDefi);
     return () => {
       socket.off('casino_niveau', surNiveau);
       socket.off('casino_social', surSocial);
       socket.off('casino_solde', surSolde);
+      socket.off('casino_affiche', surAffiche);
       socket.off('casino_defi', surDefi);
       window.clearTimeout(minuterieToast.current);
       socket.off('casino_annonce', surAnnonce);
@@ -1628,6 +1655,19 @@ export default function Casino({
   }, [position, entrees]);
   // Chaque jeu a sa musique et ses sons ; le salon (et ses écrans) garde son jazz de cabaret.
   useEffect(() => musiqueDuCasino(position), [position]);
+
+  /** Relit le salon (solde, jeu à l'affiche…). */
+  const rafraichirVue = useCallback(() => {
+    void appel('casino_vue').then((r) => {
+      const casino = (r as unknown as { casino?: VueCasino }).casino;
+      if (r.ok && casino) setVue(casino);
+    });
+  }, [appel]);
+  /** Ouvre un jeu du salon (depuis le bandeau du jeu à l'affiche). */
+  const ouvrirJeu = (j: JeuCasino) => {
+    if (j === 'blackjack' || j === 'roulette') return setFenetreTables(j);
+    setEcran(j === 'coffres' ? 'festin' : j);
+  };
 
   const ouvrirProfil = (uid: string | null) => {
     setProfilUid(uid);
@@ -1783,6 +1823,8 @@ export default function Casino({
         onFestin={() => setEcran('festin')}
         onCouronne={() => setEcran('couronne')}
         onChute={() => setEcran('chute')}
+        onAffiche={ouvrirJeu}
+        onRafraichir={rafraichirVue}
         onProfil={() => ouvrirProfil(null)}
         onAmis={() => setEcran('amis')}
         onDefis={() => ouvrirDefis()}
@@ -1815,6 +1857,7 @@ export default function Casino({
       {annonce && <Annonce annonce={annonce} />}
       {roue && vue && <FenetreRoueSalon vue={vue} appel={appel} onVue={setVue} onFermer={() => setRoue(false)} />}
       {defiActif && ecran !== 'defis' && <PuceDefi d={defiActif} moi={moi} onOuvrir={() => ouvrirDefis()} />}
+      {vue?.affiche && position === vue.affiche.jeu && <PuceAffiche affiche={vue.affiche} defi={!!defiActif && ecran !== 'defis'} onFin={rafraichirVue} />}
       {toastSocial && (
         <button type="button" key={toastSocial.id} className="toast cs-toast" onClick={() => (setToastSocial(null), toastSocial.vers === 'amis' ? setEcran('amis') : ouvrirDefis())}>
           {toastSocial.texte}

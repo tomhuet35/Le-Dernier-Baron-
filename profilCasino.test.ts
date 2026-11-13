@@ -131,7 +131,7 @@ beforeAll(async () => {
     port: 0,
     servirClient: false,
     comptes: service,
-    casino: { delaiEcriture: 30, placerBadgesCoffres: () => badges, delaisCouronne: { mises: 60_000 }, echelleDefis: 0.004 },
+    casino: { jeuALaffiche: () => null, delaiEcriture: 30, placerBadgesCoffres: () => badges, delaisCouronne: { mises: 60_000 }, echelleDefis: 0.004 },
   });
   a = connecter();
   b = connecter();
@@ -320,7 +320,7 @@ describe('Arrêt du serveur (mise à jour du site)', () => {
     await sv.preparer('uid-z', 'Zoé');
     await sv.donnerBadgeCreateur('uid-z');
     // Écritures lentes (10 s) : seul l'arrêt peut les faire partir à temps.
-    const srv = await demarrerServeur({ port: 0, servirClient: false, comptes: sv, casino: { delaiEcriture: 10_000, placerBadgesCoffres: () => [0, 1, 2], delaisCouronne: { mises: 60_000 } } });
+    const srv = await demarrerServeur({ port: 0, servirClient: false, comptes: sv, casino: { jeuALaffiche: () => null, delaiEcriture: 10_000, placerBadgesCoffres: () => [0, 1, 2], delaisCouronne: { mises: 60_000 } } });
     const z = io(`http://localhost:${srv.port}`, { transports: ['websocket'], forceNew: true });
     await emettre(z, 'identifier', { jeton: 'jeton-z' });
     await emettre(z, 'casino_entrer');
@@ -348,7 +348,7 @@ describe('Recalage du porte-monnaie', () => {
     const sv = creerServiceComptes({ configWeb: { apiKey: 'cle', authDomain: 'test.firebaseapp.com', projectId: 'test' }, authentification: authentificationTest(ids), stockage: st });
     await sv.preparer('uid-y', 'Yanis');
     await sv.donnerBadgeCreateur('uid-y');
-    const srv = await demarrerServeur({ port: 0, servirClient: false, comptes: sv, casino: { delaiEcriture: 20, placerBadgesCoffres: () => [0, 1, 2] } });
+    const srv = await demarrerServeur({ port: 0, servirClient: false, comptes: sv, casino: { jeuALaffiche: () => null, delaiEcriture: 20, placerBadgesCoffres: () => [0, 1, 2] } });
     const y = io(`http://localhost:${srv.port}`, { transports: ['websocket'], forceNew: true });
     await emettre(y, 'identifier', { jeton: 'jeton-y' });
     await emettre(y, 'casino_entrer');

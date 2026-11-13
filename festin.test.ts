@@ -80,7 +80,7 @@ function emettre(s: Socket, evt: string, data?: unknown): Promise<any> {
 beforeAll(async () => {
   for (const id of Object.values(identites)) await service.preparer(id.uid, id.nom);
   await service.donnerBadgeCreateur('uid-a');
-  serveur = await demarrerServeur({ port: 0, servirClient: false, comptes: service, casino: { delaiEcriture: 30, placerBadgesCoffres: () => badgesImposes } });
+  serveur = await demarrerServeur({ port: 0, servirClient: false, comptes: service, casino: { jeuALaffiche: () => null, delaiEcriture: 30, placerBadgesCoffres: () => badgesImposes } });
 });
 afterAll(async () => {
   await serveur.fermer();

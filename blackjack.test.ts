@@ -174,6 +174,7 @@ beforeAll(async () => {
     servirClient: false,
     comptes: service,
     casino: {
+      jeuALaffiche: () => null,
       delaiEcriture: 30,
       cadeaux: CADEAUX_TEST,
       delaisTables: { mises: 2000, decision: 1500, assurance: 400, bot: 20, croupier: 15, pause: 150 },
