@@ -26,10 +26,12 @@ describe('Le jeu à l’affiche : le roulement', () => {
     expect(afficheCasino(ete + 3_600_000).debut).toBe(ete);
   });
 
-  it('montre chaque jeu une fois par jour, et chaque jeu à chaque heure en 8 jours', () => {
+  it('montre huit jeux par jour, les neuf en deux jours, et chaque jeu à chaque heure en neuf jours', () => {
     expect([...ORDRE_AFFICHE].sort()).toEqual([...JEUX_CASINO].sort());
+    expect(ORDRE_AFFICHE).toHaveLength(9);
     const parCreneau = Array.from({ length: 8 }, () => new Set<string>());
-    for (let jour = 0; jour < 8; jour++) {
+    const parJour: Set<string>[] = [];
+    for (let jour = 0; jour < 9; jour++) {
       const vus = new Set<string>();
       for (let k = 0; k < 8; k++) {
         const a = afficheCasino(MINUIT + jour * 86_400_000 + k * DUREE_AFFICHE + 60_000);
@@ -37,8 +39,10 @@ describe('Le jeu à l’affiche : le roulement', () => {
         parCreneau[k].add(a.jeu);
       }
       expect(vus.size).toBe(8);
+      parJour.push(vus);
     }
-    for (const s of parCreneau) expect(s.size).toBe(8);
+    for (let jour = 0; jour < 8; jour++) expect(new Set([...parJour[jour], ...parJour[jour + 1]]).size).toBe(9);
+    for (const s of parCreneau) expect(s.size).toBe(9);
   });
 });
 

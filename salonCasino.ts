@@ -1,7 +1,8 @@
 /**
  * Salon privé du Baron (casino des comptes Créateur) : solde, roulette du salon, machines à sous, tables, le show
- * La Folle Nuit, les Coffres du Baron, le Vol de la Couronne, la Chute des Écus, le gros lot progressif, et le jeu à
- * l'affiche (toutes les 3 heures, un jeu compte double pour l'XP et donne 10 % de bonus sur ses gains).
+ * La Folle Nuit, les Coffres du Baron, le Vol de la Couronne, la Chute des Écus, la Course des Écuries, le gros lot
+ * progressif, et le jeu à l'affiche (toutes les 3 heures, un jeu compte double pour l'XP et donne 10 % de bonus sur
+ * ses gains).
  *
  * - Chaque événement casino_* vérifie que le compte connecté a le badge Créateur ; sinon « Introuvable. », sans dire
  *   que le casino existe.
@@ -64,6 +65,8 @@ import { creerShowFolleNuit, type TirageImpose } from './showFolleNuit';
 import { creerCoffres } from './festinCasino';
 import { creerVolCouronne } from './couronneCasino';
 import { creerChute } from './chuteCasino';
+import { creerCourse } from './courseCasino';
+import type { DureesCourse } from '../shared/course';
 import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type AfficheCasino } from '../shared/afficheCasino';
 import type { DureesCouronne } from '../shared/couronne';
 
@@ -114,6 +117,9 @@ export interface OptionsCasino {
   delaiAnnonceChute?: number;
   /** Défis entre amis : durées accélérées (tests). */
   echelleDefis?: number;
+  /** La Course des Écuries : délais, et ordre d'arrivée imposé (tests, démonstration). */
+  delaisCourse?: Partial<DureesCourse>;
+  arriveeCourse?: () => number[] | undefined;
   /** Le jeu à l'affiche à l'instant t (remplaçable pour les tests et la démonstration ; null : aucun). */
   jeuALaffiche?: (t: number) => AfficheCasino | null;
 }
@@ -464,6 +470,7 @@ export function creerCasino(options: OptionsCasino) {
   const coffres = creerCoffres({ banque: banqueDe('coffres'), hasard: options.hasardCoffres, placer: options.placerBadgesCoffres, annoncer: (a) => annoncer(a) });
   const show = creerShowFolleNuit({ io, banque: banqueDe('folleNuit'), horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, happyHour: options.happyHourFolleNuit, annoncer: (a) => annoncer(a) });
   const couronne = creerVolCouronne({ io, banque: banqueDe('couronne'), horloge, delais: options.delaisCouronne, k: options.kCouronne, tirage: options.tirageCouronne, annoncer: (a) => annoncer(a) });
+  const course = creerCourse({ io, banque: banqueDe('course'), horloge, delais: options.delaisCourse, arrivee: options.arriveeCourse, annoncer: (a) => annoncer(a) });
   const chute = creerChute({ banque: banqueDe('chute'), horloge, hasard: options.hasardChute, chemin: options.cheminChute, delaiAnnonce: options.delaiAnnonceChute, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
@@ -488,6 +495,7 @@ export function creerCasino(options: OptionsCasino) {
       folleNuit: show.resume(),
       coffres: { enCours: coffres.enCours(uid) },
       couronne: couronne.resume(),
+      course: course.resume(),
       ...(p ? { profil: { ...progressionCasino(p.mise + p.bonusXp), demandes: p.recues.length, invitations: defis.invitations(uid), defi: defis.enCours(uid) } } : {}),
       ...(() => {
         const a = jeuALaffiche(t);
@@ -632,6 +640,7 @@ export function creerCasino(options: OptionsCasino) {
     coffres.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     couronne.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     chute.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
+    course.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
 
     socket.on('casino_entrer', async (_data: unknown, rappel?: Rappel) => {
       const id = await acces(rappel);
@@ -664,6 +673,7 @@ export function creerCasino(options: OptionsCasino) {
       roulettes.sortir(socket.id);
       show.sortir(socket.id);
       couronne.sortir(socket.id);
+      course.sortir(socket.id);
       void socket.leave(SALLE);
       dans = false;
       partir();
@@ -908,7 +918,7 @@ export function creerCasino(options: OptionsCasino) {
    * une mise dont le coup ne sera jamais joué.
    */
   async function vider() {
-    for (const jeu of [tables, roulettes, show, couronne, coffres]) {
+    for (const jeu of [tables, roulettes, show, couronne, course, coffres]) {
       try {
         jeu.rendreMisesEnCours();
       } catch (e) {
@@ -919,6 +929,7 @@ export function creerCasino(options: OptionsCasino) {
     roulettes.fermer();
     show.fermer();
     couronne.fermer();
+    course.fermer();
     chute.fermer();
     defis.fermer();
     await Promise.all([...portes.keys()].map((uid) => ecrire(uid)));

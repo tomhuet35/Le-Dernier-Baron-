@@ -17,6 +17,7 @@ export const IMAGES_JEUX: Record<JeuCasino, string> = {
   coffres: '/cartes/casino-festin.webp',
   couronne: '/cartes/casino-couronne.webp',
   chute: '/cartes/casino-chute.webp',
+  course: '/cartes/casino-course.webp',
 };
 
 const pourcent = Math.round(BONUS_AFFICHE * 100);

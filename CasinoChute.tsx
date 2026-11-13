@@ -10,7 +10,7 @@
  * (détourés), et les décors chute-fond-paysage.webp / chute-fond-portrait.webp.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { MULTIPLE_GROS_GAIN, type VueCasino } from '../../shared/casino';
+import type { VueCasino } from '../../shared/casino';
 import { estRisqueChute, MISES_CHUTE, multiplicateursChute, NOMS_RISQUES_CHUTE, RANGEES_MAX, RANGEES_MIN, RISQUES_CHUTE, type ResultatChute, type RisqueChute } from '../../shared/chute';
 import type { Appel } from './App';
 import { BUTIN_PLUIE, dollars, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
@@ -150,15 +150,79 @@ function teinte(x: number, max: number): { fond: string; texte: string } {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Le gain en grand (joli ou gros gain)
+// Les victoires : l'éclat d'écus qui jaillit de la case (×5 et plus), la belle chute (×10), la grande fête (×50, ×200,
+// et le trésor du Baron à ×1 000).
 
-function AnnonceChute({ montant, x, gros }: { montant: number; x: number; gros: boolean }) {
-  const valeur = useCompteur(montant, Math.round(montant / 20), 0, gros ? 1600 : 900);
+type Palier = 'eclat' | 'belle' | 'grosse' | 'royale' | 'tresor';
+function palierDe(x: number): Palier | null {
+  return x >= 1000 ? 'tresor' : x >= 200 ? 'royale' : x >= 50 ? 'grosse' : x >= 10 ? 'belle' : x >= 5 ? 'eclat' : null;
+}
+const TITRES_FETE: Record<'grosse' | 'royale' | 'tresor', [string, string]> = {
+  grosse: ['Grosse chute !', 'Big drop!'],
+  royale: ['Chute royale !', 'Royal drop!'],
+  tresor: ['Le trésor du Baron !', 'The Baron’s treasure!'],
+};
+
+/** Des écus qui jaillissent de la case et retombent (position en pixels sur le plateau). */
+function EclatEcus({ x, y, n, taille, force = 1 }: { x: number; y: number; n: number; taille: number; force?: number }) {
+  const [ecus] = useState(() =>
+    Array.from({ length: n }, () => {
+      const angle = (-90 + (Math.random() * 2 - 1) * 70) * (Math.PI / 180);
+      const v = 0.6 + Math.random() * 0.8;
+      return {
+        dx: Math.cos(angle) * taille * 4.5 * v * force,
+        h: -Math.sin(angle) * taille * 6 * v * force,
+        g: taille * (1.5 + Math.random() * 2.5),
+        rot: (Math.random() * 2 - 1) * 720,
+        d: 0.8 + Math.random() * 0.5,
+        retard: Math.random() * 0.12,
+        t: 0.7 + Math.random() * 0.6,
+      };
+    }),
+  );
   return (
-    <div className={`cdc-gain ${gros ? 'gros' : ''}`} aria-live="polite">
-      <span>{gros ? tr('Pluie d’écus !', 'Coin shower!') : tr('Belle chute !', 'Nice drop!')}</span>
+    <div className="cdc-eclat" style={{ left: x, top: y } as CSSProperties} aria-hidden="true">
+      <span className="cdc-eclat-lueur" style={{ width: taille * 5, height: taille * 5 } as CSSProperties} />
+      {ecus.map((e, k) => (
+        <img
+          key={k}
+          src="/cartes/chute-ecu.webp"
+          alt=""
+          draggable={false}
+          style={{ width: taille * e.t, '--dx': `${e.dx}px`, '--h': `${e.h}px`, '--g': `${e.g}px`, '--rot': `${e.rot}deg`, animationDuration: `${e.d}s`, animationDelay: `${e.retard}s` } as CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Belle chute (×10 à ×50) : le gain, en grand mais bref. */
+function AnnonceChute({ montant, x }: { montant: number; x: number }) {
+  const valeur = useCompteur(montant, Math.round(montant / 20), 0, 900);
+  return (
+    <div className="cdc-gain" aria-live="polite">
+      <span>{tr('Belle chute !', 'Nice drop!')}</span>
       <em>{fx(x)}</em>
       <strong>+{dollars(valeur)}</strong>
+    </div>
+  );
+}
+
+/** La grande fête (×50 et plus) : rayons d'or, l'écu géant, le multiplicateur puis la somme qui défilent. */
+function FeteChute({ palier, x, montant, onFermer }: { palier: 'grosse' | 'royale' | 'tresor'; x: number; montant: number; onFermer: () => void }) {
+  const xAffiche = useCompteur(x, 1, 150, palier === 'grosse' ? 900 : 1500);
+  const valeur = useCompteur(montant, 0, palier === 'grosse' ? 700 : 1100, palier === 'grosse' ? 1500 : 2400);
+  return (
+    <div className={`cdc-fete ${palier}`} role="dialog" aria-label={tr(...TITRES_FETE[palier])} onClick={onFermer}>
+      <span className="cdc-fete-rayons" aria-hidden="true" />
+      <div className="cdc-fete-contenu">
+        {palier !== 'grosse' && <img className="cdc-fete-couronne" src="/cartes/couronne.webp" alt="" draggable={false} />}
+        <img className="cdc-fete-ecu" src="/cartes/chute-ecu.webp" alt="" draggable={false} />
+        <h2>{tr(...TITRES_FETE[palier])}</h2>
+        <em>×{Math.round(xAffiche).toLocaleString(tr('fr-FR', 'en-US'))}</em>
+        <strong>+{dollars(valeur)}</strong>
+        <small>{tr('Touche pour continuer', 'Tap to continue')}</small>
+      </div>
     </div>
   );
 }
@@ -182,7 +246,9 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
   /** Écus à l'écran (leurs gains ne sont pas encore montrés dans le solde). */
   const [ecus, setEcus] = useState<{ id: number; gain: number }[]>([]);
   const [historique, setHistorique] = useState<{ id: number; x: number; gain: number; mise: number }[]>([]);
-  const [annonce, setAnnonce] = useState<{ montant: number; x: number; gros: boolean; id: number } | null>(null);
+  const [annonce, setAnnonce] = useState<{ montant: number; x: number; id: number } | null>(null);
+  const [fete, setFete] = useState<{ palier: 'grosse' | 'royale' | 'tresor'; montant: number; x: number; id: number } | null>(null);
+  const [eclats, setEclats] = useState<{ id: number; x: number; y: number; n: number; force: number }[]>([]);
   const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
   /** Ce que l'écu a vraiment fait gagner ou perdre (gain − mise), affiché sous le solde. */
   const [credit, setCredit] = useState<{ montant: number; id: number } | null>(null);
@@ -270,18 +336,46 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
     c?.classList.add('touchee');
     setEcus((l) => l.filter((x) => x.id !== r.id));
     setHistorique((h) => [{ id: r.id, x: r.x, gain: r.gain, mise: r.mise }, ...h].slice(0, 12));
-    const gros = r.gain >= MULTIPLE_GROS_GAIN * r.mise || r.gain >= 1_000_000;
+    const palier = palierDe(r.x);
+    const fete = palier === 'grosse' || palier === 'royale' || palier === 'tresor';
     if (r.x < 1) jouerEffet('chute_case_bas', { vitesse: 0.95 + Math.random() * 0.1 });
-    else jouerEffet(gros ? 'chute_gros' : 'chute_case', { vitesse: gros ? 1 : Math.min(1.35, 0.9 + Math.log10(r.x + 1) * 0.35) });
+    else jouerEffet(fete ? 'chute_gros' : 'chute_case', { vitesse: fete ? 1 : Math.min(1.35, 0.9 + Math.log10(r.x + 1) * 0.35) });
     if (r.gain !== r.mise) setCredit({ montant: r.gain - r.mise, id: r.id });
-    if (r.x >= 10 || gros) {
-      setAnnonce({ montant: r.gain, x: r.x, gros, id: r.id });
-      plusTard(() => setAnnonce((a) => (a?.id === r.id ? null : a)), gros ? 3600 : 2200);
-      if (!mouvementReduit()) {
-        setPluie({ n: gros ? LINGOTS_PALIER.enorme : LINGOTS_PALIER.joli + 6, id: r.id });
+    if (!palier) return;
+    const reduit = mouvementReduit();
+    // L'éclat d'écus qui jaillit de la case (plus il y en a, plus la case paie) et le plateau qui tremble.
+    if (!reduit) {
+      const geo = geometrie(r.rangees);
+      const Wpx = tailleRef.current;
+      const n = palier === 'eclat' ? 10 : palier === 'belle' ? 18 : palier === 'grosse' ? 28 : 40;
+      const force = palier === 'eclat' ? 0.8 : palier === 'belle' ? 1 : palier === 'grosse' ? 1.35 : 1.7;
+      setEclats((l) => [...l.slice(-4), { id: r.id, x: xCase(geo, r.case) * Wpx, y: (geo.yCase - geo.hCase / 2) * Wpx, n, force }]);
+      plusTard(() => setEclats((l) => l.filter((e) => e.id !== r.id)), 1600);
+      if (palier !== 'eclat') {
+        const f = palier === 'belle' ? 4 : palier === 'grosse' ? 8 : 12;
+        plateau.current?.animate?.(
+          [{ transform: 'none' }, { transform: `translate(${-f}px, ${f / 2}px) rotate(-0.6deg)` }, { transform: `translate(${f}px, ${-f / 2}px) rotate(0.6deg)` }, { transform: `translate(${-f / 2}px, 0)` }, { transform: 'none' }],
+          { duration: palier === 'belle' ? 380 : 620, easing: 'ease-out' },
+        );
+      }
+    }
+    if (palier === 'belle') {
+      setAnnonce({ montant: r.gain, x: r.x, id: r.id });
+      plusTard(() => setAnnonce((a) => (a?.id === r.id ? null : a)), 2200);
+      if (!reduit) {
+        setPluie({ n: LINGOTS_PALIER.joli + 6, id: r.id });
         plusTard(() => setPluie((p) => (p?.id === r.id ? null : p)), 4400);
       }
-      if (gros) plusTard(() => jouerEffet('lingots_pluie'), 250);
+    } else if (fete) {
+      // Une seule grande fête à la fois : la plus belle reste à l'écran.
+      setFete((f) => (f && f.x >= r.x ? f : { palier, montant: r.gain, x: r.x, id: r.id }));
+      plusTard(() => setFete((f) => (f?.id === r.id ? null : f)), palier === 'grosse' ? 4200 : 6000);
+      if (!reduit) {
+        setPluie({ n: palier === 'grosse' ? LINGOTS_PALIER.enorme : LINGOTS_PALIER.colossal, id: r.id });
+        plusTard(() => setPluie((p) => (p?.id === r.id ? null : p)), 5200);
+      }
+      plusTard(() => jouerEffet('lingots_pluie'), 250);
+      if (palier !== 'grosse') plusTard(() => jouerEffet('chute_gros', { vitesse: 1.12 }), 1300);
     }
   }, []);
 
@@ -489,6 +583,9 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
                 style={{ width: px(g.rb * 2), transform: `translate(${px(g.cx)}, ${px(g.bec)}) translate(-50%, -50%)` }}
               />
             ))}
+            {eclats.map((e) => (
+              <EclatEcus key={`eclat-${e.id}`} x={e.x} y={e.y} n={e.n} force={e.force} taille={Math.max(14, g.rb * 2 * W)} />
+            ))}
           </div>
         )}
       </section>
@@ -590,8 +687,9 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
         </p>
       </section>
 
-      {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={BUTIN_PLUIE} />}
-      {annonce && <AnnonceChute key={`annonce-${annonce.id}`} montant={annonce.montant} x={annonce.x} gros={annonce.gros} />}
+      {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={['ecu', 'ecu', 'ecu', ...BUTIN_PLUIE]} />}
+      {annonce && !fete && <AnnonceChute key={`annonce-${annonce.id}`} montant={annonce.montant} x={annonce.x} />}
+      {fete && <FeteChute key={`fete-${fete.id}`} palier={fete.palier} x={fete.x} montant={fete.montant} onFermer={() => setFete(null)} />}
     </div>
   );
 }

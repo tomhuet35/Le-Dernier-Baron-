@@ -50,12 +50,13 @@ export const LINGOTS_PALIER: Record<Palier, number> = { aucun: 0, petit: 0, joli
 
 /** Pluie de lingots d'or : quelques-uns sur la machine pour un joli gain, tout l'écran pour un gros. */
 /** Ce qui peut tomber : les lingots des machines (par défaut), ou le butin des Coffres (billets, rubis, lingots). */
-export type ObjetPluie = 'lingot' | 'billet' | 'rubis' | 'lingot-butin';
+export type ObjetPluie = 'lingot' | 'billet' | 'rubis' | 'lingot-butin' | 'ecu';
 const IMAGES_PLUIE: Record<ObjetPluie, string> = {
   lingot: '/cartes/machine-lingot.webp',
   billet: '/cartes/butin-billet.webp',
   rubis: '/cartes/butin-rubis.webp',
   'lingot-butin': '/cartes/butin-lingot.webp',
+  ecu: '/cartes/chute-ecu.webp',
 };
 export const BUTIN_PLUIE: ObjetPluie[] = ['billet', 'rubis', 'lingot-butin'];
 

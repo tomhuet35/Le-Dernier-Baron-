@@ -4,14 +4,15 @@
  * - ses mises comptent double pour l'XP du casino ;
  * - ses gains reçoivent un bonus de 10 %, jusqu'à 1 000 000 $ de bonus par joueur et par créneau.
  *
- * Les 8 jeux passent chacun une fois par jour. L'ordre glisse d'un cran chaque jour : en 8 jours, chaque jeu passe
- * à chaque heure (celui qui joue toujours le soir les voit tous à l'affiche).
+ * 8 créneaux par jour pour 9 jeux : chaque jour, 8 jeux passent à l'affiche, et l'ordre glisse d'un cran (celui qui
+ * manque un jour passe le lendemain). En 9 jours, chaque jeu passe à chaque heure (celui qui joue toujours le soir
+ * les voit tous à l'affiche).
  */
 import type { JeuCasino } from './profilCasino';
 
 export const DUREE_AFFICHE = 3 * 3_600_000;
 /** L'ordre de passage (un jeu de table, un jeu de hasard, un live… en alternance). */
-export const ORDRE_AFFICHE: JeuCasino[] = ['chute', 'roulette', 'machine', 'couronne', 'blackjack', 'coffres', 'nuits', 'folleNuit'];
+export const ORDRE_AFFICHE: JeuCasino[] = ['chute', 'roulette', 'machine', 'course', 'couronne', 'blackjack', 'coffres', 'nuits', 'folleNuit'];
 /** Les mises du jeu à l'affiche comptent deux fois pour l'XP. */
 export const XP_AFFICHE = 2;
 /** Bonus sur les gains du jeu à l'affiche, et plafond de ce bonus par joueur et par créneau. */

@@ -626,7 +626,14 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'chute_clou'
   | 'chute_case'
   | 'chute_case_bas'
-  | 'chute_gros';
+  | 'chute_gros'
+  | 'course_appel'
+  | 'course_depart'
+  | 'course_sabots'
+  | 'course_foule'
+  | 'course_gain'
+  | 'course_gros'
+  | 'course_perdu';
 export interface OptionsEffet {
   /** Vitesse de lecture : plus aigu au-dessus de 1, plus grave en dessous. */
   vitesse?: number;
@@ -728,6 +735,14 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   chute_case: { fichier: '/cartes/son-chute-case.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
   chute_case_bas: { fichier: '/cartes/son-chute-case-bas.mp3', volume: 0.57, baisserMusique: false, aLaDemande: true },
   chute_gros: { fichier: '/cartes/son-chute-gros.mp3', volume: 0.69, baisserMusique: true, aLaDemande: true },
+  // La Course des Écuries : l'appel du clairon, les stalles qui s'ouvrent, le galop, la foule à l'arrivée, les gains.
+  course_appel: { fichier: '/cartes/son-course-appel.mp3', volume: 0.58, baisserMusique: true, aLaDemande: true },
+  course_depart: { fichier: '/cartes/son-course-depart.mp3', volume: 0.71, baisserMusique: false, aLaDemande: true },
+  course_sabots: { fichier: '/cartes/son-course-sabots.mp3', volume: 0.55, baisserMusique: false, aLaDemande: true },
+  course_foule: { fichier: '/cartes/son-course-foule.mp3', volume: 0.84, baisserMusique: false, aLaDemande: true },
+  course_gain: { fichier: '/cartes/son-course-gain.mp3', volume: 0.68, baisserMusique: true, aLaDemande: true },
+  course_gros: { fichier: '/cartes/son-course-gros.mp3', volume: 0.99, baisserMusique: true, aLaDemande: true },
+  course_perdu: { fichier: '/cartes/son-course-perdu.mp3', volume: 0.52, baisserMusique: false, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
   vol: { fichier: '/cartes/son-vol.mp3', volume: 0.4, baisserMusique: false },
@@ -1022,7 +1037,7 @@ export function musiqueDuSalon(actif: boolean) {
 }
 
 /** Où l'on est dans le Salon privé : le salon lui-même, ou l'un de ses jeux. */
-export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute';
+export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course';
 
 /** Chaque jeu du salon a sa musique (boucle d'environ une minute), le salon garde son jazz de cabaret. */
 const MUSIQUES_CASINO: Record<LieuCasino, string> = {
@@ -1035,6 +1050,7 @@ const MUSIQUES_CASINO: Record<LieuCasino, string> = {
   coffres: '/cartes/musique-coffres.mp3',
   couronne: '/cartes/musique-couronne.mp3',
   chute: '/cartes/musique-chute.mp3',
+  course: '/cartes/musique-course.mp3',
 };
 /** Les sons propres à chaque jeu, préparés en entrant dans le jeu. */
 const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
@@ -1047,6 +1063,7 @@ const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
   coffres: ['cf_ouvre', 'cf_butin', 'cf_police', 'cf_encaisse', 'cf_gros', 'cf_perdu'],
   couronne: ['cv_tic', 'cv_envol', 'cv_pie', 'cv_perdu', 'cv_encaisse', 'cv_gros'],
   chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
+  course: ['course_appel', 'course_depart', 'course_sabots', 'course_foule', 'course_gain', 'course_gros', 'course_perdu'],
 };
 
 /** En entrant dans un jeu du salon : sa musique (en fondu) et ses sons. */

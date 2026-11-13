@@ -25,7 +25,11 @@
 .cas-ecran { width: min(100%, 720px); margin: 0 auto; padding: max(10px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom)); display: grid; gap: 14px; align-content: start; }
 .cas-barre { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; min-height: 44px; }
 .cas-barre h1 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 30px); color: var(--or-vif); letter-spacing: 0.04em; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); }
-.cas-retour { justify-self: start; min-height: 38px; padding: 4px 14px 4px 10px; border-radius: 99px; background: rgba(22, 16, 12, 0.8); font-size: 14px; }
+.cas-retour { justify-self: start; min-height: 38px; padding: 4px 14px 4px 10px; border-radius: 99px; background: rgba(22, 16, 12, 0.8); font-size: 14px; white-space: nowrap; }
+/* Le salon tient dans la largeur de l'écran : une colonne qui peut rétrécir (sinon un long solde élargissait la page). */
+.cas-ecran.cas-salon { grid-template-columns: minmax(0, 1fr); }
+.cas-salon > * { min-width: 0; }
+
 .cas-solde-petit { grid-column: 3; justify-self: end; padding: 6px 12px; border-radius: 99px; border: 1px solid rgba(231, 194, 122, 0.55); background: rgba(22, 16, 12, 0.85); font-family: var(--titre); color: var(--or-vif); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Solde */
@@ -233,6 +237,7 @@
 @keyframes cas-lingot { 0% { opacity: 0; transform: translateY(0) rotate(0); } 8% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0.85; transform: translateY(122vh) rotate(var(--tour)); } }
 /* Le butin des Coffres : billets (qui virevoltent), rubis et lingots. */
 .cas-pluie img.rubis { width: calc(46px * var(--t)); }
+.cas-pluie img.ecu { width: calc(44px * var(--t)); }
 .cas-pluie img.lingot-butin { width: calc(56px * var(--t)); }
 .cas-pluie img.billet { width: calc(80px * var(--t)); animation-name: cas-billet; animation-timing-function: linear; }
 @keyframes cas-billet {
@@ -851,4 +856,26 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .cas-affiche::after, .cas-vignette.a-l-affiche, .cas-carte-machine.a-l-affiche, .cas-puce-affiche > i { animation: none; }
+}
+
+/*
+ * Téléphone (en fin de fichier, pour passer après les règles de base). Le solde et le cadeau du Baron tiennent dans la
+ * largeur ; dans l'en-tête des jeux au long titre (Coffres, Chute…), « ‹ Salon » reste sur une ligne et le titre prend
+ * la place du milieu.
+ */
+@media (max-width: 560px) {
+  .cas-salon .cas-solde { font-size: clamp(24px, 7.6vw, 36px); }
+  .cas-cadeau { flex-wrap: wrap; }
+  .cas-cadeau strong { font-size: clamp(20px, 6vw, 28px); }
+  .cas-cadeau > div { flex-basis: calc(100% - 70px); }
+  .cas-cadeau-bouton { flex: 1 1 100%; }
+  .cas-barre { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; }
+  .cas-barre h1 { text-align: center; }
+  .cas-retour { padding: 4px 11px 4px 8px; }
+  .cas-barre .cas-solde-petit { padding: 6px 10px; font-size: 15px; }
+}
+/* Petits téléphones : les titres longs (« Les Coffres du Baron ») restent sur deux lignes à côté du solde. */
+@media (max-width: 400px) {
+  .cas-barre h1 { font-size: clamp(15px, 4.6vw, 22px) !important; letter-spacing: 0.02em; }
+  .cas-barre h1 > span { white-space: nowrap; }
 }

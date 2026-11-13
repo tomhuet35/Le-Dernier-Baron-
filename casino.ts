@@ -121,13 +121,15 @@ export interface VueCasino {
   profil?: { niveau: number; xp: number; xpNiveau: number; xpSuivant: number | null; bonusSuivant: number | null; demandes: number; invitations: number; defi: VueDefi | null };
   /** Le Vol de la Couronne : en direct ou non, combien regardent, les derniers envols. */
   couronne?: { enDirect: boolean; spectateurs: number; historique: number[] };
+  /** La Course des Écuries : en direct ou non, combien regardent, les derniers gagnants. */
+  course?: { enDirect: boolean; spectateurs: number; historique: { cheval: number; nom: string; cote: number }[] };
   /** Le jeu à l'affiche (XP doublée, bonus sur les gains) et le bonus déjà touché pendant son créneau. */
   affiche?: VueAffiche;
 }
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'defi';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'defi';
   /** Défi gagné : contre qui. */
   contre?: string;
   gain: number;

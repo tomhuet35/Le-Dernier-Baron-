@@ -10,8 +10,8 @@
  *   choisi remporte les deux mises du défi. Égalité : chacun récupère la sienne.
  */
 
-export type JeuCasino = 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute';
-export const JEUX_CASINO: JeuCasino[] = ['machine', 'nuits', 'blackjack', 'roulette', 'folleNuit', 'coffres', 'couronne', 'chute'];
+export type JeuCasino = 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course';
+export const JEUX_CASINO: JeuCasino[] = ['machine', 'nuits', 'blackjack', 'roulette', 'folleNuit', 'coffres', 'couronne', 'chute', 'course'];
 export const NOMS_JEUX_CASINO: Record<JeuCasino, [string, string]> = {
   machine: ['Le Bandit du Baron', 'The Baron’s Bandit'],
   nuits: ['Les Nuits du Baron', 'The Baron’s Nights'],
@@ -21,6 +21,7 @@ export const NOMS_JEUX_CASINO: Record<JeuCasino, [string, string]> = {
   coffres: ['Les Coffres du Baron', 'The Baron’s Safes'],
   couronne: ['Le Vol de la Couronne', 'The Crown’s Flight'],
   chute: ['La Chute des Écus', 'The Falling Crowns'],
+  course: ['La Course des Écuries', 'The Stables’ Race'],
 };
 export const estJeuCasino = (x: unknown): x is JeuCasino => JEUX_CASINO.includes(x as JeuCasino);
 
