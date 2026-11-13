@@ -38,12 +38,13 @@ function graine(n: number) {
 }
 
 describe('The Baron’s Wheel : les règles', () => {
-  it('a exactement 40 cases de 9° (30 chiffres, 10 bonus), sans deux cases pareilles côte à côte', () => {
+  it('a exactement 40 cases de 9° (29 chiffres, 10 bonus et la case unique de l’Express), sans deux cases pareilles côte à côte', () => {
     expect(ROUE_BW).toHaveLength(NB_CASES_BW);
     expect(DEGRES_CASE_BW).toBe(9);
     for (const c of CASES_BW) expect(ROUE_BW.filter((x) => x === c)).toHaveLength(COMPOSITION_BW[c]);
     expect(Object.values(COMPOSITION_BW).reduce((s, x) => s + x, 0)).toBe(40);
-    expect(ROUE_BW.filter((c) => estBonusBW(c))).toHaveLength(10);
+    expect(ROUE_BW.filter((c) => estBonusBW(c))).toHaveLength(11);
+    expect(ROUE_BW.filter((c) => c === 'express')).toHaveLength(1);
     for (let i = 0; i < 40; i++) expect(ROUE_BW[i]).not.toBe(ROUE_BW[(i + 1) % 40]);
   });
 
@@ -106,6 +107,23 @@ describe('The Baron’s Wheel : les règles', () => {
     expect(etapesBonusBW('evasion').map((e) => e.nom)).toEqual(['intro', 'route', 'poursuite', 'revele']);
     expect(recompenseBonusBW({ type: 'evasion', routes: [{ evade: false, x: 10 }, { evade: true, x: 25 }, { evade: true, x: 100 }] }, [0])).toEqual({ x: 0, evade: false });
     expect(gainBW(25_000, 5)).toBe(125_000);
+    // L'Express : 5 wagons, 2 décrochés au premier tunnel, 2 au second, un seul arrive ; rien sous ×10.
+    for (let k = 0; k < 500; k++) {
+      const t = tirerBonusBW('express', h);
+      if (t.type !== 'express') throw new Error();
+      expect(t.decroche.filter((d) => d === 0)).toHaveLength(2);
+      expect(t.decroche.filter((d) => d === 1)).toHaveLength(2);
+      expect(t.decroche.filter((d) => d === null)).toHaveLength(1);
+      expect([...t.paris, ...t.venise, t.coffre].every((x) => x >= 10)).toBe(true);
+      expect(t.coffre).toBeGreaterThanOrEqual(25);
+      for (let w = 0; w < 5; w++) {
+        const r = recompenseBonusBW(t, [w]);
+        const d = t.decroche[w];
+        expect(r.x).toBe(t.paris[w] + (d !== 0 ? t.venise[w] : 0) + (d === null ? t.coffre : 0));
+        expect(r.x).toBeGreaterThanOrEqual(10);
+      }
+    }
+    expect(choixDuBonusBW('express')).toEqual([5]);
     expect(gainBW(1_000, 3.3)).toBe(3_300);
   });
 });
@@ -161,7 +179,7 @@ beforeAll(async () => {
       jeuALaffiche: () => null,
       cadeaux: [],
       delaiEcriture: 30,
-      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, intro: 80, choix: 700, serrure: 700, etape: 80, vol: 80, poursuite: 80, revele: 150 },
+      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, intro: 80, choix: 700, serrure: 700, etape: 80, vol: 80, poursuite: 80, revele: 150, introExpress: 80, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
       arretBaronWheel: () => arretImpose,
       multiplicateursBaronWheel: () => multiplicateursImposes,
       ouvertureBaronWheel: () => ouverture,
@@ -308,6 +326,65 @@ describe('The Baron’s Wheel en direct', () => {
     expect(bz.resultat).toMatchObject({ x, gain: gainBW(25_000, x) });
     expect(fin.bilan).toEqual({ mise: 25_000, gain: gainBW(25_000, x) });
     a.close();
+  }, 30_000);
+
+  it('joue l’Express du Baron : le voyage se révèle gare après gare, un seul wagon arrive à Istanbul', async () => {
+    const a = connecter();
+    const b = connecter();
+    await emettre(a, 'identifier', { jeton: 'jeton-a' });
+    await emettre(b, 'identifier', { jeton: 'jeton-b' });
+    await emettre(a, 'casino_entrer');
+    await emettre(b, 'casino_entrer');
+    await emettre(a, 'casino_bw_entrer');
+    await emettre(b, 'casino_bw_entrer');
+    const v = await nouvelleManche(a);
+    arretImpose = indice('express');
+    // Un ×10 de la roue sur l'Express : tout le voyage vaut 10 fois plus.
+    multiplicateursImposes = [
+      { i: arretImpose, x: 10 },
+      { i: indice('x1'), x: 2 },
+      { i: indice('x2'), x: 3 },
+    ];
+    await emettre(a, 'casino_bw_miser', { case: 'express', montant: 100_000 });
+    await emettre(b, 'casino_bw_miser', { case: 'express', montant: 5_000 });
+    const choix = await attendre(a, (x) => etape(x) === 'wagons');
+    expect(choix.bonus!.multiplicateur).toBe(10);
+    expect(choix.bonus!.express).toEqual({ paris: [null, null, null, null, null], venise: [null, null, null, null, null], decroches: [null, null, null, null, null], coffre: null, gagnant: null });
+    expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 5 })).erreur).toMatch(/impossible/);
+    expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 3 })).ok).toBe(true);
+    // Paris : le butin de départ de chaque wagon, rien d'autre.
+    const paris = await attendre(a, (x) => etape(x) === 'paris');
+    expect(paris.bonus!.express!.paris.every((x) => x !== null && x >= 10)).toBe(true);
+    expect(paris.bonus!.express!.venise.every((x) => x === null)).toBe(true);
+    expect(paris.bonus!.express!.decroches.every((x) => x === null)).toBe(true);
+    // Premier tunnel : deux wagons décrochés.
+    const t1 = await attendre(a, (x) => etape(x) === 'tunnel1');
+    expect(t1.bonus!.express!.decroches.filter((d) => d === 0)).toHaveLength(2);
+    expect(t1.bonus!.express!.coffre).toBeNull();
+    // Venise : seuls les wagons encore attachés ouvrent un coffre.
+    const venise = await attendre(a, (x) => etape(x) === 'venise');
+    const ve = venise.bonus!.express!;
+    ve.decroches.forEach((d, k) => expect(ve.venise[k] === null).toBe(d === 0));
+    const t2 = await attendre(a, (x) => etape(x) === 'tunnel2');
+    expect(t2.bonus!.express!.decroches.filter((d) => d !== null)).toHaveLength(4);
+    expect(t2.bonus!.express!.gagnant).toBeNull();
+    // Istanbul : le dernier wagon ouvre le Coffre du Baron.
+    const ist = await attendre(a, (x) => etape(x) === 'istanbul');
+    const ex = ist.bonus!.express!;
+    expect(ex.gagnant).toBe(ex.decroches.findIndex((d) => d === null));
+    expect(ex.coffre).toBeGreaterThanOrEqual(25);
+    const fin = await attendre(a, (x) => x.phase === 'resultat' && x.numero === v.numero);
+    const brut = ex.paris[3]! + (ex.decroches[3] !== 0 ? ex.venise[3]! : 0) + (ex.gagnant === 3 ? ex.coffre! : 0);
+    expect(fin.bonus!.resultat).toMatchObject({ x: brut * 10, gain: gainBW(100_000, brut * 10) });
+    expect(fin.bilan).toEqual({ mise: 100_000, gain: gainBW(100_000, brut * 10) });
+    expect(fin.historique[0]).toEqual({ c: 'express', x: 10 });
+    // Léa n'a pas choisi : le serveur lui a donné un wagon.
+    const lea = (await emettre(b, 'casino_bw_journal')).journal;
+    expect(lea.manches[0].gain).toBeGreaterThanOrEqual(gainBW(5_000, 100));
+    expect(lea.moi.bonus.express).toBe(1);
+    multiplicateursImposes = [];
+    a.close();
+    b.close();
   }, 30_000);
 
   it('paie un chiffre multiplié, et pose un ×2 doré en plus pendant la grande ouverture', async () => {

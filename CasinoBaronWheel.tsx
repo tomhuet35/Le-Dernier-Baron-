@@ -39,7 +39,8 @@ import type { Appel } from './App';
 import { BUTIN_PLUIE, CHOIX_AUTO, dollars, PluieLingots, useSoldeAnime } from './casinoOutils';
 import { socket } from './socket';
 import { EN, tr } from './traduction';
-import { jouerEffet, mouvementReduit } from './ui';
+import { jouerEffet, mouvementReduit, musiqueDuCasino } from './ui';
+import { BonusExpress } from './CasinoBaronExpress';
 import './baronWheel.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
@@ -57,12 +58,14 @@ export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string
   pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket.webp' },
   evasion: { nom: ['Grande Évasion', 'Great Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion.webp' },
   braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage.webp' },
+  express: { nom: ['Express du Baron', 'Baron Express'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
   pickpocket: ['Le Grand Vol', 'The Big Theft'],
   evasion: ['La Grande Évasion', 'The Great Escape'],
   braquage: ['Le Braquage', 'The Big Heist'],
+  express: ['L’Express du Baron', 'The Baron Express'],
 };
 const NOMS_ROUTES: Record<RouteBW, { nom: [string, string]; risque: [string, string] }> = {
   boulevard: { nom: ['Le Boulevard', 'The Boulevard'], risque: ['Risque faible', 'Low risk'] },
@@ -652,6 +655,7 @@ const TEXTES_ETAPES: Record<string, [string, string]> = {
   mecanisme: ['Serrure 2 : arrête le cadran au bon moment', 'Lock 2: stop the dial at the right moment'],
   mecaRevele: ['Le mécanisme tourne…', 'The mechanism turns…'],
   coffre: ['Serrure 3 : choisis un compartiment', 'Lock 3: pick a compartment'],
+  wagons: ['Choisis ton wagon : un seul arrivera à Istanbul !', 'Pick your carriage: only one will reach Istanbul!'],
   revele: ['', ''],
 };
 
@@ -675,6 +679,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
       {b.type === 'pickpocket' && <BonusPickpocket {...props} />}
       {b.type === 'evasion' && <BonusEvasion {...props} />}
       {b.type === 'braquage' && <BonusBraquage {...props} />}
+      {b.type === 'express' && <BonusExpress v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       <div className="bw-bonus-titre">
         <img src={CASES_VISUELS[b.type].image} alt="" />
         <strong>{tr(...NOMS_BONUS[b.type])}</strong>
@@ -687,7 +692,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
           <span>{tr('Tous les gains de ce bonus sont multipliés !', 'Every win in this bonus is multiplied!')}</span>
         </div>
       )}
-      {nom !== 'revele' && nom !== 'intro' && (
+      {nom !== 'revele' && nom !== 'intro' && (b.type !== 'express' || nom === 'wagons') && (
         <div className="bw-bonus-consigne">
           <span>{texte}</span>
           {rang >= 0 && (b.mise > 0 ? b.mesChoix[rang] !== null ? <small>{tr('Choix fait : on attend les autres…', 'Done: waiting for the others…')}</small> : <small>{tr(`Ta mise : ${dollars(b.mise)}`, `Your bet: ${dollars(b.mise)}`)}</small> : <small>{tr('Tu regardes : tu n’as pas misé sur ce bonus.', 'Watching: you did not bet on this bonus.')}</small>)}
@@ -697,7 +702,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
       {nom === 'revele' && b.mise > 0 && r && (
         <div className={`bw-bonus-resultat ${r.gain > 0 ? 'gagne' : 'perdu'} ${r.jackpot ? 'jackpot' : ''}`} role="status">
           {r.jackpot && <img src={`/cartes/bw-plaque-${r.jackpot}.webp`} alt="" />}
-          <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'evasion' ? (r.evade ? tr('Évadé !', 'Escaped!') : tr('Arrêté !', 'Caught!')) : tr('Ta récompense', 'Your reward')}</small>
+          <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'evasion' ? (r.evade ? tr('Évadé !', 'Escaped!') : tr('Arrêté !', 'Caught!')) : b.type === 'express' ? (r.evade ? tr('Ton wagon est arrivé à Istanbul !', 'Your carriage reached Istanbul!') : tr('Wagon décroché : il garde son butin', 'Carriage uncoupled: it keeps its loot')) : tr('Ta récompense', 'Your reward')}</small>
           <strong>{r.gain > 0 ? `${fx(r.x)} · +${dollars(r.gain)}` : tr('Pas de butin cette fois', 'No loot this time')}</strong>
           {r.gain > 0 && !r.jackpot && b.multiplicateur > 1 && <em>{tr(`${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (multiplicateur de la roue)`, `${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (wheel multiplier)`)}</em>}
         </div>
@@ -741,6 +746,13 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   const [finPhase, setFinPhase] = useState<number | null>(null);
 
   useEffect(() => window.scrollTo(0, 0), []);
+  // L'Express du Baron a sa propre musique, le temps du voyage.
+  const enExpress = v?.bonus?.type === 'express' && (v.phase === 'bonus' || v.phase === 'resultat');
+  useEffect(() => {
+    if (!enExpress) return;
+    musiqueDuCasino('express');
+    return () => musiqueDuCasino('baronWheel');
+  }, [enExpress]);
   useEffect(() => {
     try {
       localStorage.setItem(CLE_JETON, String(jeton));
@@ -800,7 +812,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     if (avant.phase === 'tour' && v.phase !== 'tour') jouerEffet('bw_arret');
     if (v.phase === 'bonus' && v.bonus) {
       const n = etapeNom(v);
-      if (n === 'intro') jouerEffet(v.bonus.type === 'baron' ? 'bw_baron' : v.bonus.type === 'pickpocket' ? 'bw_vol' : v.bonus.type === 'evasion' ? 'bw_sirene' : 'bw_coffre');
+      if (n === 'intro' && v.bonus.type !== 'express') jouerEffet(v.bonus.type === 'baron' ? 'bw_baron' : v.bonus.type === 'pickpocket' ? 'bw_vol' : v.bonus.type === 'evasion' ? 'bw_sirene' : 'bw_coffre');
       if (n === 'poursuite') jouerEffet('bw_sirene');
       if (n === 'codeRevele' || n === 'mecaRevele') jouerEffet('bw_cadran');
       if (n === 'coffre') jouerEffet('bw_coffre');
@@ -997,6 +1009,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
               <button key={c} type="button" className={`bw-case ${c} ${m ? 'misee' : ''} ${gagnante === c ? 'gagnante' : ''} ${multis.length ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} onClick={() => void miser(c)} disabled={!ouvertes} aria-label={`${tr(...vis.nom)} ${m ? dollars(m) : ''}`}>
                 {vis.image ? <img src={vis.image} alt="" draggable={false} /> : <strong>{fx(GAINS_CHIFFRES_BW[c as 'x1'])}</strong>}
                 <span className="bw-case-nom">{estBonusBW(c) ? tr(...vis.nom) : tr(`case ${vis.nom[0]}`, `${vis.nom[1]} spot`)}</span>
+                {c === 'express' && <small className="bw-case-sous">{tr('Case unique · ×10 à ×1 000', 'One spot · ×10 to ×1,000')}</small>}
                 {m > 0 && (
                   <span className="bw-case-mise">
                     <img src={`/cartes/jeton-${imageJeton(m)}.webp`} alt="" />
@@ -1094,8 +1107,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 12 cases 1X (paient ×2,5), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), et 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2), Braquage (3), qui paient de ×5 à ×500. Une fois les mises fermées, 3 cases reçoivent un multiplicateur de ×2 à ×50. Chaque mise rend environ 95 % en moyenne ; les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et le Braquage.',
-            '40 spots, all equally likely: 12 1X spots (pay ×2.5), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), and 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2), Big Heist (3), paying ×5 to ×500. Once bets close, 3 spots get a ×2 to ×50 multiplier. Every bet returns about 95% on average; the jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Big Heist.',
+            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2), Braquage (3), qui paient de ×5 à ×500, et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×25 à ×1 000). Une fois les mises fermées, 3 cases reçoivent un multiplicateur de ×2 à ×50. Chaque mise rend environ 95 % en moyenne ; les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et le Braquage.',
+            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2), Big Heist (3), paying ×5 to ×500, and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×25 to ×1,000). Once bets close, 3 spots get a ×2 to ×50 multiplier. Every bet returns about 95% on average; the jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Big Heist.',
           )}
         </p>
       </aside>

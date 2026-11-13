@@ -1,0 +1,155 @@
+/* L'Express du Baron (The Baron's Wheel) : le voyage Paris → Istanbul. Position du train, caméra, décor, fumée et
+   gendarme sont écrits par CasinoBaronExpress.tsx à chaque image ; ici, les habits et les animations. */
+
+.bw-bonus.express { background: #07080f; }
+.bwx { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(180deg, #060818 0%, #141433 55%, #1d1a35 100%); color: #fff1c4; --p: 400px; }
+
+/* Le départ (intro et choix du wagon) */
+.bwx-depart { position: absolute; inset: 0; background: url(/cartes/bw-ex-gare-depart.webp) center 60% / cover no-repeat; animation: bwx-fondu 0.8s ease-out both; }
+.bwx-depart::after { content: ''; position: absolute; inset: 0; background: radial-gradient(130% 90% at 50% 40%, transparent 40%, rgba(3, 3, 10, 0.75)); }
+
+/* Le décor qui défile, la gare, le noir du tunnel */
+.bwx-bande { position: absolute; left: 0; width: 100%; z-index: 1; background-repeat: repeat-x; will-change: background-position; }
+/* Le passage d'une étape à l'autre : un court fondu au noir (l'entrée et la sortie des tunnels). */
+.bwx-volet { position: absolute; inset: 0; z-index: 8; background: #000; pointer-events: none; animation: bwx-volet 0.5s ease-out both; }
+@keyframes bwx-volet { to { opacity: 0; visibility: hidden; } }
+.bwx-gare { position: absolute; left: 0; top: 0; z-index: 2; height: auto; transform-origin: 0 0; will-change: transform; pointer-events: none; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.6)); }
+.bwx-noir { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: radial-gradient(90% 70% at 50% 62%, transparent 30%, rgba(0, 0, 0, 0.82)); animation: bwx-fondu 0.4s ease-out both; }
+.bwx-noir::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 22%, rgba(255, 190, 90, 0.16) 24%, transparent 27%); background-size: 60% 100%; mix-blend-mode: screen; animation: bwx-lampes 0.55s linear infinite; }
+@keyframes bwx-lampes { to { background-position: -60% 0; } }
+
+/* Le train */
+.bwx-train { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.bwx-train.cache { visibility: hidden; }
+.bwx-train > * { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.bwx-loco img, .bwx-wagon > img { display: block; width: 100%; height: 100%; }
+.bwx-loco { filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
+.bwx-wagon { filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
+.bwx-wagon.mien { filter: drop-shadow(0 0 calc(var(--p) * 0.018) #ffd774) drop-shadow(0 0 calc(var(--p) * 0.04) rgba(255, 200, 100, 0.65)); }
+.bwx-plaque { position: absolute; left: 50%; top: 73%; padding: 0.15em 0.7em; border-radius: 99px; border: 1px solid #d6a84b; background: var(--couleur); color: var(--texte); font-weight: 900; font-size: calc(var(--p) * 0.038); white-space: nowrap; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.bwx-wagon.mien .bwx-plaque { border: 2px solid #ffd774; font-size: calc(var(--p) * 0.044); box-shadow: 0 0 10px rgba(255, 210, 110, 0.8); }
+.bwx-fumee { width: 160px; height: auto; opacity: 0; mix-blend-mode: screen; }
+.bwx-gendarme { width: auto; z-index: 3; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 14px rgba(80, 140, 255, 0.45)); }
+
+/* Les coffres sur le toit */
+.bwx-coffre { position: absolute; left: 50%; bottom: 88%; width: 26%; display: grid; justify-items: center; transform: translateX(-50%); }
+.bwx-coffre img { width: 100%; height: auto; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6)); }
+.bwx-coffre.pose { animation: bwx-pose 0.38s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.bwx-coffre.ouvert img { animation: bwx-ouvre 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bwx-coffre b { position: absolute; bottom: 92%; padding: 0.05em 0.45em; border-radius: 0.5em; background: radial-gradient(120% 140% at 50% 0%, rgba(90, 58, 10, 0.95), rgba(24, 12, 2, 0.95)); border: 2px solid #ffcf6b; font-family: var(--titre); font-weight: 400; font-size: calc(var(--p) * 0.085); line-height: 1.1; color: #ffe9a8; white-space: nowrap; text-shadow: 0 0 12px rgba(255, 200, 100, 0.9); box-shadow: 0 0 18px rgba(255, 190, 90, 0.6); animation: bwx-butin 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bwx-coffre b.gros { font-size: calc(var(--p) * 0.11); color: #fff; border-color: #fff1c4; background: radial-gradient(120% 140% at 50% 0%, rgba(170, 30, 20, 0.97), rgba(50, 6, 4, 0.97)); box-shadow: 0 0 26px rgba(255, 140, 90, 0.9), 0 0 50px rgba(255, 210, 120, 0.6); animation: bwx-butin 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both, bwx-scintille 1.2s ease-in-out 0.7s infinite; }
+@keyframes bwx-pose { from { opacity: 0; transform: translate(-50%, -160%) scale(0.6); } }
+@keyframes bwx-ouvre { 0% { transform: scale(1); } 35% { transform: scale(1.25) rotate(-4deg); } 100% { transform: scale(1); } }
+@keyframes bwx-butin { from { opacity: 0; transform: translateY(40%) scale(0.3); } }
+
+/* L'arrivée à Istanbul */
+.bwx-arrivee { position: absolute; inset: 0; z-index: 9; pointer-events: none; background: url(/cartes/bw-ex-arrivee.webp) 62% 50% / cover no-repeat; animation: bwx-fondu 1.1s ease-out both; }
+.bwx-feu { position: absolute; left: calc(8% + var(--k) * 13%); top: 9%; width: clamp(60px, 16%, 150px); aspect-ratio: 1; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(255, 220, 140, 0.95) 0 3deg, transparent 3deg 18deg); -webkit-mask: radial-gradient(closest-side, transparent 18%, #000 22%, #000 70%, transparent 100%); mask: radial-gradient(closest-side, transparent 18%, #000 22%, #000 70%, transparent 100%); opacity: 0; animation: bwx-feu 1.7s ease-out calc(0.4s + var(--k) * 0.37s) infinite; }
+.bwx-feu:nth-child(2n) { top: 22%; }
+.bwx-feu:nth-child(3n + 1) { background: repeating-conic-gradient(from 6deg, rgba(255, 120, 160, 0.95) 0 3deg, transparent 3deg 16deg); }
+.bwx-feu:nth-child(3n + 2) { background: repeating-conic-gradient(from 3deg, rgba(140, 200, 255, 0.95) 0 3deg, transparent 3deg 20deg); }
+@keyframes bwx-feu { 0% { opacity: 0; transform: scale(0.1); } 12% { opacity: 1; } 70% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.12) translateY(8%); } }
+.bwx-confetti { position: absolute; left: var(--x); top: -6%; width: 7px; height: 12px; border-radius: 2px; background: #ffd774; opacity: 0.9; animation: bwx-confetti calc(2.6s + (var(--k) * 0.13s)) linear calc(var(--k) * -0.31s) infinite; }
+.bwx-confetti:nth-child(4n) { background: #d33a3a; }
+.bwx-confetti:nth-child(4n + 1) { background: #fff1c4; }
+.bwx-confetti:nth-child(4n + 2) { background: #2f6fd8; width: 5px; }
+@keyframes bwx-confetti { from { top: -6%; } to { top: 106%; transform: translateX(calc((var(--k) - 13) * 4px)) rotate(720deg); } }
+
+/* L'intro */
+.bwx-intro { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+.bwx-baron { position: absolute; left: 3%; bottom: 0; height: 86%; width: auto; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.8)); animation: bwx-baron 0.9s cubic-bezier(0.3, 1.3, 0.5, 1) 0.2s both; }
+@keyframes bwx-baron { from { opacity: 0; transform: translateX(-40%); } }
+.bwx-titre-intro { position: absolute; right: 4%; top: 15%; display: grid; justify-items: center; gap: 4px; max-width: 58%; padding: 14px 26px 16px; border-radius: 20px; border: 2px solid #d6a84b; background: radial-gradient(130% 150% at 50% 0%, rgba(20, 70, 52, 0.95), rgba(4, 18, 14, 0.95)); box-shadow: 0 0 40px rgba(255, 200, 110, 0.35), 0 14px 30px rgba(0, 0, 0, 0.7); text-align: center; animation: bwx-pop 0.8s cubic-bezier(0.3, 1.5, 0.5, 1) 0.5s both; }
+.bwx-titre-intro small { font-size: 11px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: #9fe0b8; }
+.bwx-titre-intro strong { font-family: var(--titre); font-weight: 400; font-size: clamp(24px, 6vw, 44px); line-height: 1.05; color: #ffd774; text-shadow: 0 0 18px rgba(255, 200, 100, 0.7); }
+.bwx-titre-intro span { font-family: var(--titre); font-size: clamp(15px, 3.6vw, 22px); color: #fff1c4; letter-spacing: 0.08em; }
+.bwx-titre-intro em { font-style: normal; font-weight: 800; font-size: clamp(12px, 3vw, 15px); color: #ffcf6b; }
+
+/* Le choix du wagon */
+.bwx-choix { position: absolute; left: 50%; top: 52%; z-index: 20; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 14px; width: min(94%, 860px); transform: translate(-50%, -50%); }
+.bwx-choix-wagon { position: relative; flex: 0 0 30%; display: grid; justify-items: center; gap: 4px; padding: 8px 8px 6px; border-radius: 14px; border: 2px solid rgba(214, 168, 75, 0.7); background: rgba(8, 6, 14, 0.78); color: #fff1c4; cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s; animation: bwx-pop 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.bwx-choix-wagon:nth-child(2) { animation-delay: 0.08s; }
+.bwx-choix-wagon:nth-child(3) { animation-delay: 0.16s; }
+.bwx-choix-wagon:nth-child(4) { animation-delay: 0.24s; }
+.bwx-choix-wagon:nth-child(5) { animation-delay: 0.32s; }
+.bwx-choix-wagon img { width: 100%; height: auto; }
+.bwx-choix-wagon span { padding: 1px 12px; border-radius: 99px; background: var(--couleur); color: var(--texte); border: 1px solid #d6a84b; font-weight: 900; font-size: clamp(12px, 3vw, 15px); }
+.bwx-choix-wagon i { position: absolute; right: -6px; top: -8px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 99px; display: grid; place-items: center; background: #d6a84b; color: #1b120c; font-style: normal; font-weight: 900; font-size: 12px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.bwx-choix-wagon:not(:disabled):hover { transform: translateY(-3px); border-color: #ffd774; box-shadow: 0 0 18px rgba(255, 200, 100, 0.55); }
+.bwx-choix-wagon:disabled { cursor: default; opacity: 1; filter: none; }
+.bwx-choix-wagon.choisi { border-color: #ffd774; box-shadow: 0 0 24px rgba(255, 210, 110, 0.85); transform: scale(1.05); }
+.bwx-choix-wagon.autre, .bwx-choix-wagon.autre:disabled { opacity: 0.45; filter: grayscale(0.4); }
+
+/* Les annonces du voyage */
+.bwx-annonce { position: absolute; left: 50%; top: 41%; z-index: 20; display: grid; justify-items: center; gap: 2px; padding: 8px 26px 10px; border-radius: 16px; border: 2px solid #d6a84b; background: radial-gradient(130% 150% at 50% 0%, rgba(60, 40, 10, 0.94), rgba(14, 8, 4, 0.94)); box-shadow: 0 0 30px rgba(255, 200, 110, 0.35), 0 12px 26px rgba(0, 0, 0, 0.7); transform: translate(-50%, -50%); text-align: center; white-space: nowrap; pointer-events: none; animation: bwx-annonce 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.bwx-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(19px, 5vw, 32px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.6); }
+.bwx-annonce span { font-weight: 800; font-size: clamp(12px, 3.2vw, 15px); color: #fff1c4; }
+.bwx-annonce.police { border-color: #8fb6ff; background: radial-gradient(130% 150% at 50% 0%, rgba(20, 34, 90, 0.95), rgba(4, 6, 20, 0.95)); animation: bwx-annonce 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) both, bwx-gyrophare 0.9s steps(2) infinite; }
+.bwx-annonce.police strong { color: #fff; }
+/* Le départ d'une gare : plus discret, au-dessus des coffres ouverts. */
+.bwx-annonce.petit { top: 33%; padding: 4px 18px 6px; }
+.bwx-annonce.petit strong { font-size: clamp(16px, 3.6vw, 22px); }
+@keyframes bwx-annonce { from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } }
+@keyframes bwx-gyrophare { 0% { box-shadow: -14px 0 30px rgba(60, 120, 255, 0.85), 0 12px 26px rgba(0, 0, 0, 0.7); } 100% { box-shadow: 14px 0 30px rgba(255, 50, 50, 0.85), 0 12px 26px rgba(0, 0, 0, 0.7); } }
+
+/* Le Coffre du Baron */
+.bwx-coffre-baron { position: absolute; left: 50%; top: 50%; z-index: 25; display: grid; width: max-content; max-width: 92%; justify-items: center; gap: 4px; padding: 12px 28px 14px; border-radius: 22px; border: 2px solid #ffcf6b; background: radial-gradient(130% 150% at 50% 0%, rgba(80, 52, 10, 0.95), rgba(20, 10, 2, 0.95)); box-shadow: 0 0 50px rgba(255, 200, 110, 0.6), 0 16px 34px rgba(0, 0, 0, 0.75); transform: translate(-50%, -50%); text-align: center; animation: bwx-annonce 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.3s both; }
+.bwx-coffre-baron small { padding: 1px 12px; border-radius: 99px; background: var(--couleur); color: var(--texte); border: 1px solid #d6a84b; font-weight: 900; font-size: clamp(11px, 2.8vw, 14px); }
+.bwx-coffre-baron img { width: clamp(80px, 20%, 150px); height: auto; filter: drop-shadow(0 0 22px rgba(255, 200, 100, 0.8)); animation: bwx-tremble 0.18s linear infinite; }
+.bwx-coffre-baron img.ouvert { animation: bwx-ouvre 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bwx-coffre-baron strong { font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 40px); color: #fff1c4; text-shadow: 0 0 20px rgba(255, 200, 110, 0.9); white-space: nowrap; }
+@keyframes bwx-tremble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+
+/* Le tableau des wagons */
+.bwx-tableau { position: absolute; left: 50%; top: 60px; z-index: 20; display: flex; gap: 5px; width: max-content; max-width: 96%; margin: 0; padding: 0; list-style: none; transform: translateX(-50%); pointer-events: none; }
+.bwx-tableau li { position: relative; display: grid; justify-items: center; min-width: 74px; padding: 3px 8px 4px; border-radius: 10px; border: 1.5px solid rgba(214, 168, 75, 0.75); background: linear-gradient(180deg, var(--couleur), rgba(8, 6, 14, 0.92) 150%); color: var(--texte); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.55); transition: opacity 0.4s, filter 0.4s, transform 0.3s; }
+.bwx-tableau-nom { font-size: 10.5px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.bwx-tableau strong { font-family: var(--titre); font-weight: 400; font-size: 18px; line-height: 1.1; animation: bwx-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bwx-tableau small { font-size: 9.5px; font-weight: 700; opacity: 0.85; white-space: nowrap; }
+.bwx-tableau em { position: absolute; left: 50%; top: calc(100% + 3px); padding: 1px 7px; border-radius: 99px; background: #2f7d45; border: 1px solid #8fd18a; color: #eaffe6; font-style: normal; font-weight: 800; font-size: 10.5px; white-space: nowrap; transform: translateX(-50%); }
+.bwx-tableau li.mien { border: 2px solid #ffd774; box-shadow: 0 0 16px rgba(255, 210, 110, 0.75); transform: translateY(-2px); }
+.bwx-tableau li.tombe { opacity: 0.55; filter: grayscale(0.7); }
+.bwx-tableau li.tombe small { color: #ff9a8a; opacity: 1; }
+.bwx-tableau li.arrive { border: 2px solid #fff1c4; box-shadow: 0 0 24px rgba(255, 220, 140, 1); animation: bwx-scintille 1.1s ease-in-out infinite; }
+
+@keyframes bwx-fondu { from { opacity: 0; } }
+@keyframes bwx-pop { from { opacity: 0; transform: scale(0.6); } }
+@keyframes bwx-scintille { 50% { filter: brightness(1.35); } }
+
+/* Téléphone : la scène est en hauteur ; le tableau au-dessus du décor, le train dans le tiers bas. */
+@media (max-width: 640px) {
+  .bwx-tableau { top: 92px; gap: 3px; width: 96%; }
+  .bwx-tableau li { flex: 1 1 0; min-width: 0; padding: 2px 2px 3px; border-radius: 8px; }
+  .bwx-tableau-nom { font-size: 9px; letter-spacing: 0; }
+  .bwx-tableau strong { font-size: 15px; }
+  .bwx-tableau small { font-size: 8.5px; }
+  .bwx-tableau em { font-size: 9.5px; padding: 0 5px; }
+  .bwx-annonce { top: 44%; padding: 6px 14px 8px; white-space: normal; width: max-content; max-width: 94%; }
+  .bwx-annonce strong { font-size: 18px; }
+  .bwx-annonce.petit { top: 43%; }
+  .bwx-annonce.petit strong { font-size: 16px; }
+  .bwx-annonce span { font-size: 12px; }
+  .bwx-baron { height: 50%; left: -4%; }
+  .bwx-titre-intro { left: 50%; right: auto; top: 96px; max-width: 90%; width: max-content; padding: 10px 16px 12px; transform: translateX(-50%); }
+  .bwx-intro .bwx-titre-intro { animation-name: bwx-pop-centre; }
+  .bwx-choix { top: 50%; gap: 8px; }
+  .bwx-choix-wagon { flex-basis: 44%; padding: 6px 6px 5px; }
+  .bwx-coffre-baron { padding: 10px 16px 12px; max-width: 92%; }
+  .bwx-coffre-baron strong { white-space: normal; font-size: 22px; }
+  .bwx-arrivee { background-position: 58% 50%; }
+}
+@keyframes bwx-pop-centre { from { opacity: 0; transform: translateX(-50%) scale(0.6); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bwx-noir::after, .bwx-feu, .bwx-confetti, .bwx-coffre-baron img, .bwx-tableau li.arrive, .bwx-annonce.police, .bwx-coffre b.gros { animation: none; }
+  .bwx-feu { opacity: 0; }
+}
+
+/* L'annonce du multiplicateur de la roue : en bas à droite, sous le titre du voyage. */
+.bw-bonus.express .bw-bonus-annonce-multi { left: auto; right: 4%; top: auto; bottom: 5%; padding: 6px 20px 8px; transform: none; }
+.bw-bonus.express .bw-bonus-annonce-multi strong { font-size: clamp(34px, 9vw, 56px); }
+.bw-bonus.express .bw-bonus-annonce-multi span { max-width: 220px; }
+@media (max-width: 640px) {
+  .bw-bonus.express .bw-bonus-annonce-multi { right: 3%; bottom: 3%; padding: 5px 12px 6px; }
+  .bw-bonus.express .bw-bonus-annonce-multi span { max-width: 150px; font-size: 11px; }
+}

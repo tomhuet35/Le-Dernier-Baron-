@@ -489,3 +489,9 @@
 .bw-auto-choix .bw-auto-fermer { min-width: 40px; font-family: inherit; color: var(--creme-doux); border-color: var(--filet); }
 .bw-auto-etat { margin: 0; text-align: center; font-size: 12.5px; color: #8fd18a; }
 .bw-commandes .bj-boutons { flex-wrap: wrap; }
+
+/* L'Express du Baron : sa case unique prend toute la largeur du tapis. */
+.bw-case.express { grid-column: 1 / -1; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 12px; row-gap: 0; justify-content: center; min-height: 64px; background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.3)), radial-gradient(120% 160% at 50% 0%, rgba(255, 210, 120, 0.18), transparent 60%); }
+.bw-case.express > img { grid-row: 1 / 3; width: clamp(40px, 10vw, 52px); }
+.bw-case.express .bw-case-nom { align-self: end; justify-self: start; font-family: var(--titre); font-size: clamp(15px, 4vw, 19px); color: #ffd774; }
+.bw-case-sous { align-self: start; justify-self: start; font-size: 11px; font-weight: 800; color: #bfeccf; }

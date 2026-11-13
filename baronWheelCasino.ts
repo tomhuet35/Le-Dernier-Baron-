@@ -160,6 +160,18 @@ export function creerBaronWheel(options: {
       v.meca = atteinte('mecaRevele') ? t.meca : Array(8).fill(null);
       v.coffre = atteinte('revele') ? t.coffre : [null, null, null, null];
     }
+    if (t.type === 'express') {
+      // Le voyage se révèle gare après gare : rien de ce qui attend plus loin ne part vers les téléphones.
+      const tunnelVu = (n: number) => atteinte(n === 0 ? 'tunnel1' : 'tunnel2');
+      const gagnant = t.decroche.findIndex((d) => d === null);
+      v.express = {
+        paris: atteinte('paris') ? [...t.paris] : t.paris.map(() => null),
+        venise: t.venise.map((x, k) => (atteinte('venise') && t.decroche[k] !== 0 ? x : null)),
+        decroches: t.decroche.map((d) => (d !== null && tunnelVu(d) ? d : null)),
+        coffre: atteinte('istanbul') ? t.coffre : null,
+        gagnant: atteinte('istanbul') ? gagnant : null,
+      };
+    }
     return v;
   }
 
@@ -339,7 +351,7 @@ export function creerBaronWheel(options: {
       }
       j.gain = gain;
       if (gain > 0) banque.crediter(j.uid, gain);
-      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, evasion: 0, braquage: 0 } };
+      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, evasion: 0, braquage: 0, express: 0 } };
       mt.manches++;
       mt.mise += mise;
       mt.gain += gain;
@@ -490,7 +502,7 @@ export function creerBaronWheel(options: {
       const journal: JournalBW = {
         manches: journaux.get(id.uid) ?? [],
         salon,
-        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, evasion: 0, braquage: 0 } },
+        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, evasion: 0, braquage: 0, express: 0 } },
       };
       repondre(rappel, { ok: true, journal });
     });

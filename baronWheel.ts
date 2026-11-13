@@ -23,28 +23,29 @@
 // La roue
 
 export type ChiffreBW = 'x1' | 'x2' | 'x5' | 'x10';
-export type BonusBW = 'baron' | 'pickpocket' | 'evasion' | 'braquage';
+export type BonusBW = 'baron' | 'pickpocket' | 'evasion' | 'braquage' | 'express';
 export type CaseBW = ChiffreBW | BonusBW;
 export const CHIFFRES_BW: ChiffreBW[] = ['x1', 'x2', 'x5', 'x10'];
-export const BONUS_BW: BonusBW[] = ['baron', 'pickpocket', 'evasion', 'braquage'];
+export const BONUS_BW: BonusBW[] = ['baron', 'pickpocket', 'evasion', 'braquage', 'express'];
 export const CASES_BW: CaseBW[] = [...CHIFFRES_BW, ...BONUS_BW];
 export const estBonusBW = (c: CaseBW): c is BonusBW => (BONUS_BW as string[]).includes(c);
 
 /** Combien de cases de chaque sorte sur la roue (40 en tout). */
-export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 12, x2: 9, x5: 6, x10: 3, baron: 3, pickpocket: 2, evasion: 2, braquage: 3 };
+export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 11, x2: 9, x5: 6, x10: 3, baron: 3, pickpocket: 2, evasion: 2, braquage: 3, express: 1 };
 export const NB_CASES_BW = 40;
 export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 /**
  * L'ordre des 40 cases, dans le sens des aiguilles d'une montre depuis le haut (la roue ne change jamais) : trois
- * chiffres, un bonus, trois chiffres, un bonus… Jamais deux cases pareilles côte à côte, les 10X bien répartis.
+ * chiffres, un bonus, trois chiffres, un bonus… Jamais deux cases pareilles côte à côte, les 10X bien répartis, et la
+ * case unique de l'Express à la place d'un 1X.
  */
 export const ROUE_BW: CaseBW[] = (() => {
-  const chiffres: ChiffreBW[][] = [
+  const chiffres: CaseBW[][] = [
     ['x1', 'x2', 'x1'],
     ['x5', 'x1', 'x2'],
     ['x1', 'x10', 'x2'],
     ['x5', 'x1', 'x2'],
-    ['x1', 'x5', 'x1'],
+    ['express', 'x5', 'x1'],
     ['x2', 'x10', 'x1'],
     ['x5', 'x2', 'x1'],
     ['x2', 'x5', 'x1'],
@@ -55,8 +56,8 @@ export const ROUE_BW: CaseBW[] = (() => {
   return chiffres.flatMap((g, i): CaseBW[] => [...g, bonus[i]]);
 })();
 
-/** Ce que paie une case chiffre (mise comprise) : ×2,5 pour 1 000 $ misés sur le 1X, 2 500 $ reçus. */
-export const GAINS_CHIFFRES_BW: Record<ChiffreBW, number> = { x1: 2.5, x2: 3.3, x5: 5, x10: 10 };
+/** Ce que paie une case chiffre (mise comprise) : ×2,7 pour 1 000 $ misés sur le 1X, 2 700 $ reçus. */
+export const GAINS_CHIFFRES_BW: Record<ChiffreBW, number> = { x1: 2.7, x2: 3.3, x5: 5, x10: 10 };
 
 /** Les mises : jetons, plafond par case et par manche. */
 export const JETONS_BW = [1_000, 5_000, 25_000, 100_000, 500_000];
@@ -228,6 +229,39 @@ export function tirerMultiplicateursBW(h: Hasard, ouverture = false): BoostBW[] 
 /** Le multiplicateur d'une case de la roue (1 si elle n'en a pas). */
 export const multiplicateurDe = (boosts: BoostBW[] | null | undefined, i: number | null) => (i === null ? 1 : (boosts?.find((b) => b.i === i)?.x ?? 1));
 
+/**
+ * L'EXPRESS DU BARON (la case unique de la roue) : le Baron braque le train de nuit Paris–Istanbul. Chaque joueur
+ * choisit l'un des 5 wagons. « Il n'en restera qu'un » :
+ * - Paris : chaque wagon charge son butin de départ (×10 ou ×25).
+ * - Tunnel du Simplon : la police à cheval décroche 2 wagons (ils gardent leur butin).
+ * - Les Alpes (le train file sans s'arrêter), puis Venise : chaque wagon restant ouvre un coffre (×10 à ×250).
+ * - Tunnel des Balkans : la police décroche 2 des 3 wagons restants.
+ * - Istanbul : le dernier wagon arrive et ouvre le Coffre du Baron (×25 à ×1 000).
+ * Aucun petit multiplicateur : tout ce qui s'ouvre vaut ×10 au moins. Le multiplicateur de la roue multiplie tout.
+ */
+export const NB_WAGONS = 5;
+/** Combien de wagons la police décroche dans chaque tunnel (5 → 3 → 1). */
+export const DECROCHES_PAR_TUNNEL = [2, 2];
+export const BUTIN_PARIS: TableBW<number> = [
+  [10, 93],
+  [25, 7],
+];
+export const COFFRES_VENISE: TableBW<number> = [
+  [10, 81],
+  [25, 14.5],
+  [50, 2.8],
+  [100, 1.3],
+  [250, 0.4],
+];
+export const COFFRE_DU_BARON: TableBW<number> = [
+  [25, 74],
+  [50, 16],
+  [100, 6],
+  [250, 2.7],
+  [500, 1],
+  [1000, 0.4],
+];
+
 // ---------------------------------------------------------------------------------------------------------------
 // Les tirages des bonus (tout est caché dans le tirage dès que le bonus commence)
 
@@ -235,7 +269,9 @@ export type TirageBonusBW =
   | { type: 'baron'; cartes: RecompenseBW[] }
   | { type: 'pickpocket'; butin: number; mallettes: number[] }
   | { type: 'evasion'; routes: IssueRouteBW[] }
-  | { type: 'braquage'; code: number[]; meca: number[]; coffre: RecompenseBW[] };
+  | { type: 'braquage'; code: number[]; meca: number[]; coffre: RecompenseBW[] }
+  /** decroche[k] : le tunnel (0 ou 1) où le wagon k est décroché, null pour celui qui arrive à Istanbul. */
+  | { type: 'express'; paris: number[]; venise: number[]; decroche: (number | null)[]; coffre: number };
 
 function melanger<T>(t: T[], h: Hasard): T[] {
   const r = [...t];
@@ -264,13 +300,56 @@ export function tirerBonusBW(type: BonusBW, h: Hasard): TirageBonusBW {
       };
     case 'braquage':
       return { type, code: melanger(CODES_BRAQUAGE, h), meca: melanger(ZONES_MECANISME, h), coffre: [0, 1, 2, 3].map(() => tirerTable(TABLE_COFFRES_BRAQUAGE, h)) };
+    case 'express': {
+      // L'ordre dans lequel la police décroche les wagons : 2 au premier tunnel, 2 au second, le dernier arrive.
+      const ordre = melanger(
+        Array.from({ length: NB_WAGONS }, (_, k) => k),
+        h,
+      );
+      const decroche: (number | null)[] = Array(NB_WAGONS).fill(null);
+      let r = 0;
+      DECROCHES_PAR_TUNNEL.forEach((n, t) => {
+        for (let j = 0; j < n; j++) decroche[ordre[r++]] = t;
+      });
+      return {
+        type,
+        paris: Array.from({ length: NB_WAGONS }, () => tirerTable(BUTIN_PARIS, h)),
+        venise: Array.from({ length: NB_WAGONS }, () => tirerTable(COFFRES_VENISE, h)),
+        decroche,
+        coffre: tirerTable(COFFRE_DU_BARON, h),
+      };
+    }
   }
+}
+/** Le butin d'un wagon de l'Express à la fin du voyage. */
+export function butinWagon(t: Extract<TirageBonusBW, { type: 'express' }>, k: number): number {
+  const d = t.decroche[k];
+  return t.paris[k] + (d !== 0 ? t.venise[k] : 0) + (d === null ? t.coffre : 0);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 // Les étapes d'un bonus
 
-export type EtapeBW = 'intro' | 'cartes' | 'vol' | 'mallettes' | 'route' | 'poursuite' | 'code' | 'codeRevele' | 'mecanisme' | 'mecaRevele' | 'coffre' | 'revele';
+export type EtapeBW =
+  | 'intro'
+  | 'cartes'
+  | 'vol'
+  | 'mallettes'
+  | 'route'
+  | 'poursuite'
+  | 'code'
+  | 'codeRevele'
+  | 'mecanisme'
+  | 'mecaRevele'
+  | 'coffre'
+  | 'wagons'
+  | 'paris'
+  | 'tunnel1'
+  | 'alpes'
+  | 'venise'
+  | 'tunnel2'
+  | 'istanbul'
+  | 'revele';
 export interface EtapeBonusBW {
   nom: EtapeBW;
   /** Nombre d'options à choisir (0 : on regarde). */
@@ -294,8 +373,31 @@ export interface DureesBW {
   vol: number;
   poursuite: number;
   revele: number;
+  /** L'Express : présentation, une gare (arrêt, coffres, départ), un tunnel, la traversée des Alpes, l'arrivée. */
+  introExpress: number;
+  gare: number;
+  tunnel: number;
+  traversee: number;
+  arrivee: number;
 }
-export const DUREES_BW: DureesBW = { mises: 15_000, multiplicateurs: 3_500, tour: 8_000, resultat: 6_000, intro: 4_500, choix: 10_000, serrure: 8_000, etape: 3_000, vol: 6_500, poursuite: 9_000, revele: 5_500 };
+export const DUREES_BW: DureesBW = {
+  mises: 15_000,
+  multiplicateurs: 3_500,
+  tour: 8_000,
+  resultat: 6_000,
+  intro: 4_500,
+  choix: 10_000,
+  serrure: 8_000,
+  etape: 3_000,
+  vol: 6_500,
+  poursuite: 9_000,
+  revele: 5_500,
+  introExpress: 6_000,
+  gare: 6_000,
+  tunnel: 5_500,
+  traversee: 3_500,
+  arrivee: 8_000,
+};
 
 export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW): EtapeBonusBW[] {
   const e = (nom: EtapeBW, duree: number, choix = 0): EtapeBonusBW => ({ nom, choix, duree });
@@ -308,6 +410,18 @@ export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW): EtapeBonu
       return [e('intro', d.intro), e('route', d.choix, 3), e('poursuite', d.poursuite), e('revele', d.revele)];
     case 'braquage':
       return [e('intro', d.intro), e('code', d.serrure, 3), e('codeRevele', d.etape), e('mecanisme', d.serrure, 8), e('mecaRevele', d.etape), e('coffre', d.serrure, 4), e('revele', d.revele)];
+    case 'express':
+      return [
+        e('intro', d.introExpress),
+        e('wagons', d.choix, NB_WAGONS),
+        e('paris', d.gare),
+        e('tunnel1', d.tunnel),
+        e('alpes', d.traversee),
+        e('venise', d.gare),
+        e('tunnel2', d.tunnel),
+        e('istanbul', d.arrivee),
+        e('revele', d.revele),
+      ];
   }
 }
 /** Le nombre d'options de chaque étape de choix, dans l'ordre (un choix par étape). */
@@ -328,6 +442,8 @@ export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: numbe
       const c = t.coffre[choix[2]];
       return c.jackpot ? { ...c } : { x: t.code[choix[0]] * t.meca[choix[1]] * c.x };
     }
+    case 'express':
+      return { x: butinWagon(t, choix[0]), evade: t.decroche[choix[0]] === null };
   }
 }
 
@@ -362,6 +478,12 @@ export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable
       const moy = (t: number[]) => t.reduce((s, x) => s + x, 0) / t.length;
       return separer(TABLE_COFFRES_BRAQUAGE, moy(CODES_BRAQUAGE) * moy(ZONES_MECANISME));
     }
+    case 'express': {
+      // Le butin de Paris pour tous ; Venise pour les 3 wagons sur 5 qui passent le premier tunnel ; le Coffre du Baron
+      // pour le dernier (1 sur 5).
+      const restants = NB_WAGONS - DECROCHES_PAR_TUNNEL[0];
+      return { multipliable: esperanceTable(BUTIN_PARIS) + (restants / NB_WAGONS) * esperanceTable(COFFRES_VENISE) + (1 / NB_WAGONS) * esperanceTable(COFFRE_DU_BARON), jackpots: 0 };
+    }
   }
 }
 /** Ce que les multiplicateurs ajoutent en moyenne à une case (×1,26 : une case sur 40 a 3 chances d'en avoir un). */
@@ -386,6 +508,7 @@ export function rtpBW(ouverture = false): Record<CaseBW, number> & { routes: Rec
     pickpocket: bonus('pickpocket'),
     evasion: bonus('evasion', 'boulevard'),
     braquage: bonus('braquage'),
+    express: bonus('express'),
     routes: { boulevard: bonus('evasion', 'boulevard'), ruelles: bonus('evasion', 'ruelles'), souterrains: bonus('evasion', 'souterrains') },
   };
 }
@@ -482,6 +605,11 @@ export interface VueBonusBW {
   code?: (number | null)[];
   meca?: (number | null)[];
   coffre?: (RecompenseBW | null)[];
+  /**
+   * L'Express : le butin de chaque wagon à Paris et à Venise, le tunnel où il est décroché, et le Coffre du Baron (avec
+   * le wagon qui l'ouvre), chacun révélé quand le train y arrive.
+   */
+  express?: { paris: (number | null)[]; venise: (number | null)[]; decroches: (number | null)[]; coffre: number | null; gagnant: number | null };
   /** Le multiplicateur de la roue posé sur ce bonus (1 si aucun) : il multiplie toutes ses récompenses, sauf les jackpots. */
   multiplicateur: number;
   /** Ma mise sur ce bonus, mes choix (un par étape de choix) et ma récompense une fois révélée (multiplicateur compris). */
