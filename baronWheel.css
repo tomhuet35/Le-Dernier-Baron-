@@ -37,7 +37,6 @@
 @keyframes bw-arrive { from { opacity: 0; transform: scale(0.5); } }
 .bw-pastille { flex: none; display: inline-grid; place-items: center; min-width: 42px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1.5px solid var(--or-bw); background: var(--fond); color: var(--texte); font-family: var(--titre); font-size: 13px; line-height: 1; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
 .bw-pastille img { width: 26px; height: 26px; }
-.bw-pastille.dore { box-shadow: 0 0 0 2px #fff1c4, 0 0 12px rgba(255, 210, 120, 0.9); }
 .bw-bouton-journal { flex: none; min-height: 34px; padding: 4px 12px; border-radius: 99px; font-size: 13px; }
 
 /* La scène : le décor du casino, la roue au milieu */
@@ -59,9 +58,6 @@
 .bw-anneau { fill: #120a06; stroke: var(--or-bw); stroke-width: 5; }
 .bw-chiffre { font-family: var(--titre); font-size: 33px; font-weight: 400; letter-spacing: 0.02em; paint-order: stroke; stroke: rgba(0, 0, 0, 0.35); stroke-width: 2px; }
 .bw-chiffre.x5, .bw-chiffre.x10 { stroke: rgba(255, 255, 255, 0.25); }
-.bw-dore path { fill: rgba(255, 215, 110, 0.28); stroke: #fff1c4; stroke-width: 5; animation: bw-dore 1s ease-in-out infinite alternate; }
-.bw-dore text { font-family: var(--titre); font-size: 34px; fill: #fff1c4; paint-order: stroke; stroke: #4a2200; stroke-width: 7px; }
-@keyframes bw-dore { to { fill: rgba(255, 215, 110, 0.55); } }
 .bw-gagnante { fill: rgba(255, 245, 210, 0.2); stroke: #fff6dc; stroke-width: 7; animation: bw-gagnante 0.5s ease-in-out infinite alternate; }
 @keyframes bw-gagnante { to { fill: rgba(255, 245, 210, 0.45); } }
 .bw-cerclage { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; pointer-events: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6)); }
@@ -99,7 +95,6 @@
 @keyframes bw-case-gagne { to { transform: scale(1.04); } }
 .bw-case-mise { position: absolute; right: -4px; top: -6px; display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px 1px 1px; border-radius: 99px; background: rgba(10, 6, 4, 0.92); border: 1px solid #ffcf6b; font-size: 11px; font-weight: 900; color: #fff1c4; font-variant-numeric: tabular-nums; }
 .bw-case-mise img { width: 18px; height: 18px; }
-.bw-case-dore { position: absolute; left: -4px; top: -6px; padding: 0 6px; border-radius: 99px; background: linear-gradient(180deg, #fff1c4, #d6a84b); color: #3a1810; font-family: var(--titre); font-size: 12px; line-height: 1.5; box-shadow: 0 0 10px rgba(255, 215, 110, 0.9); }
 .bw-mise { text-align: center; }
 .bw-mise small { display: block; margin-top: 2px; color: var(--creme-doux); font-size: 11.5px; }
 .bw-commandes .bj-jetons { flex-wrap: wrap; }
@@ -441,3 +436,56 @@
   .bw-bandeau-ouverture { gap: 10px; padding: 9px 11px; }
   .bw-bandeau-ouverture small { display: none; }
 }
+
+/* Les multiplicateurs : posés sur la roue une fois les mises fermées */
+.bw-boost > path { fill: rgba(255, 230, 150, 0.22); stroke: #fff1c4; stroke-width: 5; }
+.bw-boost.dore > path { fill: rgba(255, 210, 90, 0.32); stroke: #ffd774; }
+.bw-boost-medaille { transform-box: fill-box; transform-origin: center; }
+.bw-boost-medaille circle { fill: #7a1424; stroke: #ffd774; stroke-width: 5; filter: drop-shadow(0 0 8px rgba(255, 210, 120, 0.9)); }
+.bw-boost-medaille text { font-family: var(--titre); font-size: 36px; fill: #fff6dc; paint-order: stroke; stroke: rgba(0, 0, 0, 0.45); stroke-width: 2px; }
+.bw-boost.gros .bw-boost-medaille circle { fill: #b3261c; stroke: #ffcf6b; }
+.bw-boost.enorme .bw-boost-medaille circle { fill: #e0331f; stroke: #fff1c4; stroke-width: 6; }
+.bw-boost.dore .bw-boost-medaille circle { fill: #d6a84b; stroke: #fff6dc; }
+.bw-boost.dore .bw-boost-medaille text { fill: #3a1810; }
+.bw-roue.multiplicateurs .bw-boost-medaille { animation: bw-boost-pose 0.7s cubic-bezier(0.3, 1.7, 0.5, 1) calc(var(--k) * 0.55s + 0.2s) both; }
+.bw-roue.multiplicateurs .bw-boost > path { animation: bw-boost-flash 0.9s ease-out calc(var(--k) * 0.55s + 0.2s) both; }
+@keyframes bw-boost-pose { from { opacity: 0; transform: scale(3) rotate(-30deg); } }
+@keyframes bw-boost-flash { from { fill: rgba(255, 250, 220, 0.95); opacity: 0; } 15% { opacity: 1; } }
+.bw-roue.tour .bw-boost-medaille circle, .bw-roue.multiplicateurs .bw-boost-medaille circle { animation: bw-boost-lueur 0.8s ease-in-out infinite alternate; }
+@keyframes bw-boost-lueur { to { filter: drop-shadow(0 0 16px rgba(255, 220, 140, 1)); } }
+.bw-liste-multi { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.bw-multi { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 9px; border-radius: 99px; border: 1px solid #ffcf6b; background: rgba(26, 13, 5, 0.9); animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bw-multi:nth-child(2) { animation-delay: 0.55s; }
+.bw-multi:nth-child(3) { animation-delay: 1.1s; }
+.bw-multi:nth-child(4) { animation-delay: 1.65s; }
+.bw-multi b { font-family: var(--titre); font-weight: 400; font-size: 17px; color: #fff1c4; }
+.bw-multi.gros { background: #6b1020; }
+.bw-multi.enorme { background: #b3261c; box-shadow: 0 0 14px rgba(255, 120, 90, 0.7); }
+.bw-multi.dore { background: linear-gradient(180deg, #ffe08a, #d6a84b); }
+.bw-multi.dore b { color: #3a1810; }
+.bw-multi .bw-pastille { min-width: 34px; height: 24px; font-size: 11px; }
+.bw-multi .bw-pastille img { width: 20px; height: 20px; }
+.bw-statut-multi { color: #ffd774 !important; animation: bw-scintille 1.2s ease-in-out infinite; }
+.bw-pastille { position: relative; }
+.bw-pastille > i { position: absolute; right: -5px; top: -7px; padding: 0 4px; border-radius: 99px; background: #b3261c; border: 1px solid #ffcf6b; color: #fff1c4; font-family: system-ui, sans-serif; font-style: normal; font-size: 9.5px; font-weight: 900; line-height: 1.4; }
+.bw-pastille.multipliee { box-shadow: 0 0 0 1px #ffcf6b, 0 0 10px rgba(255, 210, 120, 0.7); }
+.bw-historique { padding-top: 8px; }
+.bw-case-multi { position: absolute; left: -4px; top: -7px; max-width: calc(100% + 8px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; border-radius: 99px; background: linear-gradient(180deg, #ff7a6b, #b3261c); border: 1px solid #fff1c4; color: #fff1c4; font-family: var(--titre); font-size: 12px; line-height: 1.5; box-shadow: 0 0 10px rgba(255, 120, 90, 0.8); animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bw-case.multipliee { box-shadow: 0 0 0 2px #ff9a7d, 0 0 16px rgba(255, 120, 90, 0.6); }
+.bw-case.multipliee.misee { box-shadow: 0 0 0 2px #fff1c4, 0 0 20px rgba(255, 150, 100, 0.9); }
+.bw-bonus-multi { padding: 0 8px; border-radius: 99px; background: linear-gradient(180deg, #ff7a6b, #b3261c); border: 1px solid #fff1c4; color: #fff1c4; font-family: var(--titre); font-style: normal; font-size: clamp(14px, 3.6vw, 19px); }
+.bw-bonus-annonce-multi { position: absolute; left: 50%; top: 50%; z-index: 32; display: grid; justify-items: center; gap: 2px; padding: 10px 26px 12px; border-radius: 20px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(140, 24, 18, 0.97), rgba(40, 6, 4, 0.97)); box-shadow: 0 0 40px rgba(255, 120, 90, 0.6); transform: translate(-50%, -50%); text-align: center; animation: bw-resultat-fixe 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.3s both; }
+.bw-bonus-annonce-multi small { font-size: 11px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: #ffcf6b; }
+.bw-bonus-annonce-multi strong { font-family: var(--titre); font-weight: 400; font-size: clamp(44px, 12vw, 80px); line-height: 1; color: #fff1c4; text-shadow: 0 0 24px rgba(255, 180, 110, 1); }
+.bw-bonus-annonce-multi span { font-size: 12.5px; font-weight: 700; color: var(--creme); }
+.bw-bonus-resultat em { font-style: normal; font-size: 11.5px; color: #ffcf6b; }
+
+/* Le mode automatique */
+.bw-auto.actif { border-color: var(--or-vif); color: var(--or-vif); box-shadow: 0 0 14px rgba(233, 173, 91, 0.4); }
+.bw-auto.actif::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #8fd18a; vertical-align: middle; animation: bw-pouls 1.2s ease-in-out infinite; }
+.bw-auto-choix { align-items: center; }
+.bw-auto-choix > span { width: 100%; text-align: center; font-size: 12.5px; color: var(--creme-doux); }
+.bw-auto-choix button { min-width: 46px; font-family: var(--titre); font-size: 16px; color: var(--or-vif); border-color: var(--or); }
+.bw-auto-choix .bw-auto-fermer { min-width: 40px; font-family: inherit; color: var(--creme-doux); border-color: var(--filet); }
+.bw-auto-etat { margin: 0; text-align: center; font-size: 12.5px; color: #8fd18a; }
+.bw-commandes .bj-boutons { flex-wrap: wrap; }

@@ -648,7 +648,8 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'bw_menottes'
   | 'bw_coffre'
   | 'bw_cadran'
-  | 'bw_jackpot';
+  | 'bw_jackpot'
+  | 'bw_multi';
 export interface OptionsEffet {
   /** Vitesse de lecture : plus aigu au-dessus de 1, plus grave en dessous. */
   vitesse?: number;
@@ -774,6 +775,7 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   bw_coffre: { fichier: '/cartes/son-bw-coffre.mp3', volume: 0.76, baisserMusique: false, aLaDemande: true },
   bw_cadran: { fichier: '/cartes/son-bw-cadran.mp3', volume: 0.71, baisserMusique: false, aLaDemande: true },
   bw_jackpot: { fichier: '/cartes/son-bw-jackpot.mp3', volume: 0.74, baisserMusique: true, aLaDemande: true },
+  bw_multi: { fichier: '/cartes/son-bw-multi.mp3', volume: 0.79, baisserMusique: false, aLaDemande: true },
   course_perdu: { fichier: '/cartes/son-course-perdu.mp3', volume: 0.52, baisserMusique: false, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
@@ -1096,7 +1098,7 @@ const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
   coffres: ['cf_ouvre', 'cf_butin', 'cf_police', 'cf_encaisse', 'cf_gros', 'cf_perdu'],
   couronne: ['cv_tic', 'cv_envol', 'cv_pie', 'cv_perdu', 'cv_encaisse', 'cv_gros'],
   chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
-  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot'],
+  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi'],
   course: ['course_appel', 'course_depart', 'course_sabots', 'course_foule', 'course_gain', 'course_gros', 'course_perdu'],
 };
 

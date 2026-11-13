@@ -1,18 +1,22 @@
 /**
  * The Baron's Wheel (Salon privé) : une roue géante de 40 cases, en direct pour tout le salon, avec quatre bonus.
  *
- * Une manche : mises (15 s) → la roue tourne (8 s) → le résultat. Si la roue s'arrête sur un bonus, son mini-jeu
- * commence ; ceux qui ont misé sur ce bonus font leurs choix (chacun les siens), les autres regardent.
+ * Une manche : mises (15 s) → les multiplicateurs (3 cases de la roue, au hasard, ×2 à ×50) → la roue tourne (8 s) →
+ * le résultat. Si la roue s'arrête sur un bonus, son mini-jeu commence ; ceux qui ont misé sur ce bonus font leurs
+ * choix (chacun les siens), les autres regardent.
  *
- * - La roue : 8 cases « 1X », 6 « 2X », 4 « 5X », 2 « 10X », 6 BARON, 4 PICKPOCKET, 4 GRANDE ÉVASION, 6 BRAQUAGE.
- *   Toutes les cases ont la même chance (1 sur 40). Les cases chiffres paient leur vrai gain (×4,7, ×6,3, ×9,5, ×19,
- *   mise comprise) : chaque mise rend environ 95 % en moyenne, comme les autres jeux du salon.
+ * - La roue : 12 cases « 1X », 9 « 2X », 6 « 5X », 3 « 10X », 3 BARON, 2 PICKPOCKET, 2 GRANDE ÉVASION, 3 BRAQUAGE.
+ *   Toutes les cases ont la même chance (1 sur 40). Les cases chiffres paient ×2,5, ×3,3, ×5 et ×10 (mise comprise) ;
+ *   les bonus, plus rares, paient gros (×5 à ×500).
+ * - Les multiplicateurs : une fois les mises fermées, 3 cases de la roue reçoivent un multiplicateur (×2 à ×50). Si la
+ *   roue s'arrête sur l'une d'elles, ses gains sont multipliés (pour un bonus : tous ses multiplicateurs, sauf les
+ *   jackpots, qui restent fixes). Chaque mise rend environ 95 % en moyenne, comme les autres jeux du salon.
  * - Tout est tiré par le serveur avant les animations : la case d'arrêt au départ de la roue, et toutes les récompenses
  *   cachées d'un bonus dès qu'il commence. Les choix du joueur désignent l'une de ces récompenses cachées ; aucune
  *   animation ne décide de rien.
  * - Les jackpots (MINI ×25, MINOR ×50, MAJOR ×100, GRAND ×500 la mise) sont des récompenses fixes, rares, cachées dans
  *   les bonus du Baron et du Braquage. Ils ne sont pas progressifs.
- * - Grande ouverture (la première semaine) : à chaque manche, une case dorée paie double.
+ * - Grande ouverture (la première semaine) : à chaque manche, une 4e case reçoit un multiplicateur doré ×2.
  */
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -27,26 +31,57 @@ export const CASES_BW: CaseBW[] = [...CHIFFRES_BW, ...BONUS_BW];
 export const estBonusBW = (c: CaseBW): c is BonusBW => (BONUS_BW as string[]).includes(c);
 
 /** Combien de cases de chaque sorte sur la roue (40 en tout). */
-export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 8, x2: 6, x5: 4, x10: 2, baron: 6, pickpocket: 4, evasion: 4, braquage: 6 };
+export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 12, x2: 9, x5: 6, x10: 3, baron: 3, pickpocket: 2, evasion: 2, braquage: 3 };
 export const NB_CASES_BW = 40;
 export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 /**
- * L'ordre des 40 cases, dans le sens des aiguilles d'une montre depuis le haut (la roue ne change jamais) : un chiffre,
- * un bonus, un chiffre, un bonus… et jamais deux fois le même bonus côte à côte.
+ * L'ordre des 40 cases, dans le sens des aiguilles d'une montre depuis le haut (la roue ne change jamais) : trois
+ * chiffres, un bonus, trois chiffres, un bonus… Jamais deux cases pareilles côte à côte, les 10X bien répartis.
  */
 export const ROUE_BW: CaseBW[] = (() => {
-  const chiffres: ChiffreBW[] = ['x1', 'x2', 'x1', 'x5', 'x1', 'x2', 'x1', 'x10', 'x1', 'x2', 'x5', 'x1', 'x2', 'x1', 'x5', 'x2', 'x1', 'x10', 'x2', 'x5'];
-  const bonus: BonusBW[] = ['baron', 'braquage', 'pickpocket', 'baron', 'evasion', 'braquage', 'baron', 'pickpocket', 'braquage', 'evasion', 'baron', 'braquage', 'pickpocket', 'baron', 'evasion', 'braquage', 'baron', 'evasion', 'braquage', 'pickpocket'];
-  return chiffres.flatMap((c, i) => [c, bonus[i]]);
+  const chiffres: ChiffreBW[][] = [
+    ['x1', 'x2', 'x1'],
+    ['x5', 'x1', 'x2'],
+    ['x1', 'x10', 'x2'],
+    ['x5', 'x1', 'x2'],
+    ['x1', 'x5', 'x1'],
+    ['x2', 'x10', 'x1'],
+    ['x5', 'x2', 'x1'],
+    ['x2', 'x5', 'x1'],
+    ['x10', 'x1', 'x2'],
+    ['x5', 'x1', 'x2'],
+  ];
+  const bonus: BonusBW[] = ['baron', 'braquage', 'pickpocket', 'evasion', 'baron', 'braquage', 'pickpocket', 'evasion', 'baron', 'braquage'];
+  return chiffres.flatMap((g, i): CaseBW[] => [...g, bonus[i]]);
 })();
 
-/** Ce que paie une case chiffre (mise comprise) : ×4,7 pour 1 000 $ misés, 4 700 $ reçus. */
-export const GAINS_CHIFFRES_BW: Record<ChiffreBW, number> = { x1: 4.7, x2: 6.3, x5: 9.5, x10: 19 };
+/** Ce que paie une case chiffre (mise comprise) : ×2,5 pour 1 000 $ misés sur le 1X, 2 500 $ reçus. */
+export const GAINS_CHIFFRES_BW: Record<ChiffreBW, number> = { x1: 2.5, x2: 3.3, x5: 5, x10: 10 };
 
 /** Les mises : jetons, plafond par case et par manche. */
 export const JETONS_BW = [1_000, 5_000, 25_000, 100_000, 500_000];
 export const MAX_CASE_BW = 1_000_000;
 export const MAX_MANCHE_BW = 4_000_000;
+
+// ---------------------------------------------------------------------------------------------------------------
+// Les multiplicateurs : 3 cases de la roue, tirées une fois les mises fermées
+
+export const NB_MULTIPLICATEURS_BW = 3;
+/** Les multiplicateurs possibles, et leur poids. */
+export const MULTIPLICATEURS_BW: [number, number][] = [
+  [2, 48],
+  [3, 26],
+  [5, 14],
+  [10, 8],
+  [25, 3],
+  [50, 1],
+];
+/** Une case de la roue (son indice, 0 à 39) et son multiplicateur ; dorée : le ×2 de la grande ouverture. */
+export interface BoostBW {
+  i: number;
+  x: number;
+  dore?: true;
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // Les jackpots et les tables de récompenses
@@ -85,11 +120,14 @@ function avecJackpots(t: TableBW<number | 'jackpot'>, jackpots: TableBW<JackpotB
 
 /** LE CHOIX DU BARON : trois cartes dorées, chacune tirée dans cette table (la carte secrète cache un jackpot). */
 export const CARTES_BARON: TableBW<number | 'jackpot'> = [
-  [2, 4400],
-  [5, 3000],
-  [10, 1700],
-  [20, 700],
-  ['jackpot', 200],
+  [5, 4700],
+  [7, 2100],
+  [10, 1400],
+  [15, 850],
+  [25, 500],
+  [50, 250],
+  [100, 75],
+  ['jackpot', 125],
 ];
 export const JACKPOTS_BARON: TableBW<JackpotBW> = [
   ['mini', 7000],
@@ -101,15 +139,18 @@ export const TABLE_CARTES_BARON = avecJackpots(CARTES_BARON, JACKPOTS_BARON);
 
 /** THE BIG THEFT : le Pickpocket vole un gros multiplicateur et le cache dans l'une des trois mallettes ; les deux autres gardent un petit. */
 export const BUTIN_PICKPOCKET: TableBW<number> = [
-  [10, 5550],
-  [25, 2800],
-  [50, 1300],
-  [100, 350],
+  [20, 3600],
+  [25, 2200],
+  [30, 1700],
+  [50, 1500],
+  [100, 750],
+  [200, 250],
 ];
 export const PETITES_MALLETTES: TableBW<number> = [
-  [2, 4000],
-  [3, 4000],
-  [5, 2000],
+  [2, 3000],
+  [3, 3500],
+  [5, 2500],
+  [7, 1000],
 ];
 
 /** LA COURSE-POURSUITE : trois itinéraires ; plus le risque d'arrestation est grand, plus le butin l'est aussi. */
@@ -117,30 +158,30 @@ export type RouteBW = 'boulevard' | 'ruelles' | 'souterrains';
 export const ROUTES_BW: RouteBW[] = ['boulevard', 'ruelles', 'souterrains'];
 export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: TableBW<number> }> = {
   boulevard: {
-    arrestation: 0.135,
+    arrestation: 0.08,
     gains: [
-      [5, 3000],
-      [10, 4000],
-      [15, 2000],
-      [25, 1000],
+      [10, 3000],
+      [15, 3500],
+      [20, 2500],
+      [30, 1000],
     ],
   },
   ruelles: {
-    arrestation: 0.485,
+    arrestation: 0.61,
     gains: [
-      [10, 4000],
-      [15, 3000],
-      [25, 2000],
-      [50, 1000],
+      [20, 3500],
+      [30, 3000],
+      [50, 2500],
+      [100, 1000],
     ],
   },
   souterrains: {
-    arrestation: 0.823,
+    arrestation: 0.875,
     gains: [
-      [25, 4500],
-      [50, 3500],
-      [100, 1500],
-      [200, 500],
+      [50, 4000],
+      [100, 3500],
+      [200, 2000],
+      [500, 500],
     ],
   },
 };
@@ -151,19 +192,20 @@ export interface IssueRouteBW {
 }
 
 /**
- * THE VAULT : trois serrures. 1. Le code : trois combinaisons, l'une est parfaite (×2). 2. Le mécanisme : un cadran de
- * 8 zones cachées (×1, ×2 ou ×3) qu'on arrête au jugé. 3. Le coffre : quatre compartiments ; leur trésor est multiplié
- * par les deux serrures (sauf un jackpot, qui paie sa valeur fixe).
+ * THE VAULT : trois serrures. 1. Le code : trois combinaisons (×1, ×2, ×3). 2. Le mécanisme : un cadran de 8 zones
+ * cachées (×1 à ×5) qu'on arrête au jugé. 3. Le coffre : quatre compartiments (×1 à ×25) ; leur trésor est multiplié
+ * par les deux serrures, jusqu'à ×375 (sauf un jackpot, qui paie sa valeur fixe).
  */
-export const CODES_BRAQUAGE = [1, 1, 2];
-export const ZONES_MECANISME = [1, 1, 1, 1, 1, 2, 2, 3];
+export const CODES_BRAQUAGE = [1, 2, 3];
+export const ZONES_MECANISME = [1, 1, 1, 1, 2, 2, 3, 5];
 export const COFFRES_BRAQUAGE: TableBW<number | 'jackpot'> = [
-  [2, 7000],
-  [3, 1800],
-  [5, 700],
-  [10, 300],
-  [25, 100],
-  ['jackpot', 100],
+  [1, 4680],
+  [2, 2800],
+  [3, 1300],
+  [5, 650],
+  [10, 320],
+  [25, 80],
+  ['jackpot', 170],
 ];
 export const JACKPOTS_BRAQUAGE: TableBW<JackpotBW> = [
   ['mini', 5000],
@@ -172,6 +214,19 @@ export const JACKPOTS_BRAQUAGE: TableBW<JackpotBW> = [
   ['grand', 500],
 ];
 export const TABLE_COFFRES_BRAQUAGE = avecJackpots(COFFRES_BRAQUAGE, JACKPOTS_BRAQUAGE);
+
+/** Les multiplicateurs d'une manche : 3 cases différentes (et une 4e, dorée ×2, pendant la grande ouverture). */
+export function tirerMultiplicateursBW(h: Hasard, ouverture = false): BoostBW[] {
+  const cases = melanger(
+    Array.from({ length: NB_CASES_BW }, (_, i) => i),
+    h,
+  );
+  const r: BoostBW[] = cases.slice(0, NB_MULTIPLICATEURS_BW).map((i) => ({ i, x: tirerTable(MULTIPLICATEURS_BW, h) }));
+  if (ouverture) r.push({ i: cases[NB_MULTIPLICATEURS_BW], x: 2, dore: true });
+  return r;
+}
+/** Le multiplicateur d'une case de la roue (1 si elle n'en a pas). */
+export const multiplicateurDe = (boosts: BoostBW[] | null | undefined, i: number | null) => (i === null ? 1 : (boosts?.find((b) => b.i === i)?.x ?? 1));
 
 // ---------------------------------------------------------------------------------------------------------------
 // Les tirages des bonus (tout est caché dans le tirage dès que le bonus commence)
@@ -225,6 +280,8 @@ export interface EtapeBonusBW {
 
 export interface DureesBW {
   mises: number;
+  /** Les multiplicateurs se posent sur la roue, avant qu'elle tourne. */
+  multiplicateurs: number;
   tour: number;
   resultat: number;
   intro: number;
@@ -238,7 +295,7 @@ export interface DureesBW {
   poursuite: number;
   revele: number;
 }
-export const DUREES_BW: DureesBW = { mises: 15_000, tour: 8_000, resultat: 6_000, intro: 4_500, choix: 10_000, serrure: 8_000, etape: 3_000, vol: 6_500, poursuite: 9_000, revele: 5_500 };
+export const DUREES_BW: DureesBW = { mises: 15_000, multiplicateurs: 3_500, tour: 8_000, resultat: 6_000, intro: 4_500, choix: 10_000, serrure: 8_000, etape: 3_000, vol: 6_500, poursuite: 9_000, revele: 5_500 };
 
 export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW): EtapeBonusBW[] {
   const e = (nom: EtapeBW, duree: number, choix = 0): EtapeBonusBW => ({ nom, choix, duree });
@@ -280,37 +337,56 @@ export const gainBW = (mise: number, x: number) => Math.floor((mise * Math.round
 // ---------------------------------------------------------------------------------------------------------------
 // Ce que rend chaque mise (calcul exact) et la simulation de 100 000 manches
 
-/** Espérance (mise comprise) du multiplicateur d'un bonus, quels que soient les choix. */
-export function esperanceBonusBW(type: BonusBW, route?: RouteBW): number {
+/**
+ * Espérance (mise comprise) de ce que rapporte un bonus, quels que soient les choix : la part que les multiplicateurs
+ * de la roue multiplient, et celle des jackpots (fixes).
+ */
+export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable: number; jackpots: number } {
+  const separer = (t: TableBW<RecompenseBW>, facteur = 1) => {
+    const total = t.reduce((s, [, p]) => s + p, 0);
+    return {
+      multipliable: t.reduce((s, [r, p]) => s + (r.jackpot ? 0 : (p / total) * r.x * facteur), 0),
+      jackpots: t.reduce((s, [r, p]) => s + (r.jackpot ? (p / total) * r.x : 0), 0),
+    };
+  };
   switch (type) {
     case 'baron':
-      return esperanceRecompenses(TABLE_CARTES_BARON);
+      return separer(TABLE_CARTES_BARON);
     case 'pickpocket':
-      return (esperanceTable(BUTIN_PICKPOCKET) + 2 * esperanceTable(PETITES_MALLETTES)) / 3;
+      return { multipliable: (esperanceTable(BUTIN_PICKPOCKET) + 2 * esperanceTable(PETITES_MALLETTES)) / 3, jackpots: 0 };
     case 'evasion': {
       const r = ITINERAIRES_BW[route ?? 'boulevard'];
-      return (1 - r.arrestation) * esperanceTable(r.gains);
+      return { multipliable: (1 - r.arrestation) * esperanceTable(r.gains), jackpots: 0 };
     }
     case 'braquage': {
       const moy = (t: number[]) => t.reduce((s, x) => s + x, 0) / t.length;
-      const total = TABLE_COFFRES_BRAQUAGE.reduce((s, [, p]) => s + p, 0);
-      return TABLE_COFFRES_BRAQUAGE.reduce((s, [r, p]) => s + (p / total) * (r.jackpot ? r.x : moy(CODES_BRAQUAGE) * moy(ZONES_MECANISME) * r.x), 0);
+      return separer(TABLE_COFFRES_BRAQUAGE, moy(CODES_BRAQUAGE) * moy(ZONES_MECANISME));
     }
   }
 }
-/** Ce que rend chaque mise en moyenne (hors grande ouverture). */
-export function rtpBW(): Record<CaseBW, number> & { routes: Record<RouteBW, number> } {
+/** Ce que les multiplicateurs ajoutent en moyenne à une case (×1,26 : une case sur 40 a 3 chances d'en avoir un). */
+export function facteurMultiplicateursBW(ouverture = false): number {
+  const e = MULTIPLICATEURS_BW.reduce((s, [x, p]) => s + x * p, 0) / MULTIPLICATEURS_BW.reduce((s, [, p]) => s + p, 0);
+  return 1 + (NB_MULTIPLICATEURS_BW / NB_CASES_BW) * (e - 1) + (ouverture ? 1 / NB_CASES_BW : 0);
+}
+/** Ce que rend chaque mise en moyenne (multiplicateurs compris). */
+export function rtpBW(ouverture = false): Record<CaseBW, number> & { routes: Record<RouteBW, number> } {
+  const F = facteurMultiplicateursBW(ouverture);
   const p = (c: CaseBW) => COMPOSITION_BW[c] / NB_CASES_BW;
+  const bonus = (c: BonusBW, route?: RouteBW) => {
+    const e = esperanceBonusBW(c, route);
+    return p(c) * (e.multipliable * F + e.jackpots);
+  };
   return {
-    x1: p('x1') * GAINS_CHIFFRES_BW.x1,
-    x2: p('x2') * GAINS_CHIFFRES_BW.x2,
-    x5: p('x5') * GAINS_CHIFFRES_BW.x5,
-    x10: p('x10') * GAINS_CHIFFRES_BW.x10,
-    baron: p('baron') * esperanceBonusBW('baron'),
-    pickpocket: p('pickpocket') * esperanceBonusBW('pickpocket'),
-    evasion: p('evasion') * esperanceBonusBW('evasion', 'boulevard'),
-    braquage: p('braquage') * esperanceBonusBW('braquage'),
-    routes: { boulevard: p('evasion') * esperanceBonusBW('evasion', 'boulevard'), ruelles: p('evasion') * esperanceBonusBW('evasion', 'ruelles'), souterrains: p('evasion') * esperanceBonusBW('evasion', 'souterrains') },
+    x1: p('x1') * GAINS_CHIFFRES_BW.x1 * F,
+    x2: p('x2') * GAINS_CHIFFRES_BW.x2 * F,
+    x5: p('x5') * GAINS_CHIFFRES_BW.x5 * F,
+    x10: p('x10') * GAINS_CHIFFRES_BW.x10 * F,
+    baron: bonus('baron'),
+    pickpocket: bonus('pickpocket'),
+    evasion: bonus('evasion', 'boulevard'),
+    braquage: bonus('braquage'),
+    routes: { boulevard: bonus('evasion', 'boulevard'), ruelles: bonus('evasion', 'ruelles'), souterrains: bonus('evasion', 'souterrains') },
   };
 }
 
@@ -336,17 +412,20 @@ export function simulerBW(n: number, h: Hasard): SimulationBW {
   let somme = 0;
   let somme2 = 0;
   for (let k = 0; k < n; k++) {
-    const c = ROUE_BW[Math.floor(h() * NB_CASES_BW)];
+    const boosts = tirerMultiplicateursBW(h);
+    const i = Math.floor(h() * NB_CASES_BW);
+    const c = ROUE_BW[i];
+    const m = multiplicateurDe(boosts, i);
     frequences[c]++;
     let x: number;
-    if (!estBonusBW(c)) x = GAINS_CHIFFRES_BW[c];
+    if (!estBonusBW(c)) x = GAINS_CHIFFRES_BW[c] * m;
     else {
       const t = tirerBonusBW(c, h);
-      const choix = choixDuBonusBW(c).map((m) => Math.floor(h() * m));
+      const choix = choixDuBonusBW(c).map((q) => Math.floor(h() * q));
       const r = recompenseBonusBW(t, choix);
-      x = r.x;
+      x = r.jackpot ? r.x : r.x * m;
       if (r.jackpot) jackpots[r.jackpot]++;
-      const cle = `${c} ×${r.x}`;
+      const cle = `${c} ×${x}`;
       multiplicateurs[cle] = (multiplicateurs[cle] ?? 0) + 1;
     }
     retour[c] += x;
@@ -379,7 +458,7 @@ export const MONTANT_OUVERTURE_BW = 20_000_000;
 // ---------------------------------------------------------------------------------------------------------------
 // La vue d'un téléphone
 
-export type PhaseBW = 'mises' | 'tour' | 'bonus' | 'resultat';
+export type PhaseBW = 'mises' | 'multiplicateurs' | 'tour' | 'bonus' | 'resultat';
 
 export interface JoueurBW {
   nom: string;
@@ -403,7 +482,9 @@ export interface VueBonusBW {
   code?: (number | null)[];
   meca?: (number | null)[];
   coffre?: (RecompenseBW | null)[];
-  /** Ma mise sur ce bonus, mes choix (un par étape de choix) et ma récompense une fois révélée. */
+  /** Le multiplicateur de la roue posé sur ce bonus (1 si aucun) : il multiplie toutes ses récompenses, sauf les jackpots. */
+  multiplicateur: number;
+  /** Ma mise sur ce bonus, mes choix (un par étape de choix) et ma récompense une fois révélée (multiplicateur compris). */
   mise: number;
   mesChoix: (number | null)[];
   /** Combien de joueurs ont choisi chaque option, par étape de choix. */
@@ -423,15 +504,16 @@ export interface VueBW {
   tour: { depart: number; arrivee: number; ecoule: number; duree: number } | null;
   /** La case d'arrêt (une fois la roue partie). */
   arret: number | null;
-  /** Grande ouverture : la case dorée de la manche (elle paie double). */
-  dore: number | null;
+  /** Les multiplicateurs de la manche (une fois les mises fermées ; null avant). */
+  multiplicateurs: BoostBW[] | null;
   bonus: VueBonusBW | null;
   mesMises: Partial<Record<CaseBW, number>>;
   peutRefaire: boolean;
   /** Après la manche : ce que j'avais misé et ce que j'ai reçu (mise comprise). */
   bilan: { mise: number; gain: number } | null;
   joueurs: JoueurBW[];
-  historique: { c: CaseBW; dore?: true }[];
+  /** Les derniers résultats : la case, et son multiplicateur s'il en avait un. */
+  historique: { c: CaseBW; x?: number }[];
   spectateurs: number;
   solde: number;
   /** Grande ouverture en cours : millisecondes avant la fin. */

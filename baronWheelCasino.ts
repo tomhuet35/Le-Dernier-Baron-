@@ -2,8 +2,9 @@
  * The Baron's Wheel : la roue géante du Salon privé, en direct. Une seule manche à la fois pour tout le salon, qui
  * tourne tant qu'au moins un créateur la regarde.
  *
- * - À la fin des mises, le serveur tire la case d'arrêt (crypto.randomInt) et l'angle d'arrivée : tous les téléphones
- *   font tourner la roue de la même façon et elle s'arrête sur cette case.
+ * - À la fin des mises, le serveur pose les multiplicateurs (3 cases au hasard), puis tire la case d'arrêt
+ *   (crypto.randomInt) et l'angle d'arrivée : tous les téléphones font tourner la roue de la même façon et elle s'arrête
+ *   sur cette case.
  * - Sur un bonus, toutes ses récompenses cachées sont tirées d'un coup ; chaque joueur qui a misé sur ce bonus fait ses
  *   choix (sans choix à temps, le serveur choisit pour lui au hasard). Les récompenses ne partent vers les téléphones
  *   qu'une fois les choix fermés.
@@ -22,6 +23,8 @@ import {
   etapesBonusBW,
   gainBW,
   GAINS_CHIFFRES_BW,
+  multiplicateurDe,
+  tirerMultiplicateursBW,
   JETONS_BW,
   MAX_CASE_BW,
   MAX_MANCHE_BW,
@@ -30,6 +33,7 @@ import {
   ROUE_BW,
   tirerBonusBW,
   type BonusBW,
+  type BoostBW,
   type CaseBW,
   type DureesBW,
   type EtapeBonusBW,
@@ -79,6 +83,8 @@ export function creerBaronWheel(options: {
   hasard?: Hasard;
   /** Case d'arrêt imposée (tests, démonstration) ; au hasard sinon. */
   arret?: () => number | undefined;
+  /** Multiplicateurs imposés (tests, démonstration) ; au hasard sinon. */
+  multiplicateurs?: () => BoostBW[] | undefined;
   /** Grande ouverture : sa fin (ms), ou null. */
   ouverture?: () => number | null;
   annoncer?: (a: AnnonceCasino) => void;
@@ -106,7 +112,7 @@ export function creerBaronWheel(options: {
   let angle = 0;
   let tour: { depart: number; arrivee: number; debut: number; duree: number } | null = null;
   let arret: number | null = null;
-  let dore: number | null = null;
+  let boosts: BoostBW[] | null = null;
   let tirage: TirageBonusBW | null = null;
   let etapes: EtapeBonusBW[] = [];
   let etape = 0;
@@ -137,6 +143,7 @@ export function creerBaronWheel(options: {
       type: t.type,
       etapes,
       etape,
+      multiplicateur: multiplicateurDe(boosts, arret),
       mise: j?.mises[t.type] ?? 0,
       mesChoix: j ? Array.from({ length: nbChoix }, (_, r) => j.choix[r] ?? null) : Array(nbChoix).fill(null),
       choixSalon,
@@ -171,8 +178,8 @@ export function creerBaronWheel(options: {
       duree,
       angle,
       tour: tour && phase === 'tour' ? { depart: tour.depart, arrivee: tour.arrivee, ecoule: t - tour.debut, duree: tour.duree } : null,
-      arret: phase === 'mises' ? null : arret,
-      dore,
+      arret: phase === 'mises' || phase === 'multiplicateurs' ? null : arret,
+      multiplicateurs: phase === 'mises' ? null : boosts,
       bonus: phase === 'bonus' || phase === 'resultat' ? vueBonus(j) : null,
       mesMises: j ? { ...j.mises } : {},
       peutRefaire: !!uid && !!precedentes.get(uid) && totalMises(precedentes.get(uid) ?? {}) > 0,
@@ -214,17 +221,28 @@ export function creerBaronWheel(options: {
       phase = 'mises';
       fin = null;
       duree = null;
-      dore = null;
+      boosts = null;
       return;
     }
     enCours = true;
     numero += 1;
     phase = 'mises';
-    // Grande ouverture : une case dorée par manche, qui paie double.
-    dore = finOuverture() !== null ? Math.floor(hasard() * NB_CASES_BW) : null;
+    boosts = null;
     fin = horloge() + D.mises;
     duree = D.mises;
-    plusTard(lancer, D.mises);
+    plusTard(poserMultiplicateurs, D.mises);
+    diffuser();
+  }
+
+  /** Les mises sont fermées : 3 cases de la roue reçoivent un multiplicateur (une 4e, dorée, pendant l'ouverture). */
+  function poserMultiplicateurs() {
+    const impose = options.multiplicateurs?.();
+    const valides = impose?.filter((b) => Number.isInteger(b.i) && b.i >= 0 && b.i < NB_CASES_BW && b.x >= 1);
+    boosts = valides ?? tirerMultiplicateursBW(hasard, finOuverture() !== null);
+    phase = 'multiplicateurs';
+    fin = horloge() + D.multiplicateurs;
+    duree = D.multiplicateurs;
+    plusTard(lancer, D.multiplicateurs);
     diffuser();
   }
 
@@ -248,7 +266,8 @@ export function creerBaronWheel(options: {
     if (arret === null || !tour) return;
     angle = tour.arrivee % 360;
     const c = ROUE_BW[arret];
-    historique = [{ c, ...(dore === arret ? { dore: true as const } : {}) }, ...historique].slice(0, 20);
+    const m = multiplicateurDe(boosts, arret);
+    historique = [{ c, ...(m > 1 ? { x: m } : {}) }, ...historique].slice(0, 20);
     salon.manches++;
     salon.cases[c]++;
     if (estBonusBW(c)) {
@@ -292,8 +311,9 @@ export function creerBaronWheel(options: {
       const mise = j.mises[tirage.type] ?? 0;
       if (!mise) continue;
       const r = recompenseBonusBW(tirage, j.choix.map((x) => x ?? 0));
-      const double = dore !== null && dore === arret ? 2 : 1;
-      j.resultat = { ...r, gain: gainBW(mise, r.x) * double };
+      // Le multiplicateur de la roue multiplie la récompense, sauf un jackpot (valeur fixe).
+      const x = r.jackpot ? r.x : r.x * multiplicateurDe(boosts, arret);
+      j.resultat = { ...r, x, gain: gainBW(mise, x) };
     }
   }
 
@@ -302,7 +322,7 @@ export function creerBaronWheel(options: {
     if (paye || arret === null) return;
     paye = true;
     const c = ROUE_BW[arret];
-    const double = dore !== null && dore === arret ? 2 : 1;
+    const m = multiplicateurDe(boosts, arret);
     for (const j of joueurs.values()) {
       const mise = totalMises(j.mises);
       if (!mise) continue;
@@ -315,7 +335,7 @@ export function creerBaronWheel(options: {
             j.jackpot = j.resultat.jackpot;
             salon.jackpots[j.resultat.jackpot]++;
           }
-        } else gain = gainBW(surCase, GAINS_CHIFFRES_BW[c]) * double;
+        } else gain = gainBW(surCase, GAINS_CHIFFRES_BW[c] * m);
       }
       j.gain = gain;
       if (gain > 0) banque.crediter(j.uid, gain);

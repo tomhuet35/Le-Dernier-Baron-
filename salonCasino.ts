@@ -67,7 +67,7 @@ import { creerVolCouronne } from './couronneCasino';
 import { creerChute } from './chuteCasino';
 import { creerCourse } from './courseCasino';
 import { creerBaronWheel } from './baronWheelCasino';
-import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, type DureesBW } from '../shared/baronWheel';
+import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, type BoostBW, type DureesBW } from '../shared/baronWheel';
 import type { DureesCourse } from '../shared/course';
 import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type AfficheCasino } from '../shared/afficheCasino';
 import type { DureesCouronne } from '../shared/couronne';
@@ -123,6 +123,7 @@ export interface OptionsCasino {
   /** The Baron's Wheel : délais, case d'arrêt imposée, et fin de la grande ouverture (tests, démonstration). */
   delaisBaronWheel?: Partial<DureesBW>;
   arretBaronWheel?: () => number | undefined;
+  multiplicateursBaronWheel?: () => BoostBW[] | undefined;
   ouvertureBaronWheel?: () => number | null;
   /** Le jeu à l'affiche à l'instant t (remplaçable pour les tests et la démonstration ; null : aucun). */
   jeuALaffiche?: (t: number) => AfficheCasino | null;
@@ -491,7 +492,7 @@ export function creerCasino(options: OptionsCasino) {
     const debut = ouvertures[CADEAU_OUVERTURE_BW];
     return debut === undefined ? null : debut + DUREE_OUVERTURE_BW;
   };
-  const roueBW = creerBaronWheel({ io, banque: banqueDe('baronWheel'), horloge, delais: options.delaisBaronWheel, arret: options.arretBaronWheel, ouverture: finOuvertureBW, annoncer: (a) => annoncer(a) });
+  const roueBW = creerBaronWheel({ io, banque: banqueDe('baronWheel'), horloge, delais: options.delaisBaronWheel, arret: options.arretBaronWheel, multiplicateurs: options.multiplicateursBaronWheel, ouverture: finOuvertureBW, annoncer: (a) => annoncer(a) });
   const chute = creerChute({ banque: banqueDe('chute'), horloge, hasard: options.hasardChute, chemin: options.cheminChute, delaiAnnonce: options.delaiAnnonceChute, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {

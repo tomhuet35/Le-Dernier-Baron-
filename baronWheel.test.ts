@@ -17,6 +17,10 @@ import {
   rtpBW,
   simulerBW,
   tirerBonusBW,
+  estBonusBW,
+  multiplicateurDe,
+  tirerMultiplicateursBW,
+  type BoostBW,
   type CaseBW,
   type VueBW,
 } from '../shared/baronWheel';
@@ -34,24 +38,45 @@ function graine(n: number) {
 }
 
 describe('The Baron’s Wheel : les règles', () => {
-  it('a exactement 40 cases de 9°, dans la composition du cahier des charges, sans deux bonus pareils côte à côte', () => {
+  it('a exactement 40 cases de 9° (30 chiffres, 10 bonus), sans deux cases pareilles côte à côte', () => {
     expect(ROUE_BW).toHaveLength(NB_CASES_BW);
     expect(DEGRES_CASE_BW).toBe(9);
     for (const c of CASES_BW) expect(ROUE_BW.filter((x) => x === c)).toHaveLength(COMPOSITION_BW[c]);
     expect(Object.values(COMPOSITION_BW).reduce((s, x) => s + x, 0)).toBe(40);
+    expect(ROUE_BW.filter((c) => estBonusBW(c))).toHaveLength(10);
     for (let i = 0; i < 40; i++) expect(ROUE_BW[i]).not.toBe(ROUE_BW[(i + 1) % 40]);
   });
 
-  it('rend environ 95 % de chaque mise (calcul exact), quel que soit l’itinéraire de la Grande Évasion', () => {
+  it('rend environ 95 % de chaque mise, multiplicateurs compris (calcul exact), quel que soit l’itinéraire', () => {
     const r = rtpBW();
     for (const c of CASES_BW) {
-      expect(r[c]).toBeGreaterThan(0.935);
-      expect(r[c]).toBeLessThan(0.96);
+      expect(r[c]).toBeGreaterThan(0.93);
+      expect(r[c]).toBeLessThan(0.965);
     }
     for (const v of Object.values(r.routes)) {
-      expect(v).toBeGreaterThan(0.945);
+      expect(v).toBeGreaterThan(0.935);
       expect(v).toBeLessThan(0.96);
     }
+    // Pendant la grande ouverture (un ×2 doré en plus), un peu plus, mais jamais plus que la mise.
+    for (const c of CASES_BW) expect(rtpBW(true)[c]).toBeLessThan(0.99);
+  });
+
+  it('pose 3 multiplicateurs sur 3 cases différentes (et un ×2 doré en plus pendant l’ouverture)', () => {
+    const h = graine(21);
+    const vus = new Set<number>();
+    for (let k = 0; k < 2000; k++) {
+      const m = tirerMultiplicateursBW(h);
+      expect(m).toHaveLength(3);
+      expect(new Set(m.map((b) => b.i)).size).toBe(3);
+      for (const b of m) vus.add(b.x);
+      const o = tirerMultiplicateursBW(h, true);
+      expect(o).toHaveLength(4);
+      expect(new Set(o.map((b) => b.i)).size).toBe(4);
+      expect(o[3]).toMatchObject({ x: 2, dore: true });
+    }
+    expect([...vus].sort((a, b) => a - b)).toEqual([2, 3, 5, 10, 25, 50]);
+    expect(multiplicateurDe([{ i: 7, x: 25 }], 7)).toBe(25);
+    expect(multiplicateurDe([{ i: 7, x: 25 }], 8)).toBe(1);
   });
 
   it('simule 100 000 manches : fréquences, retour, jackpots rares', () => {
@@ -72,16 +97,16 @@ describe('The Baron’s Wheel : les règles', () => {
       expect(p.mallettes.filter((x) => x === p.butin).length).toBeGreaterThanOrEqual(1);
       const b = tirerBonusBW('braquage', h);
       if (b.type !== 'braquage') throw new Error();
-      expect([...b.code].sort()).toEqual([1, 1, 2]);
-      expect([...b.meca].sort()).toEqual([1, 1, 1, 1, 1, 2, 2, 3]);
+      expect([...b.code].sort()).toEqual([1, 2, 3]);
+      expect([...b.meca].sort()).toEqual([1, 1, 1, 1, 2, 2, 3, 5]);
       const r = recompenseBonusBW(b, [0, 0, 0]);
       expect(r.x).toBe(b.coffre[0].jackpot ? b.coffre[0].x : b.code[0] * b.meca[0] * b.coffre[0].x);
     }
     expect(choixDuBonusBW('braquage')).toEqual([3, 8, 4]);
     expect(etapesBonusBW('evasion').map((e) => e.nom)).toEqual(['intro', 'route', 'poursuite', 'revele']);
     expect(recompenseBonusBW({ type: 'evasion', routes: [{ evade: false, x: 10 }, { evade: true, x: 25 }, { evade: true, x: 100 }] }, [0])).toEqual({ x: 0, evade: false });
-    expect(gainBW(25_000, 9.5)).toBe(237_500);
-    expect(gainBW(1_000, 4.7)).toBe(4_700);
+    expect(gainBW(25_000, 5)).toBe(125_000);
+    expect(gainBW(1_000, 3.3)).toBe(3_300);
   });
 });
 
@@ -95,6 +120,8 @@ const identites = {
 const service = creerServiceComptes({ configWeb: { apiKey: 'cle', authDomain: 'test.firebaseapp.com', projectId: 'test' }, authentification: authentificationTest(identites), stockage: stockageMemoire() });
 let serveur: Awaited<ReturnType<typeof demarrerServeur>>;
 let arretImpose: number | undefined;
+/** Les multiplicateurs des prochaines manches ([] : aucun ; undefined : au hasard). */
+let multiplicateursImposes: BoostBW[] | undefined = [];
 let ouverture: number | null = null;
 const indice = (c: CaseBW, k = 0) => ROUE_BW.map((x, i) => (x === c ? i : -1)).filter((i) => i >= 0)[k];
 const connecter = () => io(`http://localhost:${serveur.port}`, { transports: ['websocket'], forceNew: true });
@@ -113,6 +140,7 @@ function attendre(s: Socket, cond: (v: VueBW) => boolean, ms = 12_000): Promise<
     s.on('casino_bw', f);
   });
 }
+const pause = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 const etape = (v: VueBW) => (v.bonus ? v.bonus.etapes[v.bonus.etape].nom : null);
 /** Attend l'ouverture des mises d'une nouvelle manche, avec du temps devant soi. */
 async function nouvelleManche(a: Socket, apres = 0) {
@@ -133,8 +161,9 @@ beforeAll(async () => {
       jeuALaffiche: () => null,
       cadeaux: [],
       delaiEcriture: 30,
-      delaisBaronWheel: { mises: 900, tour: 250, resultat: 300, intro: 80, choix: 700, serrure: 700, etape: 80, vol: 80, poursuite: 80, revele: 150 },
+      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, intro: 80, choix: 700, serrure: 700, etape: 80, vol: 80, poursuite: 80, revele: 150 },
       arretBaronWheel: () => arretImpose,
+      multiplicateursBaronWheel: () => multiplicateursImposes,
       ouvertureBaronWheel: () => ouverture,
     },
   });
@@ -163,7 +192,7 @@ describe('The Baron’s Wheel en direct', () => {
     let v: VueBW = e.roue;
     if (v.phase !== 'mises' || (v.reste ?? 0) < 500) v = await nouvelleManche(a);
     expect(v.arret).toBeNull();
-    expect(v.dore).toBeNull(); // pas de grande ouverture
+    expect(v.multiplicateurs).toBeNull(); // posés seulement une fois les mises fermées
     expect((await emettre(a, 'casino_bw_miser', { case: 'x5', montant: 1234 })).erreur).toMatch(/Jeton/);
     expect((await emettre(a, 'casino_bw_miser', { case: 'x3', montant: 1000 })).erreur).toMatch(/introuvable/);
     // Plafonds : 1 000 000 $ par case.
@@ -180,6 +209,9 @@ describe('The Baron’s Wheel en direct', () => {
     await emettre(a, 'casino_bw_miser', { case: 'baron', montant: 5_000 });
     await emettre(a, 'casino_bw_miser', { case: 'x10', montant: 1_000 });
     await emettre(a, 'casino_bw_annuler'); // retire le dernier jeton (le 10X)
+    const pose = await attendre(a, (x) => x.phase === 'multiplicateurs');
+    expect(pose.multiplicateurs).toEqual([]);
+    expect(pose.arret).toBeNull(); // la case d'arrêt reste secrète
     const tour = await attendre(a, (x) => x.phase === 'tour');
     expect(tour.mesMises).toEqual({ x5: 25_000, baron: 5_000 });
     expect((await emettre(a, 'casino_bw_miser', { case: 'x1', montant: 1_000 })).erreur).toMatch(/fermées/);
@@ -191,11 +223,11 @@ describe('The Baron’s Wheel en direct', () => {
     const res = await attendre(a, (x) => x.phase === 'resultat');
     expect(res.bonus).toBeNull();
     expect(res.bilan).toEqual({ mise: 30_000, gain: gainBW(25_000, GAINS_CHIFFRES_BW.x5) });
-    expect(res.solde).toBe(base - 30_000 + 237_500);
+    expect(res.solde).toBe(base - 30_000 + 125_000);
     expect(res.historique[0]).toEqual({ c: 'x5' });
     const j = await emettre(a, 'casino_bw_journal');
-    expect(j.journal.manches[0]).toMatchObject({ c: 'x5', mise: 30_000, gain: 237_500, solde: res.solde });
-    expect(j.journal.moi).toMatchObject({ manches: 1, mise: 30_000, gain: 237_500 });
+    expect(j.journal.manches[0]).toMatchObject({ c: 'x5', mise: 30_000, gain: 125_000, solde: res.solde });
+    expect(j.journal.moi).toMatchObject({ manches: 1, mise: 30_000, gain: 125_000 });
     // Manche suivante : Refaire, puis Doubler.
     const v2 = await nouvelleManche(a, res.numero);
     expect(v2.peutRefaire).toBe(true);
@@ -218,11 +250,18 @@ describe('The Baron’s Wheel en direct', () => {
     await emettre(b, 'casino_bw_entrer');
     const v = await nouvelleManche(a);
     arretImpose = indice('pickpocket', 1);
+    // Un ×5 sur cette case Pickpocket : toutes ses mallettes valent 5 fois plus.
+    multiplicateursImposes = [
+      { i: arretImpose, x: 5 },
+      { i: indice('x1'), x: 2 },
+      { i: indice('x10'), x: 50 },
+    ];
     await emettre(a, 'casino_bw_miser', { case: 'pickpocket', montant: 100_000 });
     await emettre(b, 'casino_bw_miser', { case: 'pickpocket', montant: 5_000 });
     await emettre(b, 'casino_bw_miser', { case: 'x2', montant: 5_000 });
     const vol = await attendre(a, (x) => etape(x) === 'vol');
-    expect(vol.bonus!.butin).toBeGreaterThanOrEqual(10);
+    expect(vol.bonus!.butin).toBeGreaterThanOrEqual(20);
+    expect(vol.bonus!.multiplicateur).toBe(5);
     expect(vol.bonus!.mallettes).toEqual([null, null, null]);
     expect((await emettre(a, 'casino_bw_choisir', { etape: vol.bonus!.etape, choix: 0 })).erreur).toMatch(/Trop tard/);
     const choix = await attendre(a, (x) => etape(x) === 'mallettes');
@@ -235,12 +274,14 @@ describe('The Baron’s Wheel en direct', () => {
     const mallettes = revele.bonus!.mallettes as number[];
     expect(mallettes).toContain(vol.bonus!.butin);
     expect(revele.bonus!.mesChoix).toEqual([2]);
-    expect(revele.bonus!.resultat).toMatchObject({ x: mallettes[2], gain: gainBW(100_000, mallettes[2]) });
+    expect(revele.bonus!.resultat).toMatchObject({ x: mallettes[2] * 5, gain: gainBW(100_000, mallettes[2] * 5) });
     const fin = await attendre(a, (x) => x.phase === 'resultat' && x.numero === v.numero);
     expect(etape(fin)).toBe('revele'); // pendant les résultats, le bonus reste sur sa révélation
-    expect(fin.bilan).toEqual({ mise: 100_000, gain: gainBW(100_000, mallettes[2]) });
+    expect(fin.bilan).toEqual({ mise: 100_000, gain: gainBW(100_000, mallettes[2] * 5) });
+    expect(fin.historique[0]).toEqual({ c: 'pickpocket', x: 5 });
     const finB = (await emettre(b, 'casino_bw_journal')).journal.manches[0];
-    expect([0, 1, 2].map((k) => gainBW(5_000, mallettes[k]))).toContain(finB.gain);
+    expect([0, 1, 2].map((k) => gainBW(5_000, mallettes[k] * 5))).toContain(finB.gain);
+    multiplicateursImposes = [];
     expect(fin.joueurs.map((x) => x.nom).sort()).toEqual(['Lucas', 'Léa']);
     a.close();
     b.close();
@@ -252,7 +293,7 @@ describe('The Baron’s Wheel en direct', () => {
     await emettre(a, 'casino_entrer');
     await emettre(a, 'casino_bw_entrer');
     const v = await nouvelleManche(a);
-    arretImpose = indice('braquage', 3);
+    arretImpose = indice('braquage', 2);
     await emettre(a, 'casino_bw_miser', { case: 'braquage', montant: 25_000 });
     const choisis = [1, 6, 3];
     for (const [r, nom] of (['code', 'mecanisme', 'coffre'] as const).entries()) {
@@ -269,27 +310,41 @@ describe('The Baron’s Wheel en direct', () => {
     a.close();
   }, 30_000);
 
-  it('pendant la grande ouverture, la case dorée paie double et le salon l’annonce', async () => {
-    ouverture = Date.now() + 3_600_000;
+  it('paie un chiffre multiplié, et pose un ×2 doré en plus pendant la grande ouverture', async () => {
     const a = connecter();
     const annonces: AnnonceCasino[] = [];
     await emettre(a, 'identifier', { jeton: 'jeton-a' });
     a.on('casino_annonce', (x: AnnonceCasino) => annonces.push(x));
     await emettre(a, 'casino_entrer');
-    const salon = (await emettre(a, 'casino_vue')).casino;
-    expect(salon.baronWheel.ouverture).toBeGreaterThan(3_500_000);
     await emettre(a, 'casino_bw_entrer');
+    // Un ×50 sur un 10X : 100 000 $ misés rapportent 100 000 × 10 × 50.
     const v = await nouvelleManche(a);
-    expect(v.dore).not.toBeNull();
-    expect(v.ouverture).toBeGreaterThan(0);
-    const c = ROUE_BW[v.dore!];
-    arretImpose = v.dore!;
-    await emettre(a, 'casino_bw_miser', { case: c, montant: 100_000 });
+    arretImpose = indice('x10', 1);
+    multiplicateursImposes = [
+      { i: arretImpose, x: 50 },
+      { i: indice('baron'), x: 3 },
+      { i: indice('x1', 4), x: 2 },
+    ];
+    await emettre(a, 'casino_bw_miser', { case: 'x10', montant: 100_000 });
     const fin = await attendre(a, (x) => x.phase === 'resultat' && x.numero === v.numero);
-    expect(fin.historique[0]).toEqual({ c, dore: true });
-    if (c.startsWith('x')) expect(fin.bilan!.gain).toBe(2 * gainBW(100_000, GAINS_CHIFFRES_BW[c as 'x1']));
-    else expect(fin.bilan!.gain).toBe(2 * gainBW(100_000, fin.bonus!.resultat!.x));
+    expect(fin.multiplicateurs).toHaveLength(3);
+    expect(fin.bilan).toEqual({ mise: 100_000, gain: 50_000_000 });
+    expect(fin.historique[0]).toEqual({ c: 'x10', x: 50 });
+    await pause(50);
+    expect(annonces.some((x) => x.jeu === 'baronWheel' && x.gain === 50_000_000)).toBe(true);
+
+    // Grande ouverture : les multiplicateurs tirés au hasard, plus un ×2 doré.
+    ouverture = Date.now() + 3_600_000;
+    multiplicateursImposes = undefined;
+    arretImpose = undefined;
+    expect((await emettre(a, 'casino_vue')).casino.baronWheel.ouverture).toBeGreaterThan(3_500_000);
+    const v2 = await nouvelleManche(a, fin.numero);
+    expect(v2.ouverture).toBeGreaterThan(0);
+    const pose = await attendre(a, (x) => x.phase === 'multiplicateurs' && x.numero === v2.numero);
+    expect(pose.multiplicateurs).toHaveLength(4);
+    expect(pose.multiplicateurs!.filter((b) => b.dore)).toEqual([expect.objectContaining({ x: 2 })]);
     ouverture = null;
+    multiplicateursImposes = [];
     expect(SOLDE_DEPART).toBeGreaterThan(0);
     a.close();
   }, 40_000);

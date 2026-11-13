@@ -25,6 +25,7 @@ import {
   ROUTES_BW,
   VALEUR_JACKPOT_BW,
   type BonusBW,
+  type BoostBW,
   type CaseBW,
   type JackpotBW,
   type JournalBW,
@@ -35,7 +36,7 @@ import {
 } from '../../shared/baronWheel';
 import type { VueCasino } from '../../shared/casino';
 import type { Appel } from './App';
-import { BUTIN_PLUIE, dollars, PluieLingots, useSoldeAnime } from './casinoOutils';
+import { BUTIN_PLUIE, CHOIX_AUTO, dollars, PluieLingots, useSoldeAnime } from './casinoOutils';
 import { socket } from './socket';
 import { EN, tr } from './traduction';
 import { jouerEffet, mouvementReduit } from './ui';
@@ -112,8 +113,8 @@ interface HorlogesRoue {
 
 function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRoue> }) {
   const disque = useRef<HTMLDivElement>(null);
-  const rouge = v.phase === 'mises' && v.dore !== null ? v.dore : null;
-  const gagnante = v.phase !== 'mises' && v.phase !== 'tour' ? v.arret : null;
+  const gagnante = v.phase === 'bonus' || v.phase === 'resultat' ? v.arret : null;
+  const boosts = v.multiplicateurs ?? [];
 
   useEffect(() => {
     let raf = 0;
@@ -181,14 +182,19 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
           {ROUE_BW.map((_, i) => (
             <line key={i} x1="0" y1="-118" x2="0" y2="-363" transform={`rotate(${i * DEGRES_CASE_BW})`} className="bw-filet" />
           ))}
-          {rouge !== null && (
-            <g className="bw-dore">
-              <path d={secteur(118, 362, rouge * DEGRES_CASE_BW, (rouge + 1) * DEGRES_CASE_BW)} />
-              <text transform={`rotate(${rouge * DEGRES_CASE_BW + DEGRES_CASE_BW / 2}) translate(0 -165)`} textAnchor="middle" dominantBaseline="central">
-                ×2
-              </text>
+          {boosts.map((b, k) => (
+            <g key={`${v.numero}-${b.i}`} className={`bw-boost ${b.dore ? 'dore' : ''} ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`} style={{ '--k': k } as CSSProperties}>
+              <path d={secteur(118, 362, b.i * DEGRES_CASE_BW, (b.i + 1) * DEGRES_CASE_BW)} />
+              <g transform={`rotate(${b.i * DEGRES_CASE_BW + DEGRES_CASE_BW / 2}) translate(0 -168)`}>
+                <g className="bw-boost-medaille">
+                  <circle r="42" />
+                  <text textAnchor="middle" dominantBaseline="central">
+                    ×{b.x}
+                  </text>
+                </g>
+              </g>
             </g>
-          )}
+          ))}
           {gagnante !== null && <path className="bw-gagnante" d={secteur(118, 362, gagnante * DEGRES_CASE_BW, (gagnante + 1) * DEGRES_CASE_BW)} />}
           <circle r="120" className="bw-anneau" />
         </svg>
@@ -219,11 +225,26 @@ function Jackpots() {
   );
 }
 
-function Pastille({ c, dore }: { c: CaseBW; dore?: boolean }) {
+function Pastille({ c, x }: { c: CaseBW; x?: number }) {
   const vis = CASES_VISUELS[c];
   return (
-    <span className={`bw-pastille ${c} ${dore ? 'dore' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} title={nomCase(c)}>
+    <span className={`bw-pastille ${c} ${x ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} title={nomCase(c)}>
       {vis.image ? <img src={vis.image} alt={nomCase(c)} /> : fx(GAINS_CHIFFRES_BW[c as 'x1'])}
+      {x ? <i>×{x}</i> : null}
+    </span>
+  );
+}
+
+/** Les multiplicateurs de la manche, en clair : « ×10 sur un 5X · ×3 sur le Baron… ». */
+function ListeMultiplicateurs({ boosts }: { boosts: BoostBW[] }) {
+  return (
+    <span className="bw-liste-multi">
+      {boosts.map((b) => (
+        <span key={b.i} className={`bw-multi ${b.dore ? 'dore' : ''} ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`}>
+          <b>×{b.x}</b>
+          <Pastille c={ROUE_BW[b.i]} />
+        </span>
+      ))}
     </span>
   );
 }
@@ -657,7 +678,15 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
       <div className="bw-bonus-titre">
         <img src={CASES_VISUELS[b.type].image} alt="" />
         <strong>{tr(...NOMS_BONUS[b.type])}</strong>
+        {b.multiplicateur > 1 && <em className="bw-bonus-multi">×{b.multiplicateur}</em>}
       </div>
+      {b.multiplicateur > 1 && nom === 'intro' && (
+        <div className="bw-bonus-annonce-multi" role="status">
+          <small>{tr('Multiplicateur de la roue', 'Wheel multiplier')}</small>
+          <strong>×{b.multiplicateur}</strong>
+          <span>{tr('Tous les gains de ce bonus sont multipliés !', 'Every win in this bonus is multiplied!')}</span>
+        </div>
+      )}
       {nom !== 'revele' && nom !== 'intro' && (
         <div className="bw-bonus-consigne">
           <span>{texte}</span>
@@ -670,6 +699,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
           {r.jackpot && <img src={`/cartes/bw-plaque-${r.jackpot}.webp`} alt="" />}
           <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'evasion' ? (r.evade ? tr('Évadé !', 'Escaped!') : tr('Arrêté !', 'Caught!')) : tr('Ta récompense', 'Your reward')}</small>
           <strong>{r.gain > 0 ? `${fx(r.x)} · +${dollars(r.gain)}` : tr('Pas de butin cette fois', 'No loot this time')}</strong>
+          {r.gain > 0 && !r.jackpot && b.multiplicateur > 1 && <em>{tr(`${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (multiplicateur de la roue)`, `${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (wheel multiplier)`)}</em>}
         </div>
       )}
       {nom === 'revele' && !b.mise && <div className="bw-bonus-resultat spectateur">{tr('Mise sur ce bonus à la prochaine manche pour jouer !', 'Bet on this bonus next round to play!')}</div>}
@@ -693,6 +723,14 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     }
   });
   const [pluie, setPluie] = useState<{ n: number; id: number } | null>(null);
+  /** Mode automatique : mes mises rejouées à chaque manche, pour un nombre de manches choisi. */
+  const [auto, setAuto] = useState({ actif: false, restants: 0 });
+  const [choixAuto, setChoixAuto] = useState(false);
+  const autoRef = useRef(auto);
+  autoRef.current = auto;
+  const autoManche = useRef(-1);
+  const minuterieAuto = useRef(0);
+  useEffect(() => () => window.clearTimeout(minuterieAuto.current), []);
   const [credit, setCredit] = useState<{ montant: number; id: number } | null>(null);
   const [fete, setFete] = useState<{ jackpot: JackpotBW; gain: number; id: number } | null>(null);
   const minuteries = useRef<number[]>([]);
@@ -757,6 +795,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     const etapeNom = (x: VueBW) => (x.bonus ? x.bonus.etapes[x.bonus.etape].nom : '');
     const change = avant.numero !== v.numero || avant.phase !== v.phase || etapeNom(avant) !== etapeNom(v);
     if (!change) return;
+    if (v.phase === 'multiplicateurs') jouerEffet('bw_multi');
     if (v.phase === 'tour') jouerEffet('bw_lancer');
     if (avant.phase === 'tour' && v.phase !== 'tour') jouerEffet('bw_arret');
     if (v.phase === 'bonus' && v.bonus) {
@@ -795,6 +834,29 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     }
   }, [v]);
 
+  // Mode automatique : dès que les mises ouvrent, on rejoue celles de la manche d'avant (sauf si j'ai déjà misé).
+  useEffect(() => {
+    if (!v || !auto.actif || v.phase !== 'mises' || (v.reste ?? 0) < 1500 || autoManche.current === v.numero) return;
+    autoManche.current = v.numero;
+    if (Object.values(v.mesMises).some((x) => x)) return;
+    if (!v.peutRefaire) {
+      setAuto({ actif: false, restants: 0 });
+      return;
+    }
+    window.clearTimeout(minuterieAuto.current);
+    minuterieAuto.current = window.setTimeout(async () => {
+      if (!autoRef.current.actif) return;
+      const r = await appel('casino_bw_refaire');
+      if (r.ok) {
+        jouerEffet('jeton');
+        setAuto((a) => (a.actif ? { actif: a.restants - 1 > 0, restants: a.restants - 1 } : a));
+      } else {
+        setAuto({ actif: false, restants: 0 });
+        setErreur(tr(`Mode auto arrêté : ${r.erreur ?? 'mise impossible.'}`, `Auto play stopped: ${r.erreur ?? 'bet not allowed.'}`));
+      }
+    }, 650);
+  }, [v, auto.actif, appel]);
+
   const secondes = useSecondes(v?.phase === 'mises' ? finPhase : null);
   const ouvertes = !!v && v.phase === 'mises' && (v.reste ?? 0) > 0;
   const maMise = v ? Object.values(v.mesMises).reduce((s: number, x) => s + (x ?? 0), 0) : 0;
@@ -811,17 +873,31 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   };
 
   let statut: ReactNode = tr('La roue se prépare…', 'The wheel is getting ready…');
+  const multiArret = v ? (v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1) : 1;
   if (v) {
     const c = v.arret !== null ? ROUE_BW[v.arret] : null;
     if (v.phase === 'mises') statut = <strong>{tr(`Faites vos jeux · ${secondes} s`, `Place your bets · ${secondes} s`)}</strong>;
-    else if (v.phase === 'tour') statut = <strong>{tr('Rien ne va plus… la roue tourne', 'No more bets… the wheel is spinning')}</strong>;
+    else if (v.phase === 'multiplicateurs')
+      statut = (
+        <>
+          <strong className="bw-statut-multi">{tr('Rien ne va plus : les multiplicateurs !', 'No more bets: the multipliers!')}</strong>
+          {v.multiplicateurs && <ListeMultiplicateurs boosts={v.multiplicateurs} />}
+        </>
+      );
+    else if (v.phase === 'tour')
+      statut = (
+        <>
+          <strong>{tr('La roue tourne…', 'The wheel is spinning…')}</strong>
+          {v.multiplicateurs && <ListeMultiplicateurs boosts={v.multiplicateurs} />}
+        </>
+      );
     else if (c && v.phase === 'bonus') statut = <strong>{tr(`Bonus : ${tr(...NOMS_BONUS[c as BonusBW])} !`, `Bonus: ${tr(...NOMS_BONUS[c as BonusBW])}!`)}</strong>;
     else if (c)
       statut = (
         <strong className="bw-statut-resultat">
-          <Pastille c={c} dore={v.dore === v.arret} />
-          {estBonusBW(c) ? tr(...NOMS_BONUS[c]) : tr(`${nomCase(c)} : la case ${tr(...CASES_VISUELS[c].nom)} paie ${nomCase(c)}`, `${nomCase(c)}: ${CASES_VISUELS[c].nom[1]} pays ${nomCase(c)}`)}
-          {v.dore !== null && v.dore === v.arret ? <em>{tr('Case dorée : double !', 'Golden spot: double!')}</em> : null}
+          <Pastille c={c} x={multiArret > 1 ? multiArret : undefined} />
+          {estBonusBW(c) ? tr(...NOMS_BONUS[c]) : tr(`La case ${CASES_VISUELS[c].nom[0]} paie ${fx(GAINS_CHIFFRES_BW[c] * multiArret)}`, `${CASES_VISUELS[c].nom[1]} pays ${fx(GAINS_CHIFFRES_BW[c] * multiArret)}`)}
+          {multiArret > 1 ? <em>{tr(`Multiplicateur ×${multiArret} !`, `Multiplier ×${multiArret}!`)}</em> : null}
         </strong>
       );
   }
@@ -850,7 +926,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       {v?.ouverture ? (
         <p className="bw-ouverture" role="status">
           <strong>{tr('Grande ouverture', 'Grand opening')}</strong>
-          <span>{tr('Case dorée ×2 à chaque manche · XP ×2 sur la roue', 'Golden ×2 spot every round · XP ×2 on the wheel')}</span>
+          <span>{tr('Un multiplicateur doré ×2 en plus à chaque manche · XP ×2 sur la roue', 'An extra golden ×2 multiplier every round · XP ×2 on the wheel')}</span>
         </p>
       ) : null}
 
@@ -861,7 +937,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         <ol className="bw-historique" aria-label={tr('Les derniers résultats', 'Latest results')}>
           {(v?.historique ?? []).map((h, k) => (
             <li key={`${v?.numero}-${k}`}>
-              <Pastille c={h.c} dore={h.dore} />
+              <Pastille c={h.c} x={h.x} />
             </li>
           ))}
         </ol>
@@ -916,9 +992,9 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           {CASES_BW.map((c) => {
             const vis = CASES_VISUELS[c];
             const m = v?.mesMises[c] ?? 0;
-            const dore = v?.dore !== null && v?.dore !== undefined && ROUE_BW[v.dore] === c;
+            const multis = (v?.multiplicateurs ?? []).filter((b) => ROUE_BW[b.i] === c).map((b) => b.x);
             return (
-              <button key={c} type="button" className={`bw-case ${c} ${m ? 'misee' : ''} ${gagnante === c ? 'gagnante' : ''} ${dore ? 'doree' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} onClick={() => void miser(c)} disabled={!ouvertes} aria-label={`${tr(...vis.nom)} ${m ? dollars(m) : ''}`}>
+              <button key={c} type="button" className={`bw-case ${c} ${m ? 'misee' : ''} ${gagnante === c ? 'gagnante' : ''} ${multis.length ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} onClick={() => void miser(c)} disabled={!ouvertes} aria-label={`${tr(...vis.nom)} ${m ? dollars(m) : ''}`}>
                 {vis.image ? <img src={vis.image} alt="" draggable={false} /> : <strong>{fx(GAINS_CHIFFRES_BW[c as 'x1'])}</strong>}
                 <span className="bw-case-nom">{estBonusBW(c) ? tr(...vis.nom) : tr(`case ${vis.nom[0]}`, `${vis.nom[1]} spot`)}</span>
                 {m > 0 && (
@@ -927,7 +1003,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
                     {court(m)}
                   </span>
                 )}
-                {dore && <span className="bw-case-dore">×2</span>}
+                {multis.length > 0 && <span className="bw-case-multi">{multis.map((x) => `×${x}`).join(' ')}</span>}
               </button>
             );
           })}
@@ -944,20 +1020,53 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           {tr('Ta mise', 'Your bet')} <strong>{dollars(maMise)}</strong>
           <small>{tr(`Au plus ${court(MAX_CASE_BW)} par case, ${court(MAX_MANCHE_BW)} par manche`, `At most ${court(MAX_CASE_BW)} per spot, ${court(MAX_MANCHE_BW)} per round`)}</small>
         </p>
-        <div className="bj-boutons">
-          <button type="button" onClick={() => void envoyer('casino_bw_annuler')} disabled={!ouvertes || !maMise}>
-            {tr('Annuler', 'Undo')}
-          </button>
-          <button type="button" onClick={() => void envoyer('casino_bw_annuler', { tout: true })} disabled={!ouvertes || !maMise}>
-            {tr('Effacer', 'Clear')}
-          </button>
-          <button type="button" onClick={() => void envoyer('casino_bw_doubler').then((ok) => ok && jouerEffet('jeton'))} disabled={!ouvertes || !maMise}>
-            {tr('Doubler', 'Double')}
-          </button>
-          <button type="button" className="bj-principal" onClick={() => void envoyer('casino_bw_refaire').then((ok) => ok && jouerEffet('jeton'))} disabled={!ouvertes || !!maMise || !v?.peutRefaire}>
-            {tr('Répéter', 'Repeat')}
-          </button>
-        </div>
+        {choixAuto && !auto.actif ? (
+          <div className="bj-boutons bw-auto-choix" role="group" aria-label={tr('Mode automatique', 'Auto play')}>
+            <span>{tr('Rejouer mes mises pendant', 'Repeat my bets for')}</span>
+            {CHOIX_AUTO.map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => {
+                  jouerEffet('jeton');
+                  setChoixAuto(false);
+                  autoManche.current = -1;
+                  setAuto({ actif: true, restants: n });
+                }}
+              >
+                {n === Infinity ? '∞' : n}
+              </button>
+            ))}
+            <button type="button" className="bw-auto-fermer" onClick={() => setChoixAuto(false)} aria-label={tr('Fermer', 'Close')}>
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div className="bj-boutons">
+            <button type="button" onClick={() => void envoyer('casino_bw_annuler')} disabled={!ouvertes || !maMise}>
+              {tr('Annuler', 'Undo')}
+            </button>
+            <button type="button" onClick={() => void envoyer('casino_bw_annuler', { tout: true })} disabled={!ouvertes || !maMise}>
+              {tr('Effacer', 'Clear')}
+            </button>
+            <button type="button" onClick={() => void envoyer('casino_bw_doubler').then((ok) => ok && jouerEffet('jeton'))} disabled={!ouvertes || !maMise}>
+              {tr('Doubler', 'Double')}
+            </button>
+            <button type="button" className="bj-principal" onClick={() => void envoyer('casino_bw_refaire').then((ok) => ok && jouerEffet('jeton'))} disabled={!ouvertes || !!maMise || !v?.peutRefaire}>
+              {tr('Répéter', 'Repeat')}
+            </button>
+            {auto.actif ? (
+              <button type="button" className="bw-auto actif" onClick={() => setAuto({ actif: false, restants: 0 })} aria-label={tr('Arrêter le mode automatique', 'Stop auto play')}>
+                Stop · {auto.restants === Infinity ? '∞' : auto.restants}
+              </button>
+            ) : (
+              <button type="button" className="bw-auto" onClick={() => setChoixAuto(true)} disabled={!maMise && !v?.peutRefaire}>
+                Auto ▾
+              </button>
+            )}
+          </div>
+        )}
+        {auto.actif && <p className="bw-auto-etat">{auto.restants === Infinity ? tr('Mode auto : tes mises sont rejouées à chaque manche.', 'Auto play: your bets are repeated every round.') : tr(`Mode auto : encore ${auto.restants} manche${auto.restants > 1 ? 's' : ''}.`, `Auto play: ${auto.restants} more round${auto.restants > 1 ? 's' : ''}.`)}</p>}
         {erreur && v && <p className="cas-erreur">{erreur}</p>}
       </section>
 
@@ -985,8 +1094,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 8 cases 1X (paient ×4,7), 6 cases 2X (×6,3), 4 cases 5X (×9,5), 2 cases 10X (×19), et 20 cases bonus : Baron (6), Pickpocket (4), Grande Évasion (4), Braquage (6). Chaque mise rend environ 95 % en moyenne ; les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et le Braquage.',
-            '40 spots, all equally likely: 8 1X spots (pay ×4.7), 6 2X (×6.3), 4 5X (×9.5), 2 10X (×19), and 20 bonus spots: Baron (6), Pickpocket (4), Great Escape (4), Big Heist (6). Every bet returns about 95% on average; the jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Big Heist.',
+            '40 cases, toutes avec la même chance : 12 cases 1X (paient ×2,5), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), et 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2), Braquage (3), qui paient de ×5 à ×500. Une fois les mises fermées, 3 cases reçoivent un multiplicateur de ×2 à ×50. Chaque mise rend environ 95 % en moyenne ; les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et le Braquage.',
+            '40 spots, all equally likely: 12 1X spots (pay ×2.5), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), and 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2), Big Heist (3), paying ×5 to ×500. Once bets close, 3 spots get a ×2 to ×50 multiplier. Every bet returns about 95% on average; the jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Big Heist.',
           )}
         </p>
       </aside>
@@ -1036,7 +1145,7 @@ export function BandeauOuvertureBW({ vue, onOuvrir }: { vue: VueCasino; onOuvrir
       <span>
         <em>{tr('Grande ouverture', 'Grand opening')}</em>
         <strong>{tr('La nouvelle roue géante du Baron est ouverte !', 'The Baron’s new giant wheel is open!')}</strong>
-        <small>{tr('Case dorée ×2 à chaque manche · XP ×2 sur la roue · cadeau d’ouverture à récupérer en haut du salon', 'Golden ×2 spot every round · XP ×2 on the wheel · opening gift to collect at the top of the lounge')}</small>
+        <small>{tr('Un multiplicateur doré ×2 en plus à chaque manche · XP ×2 sur la roue · cadeau d’ouverture à récupérer en haut du salon', 'An extra golden ×2 multiplier every round · XP ×2 on the wheel · opening gift to collect at the top of the lounge')}</small>
         <i>{tr(`Encore ${dureeOuverture(fin - Date.now())}`, `${dureeOuverture(fin - Date.now())} left`)}</i>
       </span>
     </button>
