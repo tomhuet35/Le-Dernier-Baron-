@@ -45,11 +45,10 @@ function hasardFixe(graine: number): Hasard {
 }
 
 describe('La Folle Nuit : la roue et les gains', () => {
-  it('accepte 500 000 $ par case, soit 4 000 000 $ par manche', () => {
-    expect(MAX_CASE_FN).toBe(500_000);
-    expect(Math.max(...JETONS_FN)).toBe(MAX_CASE_FN);
-    expect(CASES_FN).toHaveLength(8);
+  it('accepte 1 000 000 $ par case et 4 000 000 $ par manche', () => {
+    expect(MAX_CASE_FN).toBe(1_000_000);
     expect(MAX_MANCHE_FN).toBe(4_000_000);
+    expect(Math.max(...JETONS_FN)).toBe(500_000); // deux gros jetons remplissent une case
   });
 
   it('a 54 cases, dans les bonnes proportions, sans deux cases pareilles côte à côte', () => {
@@ -271,7 +270,9 @@ describe('La Folle Nuit en direct', () => {
     expect((await emettre(a, 'casino_fn_miser', { case: '2', montant: 1234 })).ok).toBe(false); // jeton inventé
     expect((await emettre(a, 'casino_fn_miser', { case: '2', montant: 100_000 })).ok).toBe(true);
     expect((await emettre(a, 'casino_fn_miser', { case: 'pile', montant: 25_000 })).ok).toBe(true);
-    expect((await emettre(a, 'casino_fn_miser', { case: '2', montant: 500_000 })).erreur).toMatch(/500 000/);
+    expect((await emettre(a, 'casino_fn_miser', { case: '2', montant: 500_000 })).ok).toBe(true); // 600 000 $ sur le « 2 »
+    expect((await emettre(a, 'casino_fn_miser', { case: '2', montant: 500_000 })).erreur).toMatch(/1 000 000/); // 1 100 000 $ : refusé
+    expect((await emettre(a, 'casino_fn_annuler')).ok).toBe(true); // retire les 500 000 $
     expect((await emettre(b, 'casino_fn_miser', { case: '1', montant: 5000 })).ok).toBe(true);
     expect((await emettre(b, 'casino_fn_miser', { case: '1', montant: 5000 })).ok).toBe(true);
     expect((await emettre(b, 'casino_fn_annuler')).ok).toBe(true); // retire le dernier jeton

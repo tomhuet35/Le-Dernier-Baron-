@@ -279,7 +279,7 @@ export function creerShowFolleNuit(options: {
     const poser = (m: { id: Identite; j: Joueur }, ajout: { case: CaseFN; montant: number }[], rappel: unknown) => {
       const parCase = new Map<CaseFN, number>();
       for (const p of [...m.j.poses, ...ajout]) parCase.set(p.case, (parCase.get(p.case) ?? 0) + p.montant);
-      if ([...parCase.values()].some((v) => v > MAX_CASE_FN)) return erreur(rappel, 'Pas plus de 500 000 $ sur une même case.', 'No more than $500,000 on one spot.');
+      if ([...parCase.values()].some((v) => v > MAX_CASE_FN)) return erreur(rappel, 'Pas plus de 1 000 000 $ sur une même case.', 'No more than $1,000,000 on one spot.');
       if (total(m.j.poses) + total(ajout) > MAX_MANCHE_FN) return erreur(rappel, 'Pas plus de 4 000 000 $ par manche.', 'No more than $4,000,000 per round.');
       if (!banque.debiter(m.id.uid, total(ajout))) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
       m.j.poses.push(...ajout);
