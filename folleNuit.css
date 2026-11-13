@@ -158,16 +158,9 @@
 @keyframes fn-gain-arrivee { from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } }
 @keyframes fn-gain-depart { to { opacity: 0; transform: translate(-50%, -62%) scale(0.92); } }
 
-/* La Happy Hour */
+/* Les pastilles du titre (« À l’affiche ») */
 .fn-happy-pastille { flex: none; display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; background: linear-gradient(90deg, #ff5f8f, #ffcf6b); color: #2a0c12; font-family: var(--texte, inherit); font-size: 11px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: none; box-shadow: 0 0 14px rgba(255, 120, 160, 0.6); animation: fn-happy 1.4s ease-in-out infinite; }
 @keyframes fn-happy { 50% { box-shadow: 0 0 24px rgba(255, 200, 110, 0.9); filter: brightness(1.15); } }
-.fn-happy { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; margin: 0; padding: 6px 12px; border-radius: 12px; border: 1px dashed rgba(231, 194, 122, 0.4); background: rgba(10, 6, 4, 0.55); font-size: 12.5px; color: var(--creme-doux); text-align: center; }
-.fn-happy strong { font-family: var(--titre); font-weight: 400; font-size: 15px; letter-spacing: 0.04em; color: #ffb3c8; }
-.fn-happy.actif { border: 1px solid #ffcf6b; background: linear-gradient(100deg, rgba(122, 18, 52, 0.92), rgba(70, 24, 8, 0.92)); color: #fff1c4; box-shadow: 0 0 22px rgba(255, 120, 160, 0.4); }
-.fn-happy.actif strong { font-size: 18px; color: #ffcf6b; text-shadow: 0 0 12px rgba(255, 140, 170, 0.8); animation: fn-happy-titre 1.2s ease-in-out infinite; }
-@keyframes fn-happy-titre { 50% { color: #fff1c4; text-shadow: 0 0 20px rgba(255, 150, 180, 1), 0 0 4px #fff; } }
-.fn-topslot.happy { filter: drop-shadow(0 0 16px rgba(255, 110, 160, 0.7)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.65)); }
-.fn-topslot.happy .fn-ts-x { color: #b3123f; }
 /* Sur téléphone, la place manque dans l'en-tête : le bandeau au-dessus du tapis suffit. */
 @media (max-width: 520px) { .fn-titre .fn-happy-pastille { display: none; } }
 
@@ -310,5 +303,5 @@
   .fn-bulle { font-size: 11.5px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fn-chargement, .fn-chargement *, .fn-gain, .fn-presentateur, .fn-happy-pastille, .fn-happy.actif strong, .fn-direct::before, .fn-bandeau-roue, .fn-topslot.touche, .fn-topslot.touche::before, .fn-case.sortie, .fn-case-boost, .fn-case-gagnante, .fn-bras-x { animation: none; }
+  .fn-chargement, .fn-chargement *, .fn-gain, .fn-presentateur, .fn-happy-pastille, .fn-direct::before, .fn-bandeau-roue, .fn-topslot.touche, .fn-topslot.touche::before, .fn-case.sortie, .fn-case-boost, .fn-case-gagnante, .fn-bras-x { animation: none; }
 }

@@ -633,7 +633,22 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'course_foule'
   | 'course_gain'
   | 'course_gros'
-  | 'course_perdu';
+  | 'course_perdu'
+  | 'bw_tic'
+  | 'bw_lancer'
+  | 'bw_arret'
+  | 'bw_gain'
+  | 'bw_gros'
+  | 'bw_perdu'
+  | 'bw_baron'
+  | 'bw_carte'
+  | 'bw_vol'
+  | 'bw_sirene'
+  | 'bw_evade'
+  | 'bw_menottes'
+  | 'bw_coffre'
+  | 'bw_cadran'
+  | 'bw_jackpot';
 export interface OptionsEffet {
   /** Vitesse de lecture : plus aigu au-dessus de 1, plus grave en dessous. */
   vitesse?: number;
@@ -742,6 +757,23 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   course_foule: { fichier: '/cartes/son-course-foule.mp3', volume: 0.84, baisserMusique: false, aLaDemande: true },
   course_gain: { fichier: '/cartes/son-course-gain.mp3', volume: 0.68, baisserMusique: true, aLaDemande: true },
   course_gros: { fichier: '/cartes/son-course-gros.mp3', volume: 0.99, baisserMusique: true, aLaDemande: true },
+  // The Baron's Wheel : le cliquet de l'aiguille, la roue lancée, l'arrêt, les gains ; les bonus (le Baron, le vol, la
+  // poursuite, les menottes, le coffre), le jackpot.
+  bw_tic: { fichier: '/cartes/son-bw-tic.mp3', volume: 0.43, baisserMusique: false, aLaDemande: true },
+  bw_lancer: { fichier: '/cartes/son-bw-lancer.mp3', volume: 1.0, baisserMusique: false, aLaDemande: true },
+  bw_arret: { fichier: '/cartes/son-bw-arret.mp3', volume: 0.69, baisserMusique: false, aLaDemande: true },
+  bw_gain: { fichier: '/cartes/son-bw-gain.mp3', volume: 0.82, baisserMusique: true, aLaDemande: true },
+  bw_gros: { fichier: '/cartes/son-bw-gros.mp3', volume: 0.7, baisserMusique: true, aLaDemande: true },
+  bw_perdu: { fichier: '/cartes/son-bw-perdu.mp3', volume: 0.34, baisserMusique: false, aLaDemande: true },
+  bw_baron: { fichier: '/cartes/son-bw-baron.mp3', volume: 0.69, baisserMusique: true, aLaDemande: true },
+  bw_carte: { fichier: '/cartes/son-bw-carte.mp3', volume: 0.77, baisserMusique: false, aLaDemande: true },
+  bw_vol: { fichier: '/cartes/son-bw-vol.mp3', volume: 0.69, baisserMusique: false, aLaDemande: true },
+  bw_sirene: { fichier: '/cartes/son-bw-sirene.mp3', volume: 0.53, baisserMusique: false, aLaDemande: true },
+  bw_evade: { fichier: '/cartes/son-bw-evade.mp3', volume: 0.72, baisserMusique: true, aLaDemande: true },
+  bw_menottes: { fichier: '/cartes/son-bw-menottes.mp3', volume: 0.87, baisserMusique: false, aLaDemande: true },
+  bw_coffre: { fichier: '/cartes/son-bw-coffre.mp3', volume: 0.76, baisserMusique: false, aLaDemande: true },
+  bw_cadran: { fichier: '/cartes/son-bw-cadran.mp3', volume: 0.71, baisserMusique: false, aLaDemande: true },
+  bw_jackpot: { fichier: '/cartes/son-bw-jackpot.mp3', volume: 0.74, baisserMusique: true, aLaDemande: true },
   course_perdu: { fichier: '/cartes/son-course-perdu.mp3', volume: 0.52, baisserMusique: false, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
   annonce: { fichier: '/cartes/son-annonce.mp3', volume: 0.48, baisserMusique: false },
@@ -1037,7 +1069,7 @@ export function musiqueDuSalon(actif: boolean) {
 }
 
 /** Où l'on est dans le Salon privé : le salon lui-même, ou l'un de ses jeux. */
-export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course';
+export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel';
 
 /** Chaque jeu du salon a sa musique (boucle d'environ une minute), le salon garde son jazz de cabaret. */
 const MUSIQUES_CASINO: Record<LieuCasino, string> = {
@@ -1051,6 +1083,7 @@ const MUSIQUES_CASINO: Record<LieuCasino, string> = {
   couronne: '/cartes/musique-couronne.mp3',
   chute: '/cartes/musique-chute.mp3',
   course: '/cartes/musique-course.mp3',
+  baronWheel: '/cartes/musique-baron-wheel.mp3',
 };
 /** Les sons propres à chaque jeu, préparés en entrant dans le jeu. */
 const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
@@ -1063,6 +1096,7 @@ const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
   coffres: ['cf_ouvre', 'cf_butin', 'cf_police', 'cf_encaisse', 'cf_gros', 'cf_perdu'],
   couronne: ['cv_tic', 'cv_envol', 'cv_pie', 'cv_perdu', 'cv_encaisse', 'cv_gros'],
   chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
+  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot'],
   course: ['course_appel', 'course_depart', 'course_sabots', 'course_foule', 'course_gain', 'course_gros', 'course_perdu'],
 };
 

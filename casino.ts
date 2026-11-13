@@ -4,7 +4,8 @@
  */
 import type { VueAffiche } from './afficheCasino';
 import type { ResumeTableBJ } from './blackjack';
-import type { CaseFN, HappyHourFN } from './folleNuit';
+import type { CaseFN } from './folleNuit';
+import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, MONTANT_OUVERTURE_BW, type CaseBW } from './baronWheel';
 import type { ContenuCasse } from './machineASous';
 import type { VueDefi } from './profilCasino';
 
@@ -39,6 +40,8 @@ export interface CadeauSalon {
   duree?: number;
 }
 export const CADEAUX_SALON: CadeauSalon[] = [
+  // Grande ouverture de The Baron's Wheel : 20 millions pendant 7 jours, dès la mise en ligne (l'événement dure autant).
+  { id: CADEAU_OUVERTURE_BW, montant: MONTANT_OUVERTURE_BW, duree: DUREE_OUVERTURE_BW },
   // 50 millions pendant 30 minutes, dès la mise en ligne.
   { id: 'cadeau-50m-30min-2026-11-12', montant: 50_000_000, duree: 30 * 60_000 },
   // 30 millions pendant 30 minutes, dès la mise en ligne.
@@ -114,7 +117,7 @@ export interface VueCasino {
   /** Cadeau du Baron encore à récupérer (montant et fin), ou null. */
   cadeau: { montant: number; fin: number } | null;
   /** La Folle Nuit : en direct ou non, combien regardent, et les derniers résultats. */
-  folleNuit?: { enDirect: boolean; spectateurs: number; historique: { case: CaseFN; x: number }[]; happyHour?: HappyHourFN };
+  folleNuit?: { enDirect: boolean; spectateurs: number; historique: { case: CaseFN; x: number }[] };
   /** Les Coffres du Baron : une partie attend-elle le joueur ? */
   coffres?: { enCours: boolean };
   /** Mon profil du casino, en bref : niveau et XP, demandes d'amis et invitations à un défi, défi en cours. */
@@ -123,13 +126,15 @@ export interface VueCasino {
   couronne?: { enDirect: boolean; spectateurs: number; historique: number[] };
   /** La Course des Écuries : en direct ou non, combien regardent, les derniers gagnants. */
   course?: { enDirect: boolean; spectateurs: number; historique: { cheval: number; nom: string; cote: number }[] };
+  /** The Baron's Wheel : en direct, les derniers résultats, la grande ouverture (millisecondes avant la fin). */
+  baronWheel?: { enDirect: boolean; spectateurs: number; historique: CaseBW[]; ouverture: number | null };
   /** Le jeu à l'affiche (XP doublée, bonus sur les gains) et le bonus déjà touché pendant son créneau. */
   affiche?: VueAffiche;
 }
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'defi';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'defi';
   /** Défi gagné : contre qui. */
   contre?: string;
   gain: number;

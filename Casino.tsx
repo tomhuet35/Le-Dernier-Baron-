@@ -42,6 +42,7 @@ import { JeuFestin } from './CasinoFestin';
 import { JeuCouronne } from './CasinoCouronne';
 import { JeuChute } from './CasinoChute';
 import { JeuCourse } from './CasinoCourse';
+import { BandeauOuvertureBW, JeuBaronWheel } from './CasinoBaronWheel';
 import { BandeauAffiche, PuceAffiche } from './CasinoAffiche';
 import { BarreXp, CadreAvatar, CelebrationNiveau, EcranAmis, EcranDefis, EcranProfil, PuceDefi, texteDefi, texteSocial, type FeteNiveau } from './CasinoSocial';
 import { titreCasino, type JeuCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
@@ -1090,7 +1091,8 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // ---------------------------------------------------------------------------------------------------------------
 // Le salon
 
-const JEUX: { id: 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+const JEUX: { id: 'baronWheel' | 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+  { id: 'baronWheel', nom: ['The Baron’s Wheel', 'The Baron’s Wheel'], image: '/cartes/casino-baron-wheel-large.webp', repli: '/cartes/casino-baron-wheel.webp' },
   { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines.webp', repli: '/cartes/casino-machine.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
   { id: 'blackjack', nom: ['Blackjack', 'Blackjack'], image: '/cartes/casino-blackjack.webp', repli: '/cartes/billets_05.webp' },
@@ -1188,6 +1190,7 @@ const VIGNETTE_DU_JEU: Record<JeuCasino, (typeof JEUX)[number]['id'] | null> = {
   couronne: 'couronne',
   chute: 'chute',
   course: 'course',
+  baronWheel: 'baronWheel',
 };
 
 function Annonce({ annonce }: { annonce: AnnonceCasino }) {
@@ -1208,6 +1211,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
         ? tr(`${annonce.nom} a récupéré ${dollars(annonce.gain)} au Vol de la Couronne !`, `${annonce.nom} cashed out ${dollars(annonce.gain)} on the Flight of the Crown!`)
       : annonce.jeu === 'chute'
         ? tr(`${annonce.nom} a fait tomber ${dollars(annonce.gain)} à la Chute des Écus !`, `${annonce.nom} dropped ${dollars(annonce.gain)} on the Falling Crowns!`)
+      : annonce.jeu === 'baronWheel'
+        ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à The Baron’s Wheel !`, `${annonce.nom} won ${dollars(annonce.gain)} on The Baron’s Wheel!`)
       : annonce.jeu === 'course'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la Course des Écuries !`, `${annonce.nom} won ${dollars(annonce.gain)} at the Stables’ Race!`)
       : annonce.jeu === 'folleNuit'
@@ -1355,6 +1360,7 @@ function Salon({
   onCouronne,
   onChute,
   onCourse,
+  onBaronWheel,
   onAffiche,
   onRafraichir,
   onCadeau,
@@ -1377,6 +1383,7 @@ function Salon({
   onCouronne: () => void;
   onChute: () => void;
   onCourse: () => void;
+  onBaronWheel: () => void;
   /** Ouvrir le jeu à l'affiche ; relire le salon (le jeu à l'affiche a changé). */
   onAffiche: (j: JeuCasino) => void;
   onRafraichir: () => void;
@@ -1446,6 +1453,7 @@ function Salon({
         </span>
         {!attente && <span className="pastille-nombre">1</span>}
       </button>
+      <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} />
       <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} />
       <div className="cas-jeux">
         {JEUX.map((j) => (
@@ -1453,7 +1461,7 @@ function Salon({
             key={j.id}
             jeu={j}
             affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id}
-            onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : j.id === 'festin' ? onFestin : j.id === 'couronne' ? onCouronne : j.id === 'chute' ? onChute : j.id === 'course' ? onCourse : undefined}
+            onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : j.id === 'festin' ? onFestin : j.id === 'couronne' ? onCouronne : j.id === 'chute' ? onChute : j.id === 'course' ? onCourse : j.id === 'baronWheel' ? onBaronWheel : undefined}
             ruban={
               j.id === 'festin'
                 ? vue.coffres?.enCours
@@ -1465,6 +1473,12 @@ function Salon({
                     : tr('Nouveau', 'New')
                   : j.id === 'chute'
                     ? tr('Nouveau', 'New')
+                    : j.id === 'baronWheel'
+                      ? vue.baronWheel?.ouverture
+                        ? tr('Ouverture', 'Opening')
+                        : vue.baronWheel?.enDirect && vue.baronWheel.spectateurs
+                          ? tr('En direct', 'Live')
+                          : tr('Nouveau', 'New')
                     : j.id === 'course'
                       ? vue.course?.enDirect && vue.course.spectateurs
                         ? tr('En direct', 'Live')
@@ -1517,7 +1531,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'profil' | 'amis' | 'defis'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis'>('salon');
   /** Profil du casino : le mien (null) ou celui d'un ami ; l'ami présélectionné pour un défi. */
   const [profilUid, setProfilUid] = useState<string | null>(null);
   const [cibleDefi, setCibleDefi] = useState<string | null>(null);
@@ -1660,7 +1674,7 @@ export default function Casino({
 
   // Où je joue, pour que mes amis puissent me rejoindre.
   const position: PositionCasino['ecran'] =
-    ecran === 'machine' ? 'machine' : ecran === 'nuits' ? 'nuits' : ecran === 'folleNuit' ? 'folleNuit' : ecran === 'festin' ? 'coffres' : ecran === 'couronne' ? 'couronne' : ecran === 'chute' ? 'chute' : ecran === 'course' ? 'course' : ecran === 'table' && table ? table.jeu : 'salon';
+    ecran === 'machine' ? 'machine' : ecran === 'nuits' ? 'nuits' : ecran === 'folleNuit' ? 'folleNuit' : ecran === 'festin' ? 'coffres' : ecran === 'couronne' ? 'couronne' : ecran === 'chute' ? 'chute' : ecran === 'course' ? 'course' : ecran === 'baronWheel' ? 'baronWheel' : ecran === 'table' && table ? table.jeu : 'salon';
   useEffect(() => {
     if (entrees) socket.emit('casino_position', { ecran: position });
   }, [position, entrees]);
@@ -1705,7 +1719,7 @@ export default function Casino({
       window.setTimeout(() => setInfo(null), 4000);
       return;
     }
-    setEcran(p.ecran === 'machine' ? 'machine' : p.ecran === 'nuits' ? 'nuits' : p.ecran === 'folleNuit' ? 'folleNuit' : p.ecran === 'coffres' ? 'festin' : p.ecran === 'couronne' ? 'couronne' : p.ecran === 'chute' ? 'chute' : p.ecran === 'course' ? 'course' : 'salon');
+    setEcran(p.ecran === 'machine' ? 'machine' : p.ecran === 'nuits' ? 'nuits' : p.ecran === 'folleNuit' ? 'folleNuit' : p.ecran === 'coffres' ? 'festin' : p.ecran === 'couronne' ? 'couronne' : p.ecran === 'chute' ? 'chute' : p.ecran === 'course' ? 'course' : p.ecran === 'baronWheel' ? 'baronWheel' : 'salon');
   };
 
   const allerTable = (t: TableActive) => {
@@ -1794,6 +1808,7 @@ export default function Casino({
     );
   else if (ecran === 'chute') contenu = <JeuChute vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'course') contenu = <JeuCourse vue={vue} appel={appel} onRetour={retourSalon} />;
+  else if (ecran === 'baronWheel') contenu = <JeuBaronWheel vue={vue} appel={appel} onRetour={retourSalon} />;
   else if (ecran === 'profil')
     contenu = (
       <EcranProfil
@@ -1836,6 +1851,7 @@ export default function Casino({
         onCouronne={() => setEcran('couronne')}
         onChute={() => setEcran('chute')}
         onCourse={() => setEcran('course')}
+        onBaronWheel={() => setEcran('baronWheel')}
         onAffiche={ouvrirJeu}
         onRafraichir={rafraichirVue}
         onProfil={() => ouvrirProfil(null)}

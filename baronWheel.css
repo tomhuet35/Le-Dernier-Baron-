@@ -1,0 +1,443 @@
+/* The Baron's Wheel : la roue géante Art déco, ses jackpots, son tapis, et les scènes de ses quatre bonus. */
+
+#racine:has(.bw-ecran) { max-width: 1400px; }
+.cas-ecran.bw-ecran { width: 100%; max-width: 1240px; gap: 10px; grid-template-columns: minmax(0, 1fr); --or-bw: #d6a84b; --bordeaux-bw: #671d2b; --nuit-bw: #101b35; --ivoire-bw: #f3e7cf; }
+.bw-ecran > * { min-width: 0; }
+.bw-titre { display: flex; justify-content: center; line-height: 0; }
+.bw-titre img { height: clamp(42px, 12vw, 68px); width: auto; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7)); }
+.bw-solde { position: relative; z-index: 25; transition: color 0.3s, box-shadow 0.3s, border-color 0.3s; }
+.bw-solde.credite { color: #fff1c4; border-color: #ffcf6b; box-shadow: 0 0 16px rgba(255, 200, 110, 0.75); }
+.bw-credit { position: absolute; right: 8px; top: calc(100% + 4px); padding: 2px 10px; border-radius: 99px; background: linear-gradient(180deg, #2f7d45, #1d5530); border: 1px solid #8fd18a; font-family: var(--titre); font-weight: 400; font-size: 15px; color: #eaffe6; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); animation: bw-credit 2.6s ease-out both; pointer-events: none; }
+@keyframes bw-credit { 0% { opacity: 0; transform: translateY(8px) scale(0.8); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
+
+/* La grande ouverture */
+.bw-ouverture { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 10px; margin: 0; padding: 6px 12px; border-radius: 12px; border: 1px solid #ffcf6b; background: linear-gradient(100deg, rgba(103, 29, 43, 0.95), rgba(60, 34, 6, 0.95)); color: #fff1c4; font-size: 12.5px; text-align: center; box-shadow: 0 0 18px rgba(214, 168, 75, 0.35); }
+.bw-ouverture strong { font-family: var(--titre); font-weight: 400; font-size: 16px; color: #ffcf6b; letter-spacing: 0.04em; animation: bw-scintille 1.6s ease-in-out infinite; }
+@keyframes bw-scintille { 50% { color: #fff6dc; text-shadow: 0 0 14px rgba(255, 210, 120, 0.95); } }
+
+/* Les jackpots : quatre plaques */
+.bw-jackpots { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+.bw-jackpots::-webkit-scrollbar { display: none; }
+.bw-jackpot { position: relative; flex: 1 0 128px; max-width: 240px; line-height: 0; }
+.bw-jackpot img { width: 100%; height: auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6)); }
+.bw-jackpot span { position: absolute; inset: 24% 17%; display: flex; align-items: center; justify-content: center; gap: 0.4em; line-height: 1; text-align: center; white-space: nowrap; }
+.bw-jackpot small { font-size: clamp(9px, 2.4vw, 12px); font-weight: 900; letter-spacing: 0.22em; color: var(--ivoire-bw); opacity: 0.9; }
+.bw-jackpot strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 3.8vw, 21px); color: #ffd774; text-shadow: 0 0 10px rgba(255, 200, 100, 0.7); animation: bw-jackpot 2.4s ease-in-out infinite; }
+.bw-jackpot.minor strong { color: #e8eefb; text-shadow: 0 0 10px rgba(170, 200, 255, 0.8); animation-delay: -0.6s; }
+.bw-jackpot.major strong { color: #ffe08a; animation-delay: -1.2s; }
+.bw-jackpot.grand strong { color: #fff1c4; text-shadow: 0 0 14px rgba(255, 90, 90, 0.9); animation-delay: -1.8s; }
+.bw-jackpot.mini strong { color: #ffc28a; }
+@keyframes bw-jackpot { 50% { filter: brightness(1.35); transform: scale(1.05); } }
+
+/* Les derniers résultats, et le bouton du journal */
+.bw-ligne-historique { display: flex; align-items: center; gap: 8px; }
+.bw-historique { flex: 1; min-width: 0; list-style: none; margin: 0; padding: 2px 2px 4px; display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); min-height: 34px; }
+.bw-historique::-webkit-scrollbar { display: none; }
+.bw-historique li:first-child { animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes bw-arrive { from { opacity: 0; transform: scale(0.5); } }
+.bw-pastille { flex: none; display: inline-grid; place-items: center; min-width: 42px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1.5px solid var(--or-bw); background: var(--fond); color: var(--texte); font-family: var(--titre); font-size: 13px; line-height: 1; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+.bw-pastille img { width: 26px; height: 26px; }
+.bw-pastille.dore { box-shadow: 0 0 0 2px #fff1c4, 0 0 12px rgba(255, 210, 120, 0.9); }
+.bw-bouton-journal { flex: none; min-height: 34px; padding: 4px 12px; border-radius: 99px; font-size: 13px; }
+
+/* La scène : le décor du casino, la roue au milieu */
+.bw-plateau { position: relative; display: grid; place-items: center; padding: 3% 3% 2%; border-radius: 18px; overflow: hidden; isolation: isolate; border: 2px solid rgba(214, 168, 75, 0.6); background: #090909 url('/cartes/bw-decor.webp') center / cover; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7); min-height: 260px; }
+.bw-ecran.en-bonus .bw-plateau { padding: 0; }
+.bw-direct { position: absolute; left: 10px; top: 10px; z-index: 40; display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 7px; border-radius: 99px; background: #b3261c; color: #fff3df; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6); }
+.bw-direct::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #fff3df; animation: bw-pouls 1.2s ease-in-out infinite; }
+@keyframes bw-pouls { 50% { opacity: 0.25; } }
+
+/* La roue : le disque (40 cases) tourne sous le cerclage, le centre et l'aiguille, qui restent fixes. */
+.bw-roue { position: relative; width: min(100%, 560px, calc(100vh - 250px)); min-width: 240px; aspect-ratio: 1; }
+.bw-roue-halo { position: absolute; inset: 6%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 200, 110, 0.35), transparent 75%); filter: blur(6px); }
+.bw-roue.tour .bw-roue-halo { animation: bw-halo 0.6s ease-in-out infinite alternate; }
+@keyframes bw-halo { to { opacity: 0.55; } }
+.bw-disque { position: absolute; left: 13.2%; top: 13.2%; width: 73.6%; height: 73.6%; will-change: transform; }
+.bw-disque svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.bw-reflet { fill: none; stroke: rgba(255, 240, 200, 0.16); stroke-width: 2; }
+.bw-filet { stroke: var(--or-bw); stroke-width: 2.6; }
+.bw-anneau { fill: #120a06; stroke: var(--or-bw); stroke-width: 5; }
+.bw-chiffre { font-family: var(--titre); font-size: 33px; font-weight: 400; letter-spacing: 0.02em; paint-order: stroke; stroke: rgba(0, 0, 0, 0.35); stroke-width: 2px; }
+.bw-chiffre.x5, .bw-chiffre.x10 { stroke: rgba(255, 255, 255, 0.25); }
+.bw-dore path { fill: rgba(255, 215, 110, 0.28); stroke: #fff1c4; stroke-width: 5; animation: bw-dore 1s ease-in-out infinite alternate; }
+.bw-dore text { font-family: var(--titre); font-size: 34px; fill: #fff1c4; paint-order: stroke; stroke: #4a2200; stroke-width: 7px; }
+@keyframes bw-dore { to { fill: rgba(255, 215, 110, 0.55); } }
+.bw-gagnante { fill: rgba(255, 245, 210, 0.2); stroke: #fff6dc; stroke-width: 7; animation: bw-gagnante 0.5s ease-in-out infinite alternate; }
+@keyframes bw-gagnante { to { fill: rgba(255, 245, 210, 0.45); } }
+.bw-cerclage { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; pointer-events: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6)); }
+.bw-centre { position: absolute; left: 36.5%; top: 35.25%; width: 27%; height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6)); }
+.bw-aiguille { position: absolute; left: 46.25%; top: -1.5%; width: 7.5%; height: auto; max-width: none; z-index: 3; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); transform-origin: 50% 20%; }
+.bw-roue.tour .bw-aiguille { animation: bw-aiguille 0.09s ease-in-out infinite alternate; }
+@keyframes bw-aiguille { to { transform: rotate(-4deg); } }
+
+/* Le statut, le bilan de la manche */
+.bw-statut { display: grid; justify-items: center; gap: 5px; min-height: 30px; text-align: center; }
+.bw-statut strong { font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 4.4vw, 22px); color: var(--or-vif); }
+.bw-statut-resultat { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; }
+.bw-statut-resultat em { font-family: system-ui, sans-serif; font-style: normal; font-size: 12px; font-weight: 900; padding: 2px 8px; border-radius: 99px; background: #ffcf6b; color: #3a1810; }
+.bw-barre { display: block; width: min(240px, 60%); height: 6px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, 0.15); }
+.bw-barre i { display: block; height: 100%; background: linear-gradient(90deg, var(--or-bw), #fff1c4); transform-origin: left; animation: bw-barre linear forwards; }
+@keyframes bw-barre { from { transform: scaleX(var(--part, 1)); } to { transform: scaleX(0); } }
+.bw-bilan { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 8px; border-radius: 14px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.92); text-align: center; font-family: var(--titre); font-size: clamp(13px, 3.6vw, 17px); color: var(--creme); animation: bw-arrive 0.4s ease-out; }
+.bw-bilan span { display: grid; gap: 2px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bw-bilan small { font-family: system-ui, sans-serif; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--creme-doux); }
+.bw-bilan.gagne { border-color: #8fd18a; box-shadow: 0 0 16px rgba(143, 209, 138, 0.35); }
+.bw-bilan.gagne span:nth-child(3) { color: #b8f0b4; }
+.bw-bilan.perdu span:nth-child(3) { color: #ff9a8a; }
+
+/* Le tapis : huit cases */
+.bw-commandes { display: grid; gap: 10px; padding: 10px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.92); align-content: start; }
+.bw-tapis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.bw-case { position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 80px; padding: 6px 3px; border-radius: 12px; border: 2px solid var(--or-bw); background: var(--fond); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.28)); color: var(--texte); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.45); transition: transform 0.12s, box-shadow 0.2s; }
+.bw-case strong { font-family: var(--titre); font-weight: 400; font-size: clamp(19px, 5.4vw, 27px); line-height: 1; }
+.bw-case > img { width: clamp(38px, 11vw, 54px); height: auto; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
+.bw-case-nom { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(9px, 2.5vw, 11px); font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; }
+.bw-case:active:not(:disabled) { transform: scale(0.95); }
+.bw-case:disabled { opacity: 1; cursor: default; filter: saturate(0.8) brightness(0.88); }
+.bw-case.misee { box-shadow: 0 0 0 2px #fff1c4, 0 0 14px rgba(255, 210, 120, 0.6); }
+.bw-case.gagnante { filter: none; box-shadow: 0 0 0 3px #fff6dc, 0 0 24px rgba(255, 220, 140, 0.9); animation: bw-case-gagne 0.6s ease-in-out infinite alternate; }
+@keyframes bw-case-gagne { to { transform: scale(1.04); } }
+.bw-case-mise { position: absolute; right: -4px; top: -6px; display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px 1px 1px; border-radius: 99px; background: rgba(10, 6, 4, 0.92); border: 1px solid #ffcf6b; font-size: 11px; font-weight: 900; color: #fff1c4; font-variant-numeric: tabular-nums; }
+.bw-case-mise img { width: 18px; height: 18px; }
+.bw-case-dore { position: absolute; left: -4px; top: -6px; padding: 0 6px; border-radius: 99px; background: linear-gradient(180deg, #fff1c4, #d6a84b); color: #3a1810; font-family: var(--titre); font-size: 12px; line-height: 1.5; box-shadow: 0 0 10px rgba(255, 215, 110, 0.9); }
+.bw-mise { text-align: center; }
+.bw-mise small { display: block; margin-top: 2px; color: var(--creme-doux); font-size: 11.5px; }
+.bw-commandes .bj-jetons { flex-wrap: wrap; }
+
+/* Cette manche */
+.bw-joueurs { display: grid; gap: 8px; align-content: start; padding: 12px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.9); }
+.bw-joueurs h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: 18px; color: var(--or-vif); }
+.bw-joueurs h2 small { font-family: system-ui, sans-serif; font-size: 12px; color: var(--creme-doux); }
+.bw-joueurs ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.bw-joueurs li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; grid-template-areas: 'av nom res' 'av mise res'; align-items: center; column-gap: 8px; padding: 5px 8px; border-radius: 10px; border: 1px solid rgba(231, 194, 122, 0.18); background: rgba(10, 6, 4, 0.55); font-size: 13px; }
+.bw-joueurs li img { grid-area: av; width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.bw-joueur-nom { grid-area: nom; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--creme); font-weight: 700; }
+.bw-joueur-mise { grid-area: mise; font-size: 11.5px; color: var(--creme-doux); }
+.bw-joueurs li strong { grid-area: res; display: grid; justify-items: end; font-size: 12.5px; color: var(--creme-doux); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bw-joueurs li strong em { font-style: normal; font-size: 10px; font-weight: 900; letter-spacing: 0.1em; color: #ffcf6b; }
+.bw-joueurs li.gagne { border-color: rgba(143, 209, 138, 0.55); background: rgba(29, 85, 48, 0.35); }
+.bw-joueurs li.gagne strong { color: #b8f0b4; font-family: var(--titre); font-weight: 400; font-size: 14px; }
+.bw-joueurs li.moi { box-shadow: inset 0 0 0 1px var(--or-vif); }
+
+/* Le journal (historique et statistiques) */
+.bw-fenetre { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.72); }
+.bw-fenetre-boite { width: min(560px, 100%); max-height: min(86vh, 760px); overflow-y: auto; display: grid; gap: 10px; align-content: start; padding: 14px; border-radius: 18px; border: 2px solid var(--or-bw); background: linear-gradient(180deg, #1b1310, #0d0907); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); }
+.bw-fenetre-boite header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bw-fenetre-boite h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: 19px; color: var(--or-vif); }
+.bw-fenetre-boite h3 { margin: 4px 0 0; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--creme-doux); }
+.bw-fenetre-boite header button { width: 36px; min-height: 36px; padding: 0; border-radius: 50%; }
+.bw-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
+.bw-stats div { display: grid; gap: 2px; padding: 7px 8px; border-radius: 10px; background: rgba(10, 6, 4, 0.6); border: 1px solid rgba(231, 194, 122, 0.2); }
+.bw-stats small { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--creme-doux); }
+.bw-stats small .bw-pastille { min-width: 0; width: 22px; height: 22px; padding: 0; border-radius: 6px; }
+.bw-stats small .bw-pastille img { width: 18px; height: 18px; }
+.bw-stats strong { font-family: var(--titre); font-weight: 400; font-size: 17px; color: var(--creme); font-variant-numeric: tabular-nums; }
+.plus { color: #b8f0b4 !important; }
+.moins { color: #ff9a8a !important; }
+.bw-journal { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.bw-journal li { display: grid; grid-template-columns: 42px auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 9px; background: rgba(10, 6, 4, 0.55); font-size: 12.5px; color: var(--creme-doux); }
+.bw-journal li strong { font-variant-numeric: tabular-nums; text-align: right; }
+.bw-journal li strong em { margin-left: 4px; font-style: normal; font-size: 10px; color: #ffcf6b; }
+.bw-journal-solde { grid-column: 3 / 5; justify-self: end; font-size: 11px; opacity: 0.75; }
+.bw-journal .bw-pastille { min-width: 46px; height: 26px; font-size: 12px; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   Les bonus : une scène qui prend la place de la roue */
+.bw-bonus { position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 300px; overflow: hidden; }
+.bw-scene { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.bw-bonus-titre { position: absolute; left: 50%; top: 10px; z-index: 30; display: inline-flex; align-items: center; gap: 8px; padding: 4px 16px 4px 5px; border-radius: 99px; border: 2px solid var(--or-bw); background: linear-gradient(180deg, rgba(103, 29, 43, 0.96), rgba(40, 10, 16, 0.96)); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6); transform: translateX(-50%); white-space: nowrap; animation: bw-titre 0.6s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.bw-bonus-titre img { width: 34px; height: 34px; }
+.bw-bonus-titre strong { font-family: var(--titre); font-weight: 400; font-size: clamp(15px, 4vw, 22px); color: #ffd774; }
+@keyframes bw-titre { from { opacity: 0; transform: translateX(-50%) scale(0.6); } }
+.bw-bonus-consigne { position: absolute; left: 50%; bottom: 10px; z-index: 30; pointer-events: none; display: grid; justify-items: center; gap: 4px; width: max-content; max-width: 94%; padding: 6px 14px 8px; border-radius: 14px; background: rgba(8, 6, 14, 0.82); border: 1px solid rgba(214, 168, 75, 0.55); transform: translateX(-50%); text-align: center; color: #fff1c4; font-weight: 800; font-size: clamp(12.5px, 3.4vw, 15px); }
+.bw-bonus-consigne small { font-weight: 600; font-size: 11.5px; color: var(--creme-doux); }
+.bw-bonus-consigne .bw-barre { width: 200px; max-width: 100%; }
+.bw-bonus-resultat { position: absolute; left: 50%; bottom: 10px; z-index: 35; display: grid; justify-items: center; gap: 2px; padding: 8px 20px 10px; border-radius: 16px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(70, 46, 10, 0.97), rgba(22, 12, 4, 0.97)); box-shadow: 0 0 30px rgba(255, 200, 110, 0.5), 0 14px 30px rgba(0, 0, 0, 0.7); transform: translateX(-50%); text-align: center; white-space: nowrap; animation: bw-resultat 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+@keyframes bw-resultat { from { opacity: 0; transform: translateX(-50%) scale(0.5); } }
+.bw-bonus-resultat small { font-size: 11px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: #ffcf6b; }
+.bw-bonus-resultat strong { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 5.4vw, 30px); color: #fff1c4; text-shadow: 0 0 16px rgba(255, 200, 110, 0.8); }
+.bw-bonus-resultat.perdu { border-color: rgba(255, 154, 138, 0.7); background: rgba(40, 10, 8, 0.95); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.7); }
+.bw-bonus-resultat.perdu strong { color: #ffd0c4; text-shadow: none; font-size: clamp(15px, 4.4vw, 22px); }
+.bw-bonus-resultat.jackpot img { width: 180px; margin-top: -4px; }
+.bw-bonus-resultat.spectateur { font-size: 12.5px; color: var(--creme); font-weight: 700; border-color: rgba(214, 168, 75, 0.5); background: rgba(8, 6, 14, 0.88); box-shadow: none; }
+.bw-nb-choix { position: absolute; right: -6px; top: -6px; z-index: 3; min-width: 22px; padding: 0 6px; border-radius: 99px; background: rgba(8, 6, 14, 0.9); border: 1px solid var(--or-bw); color: #fff1c4; font-style: normal; font-size: 11px; font-weight: 900; line-height: 1.6; }
+.bw-scene button { background: none; border: none; padding: 0; min-height: 0; }
+.bw-scene button:disabled { opacity: 1; cursor: default; }
+
+/* LE CHOIX DU BARON */
+.bw-baron { background-image: url('/cartes/bw-scene-baron.webp'); }
+.bw-rideaux { position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
+.bw-rideaux img { position: absolute; top: 0; width: 52%; height: 100%; max-width: none; object-fit: cover; }
+.bw-rideaux .gauche { left: 0; transform: translateX(-100%); }
+.bw-rideaux .droite { right: 0; transform: translateX(100%) scaleX(-1); }
+.bw-baron.intro .gauche { animation: bw-rideau-g 4.2s ease-in-out both; }
+.bw-baron.intro .droite { animation: bw-rideau-d 4.2s ease-in-out both; }
+@keyframes bw-rideau-g { 0%, 25% { transform: none; } 70%, 100% { transform: translateX(-100%); } }
+@keyframes bw-rideau-d { 0%, 25% { transform: scaleX(-1); } 70%, 100% { transform: translateX(100%) scaleX(-1); } }
+.bw-perso-baron { position: absolute; right: 1%; bottom: 0; z-index: 4; height: 86%; width: auto; max-width: none; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.7)); }
+.bw-baron.intro .bw-perso-baron { animation: bw-entree-droite 1.4s cubic-bezier(0.2, 0.9, 0.3, 1) 1.6s both; }
+@keyframes bw-entree-droite { from { opacity: 0; transform: translateX(60%); } }
+.bw-cartes { position: absolute; left: 3%; right: 30%; top: 17%; bottom: 25%; z-index: 6; display: flex; justify-content: center; align-items: center; gap: 4%; }
+.bw-baron.intro .bw-cartes { opacity: 0; }
+.bw-baron.cartes .bw-carte { animation: bw-carte-arrive 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.bw-baron.cartes .bw-carte:nth-child(2) { animation-delay: 0.12s; }
+.bw-baron.cartes .bw-carte:nth-child(3) { animation-delay: 0.24s; }
+@keyframes bw-carte-arrive { from { opacity: 0; transform: translateY(-40%) rotate(-12deg) scale(0.6); } }
+.bw-carte { position: relative; width: 29%; max-height: 100%; aspect-ratio: 400 / 587; perspective: 900px; transition: transform 0.3s; }
+.bw-carte-dos, .bw-carte-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; transition: transform 0.8s cubic-bezier(0.4, 0.2, 0.2, 1) var(--retard, 0ms); filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6)); }
+.bw-carte-dos img, .bw-carte-face img { width: 100%; height: 100%; }
+.bw-carte-face { transform: rotateY(180deg); }
+.bw-carte.retournee .bw-carte-dos { transform: rotateY(-180deg); }
+.bw-carte.retournee .bw-carte-face { transform: rotateY(0deg); }
+.bw-carte-face b { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 2px; font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 44px); color: var(--bordeaux-bw); }
+.bw-carte-face b small { font-family: system-ui, sans-serif; font-size: clamp(8px, 2vw, 12px); font-weight: 900; letter-spacing: 0.14em; color: #8a5a10; }
+.bw-carte.jackpot .bw-carte-face { filter: drop-shadow(0 0 18px rgba(255, 215, 110, 0.95)); }
+.bw-carte:not(:disabled):hover { transform: translateY(-4%); }
+.bw-carte.choisie { transform: translateY(-6%) scale(1.06); z-index: 2; }
+.bw-carte.choisie .bw-carte-dos, .bw-carte.choisie .bw-carte-face { filter: drop-shadow(0 0 16px rgba(255, 215, 110, 0.95)) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6)); }
+.bw-baron.revele .bw-carte:not(.choisie) .bw-carte-face { filter: brightness(0.72) saturate(0.8) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6)); }
+
+/* LE PICKPOCKET */
+.bw-pick { background-image: url('/cartes/bw-scene-pickpocket.webp'); }
+.bw-perso-pick { position: absolute; left: 1%; bottom: 0; z-index: 4; height: 86%; width: auto; max-width: none; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.7)); }
+.bw-pick.intro .bw-perso-pick { animation: bw-entree-gauche 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) 0.4s both; }
+@keyframes bw-entree-gauche { from { opacity: 0; transform: translateX(-60%); } }
+.bw-butin { position: absolute; left: 60%; top: 20%; z-index: 12; display: grid; justify-items: center; padding: 6px 18px 8px; border-radius: 16px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(70, 46, 10, 0.97), rgba(22, 12, 4, 0.97)); transform: translateX(-50%); box-shadow: 0 0 30px rgba(255, 200, 110, 0.6); }
+.bw-butin small { font-size: 11px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: #ffcf6b; }
+.bw-butin strong { font-family: var(--titre); font-weight: 400; font-size: clamp(28px, 8vw, 54px); line-height: 1; color: #fff1c4; text-shadow: 0 0 18px rgba(255, 200, 110, 0.9); }
+.bw-pick.vol .bw-butin { animation: bw-butin 6.2s ease-in-out both; }
+@keyframes bw-butin { 0% { opacity: 0; transform: translateX(-50%) scale(0.3); } 10%, 40% { opacity: 1; transform: translateX(-50%) scale(1); } 60%, 100% { opacity: 0; transform: translateX(-50%) translateY(140%) scale(0.2); } }
+.bw-pick.mallettes .bw-butin { display: none; }
+.bw-mallettes { position: absolute; left: 24%; right: 3%; bottom: 20%; z-index: 8; display: flex; justify-content: center; align-items: flex-end; gap: 3%; }
+.bw-mallette { position: relative; width: 31%; transition: transform 0.3s; }
+.bw-mallette img { width: 100%; height: auto; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.7)); }
+.bw-mallette b { position: absolute; left: 50%; top: -6%; transform: translate(-50%, -100%); font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 5vw, 34px); color: #fff1c4; text-shadow: 0 0 14px rgba(255, 200, 110, 0.9), 0 3px 8px #000; white-space: nowrap; animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bw-mallette b small { font-family: system-ui, sans-serif; display: block; width: max-content; margin: 0 auto 4px; padding: 1px 8px; border-radius: 99px; background: #ffcf6b; color: #3a1810; font-size: 10px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.bw-mallette.butin img { filter: drop-shadow(0 0 20px rgba(255, 215, 110, 1)) drop-shadow(0 10px 14px rgba(0, 0, 0, 0.7)); }
+.bw-mallette:not(:disabled):hover { transform: translateY(-5%); }
+.bw-mallette.choisie { transform: translateY(-8%) scale(1.06); }
+.bw-mallette.choisie img { filter: drop-shadow(0 0 16px rgba(255, 215, 110, 0.95)) drop-shadow(0 10px 14px rgba(0, 0, 0, 0.7)); }
+.bw-pick.intro .bw-mallettes { opacity: 0; }
+/* Le mélange : derrière la fumée, les mallettes changent de place (le même ballet pour tout le salon : il ne dit rien). */
+.bw-mallettes.melange .bw-mallette { animation: bw-melange 0.9s ease-in-out 2.2s 4 alternate both; }
+.bw-mallettes.melange .bw-mallette:nth-child(1) { --dx: 105%; }
+.bw-mallettes.melange .bw-mallette:nth-child(2) { --dx: -105%; animation-delay: 2.35s; }
+.bw-mallettes.melange .bw-mallette:nth-child(3) { --dx: -210%; animation-delay: 2.5s; }
+@keyframes bw-melange { 50% { transform: translateX(calc(var(--dx) / 2)) translateY(-12%) rotate(-4deg); } 100% { transform: translateX(var(--dx)); } }
+.bw-fumee { position: absolute; inset: -20% -6%; z-index: 9; pointer-events: none; background: radial-gradient(closest-side at 20% 60%, rgba(220, 210, 200, 0.85), transparent), radial-gradient(closest-side at 50% 45%, rgba(230, 220, 210, 0.9), transparent), radial-gradient(closest-side at 80% 60%, rgba(220, 210, 200, 0.85), transparent); filter: blur(10px); animation: bw-fumee 6.2s ease-in-out both; }
+@keyframes bw-fumee { 0%, 25% { opacity: 0; transform: scale(0.6); } 38%, 78% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.2); } }
+
+/* LA GRANDE ÉVASION */
+.bw-evasion { background: #05060c url('/cartes/bw-depart.webp') center / cover; }
+.bw-depart, .bw-defile { position: absolute; inset: 0; overflow: hidden; }
+.bw-voiture { position: absolute; bottom: 5%; z-index: 6; line-height: 0; }
+.bw-voiture img { width: 100%; height: auto; filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.7)); }
+.bw-voiture.baron { left: 46%; width: 46%; }
+.bw-voiture.police { left: -6%; width: 40%; z-index: 5; }
+.bw-gyro { position: absolute; left: 39%; top: 2%; width: 9%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(120, 170, 255, 1), rgba(60, 110, 255, 0.4) 45%, transparent 70%); transform: scale(2.4); animation: bw-gyro 0.45s steps(2) infinite; }
+@keyframes bw-gyro { 50% { opacity: 0.1; } }
+.bw-evasion.intro .bw-voiture.baron { animation: bw-entree-gauche 1.6s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s both; }
+.bw-evasion.intro .bw-voiture.police { animation: bw-police-arrive 1.6s ease-out 2.2s both; }
+@keyframes bw-police-arrive { from { transform: translateX(-110%); } }
+.bw-routes { position: absolute; left: 4%; right: 4%; top: 18%; z-index: 12; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5%; }
+.bw-scene .bw-route { position: relative; display: grid; gap: 3px; justify-items: center; padding: 6px 6px 10px; border-radius: 14px; border: 2px solid var(--or-bw); background: rgba(8, 6, 14, 0.9); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.6); text-align: center; transition: transform 0.2s; animation: bw-carte-arrive 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.bw-route:nth-child(2) { animation-delay: 0.1s; }
+.bw-route:nth-child(3) { animation-delay: 0.2s; }
+.bw-route-vignette { width: 100%; aspect-ratio: 16 / 7; border-radius: 9px; background-size: auto 100%; background-position: 20% 50%; }
+.bw-route strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 3.6vw, 20px); color: #ffd774; }
+.bw-route small { font-size: clamp(10px, 2.6vw, 12px); color: var(--creme-doux); }
+.bw-route em { font-style: normal; font-family: var(--titre); font-size: clamp(14px, 3.6vw, 19px); color: #fff1c4; }
+.bw-route.ruelles { border-color: #e7a04a; }
+.bw-route.souterrains { border-color: #ff7a6b; }
+.bw-route:not(:disabled):hover { transform: translateY(-4px); }
+.bw-route.choisie { box-shadow: 0 0 0 3px #fff1c4, 0 0 22px rgba(255, 215, 110, 0.8); transform: translateY(-4px); }
+/* La poursuite : la rue défile, les voitures restent à leur place (le Baron rebondit, la police gagne ou perd du terrain). */
+.bw-route-fond { position: absolute; top: 0; bottom: 0; left: 0; display: flex; animation: bw-defile 3.2s linear infinite; }
+.bw-route-fond img { height: 100%; width: auto; max-width: none; flex: none; }
+@keyframes bw-defile { to { transform: translateX(-50%); } }
+.bw-evasion.revele .bw-route-fond { animation-duration: 9s; }
+.bw-defile .bw-voiture.baron { left: 50%; width: 44%; animation: bw-rebond 0.38s ease-in-out infinite alternate; }
+.bw-defile .bw-voiture.police { left: -4%; width: 38%; animation: bw-rebond 0.33s ease-in-out infinite alternate; }
+@keyframes bw-rebond { to { transform: translateY(-3%) rotate(-0.8deg); } }
+.bw-evasion.poursuite.evade .bw-defile .bw-voiture.police { animation: bw-rebond 0.33s ease-in-out infinite alternate, bw-police-perd var(--duree) ease-in forwards; }
+.bw-evasion.poursuite.arrete .bw-defile .bw-voiture.police { animation: bw-rebond 0.33s ease-in-out infinite alternate, bw-police-gagne var(--duree) ease-in-out forwards; }
+.bw-evasion.poursuite.arrete .bw-defile .bw-voiture.baron { animation: bw-rebond 0.38s ease-in-out infinite alternate, bw-baron-ralentit var(--duree) ease-in forwards; }
+@keyframes bw-police-perd { 0%, 55% { left: -4%; } 100% { left: -45%; } }
+@keyframes bw-police-gagne { 0%, 40% { left: -4%; } 100% { left: 26%; } }
+@keyframes bw-baron-ralentit { 0%, 60% { left: 50%; } 100% { left: 58%; } }
+.bw-evasion.revele.evade .bw-defile .bw-voiture.police { left: -45%; }
+.bw-evasion.revele.arrete .bw-route-fond { animation-play-state: paused; }
+.bw-evasion.revele.arrete .bw-defile .bw-voiture { animation: none; }
+.bw-evasion.revele.arrete .bw-defile .bw-voiture.police { left: 26%; }
+.bw-evasion.revele.arrete .bw-defile .bw-voiture.baron { left: 58%; }
+.bw-obstacle { position: absolute; bottom: 4%; z-index: 7; height: 28%; width: auto; max-width: none; left: 110%; filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.6)); }
+.bw-evasion.poursuite .bw-obstacle { animation: bw-obstacle 2.6s linear both; }
+.bw-obstacle.o1 { animation-delay: 0.6s !important; }
+.bw-obstacle.o2 { animation-delay: 2.6s !important; height: 30%; }
+.bw-obstacle.o3 { animation-delay: 4.6s !important; }
+.bw-obstacle.o4 { animation-delay: 6.4s !important; height: 40%; }
+@keyframes bw-obstacle { to { left: -40%; } }
+.bw-fumee-pot { position: absolute; left: -6%; bottom: 14%; width: 22%; aspect-ratio: 1.4; border-radius: 50%; background: radial-gradient(closest-side, rgba(200, 200, 200, 0.75), transparent); filter: blur(4px); opacity: 0; }
+.bw-defile .bw-fumee-pot { animation: bw-pot 0.7s ease-out infinite; }
+@keyframes bw-pot { 0% { opacity: 0.8; transform: translateX(0) scale(0.4); } 100% { opacity: 0; transform: translateX(-80%) scale(1.3); } }
+.bw-issue { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
+.bw-issue img { position: absolute; left: 3%; bottom: 0; height: 88%; width: auto; max-width: none; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.8)); animation: bw-entree-gauche 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.bw-issue.arrete::before { content: ''; position: absolute; inset: 0; background: rgba(10, 20, 70, 0.35); animation: bw-gyro 0.5s steps(2) 6; }
+.bw-routes-bilan { position: absolute; right: 2%; top: 56px; z-index: 16; list-style: none; margin: 0; padding: 6px; display: grid; gap: 4px; border-radius: 12px; background: rgba(8, 6, 14, 0.88); border: 1px solid rgba(214, 168, 75, 0.55); font-size: 12px; }
+.bw-routes-bilan li { display: flex; justify-content: space-between; gap: 10px; padding: 2px 8px; border-radius: 8px; color: var(--creme-doux); }
+.bw-routes-bilan li strong { font-family: var(--titre); font-weight: 400; font-size: 14px; }
+.bw-routes-bilan li.evade strong { color: #b8f0b4; }
+.bw-routes-bilan li.arrete strong { color: #ff9a8a; }
+.bw-routes-bilan li.mien { background: rgba(214, 168, 75, 0.2); box-shadow: inset 0 0 0 1px #ffcf6b; }
+
+/* LE BRAQUAGE */
+.bw-braquage { background-image: url('/cartes/bw-salle-coffres.webp'); }
+.bw-porte { position: absolute; left: 50%; top: 52%; z-index: 4; height: 70%; width: auto; max-width: none; transform: translate(-50%, -50%); filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.7)); transition: transform 1.4s cubic-bezier(0.5, 0, 0.3, 1), opacity 1.4s; }
+.bw-braquage.intro .bw-porte { animation: bw-arrive 0.9s ease-out both; }
+.bw-porte.ouverte { transform: translate(-150%, -50%) perspective(900px) rotateY(68deg) scale(0.92); opacity: 0.35; }
+.bw-braquage.codeRevele .bw-porte, .bw-braquage.mecaRevele .bw-porte { animation: bw-porte-tremble 0.5s ease-in-out 2; }
+@keyframes bw-porte-tremble { 25% { transform: translate(-50%, -50%) rotate(-2deg); } 75% { transform: translate(-50%, -50%) rotate(2deg); } }
+.bw-codes { position: absolute; left: 50%; bottom: 18%; z-index: 10; display: flex; gap: 10px; transform: translateX(-50%); }
+.bw-scene .bw-code { display: grid; gap: 2px; justify-items: center; min-width: 124px; padding: 8px 12px; border-radius: 10px; border: 2px solid #b8862e; background: linear-gradient(180deg, #fbe7b0, #c99a44 55%, #8a6220); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 16px rgba(0, 0, 0, 0.6); color: #2a1606; animation: bw-carte-arrive 0.5s ease-out both; }
+.bw-code:nth-child(2) { animation-delay: 0.1s; }
+.bw-code:nth-child(3) { animation-delay: 0.2s; }
+.bw-code strong { font-family: 'Courier New', monospace; font-size: clamp(14px, 3.4vw, 19px); font-weight: 900; letter-spacing: 0.04em; white-space: nowrap; }
+.bw-code small { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; }
+.bw-code.x2 { box-shadow: 0 0 0 3px #fff1c4, 0 0 20px rgba(255, 215, 110, 0.9); }
+.bw-code.x1 { filter: saturate(0.5) brightness(0.85); }
+.bw-code.choisie { outline: 3px solid #fff; outline-offset: 2px; }
+.bw-cadran-bloc { position: absolute; left: 50%; top: 13%; height: 62%; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 6px; transform: translateX(-50%); }
+.bw-repere { flex: none; font-size: 26px; line-height: 1; color: #ff5a4a; text-shadow: 0 2px 6px #000; margin-bottom: -12px; z-index: 2; }
+.bw-cadran { position: relative; flex: none; height: calc(100% - 66px); aspect-ratio: 1; will-change: transform; cursor: pointer; }
+.bw-cadran img { position: absolute; inset: 16%; width: 68%; height: 68%; max-width: none; }
+.bw-cadran svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bw-zone { stroke: #d6a84b; stroke-width: 1.2; }
+.bw-zone.cachee { fill: rgba(70, 18, 28, 0.92); }
+.bw-zone.cachee:nth-of-type(odd) { fill: rgba(30, 14, 10, 0.92); }
+.bw-zone.x1 { fill: #5b4a3a; }
+.bw-zone.x2 { fill: #c99a44; }
+.bw-zone.x3 { fill: #c4222c; }
+.bw-zone.mienne { stroke: #fff; stroke-width: 3; }
+.bw-cadran svg text { font-family: var(--titre); font-size: 15px; fill: #fff1c4; }
+.bw-scene .bw-arreter { flex: none; min-height: 44px; padding: 6px 18px; border-radius: 99px; border: 2px solid #fff1c4; background: radial-gradient(120% 140% at 50% 0%, #ffe9a8, #e9ad5b 50%, #a8742a); color: #1b120c; font-weight: 900; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6); }
+.bw-scene .bw-arreter:disabled { filter: grayscale(0.6); }
+.bw-compartiments { position: absolute; left: 50%; top: 53%; z-index: 10; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3%; width: min(60%, 460px); transform: translate(-50%, -50%); }
+.bw-compartiment { position: relative; transition: transform 0.25s; animation: bw-carte-arrive 0.6s ease-out both; }
+.bw-compartiment:nth-child(2) { animation-delay: 0.1s; }
+.bw-compartiment:nth-child(3) { animation-delay: 0.2s; }
+.bw-compartiment:nth-child(4) { animation-delay: 0.3s; }
+.bw-compartiment img { width: 100%; height: auto; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.7)); }
+.bw-compartiment b { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 2px 10px; border-radius: 10px; background: rgba(10, 6, 4, 0.82); border: 1px solid #ffcf6b; font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 4.4vw, 26px); color: #fff1c4; white-space: nowrap; animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bw-compartiment.jackpot b { background: linear-gradient(180deg, #ffe08a, #b3261c); color: #fff; }
+.bw-compartiment:not(:disabled):hover { transform: translateY(-4%); }
+.bw-compartiment.choisie { transform: scale(1.06); }
+.bw-compartiment.choisie img { filter: drop-shadow(0 0 16px rgba(255, 215, 110, 0.95)) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.7)); }
+.bw-serrures { position: absolute; left: 10px; top: 54px; z-index: 16; list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.bw-serrures li { padding: 2px 10px; border-radius: 99px; background: rgba(8, 6, 14, 0.85); border: 1px solid rgba(214, 168, 75, 0.4); font-size: 11.5px; font-weight: 800; color: var(--creme-doux); }
+.bw-serrures li.en-cours { border-color: #ffcf6b; color: #fff1c4; animation: bw-scintille 1.4s ease-in-out infinite; }
+.bw-serrures li.faite { border-color: #8fd18a; color: #b8f0b4; }
+.bw-serrures li b { color: #ffcf6b; }
+
+/* La fête d'un jackpot */
+.bw-fete { position: fixed; inset: 0; z-index: 85; display: grid; place-content: center; justify-items: center; gap: 4px; background: radial-gradient(circle, rgba(60, 30, 4, 0.85), rgba(0, 0, 0, 0.92)); text-align: center; animation: bw-fete 5.2s ease-out both; }
+@keyframes bw-fete { 0% { opacity: 0; } 8%, 85% { opacity: 1; } 100% { opacity: 0; } }
+.bw-fete-rayons { position: absolute; inset: -50%; background: repeating-conic-gradient(rgba(255, 215, 110, 0.18) 0 10deg, transparent 10deg 20deg); animation: bw-rayons 9s linear infinite; }
+@keyframes bw-rayons { to { transform: rotate(360deg); } }
+.bw-fete-plaque { position: relative; display: grid; place-items: center; width: min(86vw, 520px); animation: bw-resultat-fixe 0.8s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.bw-fete-plaque img { width: 100%; height: auto; }
+.bw-fete-plaque strong { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 2%; font-size: clamp(30px, 9vw, 60px) !important; }
+@keyframes bw-resultat-fixe { from { opacity: 0; transform: scale(0.4); } }
+.bw-fete small { position: relative; font-size: 14px; font-weight: 900; letter-spacing: 0.4em; color: #ffcf6b; }
+.bw-fete strong { font-family: var(--titre); font-weight: 400; font-size: clamp(44px, 14vw, 96px); line-height: 1; color: #fff1c4; text-shadow: 0 0 30px rgba(255, 200, 110, 1); }
+.bw-fete b { position: relative; font-family: var(--titre); font-weight: 400; font-size: clamp(24px, 7vw, 46px); color: #b8f0b4; text-shadow: 0 0 18px rgba(120, 220, 120, 0.7); }
+
+/* Le bandeau de la grande ouverture (dans le salon) */
+.bw-bandeau-ouverture { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border-radius: 16px; border: 2px solid var(--or-bw, #d6a84b); background: radial-gradient(120% 160% at 0% 0%, rgba(103, 29, 43, 0.97), rgba(16, 27, 53, 0.97)); box-shadow: 0 0 26px rgba(214, 168, 75, 0.35), 0 12px 24px rgba(0, 0, 0, 0.55); text-align: left; color: #f3e7cf; animation: bw-bandeau 2.8s ease-in-out infinite; }
+@keyframes bw-bandeau { 50% { box-shadow: 0 0 40px rgba(255, 210, 120, 0.6), 0 12px 24px rgba(0, 0, 0, 0.55); } }
+.bw-bandeau-ouverture img { width: clamp(96px, 26vw, 170px); height: auto; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7)); }
+.bw-bandeau-ouverture span { display: grid; gap: 2px; min-width: 0; }
+.bw-bandeau-ouverture em { justify-self: start; padding: 1px 10px; border-radius: 99px; background: linear-gradient(90deg, #ffe08a, #d6a84b); color: #3a1810; font-style: normal; font-size: 11px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.bw-bandeau-ouverture strong { font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 4.4vw, 22px); color: #ffd774; }
+.bw-bandeau-ouverture small { font-size: clamp(11px, 3vw, 13px); color: var(--creme, #ecd9b4); }
+.bw-bandeau-ouverture i { font-style: normal; font-size: 12px; font-weight: 800; color: #ffcf6b; }
+
+/* Mise en page : sur téléphone, une colonne (les deux colonnes s'effacent, l'ordre est donné ici) ; sur grand écran,
+   la roue à gauche, les jackpots et les mises à droite. */
+.bw-gauche, .bw-droite { display: contents; }
+.bw-ecran > .cas-barre { order: 0; }
+.bw-ouverture { order: 1; }
+.bw-jackpots { order: 2; }
+.bw-ligne-historique { order: 3; }
+.bw-plateau { order: 4; }
+.bw-statut { order: 5; }
+.bw-bilan { order: 6; }
+.bw-commandes { order: 7; }
+.bw-joueurs { order: 8; }
+@media (min-aspect-ratio: 1 / 1) and (min-width: 900px) {
+  .cas-ecran.bw-ecran { grid-template-columns: minmax(0, 1fr) minmax(340px, 400px); grid-auto-flow: row dense; align-items: start; }
+  .bw-droite { order: 2; }
+  .bw-gauche { order: 4; }
+  .bw-droite.bas { order: 7; }
+  .bw-ecran > .cas-barre, .bw-ouverture { grid-column: 1 / -1; }
+  .bw-gauche, .bw-droite { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-content: start; min-width: 0; }
+  .bw-gauche > *, .bw-droite > * { min-width: 0; }
+  .bw-gauche { grid-column: 1; grid-row: span 2; }
+  .bw-droite { grid-column: 2; }
+  .bw-jackpots { flex-wrap: wrap; }
+  .bw-jackpot { flex: 1 0 40%; }
+  .bw-roue { width: min(100%, 620px, calc(100vh - 280px)); }
+}
+/* Téléphone : les bonus en hauteur, les personnages plus petits, derrière le jeu. */
+@media (max-width: 640px) {
+  .bw-bonus { aspect-ratio: 4 / 5; }
+  .bw-bonus-titre { top: 42px; }
+  .bw-serrures { top: 96px; left: 50%; right: auto; transform: translateX(-50%); display: flex; gap: 4px; white-space: nowrap; }
+  .bw-serrures li { font-size: 11px; padding: 2px 8px; }
+  .bw-cadran-bloc { top: 22%; height: 54%; }
+  .bw-compartiments { top: 56%; width: 78%; }
+  .bw-perso-baron { height: 52%; right: -8%; opacity: 0.95; }
+  .bw-cartes { left: 3%; right: 3%; top: 20%; bottom: 36%; gap: 3%; }
+  .bw-perso-pick { height: 50%; left: -6%; }
+  .bw-butin { left: 50%; top: 16%; }
+  .bw-mallettes { left: 3%; right: 3%; bottom: 34%; }
+  .bw-routes { grid-template-columns: minmax(0, 1fr); top: 15%; gap: 6px; left: 6%; right: 6%; }
+  .bw-scene .bw-route { grid-template-columns: 34% minmax(0, 1fr); grid-template-areas: 'v n' 'v r' 'v g'; justify-items: start; text-align: left; padding: 5px 8px 5px 5px; gap: 0 8px; }
+  .bw-route-vignette { grid-area: v; height: 100%; aspect-ratio: auto; min-height: 54px; }
+  .bw-route strong { grid-area: n; }
+  .bw-route small { grid-area: r; }
+  .bw-route em { grid-area: g; }
+  .bw-voiture.baron { width: 62%; left: 36%; bottom: 28%; }
+  .bw-voiture.police { width: 54%; bottom: 28%; left: -22%; }
+  .bw-defile .bw-voiture.baron { width: 62%; left: 38%; }
+  .bw-defile .bw-voiture.police { width: 54%; left: -22%; }
+  @keyframes bw-police-perd { 0%, 55% { left: -22%; } 100% { left: -70%; } }
+  @keyframes bw-police-gagne { 0%, 40% { left: -22%; } 100% { left: 14%; } }
+  @keyframes bw-baron-ralentit { 0%, 60% { left: 38%; } 100% { left: 44%; } }
+  .bw-evasion.revele.arrete .bw-defile .bw-voiture.police { left: 14%; }
+  .bw-evasion.revele.arrete .bw-defile .bw-voiture.baron { left: 44%; }
+  .bw-evasion.revele.evade .bw-defile .bw-voiture.police { left: -70%; }
+  .bw-obstacle { bottom: 27%; height: 20%; }
+  .bw-route-fond { top: 0; bottom: 22%; }
+  .bw-defile::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22%; background: linear-gradient(180deg, #1c1410, #0b0806); }
+  .bw-issue img { height: 62%; bottom: 22%; }
+  .bw-routes-bilan { top: auto; bottom: 108px; right: 50%; transform: translateX(50%); }
+  .bw-porte { height: 46%; top: 44%; }
+  .bw-codes { flex-direction: column; bottom: 20%; gap: 6px; }
+  .bw-bonus-resultat { bottom: 12px; }
+  .bw-bilan { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  .bw-tapis { gap: 5px; }
+  .bw-case { min-height: 72px; padding: 5px 2px; border-radius: 10px; }
+  .bw-commandes .bj-jetons { gap: 6px; }
+  .bw-commandes .bj-jeton { width: 52px; height: 52px; }
+  .bw-pastille { min-width: 38px; height: 28px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bw-ecran *, .bw-fete, .bw-fete * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  .bw-route-fond { animation: none !important; }
+}
+@media (max-width: 520px) {
+  .bw-bandeau-ouverture { gap: 10px; padding: 9px 11px; }
+  .bw-bandeau-ouverture small { display: none; }
+}
