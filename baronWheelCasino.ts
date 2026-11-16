@@ -246,11 +246,11 @@ export function creerBaronWheel(options: {
     diffuser();
   }
 
-  /** Les mises sont fermées : 3 cases de la roue reçoivent un multiplicateur (une 4e, dorée, pendant l'ouverture). */
+  /** Les mises sont fermées : 3 à 8 cases de la roue reçoivent un multiplicateur (×5 à ×100). */
   function poserMultiplicateurs() {
     const impose = options.multiplicateurs?.();
     const valides = impose?.filter((b) => Number.isInteger(b.i) && b.i >= 0 && b.i < NB_CASES_BW && b.x >= 1);
-    boosts = valides ?? tirerMultiplicateursBW(hasard, finOuverture() !== null);
+    boosts = valides ?? tirerMultiplicateursBW(hasard);
     phase = 'multiplicateurs';
     fin = horloge() + D.multiplicateurs;
     duree = D.multiplicateurs;
@@ -407,8 +407,8 @@ export function creerBaronWheel(options: {
     const poser = (m: { id: Identite; j: Joueur }, ajout: { c: CaseBW; montant: number }[], rappel: unknown) => {
       const apres = { ...m.j.mises };
       for (const x of ajout) apres[x.c] = (apres[x.c] ?? 0) + x.montant;
-      if (Object.values(apres).some((v) => (v ?? 0) > MAX_CASE_BW)) return erreur(rappel, 'Pas plus de 1 000 000 $ sur une même case.', 'No more than $1,000,000 on one spot.');
-      if (totalMises(apres) > MAX_MANCHE_BW) return erreur(rappel, 'Pas plus de 4 000 000 $ par manche.', 'No more than $4,000,000 per round.');
+      if (Object.values(apres).some((v) => (v ?? 0) > MAX_CASE_BW)) return erreur(rappel, 'Pas plus de 10 000 000 $ sur une même case.', 'No more than $10,000,000 on one spot.');
+      if (totalMises(apres) > MAX_MANCHE_BW) return erreur(rappel, 'Pas plus de 10 000 000 $ par manche.', 'No more than $10,000,000 per round.');
       const total = ajout.reduce((s, x) => s + x.montant, 0);
       if (!banque.debiter(m.id.uid, total)) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
       m.j.mises = apres;

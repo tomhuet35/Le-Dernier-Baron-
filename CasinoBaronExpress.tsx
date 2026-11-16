@@ -44,13 +44,26 @@ const BANDE = { ratio: 6, rail: 0.905, quai: 0.83 };
 // ---------------------------------------------------------------------------------------------------------------
 // Le calendrier de chaque étape (millisecondes depuis le début de l'étape)
 
-/** Coffres : départ de la série (Paris : train déjà arrêté ; Venise : après le freinage), et l'écart entre deux. */
-const COFFRES = { paris: 700, venise: 1800, pas: 480, pose: 380 };
+/** Coffres : départ de la série (Paris : train déjà arrêté ; Venise : après le freinage). */
+const COFFRES = { paris: 900, venise: 2000 };
 const FREINAGE = { venise: 1500, istanbul: 1800 };
 /** Le train repart 1,3 s avant la fin d'une gare. */
 const DEPART_AVANT_FIN = 1300;
-const TUNNEL = { police: 500, decroche: 2400, fuite: 4000 };
-const ISTANBUL = { panorama: 1900, coffre: 2900 };
+/** Le temps laissé, après le dernier coffre, pour lire les butins avant le départ. */
+const LECTURE_BUTINS = 2000;
+/**
+ * L'écart entre deux coffres d'une gare : les coffres s'ouvrent l'un après l'autre sur toute la durée de l'arrêt
+ * (de 0,5 à 1,6 s chacun), pour qu'on ait le temps de lire chaque butin.
+ */
+function pasCoffres(gare: 'paris' | 'venise', n: number, D: number): number {
+  const libre = D - COFFRES[gare] - DEPART_AVANT_FIN - LECTURE_BUTINS;
+  return Math.max(480, Math.min(1600, libre / Math.max(1, n)));
+}
+/** Le coffre se pose sur le toit un peu avant de s'ouvrir. */
+const posePour = (pas: number) => Math.min(600, pas * 0.45);
+const TUNNEL = { police: 500, decroche: 2700, fuite: 4400 };
+/** Istanbul : le panorama, le Coffre du Baron qui tremble, puis s'ouvre ; son butin monte pendant 1,8 s. */
+const ISTANBUL = { panorama: 2200, coffre: 4600, compte: 1800 };
 
 const DECORS: Record<string, string> = { paris: 'paris', tunnel1: 'tunnel', alpes: 'alpes', venise: 'venise', tunnel2: 'tunnel', istanbul: 'istanbul' };
 const estVoyage = (nom: string) => nom in DECORS;
@@ -224,9 +237,9 @@ function useSceneTrain(donnees: { current: DonneesScene | null }, refs: RefsScen
       let cibleC = focus >= 0 ? centre(focus) : centreLoco;
       let cibleZ = 1;
       if (nom === 'paris' || nom === 'venise') {
-        const t0 = nom === 'paris' ? COFFRES.paris : COFFRES.venise;
+        const t0 = COFFRES[nom];
         const n = etat.attaches.length;
-        const u = (tau - t0) / (COFFRES.pas * n);
+        const u = (tau - t0) / (pasCoffres(nom, n, D) * n);
         if (u >= -0.3 && u <= 1.15) cibleC = centreLoco + (centre(etat.attaches[n - 1]) - centreLoco) * Math.max(0, Math.min(1, u));
       } else if (tunnelDe(nom) >= 0) {
         // La caméra recule sur les wagons que la police va décrocher, puis revient sur ce qui reste du train.
@@ -394,8 +407,9 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
     if (nom !== g || !ex) return null;
     const rang = etat.attaches.indexOf(k);
     if (rang < 0) return null;
-    const t = (g === 'paris' ? COFFRES.paris : COFFRES.venise) + COFFRES.pas * (rang + 1) - 60;
-    return tau >= t ? 'ouvert' : tau >= t - COFFRES.pose ? 'pose' : null;
+    const pas = pasCoffres(g, etat.attaches.length, D);
+    const t = COFFRES[g] + pas * (rang + 1) - 60;
+    return tau >= t ? 'ouvert' : tau >= t - posePour(pas) ? 'pose' : null;
   };
   const decrocheVu = (k: number) => {
     const d = ex?.decroches[k];
@@ -429,8 +443,9 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
     if ((nom === 'paris' || nom === 'venise') && tau >= D - DEPART_AVANT_FIN) fois('depart', () => jouerEffet('ex_sifflet', { volume: 0.7 }));
     if ((nom === 'venise' || nom === 'istanbul') && tau >= 0) fois('freins', () => jouerEffet('ex_freins'));
     if (nom === 'paris' || nom === 'venise') {
+      const pas = pasCoffres(nom, etat.attaches.length, D);
       etat.attaches.forEach((k, rang) => {
-        const t = (nom === 'paris' ? COFFRES.paris : COFFRES.venise) + COFFRES.pas * (rang + 1) - 60;
+        const t = COFFRES[nom] + pas * (rang + 1) - 60;
         if (tau >= t) fois(`coffre${k}`, () => jouerEffet('ex_coffre', { volume: k === mien ? 1 : 0.55, vitesse: 0.92 + rang * 0.04 }));
       });
     }
@@ -465,6 +480,14 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
   else if (nom === 'istanbul') annonce = tau < ISTANBUL.panorama ? { titre: tr('Istanbul !', 'Istanbul!') } : null;
 
   const panorama = (nom === 'istanbul' && tau >= ISTANBUL.panorama) || nom === 'revele';
+  /** Le butin du Coffre du Baron monte de ×0 à sa valeur, pour faire durer le plaisir. */
+  const coffreVu = (() => {
+    const x = ex?.coffre ?? null;
+    if (x === null || !coffreBaronOuvert) return null;
+    if (nom !== 'istanbul' || mouvementReduit()) return x;
+    const u = Math.min(1, Math.max(0, (tau - ISTANBUL.coffre) / ISTANBUL.compte));
+    return u >= 1 ? x : Math.round(x * (1 - (1 - u) ** 3));
+  })();
   const gagnant = ex?.gagnant ?? null;
   const voyage = estVoyage(nom);
 
@@ -495,7 +518,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
               {c && (
                 <span className={`bwx-coffre ${c}`}>
                   <img src={c === 'ouvert' ? '/cartes/bw-ex-coffre-ouvert.webp' : '/cartes/bw-ex-coffre.webp'} alt="" draggable={false} />
-                  {c === 'ouvert' && valeur != null && <b className={valeur >= 50 ? 'gros' : ''}>+{fx(valeur)}</b>}
+                  {c === 'ouvert' && valeur != null && <b className={valeur >= 250 ? 'gros enorme' : valeur >= 50 ? 'gros' : ''}>+{fx(valeur)}</b>}
                 </span>
               )}
             </div>
@@ -553,7 +576,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         <div className="bwx-coffre-baron" style={{ '--couleur': WAGONS_EXPRESS[gagnant].couleur, '--texte': WAGONS_EXPRESS[gagnant].texte } as CSSProperties}>
           <small>{tr(`Le wagon ${nomWagon(gagnant)} arrive à Istanbul !`, `The ${nomWagon(gagnant)} carriage reaches Istanbul!`)}</small>
           <img src={coffreBaronOuvert ? '/cartes/bw-ex-coffre-ouvert.webp' : '/cartes/bw-ex-coffre.webp'} alt="" draggable={false} className={coffreBaronOuvert ? 'ouvert' : ''} />
-          <strong>{coffreBaronOuvert && ex?.coffre != null ? tr(`Coffre du Baron ${fx(ex.coffre)}\u00a0!`, `The Baron’s Safe ${fx(ex.coffre)}!`) : tr('Le Coffre du Baron…', 'The Baron’s Safe…')}</strong>
+          <strong className={coffreVu !== null && (ex?.coffre ?? 0) >= 1000 ? 'enorme' : ''}>{coffreVu !== null ? tr(`Coffre du Baron ${fx(coffreVu)}\u00a0!`, `The Baron’s Safe ${fx(coffreVu)}!`) : tr('Le Coffre du Baron…', 'The Baron’s Safe…')}</strong>
         </div>
       )}
 

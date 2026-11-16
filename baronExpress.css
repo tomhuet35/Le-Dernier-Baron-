@@ -38,6 +38,7 @@
 .bwx-coffre.ouvert img { animation: bwx-ouvre 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
 .bwx-coffre b { position: absolute; bottom: 92%; padding: 0.05em 0.45em; border-radius: 0.5em; background: radial-gradient(120% 140% at 50% 0%, rgba(90, 58, 10, 0.95), rgba(24, 12, 2, 0.95)); border: 2px solid #ffcf6b; font-family: var(--titre); font-weight: 400; font-size: calc(var(--p) * 0.085); line-height: 1.1; color: #ffe9a8; white-space: nowrap; text-shadow: 0 0 12px rgba(255, 200, 100, 0.9); box-shadow: 0 0 18px rgba(255, 190, 90, 0.6); animation: bwx-butin 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
 .bwx-coffre b.gros { font-size: calc(var(--p) * 0.11); color: #fff; border-color: #fff1c4; background: radial-gradient(120% 140% at 50% 0%, rgba(170, 30, 20, 0.97), rgba(50, 6, 4, 0.97)); box-shadow: 0 0 26px rgba(255, 140, 90, 0.9), 0 0 50px rgba(255, 210, 120, 0.6); animation: bwx-butin 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both, bwx-scintille 1.2s ease-in-out 0.7s infinite; }
+.bwx-coffre b.enorme { font-size: calc(var(--p) * 0.13); border-color: #fff; background: radial-gradient(120% 140% at 50% 0%, rgba(255, 196, 70, 0.98), rgba(120, 40, 4, 0.98)); color: #fff; text-shadow: 0 0 10px #fff1c4, 0 0 22px rgba(255, 160, 60, 1); box-shadow: 0 0 30px rgba(255, 210, 110, 1), 0 0 70px rgba(255, 150, 60, 0.8); }
 @keyframes bwx-pose { from { opacity: 0; transform: translate(-50%, -160%) scale(0.6); } }
 @keyframes bwx-ouvre { 0% { transform: scale(1); } 35% { transform: scale(1.25) rotate(-4deg); } 100% { transform: scale(1); } }
 @keyframes bwx-butin { from { opacity: 0; transform: translateY(40%) scale(0.3); } }
@@ -97,7 +98,8 @@
 .bwx-coffre-baron small { padding: 1px 12px; border-radius: 99px; background: var(--couleur); color: var(--texte); border: 1px solid #d6a84b; font-weight: 900; font-size: clamp(11px, 2.8vw, 14px); }
 .bwx-coffre-baron img { width: clamp(80px, 20%, 150px); height: auto; filter: drop-shadow(0 0 22px rgba(255, 200, 100, 0.8)); animation: bwx-tremble 0.18s linear infinite; }
 .bwx-coffre-baron img.ouvert { animation: bwx-ouvre 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
-.bwx-coffre-baron strong { font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 40px); color: #fff1c4; text-shadow: 0 0 20px rgba(255, 200, 110, 0.9); white-space: nowrap; }
+.bwx-coffre-baron strong { font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 40px); color: #fff1c4; text-shadow: 0 0 20px rgba(255, 200, 110, 0.9); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bwx-coffre-baron strong.enorme { font-size: clamp(26px, 7.5vw, 52px); color: #fff; text-shadow: 0 0 12px #fff1c4, 0 0 30px rgba(255, 170, 70, 1); animation: bwx-scintille 0.9s ease-in-out infinite; }
 @keyframes bwx-tremble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
 
 /* Le tableau des wagons */
@@ -141,7 +143,7 @@
 @keyframes bwx-pop-centre { from { opacity: 0; transform: translateX(-50%) scale(0.6); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .bwx-noir::after, .bwx-feu, .bwx-confetti, .bwx-coffre-baron img, .bwx-tableau li.arrive, .bwx-annonce.police, .bwx-coffre b.gros { animation: none; }
+  .bwx-noir::after, .bwx-feu, .bwx-confetti, .bwx-coffre-baron img, .bwx-tableau li.arrive, .bwx-annonce.police, .bwx-coffre b.gros, .bwx-coffre-baron strong.enorme { animation: none; }
   .bwx-feu { opacity: 0; }
 }
 

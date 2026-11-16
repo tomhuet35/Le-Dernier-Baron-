@@ -1,22 +1,23 @@
 /**
  * The Baron's Wheel (Salon privé) : une roue géante de 40 cases, en direct pour tout le salon, avec quatre bonus.
  *
- * Une manche : mises (15 s) → les multiplicateurs (3 cases de la roue, au hasard, ×2 à ×50) → la roue tourne (8 s) →
+ * Une manche : mises (10 s) → les multiplicateurs (3 à 8 cases de la roue, au hasard, ×5 à ×100) → la roue tourne (8 s) →
  * le résultat. Si la roue s'arrête sur un bonus, son mini-jeu commence ; ceux qui ont misé sur ce bonus font leurs
  * choix (chacun les siens), les autres regardent.
  *
  * - La roue : 12 cases « 1X », 9 « 2X », 6 « 5X », 3 « 10X », 3 BARON, 2 PICKPOCKET, 2 GRANDE ÉVASION, 3 BRAQUAGE.
  *   Toutes les cases ont la même chance (1 sur 40). Les cases chiffres paient ×2,5, ×3,3, ×5 et ×10 (mise comprise) ;
  *   les bonus, plus rares, paient gros (×5 à ×500).
- * - Les multiplicateurs : une fois les mises fermées, 3 cases de la roue reçoivent un multiplicateur (×2 à ×50). Si la
- *   roue s'arrête sur l'une d'elles, ses gains sont multipliés (pour un bonus : tous ses multiplicateurs, sauf les
- *   jackpots, qui restent fixes). Chaque mise rend environ 95 % en moyenne, comme les autres jeux du salon.
+ * - Les multiplicateurs : une fois les mises fermées, 3 à 8 cases de la roue reçoivent un multiplicateur (×5 à ×100).
+ *   Si la roue s'arrête sur l'une d'elles, ses gains sont multipliés (pour un bonus : tous ses multiplicateurs, sauf les
+ *   jackpots, qui restent fixes). Choix du créateur : la roue est le jeu généreux du salon ; multiplicateurs compris,
+ *   chaque mise rend en moyenne environ 1,7 fois ce qu'elle coûte (rtpBW).
  * - Tout est tiré par le serveur avant les animations : la case d'arrêt au départ de la roue, et toutes les récompenses
  *   cachées d'un bonus dès qu'il commence. Les choix du joueur désignent l'une de ces récompenses cachées ; aucune
  *   animation ne décide de rien.
  * - Les jackpots (MINI ×25, MINOR ×50, MAJOR ×100, GRAND ×500 la mise) sont des récompenses fixes, rares, cachées dans
  *   les bonus du Baron et du Braquage. Ils ne sont pas progressifs.
- * - Grande ouverture (la première semaine) : à chaque manche, une 4e case reçoit un multiplicateur doré ×2.
+ * - Grande ouverture (la première semaine) : l'XP compte double sur la roue (et un cadeau d'ouverture dans le salon).
  */
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -60,28 +61,30 @@ export const ROUE_BW: CaseBW[] = (() => {
 export const GAINS_CHIFFRES_BW: Record<ChiffreBW, number> = { x1: 2.7, x2: 3.3, x5: 5, x10: 10 };
 
 /** Les mises : jetons, plafond par case et par manche. */
-export const JETONS_BW = [1_000, 5_000, 25_000, 100_000, 500_000];
-export const MAX_CASE_BW = 1_000_000;
-export const MAX_MANCHE_BW = 4_000_000;
+export const JETONS_BW = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000, 5_000_000];
+export const MAX_CASE_BW = 10_000_000;
+export const MAX_MANCHE_BW = 10_000_000;
 
 // ---------------------------------------------------------------------------------------------------------------
-// Les multiplicateurs : 3 cases de la roue, tirées une fois les mises fermées
+// Les multiplicateurs : 3 à 8 cases de la roue, tirées une fois les mises fermées
 
-export const NB_MULTIPLICATEURS_BW = 3;
-/** Les multiplicateurs possibles, et leur poids. */
+/** Combien de cases reçoivent un multiplicateur à chaque manche (autant de chances pour chaque nombre). */
+export const MIN_MULTIPLICATEURS_BW = 3;
+export const MAX_MULTIPLICATEURS_BW = 8;
+/** Les multiplicateurs possibles (jamais moins de ×5), et leur poids. */
 export const MULTIPLICATEURS_BW: [number, number][] = [
-  [2, 48],
-  [3, 26],
-  [5, 14],
-  [10, 8],
-  [25, 3],
-  [50, 1],
+  [5, 40],
+  [7, 25],
+  [10, 18],
+  [15, 9],
+  [25, 5],
+  [50, 2],
+  [100, 1],
 ];
-/** Une case de la roue (son indice, 0 à 39) et son multiplicateur ; dorée : le ×2 de la grande ouverture. */
+/** Une case de la roue (son indice, 0 à 39) et son multiplicateur. */
 export interface BoostBW {
   i: number;
   x: number;
-  dore?: true;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -216,15 +219,14 @@ export const JACKPOTS_BRAQUAGE: TableBW<JackpotBW> = [
 ];
 export const TABLE_COFFRES_BRAQUAGE = avecJackpots(COFFRES_BRAQUAGE, JACKPOTS_BRAQUAGE);
 
-/** Les multiplicateurs d'une manche : 3 cases différentes (et une 4e, dorée ×2, pendant la grande ouverture). */
-export function tirerMultiplicateursBW(h: Hasard, ouverture = false): BoostBW[] {
+/** Les multiplicateurs d'une manche : 3 à 8 cases différentes, chacune avec son multiplicateur (×5 à ×100). */
+export function tirerMultiplicateursBW(h: Hasard): BoostBW[] {
+  const n = MIN_MULTIPLICATEURS_BW + Math.min(MAX_MULTIPLICATEURS_BW - MIN_MULTIPLICATEURS_BW, Math.floor(h() * (MAX_MULTIPLICATEURS_BW - MIN_MULTIPLICATEURS_BW + 1)));
   const cases = melanger(
     Array.from({ length: NB_CASES_BW }, (_, i) => i),
     h,
   );
-  const r: BoostBW[] = cases.slice(0, NB_MULTIPLICATEURS_BW).map((i) => ({ i, x: tirerTable(MULTIPLICATEURS_BW, h) }));
-  if (ouverture) r.push({ i: cases[NB_MULTIPLICATEURS_BW], x: 2, dore: true });
-  return r;
+  return cases.slice(0, n).map((i) => ({ i, x: tirerTable(MULTIPLICATEURS_BW, h) }));
 }
 /** Le multiplicateur d'une case de la roue (1 si elle n'en a pas). */
 export const multiplicateurDe = (boosts: BoostBW[] | null | undefined, i: number | null) => (i === null ? 1 : (boosts?.find((b) => b.i === i)?.x ?? 1));
@@ -232,34 +234,41 @@ export const multiplicateurDe = (boosts: BoostBW[] | null | undefined, i: number
 /**
  * L'EXPRESS DU BARON (la case unique de la roue) : le Baron braque le train de nuit Paris–Istanbul. Chaque joueur
  * choisit l'un des 5 wagons. « Il n'en restera qu'un » :
- * - Paris : chaque wagon charge son butin de départ (×10 ou ×25).
+ * - Paris : chaque wagon charge son butin de départ (×10 à ×100).
  * - Tunnel du Simplon : la police à cheval décroche 2 wagons (ils gardent leur butin).
- * - Les Alpes (le train file sans s'arrêter), puis Venise : chaque wagon restant ouvre un coffre (×10 à ×250).
+ * - Les Alpes (le train file sans s'arrêter), puis Venise : chaque wagon restant ouvre un coffre (×10 à ×1 000).
  * - Tunnel des Balkans : la police décroche 2 des 3 wagons restants.
- * - Istanbul : le dernier wagon arrive et ouvre le Coffre du Baron (×25 à ×1 000).
- * Aucun petit multiplicateur : tout ce qui s'ouvre vaut ×10 au moins. Le multiplicateur de la roue multiplie tout.
+ * - Istanbul : le dernier wagon arrive et ouvre le Coffre du Baron (×50 à ×10 000).
+ * Aucun petit multiplicateur : tout ce qui s'ouvre vaut ×10 au moins. Le multiplicateur de la roue multiplie tout :
+ * c'est le bonus le plus généreux de la roue.
  */
 export const NB_WAGONS = 5;
 /** Combien de wagons la police décroche dans chaque tunnel (5 → 3 → 1). */
 export const DECROCHES_PAR_TUNNEL = [2, 2];
 export const BUTIN_PARIS: TableBW<number> = [
-  [10, 93],
-  [25, 7],
+  [10, 80],
+  [25, 15],
+  [50, 4],
+  [100, 1],
 ];
 export const COFFRES_VENISE: TableBW<number> = [
-  [10, 81],
-  [25, 14.5],
-  [50, 2.8],
-  [100, 1.3],
-  [250, 0.4],
+  [10, 60],
+  [25, 25],
+  [50, 9],
+  [100, 4],
+  [250, 1.5],
+  [500, 0.4],
+  [1000, 0.1],
 ];
 export const COFFRE_DU_BARON: TableBW<number> = [
-  [25, 74],
-  [50, 16],
-  [100, 6],
-  [250, 2.7],
-  [500, 1],
-  [1000, 0.4],
+  [50, 55],
+  [100, 25],
+  [250, 11],
+  [500, 5],
+  [1000, 2.7],
+  [2500, 1],
+  [5000, 0.25],
+  [10000, 0.05],
 ];
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -331,6 +340,7 @@ export function butinWagon(t: Extract<TirageBonusBW, { type: 'express' }>, k: nu
 // Les étapes d'un bonus
 
 export type EtapeBW =
+  | 'chargement'
   | 'intro'
   | 'cartes'
   | 'vol'
@@ -363,6 +373,8 @@ export interface DureesBW {
   multiplicateurs: number;
   tour: number;
   resultat: number;
+  /** L'écran de chargement avant chaque mini-jeu : le temps que chaque joueur ait toutes ses images. */
+  chargement: number;
   intro: number;
   /** Temps pour choisir (cartes, mallettes, itinéraire). */
   choix: number;
@@ -381,10 +393,11 @@ export interface DureesBW {
   arrivee: number;
 }
 export const DUREES_BW: DureesBW = {
-  mises: 15_000,
+  mises: 10_000,
   multiplicateurs: 3_500,
   tour: 8_000,
   resultat: 6_000,
+  chargement: 3_000,
   intro: 4_500,
   choix: 10_000,
   serrure: 8_000,
@@ -393,13 +406,17 @@ export const DUREES_BW: DureesBW = {
   poursuite: 9_000,
   revele: 5_500,
   introExpress: 6_000,
-  gare: 6_000,
-  tunnel: 5_500,
+  gare: 11_000,
+  tunnel: 6_500,
   traversee: 3_500,
-  arrivee: 8_000,
+  arrivee: 11_000,
 };
 
 export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW): EtapeBonusBW[] {
+  // Chaque mini-jeu commence par son écran de chargement.
+  return [{ nom: 'chargement', choix: 0, duree: d.chargement }, ...etapesDuJeuBW(type, d)];
+}
+function etapesDuJeuBW(type: BonusBW, d: DureesBW): EtapeBonusBW[] {
   const e = (nom: EtapeBW, duree: number, choix = 0): EtapeBonusBW => ({ nom, choix, duree });
   switch (type) {
     case 'baron':
@@ -486,14 +503,18 @@ export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable
     }
   }
 }
-/** Ce que les multiplicateurs ajoutent en moyenne à une case (×1,26 : une case sur 40 a 3 chances d'en avoir un). */
-export function facteurMultiplicateursBW(ouverture = false): number {
+/**
+ * Ce que les multiplicateurs ajoutent en moyenne à une case : en moyenne 5,5 cases sur 40 en ont un, qui vaut ×10,15
+ * en moyenne, soit ×2,26.
+ */
+export function facteurMultiplicateursBW(): number {
   const e = MULTIPLICATEURS_BW.reduce((s, [x, p]) => s + x * p, 0) / MULTIPLICATEURS_BW.reduce((s, [, p]) => s + p, 0);
-  return 1 + (NB_MULTIPLICATEURS_BW / NB_CASES_BW) * (e - 1) + (ouverture ? 1 / NB_CASES_BW : 0);
+  const n = (MIN_MULTIPLICATEURS_BW + MAX_MULTIPLICATEURS_BW) / 2;
+  return 1 + (n / NB_CASES_BW) * (e - 1);
 }
 /** Ce que rend chaque mise en moyenne (multiplicateurs compris). */
-export function rtpBW(ouverture = false): Record<CaseBW, number> & { routes: Record<RouteBW, number> } {
-  const F = facteurMultiplicateursBW(ouverture);
+export function rtpBW(): Record<CaseBW, number> & { routes: Record<RouteBW, number> } {
+  const F = facteurMultiplicateursBW();
   const p = (c: CaseBW) => COMPOSITION_BW[c] / NB_CASES_BW;
   const bonus = (c: BonusBW, route?: RouteBW) => {
     const e = esperanceBonusBW(c, route);

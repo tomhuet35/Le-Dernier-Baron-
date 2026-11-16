@@ -44,7 +44,7 @@ import { BonusExpress } from './CasinoBaronExpress';
 import './baronWheel.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
-const imageJeton = (v: number) => (v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
+const imageJeton = (v: number) => (v >= 5_000_000 ? 'argent' : v >= 1_000_000 ? 'bleu' : v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
 const fx = (x: number) => `×${x.toLocaleString(EN ? 'en-US' : 'fr-FR', { maximumFractionDigits: 2 })}`;
 const CLE_JETON = 'ldb-bw-jeton';
 
@@ -86,13 +86,18 @@ function useSecondes(fin: number | null): number {
   return fin === null ? 0 : Math.max(0, Math.ceil((fin - Date.now()) / 1000));
 }
 
-/** La barre du temps qui reste (une animation CSS qui part de la part restante). */
+/**
+ * La barre du temps qui reste (une animation CSS qui part de la part restante). Elle est calée une seule fois par
+ * phase (`cle`) : les vues suivantes (une mise, un spectateur de plus) ne la font plus sauter.
+ */
 function Barre({ v, cle }: { v: VueBW; cle: string }) {
+  const calage = useRef<{ cle: string; part: number; reste: number } | null>(null);
   if (v.reste === null || !v.duree) return null;
-  const part = Math.min(1, v.reste / v.duree);
+  if (calage.current?.cle !== cle) calage.current = { cle, part: Math.min(1, v.reste / v.duree), reste: v.reste };
+  const { part, reste } = calage.current;
   return (
     <span className="bw-barre" aria-hidden="true">
-      <i key={cle} style={{ '--part': part, animationDuration: `${v.reste}ms` } as CSSProperties} />
+      <i key={cle} style={{ '--part': part, animationDuration: `${reste}ms` } as CSSProperties} />
     </span>
   );
 }
@@ -185,19 +190,24 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
           {ROUE_BW.map((_, i) => (
             <line key={i} x1="0" y1="-118" x2="0" y2="-363" transform={`rotate(${i * DEGRES_CASE_BW})`} className="bw-filet" />
           ))}
-          {boosts.map((b, k) => (
-            <g key={`${v.numero}-${b.i}`} className={`bw-boost ${b.dore ? 'dore' : ''} ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`} style={{ '--k': k } as CSSProperties}>
-              <path d={secteur(118, 362, b.i * DEGRES_CASE_BW, (b.i + 1) * DEGRES_CASE_BW)} />
-              <g transform={`rotate(${b.i * DEGRES_CASE_BW + DEGRES_CASE_BW / 2}) translate(0 -168)`}>
-                <g className="bw-boost-medaille">
-                  <circle r="42" />
-                  <text textAnchor="middle" dominantBaseline="central">
-                    ×{b.x}
-                  </text>
+          {/* Les multiplicateurs : un liseré rouge autour de la case, et son ×N en rouge néon près du centre. */}
+          {boosts.map((b, k) => {
+            const a1 = b.i * DEGRES_CASE_BW;
+            const largeur = 24 + 15 * String(b.x).length;
+            return (
+              <g key={`${v.numero}-${b.i}`} className={`bw-boost ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`} style={{ '--k': k } as CSSProperties}>
+                <path className="bw-boost-lisere" d={secteur(122, 358, a1 + 0.35, a1 + DEGRES_CASE_BW - 0.35)} />
+                <g transform={`rotate(${a1 + DEGRES_CASE_BW / 2}) translate(0 -190) rotate(-90)`}>
+                  <g className="bw-boost-etiquette">
+                    <rect x={-largeur / 2} y={-13.5} width={largeur} height={27} rx={6} />
+                    <text textAnchor="middle" dominantBaseline="central">
+                      ×{b.x}
+                    </text>
+                  </g>
                 </g>
               </g>
-            </g>
-          ))}
+            );
+          })}
           {gagnante !== null && <path className="bw-gagnante" d={secteur(118, 362, gagnante * DEGRES_CASE_BW, (gagnante + 1) * DEGRES_CASE_BW)} />}
           <circle r="120" className="bw-anneau" />
         </svg>
@@ -242,8 +252,8 @@ function Pastille({ c, x }: { c: CaseBW; x?: number }) {
 function ListeMultiplicateurs({ boosts }: { boosts: BoostBW[] }) {
   return (
     <span className="bw-liste-multi">
-      {boosts.map((b) => (
-        <span key={b.i} className={`bw-multi ${b.dore ? 'dore' : ''} ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`}>
+      {boosts.map((b, k) => (
+        <span key={b.i} className={`bw-multi ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`} style={{ '--k': k } as CSSProperties}>
           <b>×{b.x}</b>
           <Pastille c={ROUE_BW[b.i]} />
         </span>
@@ -338,6 +348,108 @@ function Journal({ appel, onFermer }: { appel: Appel; onFermer: () => void }) {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Le préchargement des mini-jeux : toutes leurs images, en fond dès l'arrivée à la roue, et l'écran de chargement
+// au début de chaque bonus (le temps que tout soit prêt, pour tout le monde).
+
+const plaques = ['mini', 'minor', 'major', 'grand'].map((j) => `bw-plaque-${j}`);
+const IMAGES_BONUS_BW: Record<BonusBW, string[]> = Object.fromEntries(
+  Object.entries({
+    baron: ['bw-sym-baron', 'bw-scene-baron', 'bw-rideau', 'bw-baron', 'bw-carte-dos', 'bw-carte-face', ...plaques],
+    pickpocket: ['bw-sym-pickpocket', 'bw-scene-pickpocket', 'bw-pickpocket', 'bw-mallette', 'bw-mallette-ouverte'],
+    evasion: ['bw-sym-evasion', 'bw-depart', 'bw-voiture-baron', 'bw-voiture-police', 'bw-route-boulevard', 'bw-route-ruelles', 'bw-route-souterrains', 'bw-obstacle-1', 'bw-obstacle-2', 'bw-obstacle-3', 'bw-obstacle-4', 'bw-baron-evade', 'bw-gendarme'],
+    braquage: ['bw-sym-braquage', 'bw-salle-coffres', 'bw-porte-coffre', 'bw-cadran', 'bw-compartiment', 'bw-compartiment-ouvert', ...plaques],
+    express: [
+      'bw-sym-express',
+      'bw-ex-gare-depart',
+      'bw-ex-baron',
+      ...[1, 2, 3, 4, 5].map((k) => `bw-ex-wagon-${k}`),
+      'bw-ex-loco',
+      'bw-ex-paris',
+      'bw-ex-gare',
+      'bw-ex-coffre',
+      'bw-ex-coffre-ouvert',
+      'bw-ex-tunnel',
+      'bw-ex-gendarme',
+      'bw-ex-alpes',
+      'bw-ex-venise',
+      'bw-ex-istanbul',
+      'bw-ex-arrivee',
+      ...[1, 2, 3, 4, 5, 6].map((k) => `bw-ex-fumee-${k}`),
+    ],
+  }).map(([t, noms]) => [t, noms.map((n) => `/cartes/${n}.webp`)]),
+) as Record<BonusBW, string[]>;
+
+const imagesChargees = new Map<string, Promise<void>>();
+/** Les images chargées restent ici : décodées, elles s'affichent aussitôt, sans clignoter. */
+const imagesGardees: HTMLImageElement[] = [];
+function chargerImage(src: string): Promise<void> {
+  let p = imagesChargees.get(src);
+  if (!p) {
+    p = new Promise<void>((ok) => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => void img.decode().then(ok, ok);
+      // Une image en erreur ne bloque pas le jeu ; elle sera redemandée la prochaine fois.
+      img.onerror = () => (imagesChargees.delete(src), ok());
+      img.src = src;
+      imagesGardees.push(img);
+    });
+    imagesChargees.set(src, p);
+  }
+  return p;
+}
+/** En fond, deux images à la fois : d'abord les bonus les plus fréquents. */
+let prechargementLance = false;
+function prechargerLesBonus() {
+  if (prechargementLance) return;
+  prechargementLance = true;
+  const file = [...new Set((['baron', 'braquage', 'pickpocket', 'evasion', 'express'] as BonusBW[]).flatMap((t) => IMAGES_BONUS_BW[t]))];
+  let i = 0;
+  const suivante = (): Promise<void> => (i < file.length ? chargerImage(file[i++]).then(suivante) : Promise.resolve());
+  void suivante();
+  void suivante();
+}
+/** La part des images d'un mini-jeu déjà prêtes (0 à 1). */
+function useChargement(type: BonusBW): number {
+  const [prets, setPrets] = useState(0);
+  useEffect(() => {
+    let vivant = true;
+    let n = 0;
+    setPrets(0);
+    for (const src of IMAGES_BONUS_BW[type]) void chargerImage(src).then(() => vivant && setPrets(++n));
+    return () => {
+      vivant = false;
+    };
+  }, [type]);
+  return Math.min(1, prets / IMAGES_BONUS_BW[type].length);
+}
+
+const ASTUCES_BONUS: Record<BonusBW, [string, string]> = {
+  baron: ['Le Baron te présente trois cartes : une seule cache le plus gros lot.', 'The Baron shows you three cards: only one hides the biggest prize.'],
+  pickpocket: ['Suis bien la mallette où le Pickpocket cache son butin\u00a0!', 'Keep your eye on the briefcase where the Pickpocket hides the loot!'],
+  evasion: ['Choisis ton itinéraire : plus il est risqué, plus il rapporte.', 'Pick your route: the riskier it is, the more it pays.'],
+  braquage: ['Trois serrures : le code, le mécanisme, puis le coffre.', 'Three locks: the code, the mechanism, then the vault.'],
+  express: ['5 wagons au départ de Paris : un seul arrivera à Istanbul et ouvrira le Coffre du Baron.', '5 carriages leave Paris: only one will reach Istanbul and open the Baron’s Safe.'],
+};
+
+/** L'écran de chargement d'un mini-jeu. */
+function EcranChargement({ b, part }: { b: VueBonusBW; part: number }) {
+  return (
+    <div className={`bw-chargement ${b.type}`} role="status" aria-live="polite">
+      <img className="bw-chargement-symbole" src={CASES_VISUELS[b.type].image} alt="" draggable={false} />
+      <small>{tr('Mini-jeu', 'Mini-game')}</small>
+      <strong>{tr(...NOMS_BONUS[b.type])}</strong>
+      {b.multiplicateur > 1 && <em className="bw-bonus-multi">×{b.multiplicateur}</em>}
+      <span className="bw-chargement-barre" aria-hidden="true">
+        <i style={{ transform: `scaleX(${Math.max(0.04, part)})` }} />
+      </span>
+      <span className="bw-chargement-etat">{part < 1 ? tr(`Chargement… ${Math.round(part * 100)} %`, `Loading… ${Math.round(part * 100)}%`) : tr('Prêt\u00a0!', 'Ready!')}</span>
+      <p>{tr(...ASTUCES_BONUS[b.type])}</p>
     </div>
   );
 }
@@ -649,13 +761,13 @@ const TEXTES_ETAPES: Record<string, [string, string]> = {
   vol: ['Le Pickpocket cache le butin dans l’une des mallettes…', 'The Pickpocket hides the loot in one of the briefcases…'],
   mallettes: ['Où est le butin ? Choisis une mallette', 'Where is the loot? Pick a briefcase'],
   route: ['La police arrive ! Choisis ton itinéraire', 'The police are coming! Pick your route'],
-  poursuite: ['La course-poursuite !', 'The car chase!'],
+  poursuite: ['La course-poursuite\u00a0!', 'The car chase!'],
   code: ['Serrure 1 : choisis la combinaison', 'Lock 1: pick the combination'],
   codeRevele: ['La première serrure cède…', 'The first lock gives way…'],
   mecanisme: ['Serrure 2 : arrête le cadran au bon moment', 'Lock 2: stop the dial at the right moment'],
   mecaRevele: ['Le mécanisme tourne…', 'The mechanism turns…'],
   coffre: ['Serrure 3 : choisis un compartiment', 'Lock 3: pick a compartment'],
-  wagons: ['Choisis ton wagon : un seul arrivera à Istanbul !', 'Pick your carriage: only one will reach Istanbul!'],
+  wagons: ['Choisis ton wagon : un seul arrivera à Istanbul\u00a0!', 'Pick your carriage: only one will reach Istanbul!'],
   revele: ['', ''],
 };
 
@@ -673,6 +785,15 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
   const props: PropsBonus = { v, b, nom, rang, ouvert, choisir };
   const texte = TEXTES_ETAPES[nom]?.[EN ? 1 : 0] ?? '';
   const r = b.resultat;
+  // L'écran de chargement : toute l'étape de chargement, et au-delà tant que les images de l'intro manquent.
+  const part = useChargement(b.type);
+  const charge = nom === 'chargement' || (nom === 'intro' && part < 1);
+  if (charge)
+    return (
+      <div className={`bw-bonus ${b.type}`}>
+        <EcranChargement b={b} part={part} />
+      </div>
+    );
   return (
     <div className={`bw-bonus ${b.type}`}>
       {b.type === 'baron' && <BonusBaron {...props} />}
@@ -689,7 +810,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
         <div className="bw-bonus-annonce-multi" role="status">
           <small>{tr('Multiplicateur de la roue', 'Wheel multiplier')}</small>
           <strong>×{b.multiplicateur}</strong>
-          <span>{tr('Tous les gains de ce bonus sont multipliés !', 'Every win in this bonus is multiplied!')}</span>
+          <span>{tr('Tous les gains de ce bonus sont multipliés\u00a0!', 'Every win in this bonus is multiplied!')}</span>
         </div>
       )}
       {nom !== 'revele' && nom !== 'intro' && (b.type !== 'express' || nom === 'wagons') && (
@@ -702,12 +823,12 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
       {nom === 'revele' && b.mise > 0 && r && (
         <div className={`bw-bonus-resultat ${r.gain > 0 ? 'gagne' : 'perdu'} ${r.jackpot ? 'jackpot' : ''}`} role="status">
           {r.jackpot && <img src={`/cartes/bw-plaque-${r.jackpot}.webp`} alt="" />}
-          <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'evasion' ? (r.evade ? tr('Évadé !', 'Escaped!') : tr('Arrêté !', 'Caught!')) : b.type === 'express' ? (r.evade ? tr('Ton wagon est arrivé à Istanbul !', 'Your carriage reached Istanbul!') : tr('Wagon décroché : il garde son butin', 'Carriage uncoupled: it keeps its loot')) : tr('Ta récompense', 'Your reward')}</small>
+          <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'evasion' ? (r.evade ? tr('Évadé\u00a0!', 'Escaped!') : tr('Arrêté\u00a0!', 'Caught!')) : b.type === 'express' ? (r.evade ? tr('Ton wagon est arrivé à Istanbul\u00a0!', 'Your carriage reached Istanbul!') : tr('Wagon décroché : il garde son butin', 'Carriage uncoupled: it keeps its loot')) : tr('Ta récompense', 'Your reward')}</small>
           <strong>{r.gain > 0 ? `${fx(r.x)} · +${dollars(r.gain)}` : tr('Pas de butin cette fois', 'No loot this time')}</strong>
           {r.gain > 0 && !r.jackpot && b.multiplicateur > 1 && <em>{tr(`${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (multiplicateur de la roue)`, `${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (wheel multiplier)`)}</em>}
         </div>
       )}
-      {nom === 'revele' && !b.mise && <div className="bw-bonus-resultat spectateur">{tr('Mise sur ce bonus à la prochaine manche pour jouer !', 'Bet on this bonus next round to play!')}</div>}
+      {nom === 'revele' && !b.mise && <div className="bw-bonus-resultat spectateur">{tr('Mise sur ce bonus à la prochaine manche pour jouer\u00a0!', 'Bet on this bonus next round to play!')}</div>}
     </div>
   );
 }
@@ -744,8 +865,14 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   const solde = useSoldeAnime(v?.solde ?? vue.solde);
   const horloges = useRef<HorlogesRoue>({ v: null, debut: null, numero: -1 });
   const [finPhase, setFinPhase] = useState<number | null>(null);
+  const clePhase = useRef('');
 
   useEffect(() => window.scrollTo(0, 0), []);
+  // Les images des mini-jeux se chargent en fond pendant qu'on mise : le bonus s'affiche ensuite sans attendre.
+  useEffect(() => {
+    const t = window.setTimeout(prechargerLesBonus, 1500);
+    return () => window.clearTimeout(t);
+  }, []);
   // L'Express du Baron a sa propre musique, le temps du voyage.
   const enExpress = v?.bonus?.type === 'express' && (v.phase === 'bonus' || v.phase === 'resultat');
   useEffect(() => {
@@ -799,7 +926,13 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     }
     h.numero = v.numero;
     h.v = v;
-    setFinPhase(v.reste === null ? null : Date.now() + v.reste);
+    // La fin de la phase, calée une fois par phase : on garde l'estimation la plus tôt (la moins retardée par le
+    // réseau), pour que le compte à rebours ne saute pas à chaque vue.
+    const cle = `${v.numero}-${v.phase}-${v.bonus?.etape ?? ''}`;
+    const fin = v.reste === null ? null : Date.now() + v.reste;
+    const changePhase = clePhase.current !== cle;
+    clePhase.current = cle;
+    setFinPhase((avant) => (fin === null ? null : changePhase || avant === null ? fin : Math.min(avant, fin)));
 
     const avant = precedente.current;
     precedente.current = v;
@@ -892,7 +1025,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     else if (v.phase === 'multiplicateurs')
       statut = (
         <>
-          <strong className="bw-statut-multi">{tr('Rien ne va plus : les multiplicateurs !', 'No more bets: the multipliers!')}</strong>
+          <strong className="bw-statut-multi">{tr('Rien ne va plus\u00a0!', 'No more bets!')}</strong>
           {v.multiplicateurs && <ListeMultiplicateurs boosts={v.multiplicateurs} />}
         </>
       );
@@ -903,13 +1036,13 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           {v.multiplicateurs && <ListeMultiplicateurs boosts={v.multiplicateurs} />}
         </>
       );
-    else if (c && v.phase === 'bonus') statut = <strong>{tr(`Bonus : ${tr(...NOMS_BONUS[c as BonusBW])} !`, `Bonus: ${tr(...NOMS_BONUS[c as BonusBW])}!`)}</strong>;
+    else if (c && v.phase === 'bonus') statut = <strong>{tr(`Bonus : ${tr(...NOMS_BONUS[c as BonusBW])}\u00a0!`, `Bonus: ${tr(...NOMS_BONUS[c as BonusBW])}!`)}</strong>;
     else if (c)
       statut = (
         <strong className="bw-statut-resultat">
           <Pastille c={c} x={multiArret > 1 ? multiArret : undefined} />
           {estBonusBW(c) ? tr(...NOMS_BONUS[c]) : tr(`La case ${CASES_VISUELS[c].nom[0]} paie ${fx(GAINS_CHIFFRES_BW[c] * multiArret)}`, `${CASES_VISUELS[c].nom[1]} pays ${fx(GAINS_CHIFFRES_BW[c] * multiArret)}`)}
-          {multiArret > 1 ? <em>{tr(`Multiplicateur ×${multiArret} !`, `Multiplier ×${multiArret}!`)}</em> : null}
+          {multiArret > 1 ? <em>{tr(`Multiplicateur ×${multiArret}\u00a0!`, `Multiplier ×${multiArret}!`)}</em> : null}
         </strong>
       );
   }
@@ -938,7 +1071,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       {v?.ouverture ? (
         <p className="bw-ouverture" role="status">
           <strong>{tr('Grande ouverture', 'Grand opening')}</strong>
-          <span>{tr('Un multiplicateur doré ×2 en plus à chaque manche · XP ×2 sur la roue', 'An extra golden ×2 multiplier every round · XP ×2 on the wheel')}</span>
+          <span>{tr('XP ×2 sur la roue', 'XP ×2 on the wheel')}</span>
         </p>
       ) : null}
 
@@ -1009,14 +1142,14 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
               <button key={c} type="button" className={`bw-case ${c} ${m ? 'misee' : ''} ${gagnante === c ? 'gagnante' : ''} ${multis.length ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} onClick={() => void miser(c)} disabled={!ouvertes} aria-label={`${tr(...vis.nom)} ${m ? dollars(m) : ''}`}>
                 {vis.image ? <img src={vis.image} alt="" draggable={false} /> : <strong>{fx(GAINS_CHIFFRES_BW[c as 'x1'])}</strong>}
                 <span className="bw-case-nom">{estBonusBW(c) ? tr(...vis.nom) : tr(`case ${vis.nom[0]}`, `${vis.nom[1]} spot`)}</span>
-                {c === 'express' && <small className="bw-case-sous">{tr('Case unique · ×10 à ×1 000', 'One spot · ×10 to ×1,000')}</small>}
+                {multis.length > 0 && <span className="bw-case-multi">{[...multis].sort((a, b) => b - a).map((x) => `×${x}`).join(' ')}</span>}
+                {c === 'express' && <small className="bw-case-sous">{tr('Case unique · ×10 à ×10 000', 'One spot · ×10 to ×10,000')}</small>}
                 {m > 0 && (
                   <span className="bw-case-mise">
                     <img src={`/cartes/jeton-${imageJeton(m)}.webp`} alt="" />
                     {court(m)}
                   </span>
                 )}
-                {multis.length > 0 && <span className="bw-case-multi">{multis.map((x) => `×${x}`).join(' ')}</span>}
               </button>
             );
           })}
@@ -1107,8 +1240,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2), Braquage (3), qui paient de ×5 à ×500, et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×25 à ×1 000). Une fois les mises fermées, 3 cases reçoivent un multiplicateur de ×2 à ×50. Chaque mise rend environ 95 % en moyenne ; les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et le Braquage.',
-            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2), Big Heist (3), paying ×5 to ×500, and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×25 to ×1,000). Once bets close, 3 spots get a ×2 to ×50 multiplier. Every bet returns about 95% on average; the jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Big Heist.',
+            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2), Braquage (3), qui paient de ×5 à ×500, et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et le Braquage. Jetons de 1 000 à 5 000 000 $ : 10 000 000 $ au plus par case et par manche.',
+            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2), Big Heist (3), paying ×5 to ×500, and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Big Heist. Chips from $1,000 to $5,000,000: $10,000,000 at most per spot and per round.',
           )}
         </p>
       </aside>
@@ -1157,8 +1290,8 @@ export function BandeauOuvertureBW({ vue, onOuvrir }: { vue: VueCasino; onOuvrir
       <img src="/cartes/bw-logo.webp" alt="The Baron’s Wheel" draggable={false} />
       <span>
         <em>{tr('Grande ouverture', 'Grand opening')}</em>
-        <strong>{tr('La nouvelle roue géante du Baron est ouverte !', 'The Baron’s new giant wheel is open!')}</strong>
-        <small>{tr('Un multiplicateur doré ×2 en plus à chaque manche · XP ×2 sur la roue · cadeau d’ouverture à récupérer en haut du salon', 'An extra golden ×2 multiplier every round · XP ×2 on the wheel · opening gift to collect at the top of the lounge')}</small>
+        <strong>{tr('La nouvelle roue géante du Baron est ouverte\u00a0!', 'The Baron’s new giant wheel is open!')}</strong>
+        <small>{tr('XP ×2 sur la roue · cadeau d’ouverture à récupérer en haut du salon', 'XP ×2 on the wheel · opening gift to collect at the top of the lounge')}</small>
         <i>{tr(`Encore ${dureeOuverture(fin - Date.now())}`, `${dureeOuverture(fin - Date.now())} left`)}</i>
       </span>
     </button>
