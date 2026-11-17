@@ -667,7 +667,7 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
   const chute = { px: dMax * dMax * 2.2, k: 0.5 * Math.sin(angleMax) + 0.6 * (1 - Math.cos(angleMax)) };
 
   return (
-    <div className={`plateau ${zoome ? 'zoome' : ''} ${spectateur ? 'regarde' : ''}`} ref={plateauRef}>
+    <div className={`plateau ${zoome ? 'zoome' : ''} ${spectateur ? 'regarde' : ''} ${salon.spectateur?.projection ? 'projection' : ''}`} ref={plateauRef}>
       <Particules />
       <header className="barre">
         <div className="nuit">
@@ -865,7 +865,17 @@ export function Table(props: { salon: VueSalon; appel: Appel; quitter: () => voi
               <p>
                 <IconeOeil />
                 <span>
-                  {EN ? (
+                  {salon.spectateur?.projection ? (
+                    EN ? (
+                      <>
+                        <strong>Live projection</strong> · class room, hands hidden.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Projection en direct</strong> · salon de la classe, cartes en main cachées.
+                      </>
+                    )
+                  ) : EN ? (
                     <>
                       You are watching <strong>{moi.nom}</strong>’s game.
                     </>
@@ -1561,6 +1571,11 @@ function FinDePartie(props: {
             {barons.map((j) => j.nom).join(tr(' et ', ' and '))} {barons.length > 1 ? tr('deviennent', 'become') : tr('devient', 'becomes')}
             <span>{tr('le Dernier Baron', 'the Last Baron')}</span>
           </p>
+          {salon.classe && (
+            <p className="classe-bonbons">
+              <span aria-hidden="true">🍬</span> {barons.map((j) => j.nom).join(tr(' et ', ' and '))} {barons.length > 1 ? tr('gagnent le paquet de bonbons !', 'win the bag of sweets!') : tr('gagne le paquet de bonbons !', 'wins the bag of sweets!')}
+            </p>
+          )}
         </div>
         <div className="fin-suite">
           <ol className="classement">

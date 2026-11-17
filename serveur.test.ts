@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io, type Socket } from 'socket.io-client';
 import { demarrerServeur } from '../server/serveur';
 import { actionRobot, PRENOMS_BOTS } from '../shared/robot';
-import type { VueSalon } from '../shared/types';
+import type { VueClasse, VueSalon } from '../shared/types';
+import { authentificationTest, creerServiceComptes, stockageMemoire } from '../server/comptes';
 
 let serveur: Awaited<ReturnType<typeof demarrerServeur>>;
 const url = () => `http://localhost:${serveur.port}`;
@@ -281,3 +282,74 @@ describe('Serveur de bout en bout', () => {
   }, 40_000);
 });
 
+
+describe('Salon de la classe', () => {
+  it('un créateur tire au sort 6 participants, la partie se lance, et la projection ne montre aucune main', async () => {
+    const identites = {
+      'jeton-createur': { uid: 'uid-createur', nom: 'Lucas', email: 'c@gmail.com' },
+      'jeton-eleve': { uid: 'uid-eleve', nom: 'Élève', email: 'e@gmail.com' },
+    };
+    const comptes = creerServiceComptes({
+      configWeb: { apiKey: 'cle', authDomain: 'test.firebaseapp.com', projectId: 'test' },
+      authentification: authentificationTest(identites),
+      stockage: stockageMemoire(),
+    });
+    await comptes.preparer('uid-createur', 'Lucas');
+    await comptes.donnerBadgeCreateur('uid-createur');
+    const srv = await demarrerServeur({ port: 0, delaiFinDePli: 5, delaiRobot: 5, servirClient: false, comptes });
+    const connecter = () => io(`http://localhost:${srv.port}`, { transports: ['websocket'], forceNew: true });
+    try {
+      const createur = connecter();
+      expect((await emettre(createur, 'identifier', { jeton: 'jeton-createur' })).ok).toBe(true);
+      const ouvert = await emettre(createur, 'classe_ouvrir');
+      expect(ouvert.classe).toMatchObject({ animateur: true, moi: false, membres: [], partie: null });
+      expect((await emettre(createur, 'classe_regarder')).ok).toBe(false); // aucune partie encore
+
+      // Un élève connecté à son compte, sans badge : ni tirage, ni projection.
+      const eleve = connecter();
+      await emettre(eleve, 'identifier', { jeton: 'jeton-eleve' });
+      expect((await emettre(eleve, 'classe_entrer', { nom: 'Élève' })).classe).toMatchObject({ moi: true, animateur: false });
+      expect((await emettre(eleve, 'classe_tirer')).ok).toBe(false);
+
+      // 7 autres participants en invités : 8 au total.
+      const invites = Array.from({ length: 7 }, connecter);
+      for (const [k, s] of invites.entries()) expect((await emettre(s, 'classe_entrer', { nom: `Invité ${k + 1}` })).ok).toBe(true);
+      const tous = [eleve, ...invites];
+      const tires = new Map<Socket, Promise<{ code: string; jeton: string }>>();
+      for (const s of tous) tires.set(s, new Promise((ok) => s.once('classe_tire', ok)));
+      const premiereVue = new Map<Socket, Promise<VueSalon>>();
+      for (const s of tous) premiereVue.set(s, new Promise((ok) => s.once('salon', ok)));
+      const vueApres = new Promise<VueClasse>((ok) => createur.on('classe', (v: VueClasse) => v.partie && ok(v)));
+
+      const r = await emettre(createur, 'classe_tirer');
+      expect(r.ok).toBe(true);
+      expect(r.joueurs).toHaveLength(6);
+      const classe = await vueApres;
+      expect(classe.partie!.joueurs).toHaveLength(6);
+      expect(classe.membres).toHaveLength(2); // les 2 non tirés attendent le prochain tirage
+      expect(classe.partie!.terminee).toBe(false);
+
+      // Exactement 6 téléphones tirés : chacun voit la partie de la classe et seulement sa main.
+      const resultats = await Promise.all(tous.map((s) => Promise.race([tires.get(s)!.then(() => true), new Promise<boolean>((ok) => setTimeout(() => ok(false), 600))])));
+      expect(resultats.filter(Boolean)).toHaveLength(6);
+      const vueJoueur = await premiereVue.get(tous[resultats.indexOf(true)])!;
+      expect(vueJoueur.classe).toBe(true);
+      expect(vueJoueur.partie!.main.length).toBeGreaterThan(0);
+
+      // Pas de second tirage pendant la partie.
+      expect((await emettre(createur, 'classe_tirer')).ok).toBe(false);
+
+      // La projection : vue spectateur, aucune main ni annonce secrète.
+      const projection = new Promise<VueSalon>((ok) => createur.on('salon', (v: VueSalon) => v.spectateur && ok(v)));
+      expect((await emettre(createur, 'classe_regarder')).ok).toBe(true);
+      const vp = await projection;
+      expect(vp.spectateur).toMatchObject({ projection: true });
+      expect(vp.classe).toBe(true);
+      expect(vp.partie!.main).toEqual([]);
+      expect(vp.partie!.joueurs).toHaveLength(6);
+      for (const s of [createur, ...tous]) s.close();
+    } finally {
+      await srv.fermer();
+    }
+  }, 20_000);
+});

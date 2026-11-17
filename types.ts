@@ -393,10 +393,34 @@ export interface VueSalon {
   revanche?: { votants: string[]; finDans: number } | null;
   /** Mon chat est coupé pour toute la table (après des signalements). */
   chatCoupe?: boolean;
-  /** Je regarde la partie d'un ami, sans jouer : la table est vue depuis sa place, sans aucune carte cachée. */
-  spectateur?: { ami: string };
+  /**
+   * Je regarde la partie d'un ami, sans jouer : la table est vue depuis sa place, sans aucune carte cachée.
+   * projection : un créateur projette la partie du salon de la classe (aucune main n'est visible).
+   */
+  spectateur?: { ami: string; projection?: true };
+  /** Partie tirée au sort dans le salon de la classe : le Dernier Baron gagne un paquet de bonbons. */
+  classe?: true;
   /** Les amis qui regardent la partie en direct (pseudos), visibles des joueurs. */
   spectateurs?: string[];
+}
+
+/** Le salon de la classe (Master IES) : les participants attendent le tirage au sort de la partie. */
+export interface VueClasse {
+  /** Pseudos des participants au prochain tirage. */
+  membres: string[];
+  /** Je participe au prochain tirage. */
+  moi: boolean;
+  /** Je peux lancer le tirage et projeter la partie (badge Créateur). */
+  animateur: boolean;
+  /** La dernière partie tirée au sort. */
+  partie: {
+    joueurs: string[];
+    nuit: number;
+    nbNuits: number;
+    terminee: boolean;
+    /** Le ou les Dernier(s) Baron(s), une fois la partie terminée : ils gagnent le paquet de bonbons. */
+    gagnants: string[];
+  } | null;
 }
 
 /** Réaction rapide d'un joueur, affichée quelques secondes au-dessus de son avatar. */

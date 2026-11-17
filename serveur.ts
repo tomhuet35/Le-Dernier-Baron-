@@ -46,6 +46,7 @@ import type {
   ProfilPublic,
   RecompenseSemaine,
   StatutAmi,
+  VueClasse,
   VueSalon,
 } from '../shared/types';
 import { vuePourJoueur, vueSpectateur } from '../shared/vue';
@@ -103,6 +104,8 @@ interface Salon {
   numeroPartie: number;
   /** Amis qui regardent la partie en direct (par téléphone), chacun depuis la place de l'ami qu'il suit. */
   spectateurs: Map<string, Spectateur>;
+  /** Partie tirée au sort dans le salon de la classe. */
+  classe: boolean;
 }
 
 interface Spectateur {
@@ -110,10 +113,14 @@ interface Spectateur {
   uid: string;
   /** Place suivie (celle de l'ami). */
   joueurId: string;
+  /** Un créateur projette la partie du salon de la classe. */
+  projection?: boolean;
 }
 
 /** Spectateurs au plus par table. */
 const MAX_SPECTATEURS = 10;
+/** Salon de la classe : nombre de joueurs tirés au sort pour la partie. */
+const TAILLE_PARTIE_CLASSE = 6;
 
 /** Réglage « Vitesse des ordinateurs » : lente, normale ou rapide. */
 const VITESSES: Record<string, number> = { lente: 1.8, normale: 1, rapide: 0.55 };
@@ -274,6 +281,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       signalements: new Map(),
       numeroPartie: 0,
       spectateurs: new Map(),
+      classe: false,
     };
     salons.set(salon.code, salon);
     return salon;
@@ -385,7 +393,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       messages: salon.messages,
       revanche: salon.revanche ? { votants: [...salon.revanche.votes], finDans: Math.max(0, salon.revanche.fin - Date.now()) } : null,
       ...(!spectateur && salon.muets.has(joueurId) ? { chatCoupe: true } : {}),
-      ...(spectateur ? { spectateur: { ami: suivi?.nom ?? '?' } } : {}),
+      ...(spectateur ? { spectateur: { ami: suivi?.nom ?? '?', ...(spectateur.projection ? { projection: true as const } : {}) } } : {}),
+      ...(salon.classe ? { classe: true as const } : {}),
       ...(salon.spectateurs.size ? { spectateurs: [...salon.spectateurs.values()].map((sp) => sp.nom) } : {}),
       tempsRestant: salon.echeance ? Math.max(0, salon.echeance.fin - Date.now()) : null,
       dureeTour,
@@ -411,6 +420,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       }
       io.to(sid).emit('salon', vueSalon(salon, sp.joueurId, sp));
     }
+    if (salon.classe) diffuserClasse();
   }
   /** Toutes les tables (couronnes du classement changées, nouvelle semaine). */
   function diffuserTout() {
@@ -804,6 +814,50 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     diffuser(salon);
   }
 
+  // ---------- Salon de la classe (Master IES) ----------
+  // Les participants rejoignent le salon depuis l'accueil ; un créateur tire au sort 6 joueurs et la partie se lance
+  // aussitôt. Les créateurs la projettent en direct (vue spectateur : aucune main visible). Le Dernier Baron gagne un
+  // paquet de bonbons.
+  const classe = {
+    /** Téléphones qui ont ouvert le salon de la classe (ils reçoivent sa vue), et s'ils sont animateurs (badge Créateur). */
+    abonnes: new Map<string, { animateur: boolean }>(),
+    /** Participants au prochain tirage. */
+    membres: new Map<string, { nom: string; uid: string | null; compte: CompteJoueurVue | null }>(),
+    /** Code du salon de la dernière partie tirée au sort. */
+    code: null as string | null,
+  };
+  function vueClasse(socketId: string): VueClasse {
+    const salon = classe.code ? salons.get(classe.code) : undefined;
+    const p = salon?.partie ?? null;
+    let partie: VueClasse['partie'] = null;
+    if (salon && p) {
+      const terminee = p.phase === 'FIN_DE_PARTIE';
+      const max = Math.max(...p.joueurs.map((j) => p.scores[j.id]));
+      partie = {
+        joueurs: salon.joueurs.map((j) => j.nom),
+        nuit: p.nuit,
+        nbNuits: p.nbNuits ?? 8,
+        terminee,
+        gagnants: terminee ? p.joueurs.filter((j) => p.scores[j.id] === max).map((j) => j.nom) : [],
+      };
+    }
+    return {
+      membres: [...classe.membres.values()].map((m) => m.nom),
+      moi: classe.membres.has(socketId),
+      animateur: !!classe.abonnes.get(socketId)?.animateur,
+      partie,
+    };
+  }
+  let classeProgrammee = false;
+  function diffuserClasse() {
+    if (classeProgrammee) return;
+    classeProgrammee = true;
+    setTimeout(() => {
+      classeProgrammee = false;
+      for (const sid of classe.abonnes.keys()) io.to(sid).emit('classe', vueClasse(sid));
+    }, 150).unref();
+  }
+
   io.on('connection', (socket) => {
     // Langue du téléphone (envoyée à la connexion) : les messages du serveur sont écrits dans cette langue.
     const langue: Langue = estLangue(socket.handshake.auth?.langue) ? socket.handshake.auth.langue : 'fr';
@@ -859,6 +913,16 @@ export function demarrerServeur(options: OptionsServeur = {}) {
     let identite: Identite | null = null;
     casino?.brancher(socket, { identite: () => identite, L });
     let resume: CompteJoueurVue | null = null;
+    /** Le compte connecté a le badge Créateur (salon de la classe : tirage au sort et projection). */
+    let createur = false;
+    const majCreateur = (oui: boolean) => {
+      createur = oui;
+      const ab = classe.abonnes.get(socket.id);
+      if (ab && ab.animateur !== oui) {
+        ab.animateur = oui;
+        diffuserClasse();
+      }
+    };
     let derniereIdentification = 0;
     let dernierTapis = 0;
     /** Rattache le compte à la place du joueur, sauf si ce compte occupe déjà une autre place du salon. */
@@ -999,6 +1063,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         oublierPresence();
         identite = null;
         resume = null;
+        majCreateur(false);
         const c = contexte();
         if (c && !c.salon.partie && c.joueur.uid) {
           c.joueur.uid = null;
@@ -1024,6 +1089,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       if (identite && identite.uid !== id.uid) oublierPresence();
       identite = id;
       resume = resumeCompte(stats);
+      majCreateur(stats.createur === true);
       noterPresence(id.uid, stats);
       if (stats.langue !== langue) void comptes.definirLangue(id.uid, langue).catch(() => undefined);
       const c = contexte();
@@ -1100,6 +1166,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         const stats = await comptes.donnerBadgeCreateur(id.uid);
         if (!stats) return repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment.', 'Your profile is unavailable right now.') });
         resume = resumeCompte(stats);
+        majCreateur(true);
         repondre(rappel, { ok: true, profil: profilComplet(id, stats), message: L('Badge Créateur ajouté à ton profil !', 'Creator badge added to your profile!') });
       } catch (e) {
         console.error('Badge Créateur impossible :', e);
@@ -1436,9 +1503,107 @@ export function demarrerServeur(options: OptionsServeur = {}) {
 
     socket.on('disconnect', () => {
       oublierPresence();
+      classe.abonnes.delete(socket.id);
+      if (classe.membres.delete(socket.id)) diffuserClasse();
       retirerSpectateur(socket.id);
       detacher(socket.id);
       diffuserEnLigne();
+    });
+
+    // ---------- Salon de la classe (Master IES) ----------
+    socket.on('classe_ouvrir', (_data: unknown, rappel?: Rappel) => {
+      classe.abonnes.set(socket.id, { animateur: createur });
+      repondre(rappel, { ok: true, classe: vueClasse(socket.id) });
+    });
+
+    socket.on('classe_fermer', (_data: unknown, rappel?: Rappel) => {
+      classe.abonnes.delete(socket.id);
+      if (classe.membres.delete(socket.id)) diffuserClasse();
+      repondre(rappel, { ok: true });
+    });
+
+    socket.on('classe_entrer', (data: { nom?: string } = {}, rappel?: Rappel) => {
+      const nom = nettoyerNom(data?.nom);
+      if (!nom) return repondre(rappel, { ok: false, erreur: L('Choisis un pseudo.', 'Choose a nickname.') });
+      if (!classe.abonnes.has(socket.id)) classe.abonnes.set(socket.id, { animateur: createur });
+      // Un compte n'a qu'une place au tirage, même ouvert sur deux téléphones.
+      if (identite) for (const [sid, m] of classe.membres) if (sid !== socket.id && m.uid === identite.uid) classe.membres.delete(sid);
+      classe.membres.set(socket.id, { nom, uid: identite?.uid ?? null, compte: identite ? resume : null });
+      diffuserClasse();
+      repondre(rappel, { ok: true, classe: vueClasse(socket.id) });
+    });
+
+    socket.on('classe_sortir', (_data: unknown, rappel?: Rappel) => {
+      if (classe.membres.delete(socket.id)) diffuserClasse();
+      repondre(rappel, { ok: true, classe: vueClasse(socket.id) });
+    });
+
+    // Un créateur tire au sort 6 participants (tous s'ils sont moins nombreux, 3 au moins) : la partie se lance aussitôt.
+    socket.on('classe_tirer', (_data: unknown, rappel?: Rappel) => {
+      if (!createur) return repondre(rappel, { ok: false, erreur: L('Le tirage au sort est réservé aux créateurs du jeu.', 'The draw is reserved for the game’s creators.') });
+      const ancien = classe.code ? salons.get(classe.code) : undefined;
+      if (ancien?.partie && ancien.partie.phase !== 'FIN_DE_PARTIE') {
+        return repondre(rappel, { ok: false, erreur: L('Une partie de la classe est déjà en cours.', 'A class game is already in progress.') });
+      }
+      // Participants encore connectés, qui ne sont pas déjà assis à une table.
+      const dispo = [...classe.membres.entries()].filter(([sid]) => io.sockets.sockets.has(sid) && !socketsVersJoueur.has(sid));
+      if (dispo.length < MIN_JOUEURS) {
+        return repondre(rappel, { ok: false, erreur: L(`Il faut au moins ${MIN_JOUEURS} participants dans le salon.`, `At least ${MIN_JOUEURS} participants are needed in the room.`) });
+      }
+      for (let i = dispo.length - 1; i > 0; i--) {
+        const j = randomInt(i + 1);
+        [dispo[i], dispo[j]] = [dispo[j], dispo[i]];
+      }
+      const tires = dispo.slice(0, TAILLE_PARTIE_CLASSE);
+      const salon = nouveauSalon(false);
+      salon.classe = true;
+      for (const [sid, m] of tires) {
+        const s = io.sockets.sockets.get(sid);
+        if (!s) continue;
+        retirerSpectateur(sid);
+        const joueur = nouveauJoueur(salon, m.nom);
+        if (m.uid && !salon.joueurs.some((j) => j.uid === m.uid)) {
+          joueur.uid = m.uid;
+          joueur.compte = m.compte;
+        }
+        attacher(s, salon, joueur);
+        classe.membres.delete(sid);
+        io.to(sid).emit('classe_tire', { code: salon.code, jeton: joueur.jeton });
+      }
+      classe.code = salon.code;
+      // Les projections de la partie précédente passent à la nouvelle.
+      if (ancien) {
+        for (const [sid, sp] of [...ancien.spectateurs]) {
+          if (!sp.projection) continue;
+          ancien.spectateurs.delete(sid);
+          salon.spectateurs.set(sid, { ...sp, joueurId: salon.joueurs[0].id });
+          spectateursParSocket.set(sid, salon.code);
+        }
+      }
+      lancerPartie(salon);
+      diffuserClasse();
+      diffuserEnLigne();
+      repondre(rappel, { ok: true, joueurs: salon.joueurs.map((j) => j.nom) });
+    });
+
+    // Un créateur projette la partie de la classe : vue spectateur, aucune main n'est visible.
+    socket.on('classe_regarder', (_data: unknown, rappel?: Rappel) => {
+      if (!createur || !identite) return repondre(rappel, { ok: false, erreur: L('La projection est réservée aux créateurs du jeu.', 'Projection is reserved for the game’s creators.') });
+      const salon = classe.code ? salons.get(classe.code) : undefined;
+      if (!salon?.partie) return repondre(rappel, { ok: false, erreur: L('Aucune partie de la classe pour le moment.', 'No class game right now.') });
+      const c = contexte();
+      if (c?.salon === salon) return repondre(rappel, { ok: false, erreur: L('Tu joues à cette table.', 'You are playing at this table.') });
+      if (c?.salon.partie && c.salon.partie.phase !== 'FIN_DE_PARTIE') {
+        return repondre(rappel, { ok: false, erreur: L('Termine d’abord ta partie.', 'Finish your game first.') });
+      }
+      if (salon.spectateurs.size >= MAX_SPECTATEURS && !salon.spectateurs.has(socket.id)) {
+        return repondre(rappel, { ok: false, erreur: L('Il y a déjà beaucoup de spectateurs à cette table.', 'There are already many spectators at this table.') });
+      }
+      quitterSalonActuel();
+      salon.spectateurs.set(socket.id, { nom: L('Projection', 'Projection'), uid: identite.uid, joueurId: salon.joueurs[0].id, projection: true });
+      spectateursParSocket.set(socket.id, salon.code);
+      repondre(rappel, { ok: true });
+      diffuser(salon);
     });
 
     // ---------- Classement de la semaine ----------

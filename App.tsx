@@ -3,7 +3,7 @@ import { MAX_JOUEURS, MIN_JOUEURS, NB_AVATARS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
 import { NOM_NIVEAU_BOT_EN, NOM_STYLE_BOT_EN, TRANCHES_EN } from '../../shared/langue';
 import { EN, pluriel, tr } from './traduction';
-import type { Invitation, ListeAmis, MeneurSemaine, ProfilCompte, ProfilPublic, RecompenseSemaine, VueClassement, VueSalon } from '../../shared/types';
+import type { Invitation, ListeAmis, MeneurSemaine, ProfilCompte, ProfilPublic, RecompenseSemaine, VueClasse, VueClassement, VueSalon } from '../../shared/types';
 import type { ConfigComptes, Utilisateur } from './connexion';
 import { NIVEAUX_BOT, NOM_NIVEAU_BOT, NOM_STYLE_BOT, STYLES_BOT } from '../../shared/robot';
 import {
@@ -73,6 +73,7 @@ type Reponse = {
   classement?: VueClassement;
   roulette?: { case: number; gain: GainRoulette; niveauAvant: number; niveau: number };
   recompense?: RecompenseSemaine;
+  classe?: VueClasse;
 };
 export type Appel = (evenement: string, data?: unknown) => Promise<Reponse>;
 export type EnLigne = { joueurs: number; enAttente: number; baron?: MeneurSemaine | null };
@@ -124,6 +125,13 @@ export function App() {
   const [info, setInfo] = useState<string | null>(null);
   const [reprise, setReprise] = useState(!!lire(CLE_SESSION));
   const [enLigne, setEnLigne] = useState<EnLigne | null>(null);
+  // Salon de la classe (Master IES) : ouvert depuis l'accueil, on y revient après la partie tirée au sort.
+  const [classeOuverte, setClasseOuverte] = useState(false);
+  const classeOuverteRef = useRef(false);
+  classeOuverteRef.current = classeOuverte;
+  const [classe, setClasse] = useState<VueClasse | null>(null);
+  const classeRef = useRef<VueClasse | null>(null);
+  classeRef.current = classe;
 
   const oublier = useCallback(() => {
     ecrire(CLE_SESSION, null);
@@ -134,6 +142,13 @@ export function App() {
   useEffect(() => {
     const reprendre = () => {
       setConnecte(true);
+      // Salon de la classe ouvert : on s'y réabonne (et on reprend sa place au tirage).
+      if (classeOuverteRef.current) {
+        const etaitMembre = classeRef.current?.moi;
+        socket.emit(etaitMembre ? 'classe_entrer' : 'classe_ouvrir', etaitMembre ? { nom: lire(CLE_NOM) ?? '' } : {}, (r: Reponse) => {
+          if (r.ok && r.classe) setClasse(r.classe);
+        });
+      }
       // Je regardais la partie d'un ami : la connexion a été coupée, on revient à l'accueil.
       const regarde = salonRef.current?.spectateur;
       if (regarde) {
@@ -168,6 +183,16 @@ export function App() {
           : tr('La revanche a commencé sans toi.', 'The rematch started without you.'),
       );
     };
+    const surClasse = (v: VueClasse) => setClasse(v);
+    // Tiré au sort dans le salon de la classe : la place est gardée pour la reconnexion automatique.
+    const surTire = (d: { code: string; jeton: string }) => {
+      ecrire(CLE_SESSION, JSON.stringify({ code: d.code, jeton: d.jeton }));
+      history.replaceState(null, '', `/?salon=${d.code}`);
+      jouerEffet('lancement');
+      setInfo(tr('Tu as été tiré au sort : à toi de jouer !', 'You have been drawn: your turn to play!'));
+    };
+    socket.on('classe', surClasse);
+    socket.on('classe_tire', surTire);
     socket.on('sorti', surSorti);
     socket.on('connect', reprendre);
     socket.on('disconnect', surDeconnexion);
@@ -182,6 +207,8 @@ export function App() {
       socket.off('exclu', surExclu);
       socket.off('sorti', surSorti);
       socket.off('en_ligne', surEnLigne);
+      socket.off('classe', surClasse);
+      socket.off('classe_tire', surTire);
     };
   }, [oublier]);
 
@@ -447,19 +474,30 @@ export function App() {
     if (m) setMessage(m);
   }, []);
   const ouvrirCasino = profil?.createur ? () => setCasinoOuvert(true) : undefined;
+  const ouvrirClasse = useCallback(async () => {
+    setClasseOuverte(true);
+    const r = await appel('classe_ouvrir');
+    if (r.ok && r.classe) setClasse(r.classe);
+  }, [appel]);
+  const fermerClasse = useCallback(() => {
+    setClasseOuverte(false);
+    setClasse(null);
+    void appel('classe_fermer');
+  }, [appel]);
 
   let ecran;
   if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} tapis={tapisActif(profil?.tapis, profil?.xp ?? 0)} poserTapis={poserTapis} />;
   else if (salon?.spectateur) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
   else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} amis={amis} />;
   else if (reprise) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
+  else if (classeOuverte) ecran = <SalonClasse vue={classe} appel={appel} compte={compte} majVue={setClasse} fermer={fermerClasse} />;
   else if (casinoOuvert && profil?.createur)
     ecran = (
       <Suspense fallback={<div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>}>
         <Casino appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} />
       </Suspense>
     );
-  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirCasino={ouvrirCasino} />;
+  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirCasino={ouvrirCasino} ouvrirClasse={() => void ouvrirClasse()} />;
 
   return (
     <>
@@ -507,7 +545,21 @@ export function App() {
   );
 }
 
-function Accueil({ appel, compte, enLigne, amis, ouvrirCasino }: { appel: Appel; compte: EtatCompte; enLigne: EnLigne | null; amis: EtatAmis; ouvrirCasino?: () => void }) {
+function Accueil({
+  appel,
+  compte,
+  enLigne,
+  amis,
+  ouvrirCasino,
+  ouvrirClasse,
+}: {
+  appel: Appel;
+  compte: EtatCompte;
+  enLigne: EnLigne | null;
+  amis: EtatAmis;
+  ouvrirCasino?: () => void;
+  ouvrirClasse: () => void;
+}) {
   const [vue, setVue] = useState<'menu' | 'jouer'>(salonDansAdresse() ? 'jouer' : 'menu');
   const [fenetre, setFenetre] = useState<'menu' | 'profil' | 'amis' | 'classement' | 'roulette' | 'regles' | 'reglages' | 'connexion' | 'inscription' | null>(null);
   const [intro, setIntro] = useState<string | undefined>(undefined);
@@ -639,6 +691,16 @@ function Accueil({ appel, compte, enLigne, amis, ouvrirCasino }: { appel: Appel;
       >
         {tr('Jouer', 'Play')}
       </button>
+      <button type="button" className="bouton-classe" onClick={ouvrirClasse}>
+        <span className="bouton-classe-icone" aria-hidden="true">
+          🎓
+        </span>
+        <span className="bouton-classe-texte">
+          <strong>{tr('Salon de la classe', 'Class room')}</strong>
+          <small>{tr('Master IES · tirage au sort d’une partie, un paquet de bonbons à gagner', 'Master IES · a game drawn at random, a bag of sweets to win')}</small>
+        </span>
+        <span aria-hidden="true">→</span>
+      </button>
       <BoutonRoulette
         compte={compte}
         onOuvrir={() =>
@@ -664,6 +726,134 @@ function Accueil({ appel, compte, enLigne, amis, ouvrirCasino }: { appel: Appel;
         </a>
       </footer>
       {fenetres}
+    </main>
+  );
+}
+
+/**
+ * Le salon de la classe (Master IES) : chacun le rejoint avec son pseudo ; un créateur du jeu tire au sort 6 joueurs et
+ * la partie se lance aussitôt sur leurs téléphones. Les créateurs la projettent en direct, sans les cartes en main.
+ * Le Dernier Baron gagne un paquet de bonbons.
+ */
+function SalonClasse({ vue, appel, compte, majVue, fermer }: { vue: VueClasse | null; appel: Appel; compte: EtatCompte; majVue: (v: VueClasse) => void; fermer: () => void }) {
+  const [nom, setNom] = useState(() => lire(CLE_NOM) || compte.profil?.nom?.slice(0, 16) || '');
+  const [occupe, setOccupe] = useState(false);
+  const action = async (evenement: string, data?: unknown) => {
+    setOccupe(true);
+    const r = await appel(evenement, data);
+    setOccupe(false);
+    if (r.ok && r.classe) majVue(r.classe);
+    return r;
+  };
+  const rejoindre = async () => {
+    ecrire(CLE_NOM, nom.trim());
+    const r = await action('classe_entrer', { nom });
+    if (r.ok) jouerEffet('jeton');
+  };
+  const membres = vue?.membres ?? [];
+  const partie = vue?.partie ?? null;
+  const enCours = !!partie && !partie.terminee;
+  const nbTires = Math.min(6, membres.length);
+  return (
+    <main className="accueil salon-classe">
+      <div className="menu-haut">
+        <button type="button" className="bouton-retour" onClick={fermer}>
+          ← Menu
+        </button>
+        <h1 className="titre-page">{tr('Salon de la classe', 'Class room')}</h1>
+        <span className="menu-haut-vide" />
+      </div>
+      <p className="classe-sous-titre">{tr('Master IES · UCO Guingamp · partie test', 'Master IES · UCO Guingamp · test game')}</p>
+      <div className="classe-lot">
+        <span aria-hidden="true">🍬</span>
+        <p>
+          {EN ? (
+            <>
+              <strong>6 players drawn at random.</strong> The Last Baron of the game wins a bag of sweets!
+            </>
+          ) : (
+            <>
+              <strong>6 joueurs tirés au sort.</strong> Le Dernier Baron de la partie gagne un paquet de bonbons !
+            </>
+          )}
+        </p>
+      </div>
+
+      {partie && (
+        <section className={`classe-partie ${partie.terminee ? 'terminee' : ''}`} aria-live="polite">
+          {partie.terminee ? (
+            <>
+              <h2>{tr('Partie terminée', 'Game over')}</h2>
+              <p className="classe-gagnant">
+                🍬 <strong>{partie.gagnants.join(tr(' et ', ' and '))}</strong> {partie.gagnants.length > 1 ? tr('deviennent le Dernier Baron et gagnent le paquet de bonbons !', 'become the Last Baron and win the bag of sweets!') : tr('devient le Dernier Baron et gagne le paquet de bonbons !', 'becomes the Last Baron and wins the bag of sweets!')}
+              </p>
+            </>
+          ) : (
+            <>
+              <h2>{tr(`Partie en cours · nuit ${partie.nuit}/${partie.nbNuits}`, `Game in progress · night ${partie.nuit}/${partie.nbNuits}`)}</h2>
+              <p className="discret">{tr('Les joueurs tirés au sort :', 'The players drawn:')}</p>
+            </>
+          )}
+          <ul className="classe-tires">
+            {partie.joueurs.map((n, i) => (
+              <li key={`${n}-${i}`} className={partie.gagnants.includes(n) ? 'gagnant' : ''}>
+                {n}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {vue?.animateur && (
+        <section className="classe-animateur">
+          <h2>{tr('Espace créateurs', 'Creators’ corner')}</h2>
+          <button type="button" className="bouton-plaque" disabled={occupe || enCours || membres.length < MIN_JOUEURS} onClick={() => void action('classe_tirer')}>
+            <span>{enCours ? tr('Partie en cours…', 'Game in progress…') : tr('Tirer au sort', 'Draw')}</span>
+            <small>
+              {enCours
+                ? tr('Nouveau tirage à la fin de la partie', 'New draw when the game is over')
+                : membres.length < MIN_JOUEURS
+                  ? tr(`Il faut au moins ${MIN_JOUEURS} participants`, `At least ${MIN_JOUEURS} participants needed`)
+                  : tr(`${nbTires} joueurs · la partie se lance aussitôt`, `${nbTires} players · the game starts right away`)}
+            </small>
+          </button>
+          <button type="button" className="bouton-plaque sombre" disabled={occupe || !partie} onClick={() => void action('classe_regarder')}>
+            <span>{tr('Projeter la partie', 'Project the game')}</span>
+            <small>{tr('En direct, sans les cartes en main des joueurs', 'Live, without the players’ hands')}</small>
+          </button>
+        </section>
+      )}
+
+      {vue?.moi ? (
+        <section className="classe-moi">
+          <p>
+            <span className="point en-ligne" aria-hidden="true" /> {tr('Tu participes au prochain tirage au sort. Garde cet écran ouvert : si tu es tiré, la partie s’ouvre toute seule.', 'You are in the next draw. Keep this screen open: if you are drawn, the game opens by itself.')}
+          </p>
+          <button type="button" className="petit" disabled={occupe} onClick={() => void action('classe_sortir')}>
+            {tr('Ne plus participer', 'Leave the draw')}
+          </button>
+        </section>
+      ) : (
+        <form className="accueil-form classe-form" onSubmit={(e) => (e.preventDefault(), void rejoindre())}>
+          <label htmlFor="pseudo-classe">{tr('Ton prénom ou pseudo', 'Your first name or nickname')}</label>
+          <input id="pseudo-classe" value={nom} maxLength={16} autoComplete="nickname" placeholder={tr('Ex. Lucas', 'e.g. Alex')} onChange={(e) => setNom(e.target.value)} />
+          <button type="submit" className="bouton-plaque" disabled={!nom.trim() || occupe}>
+            <span>{tr('Participer', 'Take part')}</span>
+          </button>
+        </form>
+      )}
+
+      <section className="classe-membres">
+        <h2>{membres.length ? tr(`${pluriel(membres.length, 'participant', 'participant')} en attente`, `${pluriel(membres.length, 'participant', 'participant')} waiting`) : tr('Personne pour l’instant', 'Nobody yet')}</h2>
+        {membres.length > 0 && (
+          <ul>
+            {membres.map((n, i) => (
+              <li key={`${n}-${i}`}>{n}</li>
+            ))}
+          </ul>
+        )}
+      </section>
+
     </main>
   );
 }
