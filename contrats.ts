@@ -14,6 +14,7 @@
  */
 import { JEUX_CASINO, NOMS_JEUX_CASINO, type JeuCasino } from './profilCasino';
 import { normaliserCollection, type Collection } from './ventes';
+import { normaliserPortefeuille, type Portefeuille } from './bourse';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Réglages
@@ -153,6 +154,8 @@ export interface EtatSalonJoueur {
   semaineBaron: { semaine: string; pris: number[] };
   pertes: { semaine: string; mise: number; gain: number };
   champagne?: string;
+  /** La Bourse de 1929 : les actions du joueur. */
+  portefeuille: Portefeuille;
 }
 
 /** Petit hasard reproductible (le même jour donne les mêmes contrats, même si le serveur redémarre). */
@@ -196,6 +199,7 @@ export function etatSalonVide(): EtatSalonJoueur {
     cadres: [],
     semaineBaron: { semaine: '', pris: [] },
     pertes: { semaine: '', mise: 0, gain: 0 },
+    portefeuille: {},
   };
 }
 
@@ -470,6 +474,7 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   const pe = (b.pertes && typeof b.pertes === 'object' ? b.pertes : {}) as Record<string, unknown>;
   e.pertes = { semaine: texte(pe.semaine), mise: entier(pe.mise), gain: entier(pe.gain) };
   if (typeof b.champagne === 'string') e.champagne = texte(b.champagne);
+  e.portefeuille = normaliserPortefeuille(b.portefeuille);
   // L'album complet donne son cadre (comptes d'avant le cadre compris).
   if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;

@@ -1,0 +1,77 @@
+/* Les Cercles : accueil, salon du cercle, membres, discussion, classement. */
+.ce-ecran { position: relative; }
+.ce-ecran::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(8, 4, 3, 0.55), rgba(8, 4, 3, 0.92) 55%), url('/cartes/cercle-salon.webp') center top / cover no-repeat, var(--nuit); }
+
+.ce-accueil { display: grid; gap: 12px; padding: 0 0 14px; border-radius: 18px; overflow: hidden; border: 2px solid var(--or); background: linear-gradient(180deg, rgba(60, 1, 7, 0.92), rgba(22, 16, 12, 0.95)); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6); }
+.ce-accueil > img { width: 100%; aspect-ratio: 16 / 7; object-fit: cover; }
+.ce-accueil > div { display: grid; gap: 10px; padding: 0 16px; }
+.ce-accueil h2 { margin: 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 22px; }
+.ce-accueil p { margin: 0; color: var(--creme); }
+.ce-accueil .principal { justify-self: start; display: inline-flex; align-items: center; gap: 6px; }
+.ce-demande { margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(22, 16, 12, 0.9); border: 1px dashed var(--or); }
+
+.ce-classement, .ce-bloc { display: grid; gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.92); }
+.ce-classement h2, .ce-bloc h3 { margin: 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 19px; }
+.ce-classement ol, .ce-membres { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ce-classement li, .ce-membres li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--nuit-3); }
+.ce-classement li.mien, .ce-membres li.moi { outline: 1px solid var(--or-vif); background: #33221a; }
+.ce-rang { width: 22px; font-family: var(--titre); color: var(--or-vif); text-align: center; }
+.ce-classement li > img { width: 44px; height: 44px; object-fit: contain; }
+.ce-membres li > img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--or); }
+.ce-nom { flex: 1; display: grid; min-width: 0; }
+.ce-nom strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ce-nom small { font-size: 12px; color: var(--creme-doux); }
+.ce-mise { display: grid; justify-items: end; }
+.ce-mise b, .ce-mise-membre { font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ce-mise small { font-size: 11px; color: var(--creme-doux); }
+.ce-role.president { color: #ffd36b; font-weight: 700; }
+.ce-role.croupier { color: #ff8fa3; font-weight: 700; }
+
+.ce-salon {
+  position: relative; display: grid; justify-items: center; gap: 6px; padding: 18px 14px 16px; border-radius: 20px; text-align: center;
+  border: 2px solid var(--or); background: linear-gradient(180deg, rgba(10, 5, 3, 0.35), rgba(10, 5, 3, 0.9) 70%), var(--fond) center / cover no-repeat;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+}
+.ce-salon-blason { width: 120px; height: 120px; object-fit: contain; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 16px rgba(231, 194, 122, 0.4)); animation: ce-blason 0.6s ease-out both; }
+.ce-salon h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: 28px; color: #fff1c4; text-shadow: 0 2px 10px #000; }
+.ce-salon-infos { margin: 0; font-size: 13px; color: var(--creme); }
+.ce-cagnotte { display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 16px 8px 8px; border-radius: 16px; border: 1px solid var(--or-vif); background: rgba(22, 16, 12, 0.85); text-align: left; }
+.ce-cagnotte img { width: 64px; height: 64px; object-fit: contain; }
+.ce-cagnotte span { display: grid; }
+.ce-cagnotte strong { font-family: var(--titre); font-weight: 400; font-size: 26px; color: #fff1c4; }
+.ce-cagnotte small { font-size: 12px; color: var(--creme-doux); }
+.ce-dernier { margin: 0; font-size: 12.5px; color: var(--creme-doux); }
+
+.ce-onglets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ce-onglets button { padding: 10px 6px; border-radius: 12px; font-family: var(--titre); }
+.ce-onglets button.actif { border-color: var(--or-vif); color: var(--or-vif); box-shadow: 0 0 12px rgba(231, 194, 122, 0.35); }
+.ce-reglages { display: flex; flex-wrap: wrap; gap: 8px; }
+.ce-reglages button { display: inline-flex; align-items: center; gap: 6px; }
+
+.ce-discussion { grid-template-rows: minmax(0, 1fr) auto; }
+.ce-messages { display: grid; gap: 8px; max-height: 52dvh; overflow-y: auto; padding-right: 4px; }
+.ce-message { display: flex; gap: 8px; align-items: flex-start; }
+.ce-message img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none; }
+.ce-message span { display: grid; gap: 2px; max-width: 80%; padding: 6px 10px; border-radius: 4px 12px 12px 12px; background: var(--nuit-3); }
+.ce-message small { font-size: 11px; color: var(--creme-doux); }
+.ce-message p { margin: 0; overflow-wrap: anywhere; }
+.ce-message.moi { flex-direction: row-reverse; }
+.ce-message.moi span { border-radius: 12px 4px 12px 12px; background: #4a1218; }
+.ce-ecrire { display: flex; gap: 8px; }
+.ce-ecrire input { flex: 1; min-width: 0; }
+
+.ce-fonder { display: grid; gap: 10px; }
+.ce-fonder h2 { margin: 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.ce-fonder label { display: grid; gap: 4px; }
+.ce-fonder .ce-case { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.ce-blasons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ce-blasons button { padding: 4px; border-radius: 12px; border: 1px solid var(--filet); background: var(--nuit-3); }
+.ce-blasons button.choisi { border-color: var(--or-vif); box-shadow: 0 0 0 2px var(--or-vif) inset, 0 0 12px rgba(231, 194, 122, 0.45); }
+.ce-blasons img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+
+@keyframes ce-blason { from { opacity: 0; transform: scale(0.6) rotate(-8deg); } }
+@media (prefers-reduced-motion: reduce) { .ce-salon-blason { animation: none; } }
+.ce-membres li { flex-wrap: wrap; }
+.ce-actions { flex-basis: 100%; display: flex; justify-content: flex-end; gap: 6px; }
+.ce-classement li { flex-wrap: wrap; }
+.ce-classement .ce-nom { min-width: 110px; }

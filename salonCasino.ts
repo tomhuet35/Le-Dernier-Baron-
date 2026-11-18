@@ -55,6 +55,9 @@ import {
 } from '../shared/contrats';
 import { semaineDe } from './classement';
 import { creerVentes } from './ventesCasino';
+import { creerCercles, type ResultatCercle } from './cerclesCasino';
+import { creerBourse } from './bourseCasino';
+import { ACTIONS_MAX, acheter, devisAchat, estAction, MONTANTS_ACHAT, produitVente, vendre, type VueBourse } from '../shared/bourse';
 import { cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type VueHotel } from '../shared/hotel';
 import {
   ajouterObjet,
@@ -457,6 +460,7 @@ export function creerCasino(options: OptionsCasino) {
       if (apres !== avant) majRiche(uid, p);
       // Contrats du salon et album : une mise placée, un gain versé (une mise rendue ne compte pas).
       if (misee > 0) {
+        cercles.noterMise(uid, misee);
         p.dernieresMises[jeu] = misee;
         noterContrat(uid, p, { type: 'mise', jeu, montant: misee });
       }
@@ -734,6 +738,38 @@ export function creerCasino(options: OptionsCasino) {
     sauver: () => sauverSalon(),
   });
 
+  // -------------------------------------------------------------------------------------------------------------
+  // Les Cercles (shared/cercles.ts, server/cerclesCasino.ts) et la Bourse de 1929 (shared/bourse.ts, server/bourseCasino.ts)
+
+  const cercles = creerCercles({
+    horloge,
+    semaine: (t) => semaineDe(t),
+    lire: () => comptes.lireParametre('cercles').then((b) => (b as { liste?: unknown } | null)?.liste),
+    ecrire: (liste) => comptes.ecrireParametre('cercles', { liste }),
+    payerRubis: (uid, n) => {
+      const p = portes.get(uid);
+      if (!p || p.salonJ.rubis < n) return false;
+      p.salonJ.rubis -= n;
+      p.salonAEcrire = true;
+      planifier(uid, p);
+      return true;
+    },
+    verser: verserHorsJeu,
+    notifier,
+    delaiEcriture,
+  });
+  const bourse = creerBourse({
+    horloge,
+    jour: jourParis,
+    lire: () => comptes.lireParametre('bourse'),
+    ecrire: (e) => comptes.ecrireParametre('bourse', e as unknown as Record<string, unknown>),
+    diffuser: (cours, nouvelle, prochaine) => io.to(SALLE).emit('casino_bourse_seance', { cours, nouvelle, prochaine }),
+  });
+  const vueBourse = (p: Porte): VueBourse => {
+    const e = bourse.etat();
+    return { cours: e.cours, ouverture: e.ouverture, historique: e.historique, nouvelles: e.nouvelles, prochaine: bourse.prochaine(), portefeuille: p.salonJ.portefeuille };
+  };
+
   const chute = creerChute({ banque: banqueDe('chute'), horloge, hasard: options.hasardChute, chemin: options.cheminChute, delaiAnnonce: options.delaiAnnonceChute, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
@@ -887,6 +923,7 @@ export function creerCasino(options: OptionsCasino) {
         p.cadeaux = c.cadeaux ?? [];
       }
       if (valeurCollection(p.salonJ.collection) > 0) majCollection(id.uid, p.nom, p.avatar, p.salonJ);
+      cercles.majJoueur(id.uid, p.nom, p.avatar);
       p.amis = [...(c?.amis ?? p.amis)];
       p.recues = [...(c?.demandesRecues ?? p.recues)];
       p.envoyees = [...(c?.demandesEnvoyees ?? p.envoyees)];
@@ -1294,6 +1331,91 @@ export function creerCasino(options: OptionsCasino) {
       repondre(rappel, { ok: true, cadeau, casino: vue(id.uid) });
     });
 
+    // ----- Les Cercles -----
+    const texteCercle: Record<Exclude<ResultatCercle, 'ok'>, [string, string]> = {
+      deja_membre: ['Tu fais déjà partie d’un cercle.', 'You are already in a circle.'],
+      pas_membre: ['Tu ne fais partie d’aucun cercle.', 'You are not in a circle.'],
+      introuvable: ['Introuvable.', 'Not found.'],
+      nom: ['Choisis un nom de 3 à 24 caractères, sans symbole ni grossièreté, et un blason.', 'Pick a 3 to 24 character name, with no symbols or rude words, and a crest.'],
+      nom_pris: ['Ce nom est déjà pris par un autre cercle.', 'Another circle already has this name.'],
+      rubis: ['Il te manque des rubis.', 'You don’t have enough rubies.'],
+      complet: ['Ce cercle est complet (20 membres).', 'This circle is full (20 members).'],
+      droits: ['Seuls le président et le croupier en chef peuvent faire ça.', 'Only the president and the head croupier can do that.'],
+      demande_envoyee: ['Demande envoyée : le président doit l’accepter.', 'Request sent: the president must accept it.'],
+      trop_de_demandes: ['Ce cercle a trop de demandes en attente.', 'This circle has too many pending requests.'],
+      vide: ['Message vide.', 'Empty message.'],
+    };
+    const actionCercle = async (rappel: unknown, f: (id: Identite, p: Porte) => ResultatCercle) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      await cercles.chargement;
+      const r = f(id, p);
+      // « Demande envoyée » n'est pas une erreur : la réponse est positive, avec son message.
+      if (r === 'ok' || r === 'demande_envoyee') return repondre(rappel, { ok: true, ...(r === 'demande_envoyee' ? { info: L(...texteCercle[r]) } : {}), cercles: cercles.vue(id.uid), casino: vue(id.uid) });
+      repondre(rappel, { ok: false, erreur: L(...texteCercle[r]) });
+    };
+    const qui = (id: Identite, p: Porte) => ({ uid: id.uid, nom: p.nom, avatar: p.avatar });
+    socket.on('casino_cercles', (_d: unknown, rappel?: Rappel) => void actionCercle(rappel, () => 'ok'));
+    socket.on('casino_cercle_fonder', (d: { nom?: unknown; blason?: unknown; ouvert?: unknown } = {}, rappel?: Rappel) => void actionCercle(rappel, (id, p) => cercles.fonder(qui(id, p), d?.nom, d?.blason, d?.ouvert)));
+    socket.on('casino_cercle_rejoindre', (d: { id?: unknown } = {}, rappel?: Rappel) => void actionCercle(rappel, (id, p) => cercles.rejoindre(qui(id, p), d?.id)));
+    socket.on('casino_cercle_annuler', (_d: unknown, rappel?: Rappel) => void actionCercle(rappel, (id) => (cercles.annulerDemande(id.uid), 'ok')));
+    socket.on('casino_cercle_demande', (d: { uid?: unknown; accepter?: unknown } = {}, rappel?: Rappel) => void actionCercle(rappel, (id) => cercles.repondreDemande(id.uid, d?.uid, d?.accepter === true)));
+    socket.on('casino_cercle_quitter', (_d: unknown, rappel?: Rappel) => void actionCercle(rappel, (id) => cercles.quitter(id.uid)));
+    socket.on('casino_cercle_exclure', (d: { uid?: unknown } = {}, rappel?: Rappel) => void actionCercle(rappel, (id) => cercles.exclure(id.uid, d?.uid)));
+    socket.on('casino_cercle_croupier', (d: { uid?: unknown } = {}, rappel?: Rappel) => void actionCercle(rappel, (id) => cercles.nommerCroupier(id.uid, d?.uid)));
+    socket.on('casino_cercle_blason', (d: { blason?: unknown } = {}, rappel?: Rappel) => void actionCercle(rappel, (id) => cercles.changerBlason(id.uid, d?.blason)));
+    socket.on('casino_cercle_ouvert', (d: { ouvert?: unknown } = {}, rappel?: Rappel) => void actionCercle(rappel, (id) => cercles.changerOuverture(id.uid, d?.ouvert === true)));
+    let dernierMessage = 0;
+    socket.on('casino_cercle_message', (d: { texte?: unknown } = {}, rappel?: Rappel) => {
+      if (horloge() - dernierMessage < 800) return repondre(rappel, { ok: false, erreur: L('Doucement !', 'Slow down!') });
+      dernierMessage = horloge();
+      void actionCercle(rappel, (id, p) => cercles.message(qui(id, p), d?.texte));
+    });
+
+    // ----- La Bourse de 1929 -----
+    socket.on('casino_bourse', async (_d: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      await bourse.chargement;
+      repondre(rappel, { ok: true, bourse: vueBourse(p) });
+    });
+    // Acheter pour un montant proposé (1 M$ à 1 Md$), ou vendre une part de sa ligne (un quart, la moitié, tout).
+    socket.on('casino_bourse_ordre', async (d: { action?: unknown; sens?: unknown; montant?: unknown; part?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      if (p.occupe) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      await bourse.chargement;
+      const a = d?.action;
+      if (!estAction(a)) return repondre(rappel, { ok: false, erreur: L('Titre inconnu.', 'Unknown stock.') });
+      const cours = bourse.etat().cours[a];
+      const e = p.salonJ;
+      if (d?.sens === 'achat') {
+        const montant = Number(d?.montant);
+        if (!MONTANTS_ACHAT.includes(montant)) return repondre(rappel, { ok: false, erreur: L('Montant impossible.', 'Invalid amount.') });
+        const { n, total } = devisAchat(cours, Math.min(montant, p.solde));
+        if (n <= 0) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant pour une seule action.', 'Not enough money for a single share.') });
+        if ((e.portefeuille[a]?.n ?? 0) + n > ACTIONS_MAX) return repondre(rappel, { ok: false, erreur: L('Tu as atteint le maximum d’actions de cette société.', 'You hold the maximum number of shares of this company.') });
+        mouvement(id.uid, p, -total);
+        e.portefeuille = acheter(e.portefeuille, a, n, total);
+      } else if (d?.sens === 'vente') {
+        const part = Number(d?.part);
+        const ligne = e.portefeuille[a];
+        if (!ligne || ![0.25, 0.5, 1].includes(part)) return repondre(rappel, { ok: false, erreur: L('Rien à vendre.', 'Nothing to sell.') });
+        const n = part === 1 ? ligne.n : Math.max(1, Math.floor(ligne.n * part));
+        mouvement(id.uid, p, produitVente(cours, n));
+        e.portefeuille = vendre(e.portefeuille, a, n);
+      } else return repondre(rappel, { ok: false, erreur: L('Ordre impossible.', 'Invalid order.') });
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, bourse: vueBourse(p), casino: vue(id.uid) });
+    });
+
     // Dépannage : des rubis contre des dollars, quand on est ruiné (une fois par jour). Jamais l'inverse.
     socket.on('casino_depannage', async (_data: unknown, rappel?: Rappel) => {
       const id = await acces(rappel);
@@ -1346,6 +1468,8 @@ export function creerCasino(options: OptionsCasino) {
     chute.fermer();
     defis.fermer();
     ventes.fermer();
+    bourse.fermer();
+    await cercles.fermer();
     await Promise.all([...portes.keys()].map((uid) => ecrire(uid)));
     if (minuterieSalon) {
       clearTimeout(minuterieSalon);

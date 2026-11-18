@@ -1,0 +1,73 @@
+/* La Bourse de 1929 : téléscripteur, une du Petit Baron, portefeuille, titres et ordres. */
+.bo-ecran { position: relative; }
+.bo-ecran::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(8, 4, 3, 0.5), rgba(8, 4, 3, 0.92) 50%), url('/cartes/bourse-salle.webp') center top / cover no-repeat, var(--nuit); }
+.hausse { color: #7fdc8a !important; }
+.baisse { color: #ff7a7a !important; }
+
+.bo-telescripteur { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: 12px; border: 1px solid var(--or); background: #120a06; overflow: hidden; }
+.bo-telescripteur > img { flex: none; width: 40px; height: 40px; object-fit: contain; }
+.bo-ruban { flex: 1; overflow: hidden; -webkit-mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.bo-ruban span { display: inline-flex; gap: 26px; white-space: nowrap; padding-left: 100%; animation: bo-defile 32s linear infinite; font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; }
+.bo-ruban i { font-style: normal; }
+
+.bo-une { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; padding: 10px; border-radius: 14px; border: 1px solid var(--or); background: linear-gradient(180deg, #f1e3c2, #dcc596); color: #2a1408; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55); }
+.bo-une > img { width: 96px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); }
+.bo-une .bo-une-titre { aspect-ratio: 3 / 2; object-fit: cover; }
+.bo-une span { display: grid; gap: 4px; }
+.bo-une small { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #6b3a1a; }
+.bo-une strong { font-family: var(--titre); font-weight: 400; font-size: 18px; line-height: 1.2; }
+.bo-une b { font-size: 13px; }
+.bo-une .hausse { color: #1d7a2c !important; }
+.bo-une .baisse { color: #b3132f !important; }
+.bo-une.krach { border-color: #b3132f; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55), 0 0 18px rgba(255, 60, 60, 0.4); }
+
+.bo-portefeuille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bo-portefeuille > span { display: grid; gap: 2px; padding: 10px; border-radius: 12px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.92); text-align: center; }
+.bo-portefeuille small { font-size: 11px; color: var(--creme-doux); text-transform: uppercase; letter-spacing: 0.08em; }
+.bo-portefeuille strong { font-family: var(--titre); font-weight: 400; font-size: 18px; color: var(--or-vif); font-variant-numeric: tabular-nums; }
+
+.bo-titres { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.bo-titre { display: grid; grid-template-columns: 76px minmax(0, 1fr) 90px auto; gap: 10px; align-items: center; width: 100%; padding: 8px 12px 8px 8px; border-radius: 14px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.92); text-align: left; animation: ct-arrive 0.4s calc(var(--i) * 0.05s) both ease-out; }
+.bo-titre:hover, .bo-titre.choisi { border-color: var(--or-vif); }
+.bo-titre > img { width: 76px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 4px; }
+.bo-titre-nom { display: grid; min-width: 0; }
+.bo-titre-nom strong { font-family: var(--titre); font-weight: 400; color: var(--creme); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bo-titre-nom small { font-size: 12px; color: var(--creme-doux); }
+.bo-titre-cours { display: grid; justify-items: end; }
+.bo-titre-cours b { font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bo-titre-cours small { font-size: 12px; font-weight: 700; }
+.bo-courbe { width: 90px; height: 32px; }
+.bo-courbe .bo-ligne { fill: none; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.bo-courbe.hausse .bo-ligne { stroke: #7fdc8a; }
+.bo-courbe.baisse .bo-ligne { stroke: #ff7a7a; }
+.bo-courbe.hausse .bo-aire { fill: rgba(127, 220, 138, 0.12); }
+.bo-courbe.baisse .bo-aire { fill: rgba(255, 122, 122, 0.12); }
+
+.bo-nouvelles { display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.92); }
+.bo-nouvelles h2 { margin: 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 18px; }
+.bo-nouvelles ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13.5px; }
+.bo-nouvelles small { color: var(--creme-doux); font-variant-numeric: tabular-nums; }
+
+.bo-ordre { display: grid; gap: 10px; }
+.bo-ordre-titre { width: 100%; max-width: 360px; justify-self: center; border-radius: 6px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6); }
+.bo-ordre-cours { margin: 0; text-align: center; font-size: 14px; }
+.bo-ordre h3 { margin: 4px 0 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.bo-boutons { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+.bo-boutons button { display: grid; justify-items: center; gap: 2px; padding: 8px; }
+.bo-boutons small { font-size: 11px; opacity: 0.85; }
+.bo-fermer { justify-self: center; }
+
+.bo-eclair { position: fixed; z-index: 70; left: 50%; top: 18%; translate: -50% 0; width: min(90vw, 420px); display: grid; justify-items: center; gap: 10px; padding: 16px; border-radius: 16px; border: 2px solid var(--or-vif); background: rgba(22, 16, 12, 0.96); text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); animation: bo-eclair 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.bo-eclair img { width: 60%; border-radius: 4px; }
+.bo-eclair strong { font-family: var(--titre); font-weight: 400; font-size: 20px; color: #fff1c4; }
+.bo-eclair.krach { border-color: #ff4d4d; }
+
+@keyframes bo-defile { to { transform: translateX(-100%); } }
+@keyframes bo-eclair { from { opacity: 0; scale: 0.6; } }
+@media (prefers-reduced-motion: reduce) { .bo-ruban span { animation: none; padding-left: 0; } .bo-titre, .bo-eclair { animation: none; } }
+@media (max-width: 480px) {
+  .bo-titre { grid-template-columns: 60px minmax(0, 1fr) auto; }
+  .bo-titre > img { width: 60px; }
+  .bo-courbe { display: none; }
+  .bo-portefeuille strong { font-size: 15px; }
+}
