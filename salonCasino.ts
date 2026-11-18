@@ -36,6 +36,24 @@ import {
 } from '../shared/casino';
 import { gainCasse, MISES_MACHINE, nouveauCasse, ouvrirCasse, ROUE_BARON, TOURS_GRATUITS_MAX, tirerMachine, type EtatCasse } from '../shared/machineASous';
 import { jourParis, lendemainParis } from '../shared/roulette';
+import {
+  changerContrat,
+  collerMorceau,
+  dollarsDepannage,
+  normaliserEtatSalon,
+  noterEvenement,
+  PRIX_CHANGER_CONTRAT,
+  PRIX_DEPANNAGE,
+  rafraichirContrats,
+  RUBIS_MAX,
+  SEUIL_DEPANNAGE,
+  type AnnonceContrats,
+  type EtatSalonJoueur,
+  type EvenementJeu,
+  type RecompensesContrats,
+  type VueContrats,
+} from '../shared/contrats';
+import { semaineDe } from './classement';
 import type { ExtraCasino, Identite, ServiceComptes, StatsCompte } from './comptes';
 import {
   bonusNiveauCasino,
@@ -173,6 +191,10 @@ interface Porte {
   defisAjouts: BilanDefis | null;
   niveauAEcrire: boolean;
   envoisAEcrire: boolean;
+  /** Grand Hôtel : rubis, contrats, album (à écrire s'il a changé), et la dernière mise à chaque jeu (en mémoire). */
+  salonJ: EtatSalonJoueur;
+  salonAEcrire: boolean;
+  dernieresMises: Partial<Record<JeuCasino, number>>;
   /** Écritures lancées (compteur) et en cours : pas de recalage sur un compte lu pendant une écriture. */
   ecrituresLancees: number;
   ecrituresEnVol: number;
@@ -266,6 +288,7 @@ export function creerCasino(options: OptionsCasino) {
     if (p.envoisAEcrire) extra.envois = { ...p.envois };
     if (p.journalAjouts.length) extra.journal = p.journalAjouts;
     if (p.defisAjouts) extra.defis = p.defisAjouts;
+    if (p.salonAEcrire) extra.salon = JSON.parse(JSON.stringify(p.salonJ)) as EtatSalonJoueur;
     if (!delta && !record && !Object.keys(extra).length) return p.ecriture;
     p.enAttente = 0;
     p.record = 0;
@@ -275,6 +298,7 @@ export function creerCasino(options: OptionsCasino) {
     p.envoisAEcrire = false;
     p.journalAjouts = [];
     p.defisAjouts = null;
+    p.salonAEcrire = false;
     p.ecrituresLancees += 1;
     p.ecrituresEnVol += 1;
     p.ecriture = p.ecriture
@@ -295,6 +319,7 @@ export function creerCasino(options: OptionsCasino) {
         if (extra.envois) p.envoisAEcrire = true;
         if (extra.journal) p.journalAjouts = [...p.journalAjouts, ...extra.journal].slice(0, JOURNAL_MAX);
         if (extra.defis) p.defisAjouts = ajouterBilan(p.defisAjouts, extra.defis);
+        if (extra.salon) p.salonAEcrire = true;
         planifier(uid, p);
       })
       .finally(() => {
@@ -386,8 +411,81 @@ export function creerCasino(options: OptionsCasino) {
       const apres = niveauDe(p);
       if (apres > p.niveauPaye) monterNiveau(uid, p, apres);
       if (apres !== avant) majRiche(uid, p);
+      // Contrats du salon et album : une mise placée, un gain versé (une mise rendue ne compte pas).
+      if (misee > 0) {
+        p.dernieresMises[jeu] = misee;
+        noterContrat(uid, p, { type: 'mise', jeu, montant: misee });
+      }
+      if (gagnee > 0) noterContrat(uid, p, { type: 'gain', jeu, montant: gagnee, derniereMise: p.dernieresMises[jeu] ?? 0 });
     }
     defis.noter(uid, jeu, gagnee - misee);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Grand Hôtel du Baron : contrats, album et rubis (shared/contrats.ts)
+
+  /** Nouveau jour, nouvelle semaine : de nouveaux contrats. */
+  function rafraichirSalon(uid: string, p: Porte) {
+    const t = horloge();
+    if (rafraichirContrats(p.salonJ, uid, jourParis(t), semaineDe(t).cle, niveauDe(p))) {
+      p.salonAEcrire = true;
+      planifier(uid, p);
+    }
+  }
+
+  /** Un événement des jeux : les contrats avancent, et ce qu'ils rapportent est versé. */
+  function noterContrat(uid: string, p: Porte, ev: EvenementJeu) {
+    rafraichirSalon(uid, p);
+    const r = noterEvenement(p.salonJ, ev, niveauDe(p));
+    verserContrats(uid, p, r);
+    // La progression a pu bouger sans récompense : elle part avec la prochaine écriture (regroupée).
+    p.salonAEcrire = true;
+    planifier(uid, p);
+  }
+
+  /** Verse les rubis, les dollars et les morceaux d'album gagnés, et prévient le téléphone. */
+  function verserContrats(uid: string, p: Porte, r: RecompensesContrats) {
+    if (!r.contrats.length && !r.morceaux.length && !r.rubis && !r.dollars) return;
+    const e = p.salonJ;
+    const rubisAvant = e.rubis;
+    const annonce: AnnonceContrats = { contrats: r.contrats, tous: r.tous, rubis: 0, dollars: r.dollars, morceaux: [] };
+    e.rubis = Math.min(RUBIS_MAX, e.rubis + r.rubis);
+    for (const jeu of r.morceaux) {
+      // Une page (ou l'album) complétée ajoute ses rubis ; l'album déjà complet donne un rubis à la place du morceau.
+      const m = collerMorceau(e, jeu, (n) => randomInt(Math.max(1, n)));
+      if (m) annonce.morceaux.push(m);
+      else e.rubis = Math.min(RUBIS_MAX, e.rubis + 1);
+    }
+    annonce.rubis = e.rubis - rubisAvant;
+    if (r.dollars > 0) mouvement(uid, p, r.dollars);
+    p.salonAEcrire = true;
+    planifier(uid, p);
+    notifier(uid, 'casino_contrats', annonce);
+  }
+
+  /** Un événement nommé (bonus de la machine, jackpot, défi gagné) pour les contrats d'un joueur présent. */
+  function evenementContrat(uid: string, nom: 'bonusMachine' | 'jackpot' | 'defiGagne') {
+    const p = portes.get(uid);
+    if (p) noterContrat(uid, p, { type: 'evenement', nom });
+  }
+
+  function vueContrats(uid: string, p: Porte): VueContrats {
+    rafraichirSalon(uid, p);
+    const t = horloge();
+    const e = p.salonJ;
+    return {
+      rubis: e.rubis,
+      jour: e.contrats.liste,
+      tous: e.contrats.tous,
+      changeDispo: !e.contrats.change && e.contrats.liste.some((c) => !c.fait),
+      grosCoups: e.contrats.grosCoups,
+      finJour: lendemainParis(t),
+      finSemaine: semaineDe(t).fin,
+      album: e.album,
+      albumComplet: e.albumComplet,
+      depannage: p.solde < SEUIL_DEPANNAGE && e.rubis >= PRIX_DEPANNAGE && e.depannage !== jourParis(t),
+      dollarsDepannage: dollarsDepannage(niveauDe(p)),
+    };
   }
 
   /** Nouveau niveau : les bonus des niveaux franchis (chacun versé une seule fois), et la fête sur le téléphone. */
@@ -471,8 +569,10 @@ export function creerCasino(options: OptionsCasino) {
       return true;
     },
     verser: verserHorsJeu,
-    resultat: (uid, adversaire, r, montant) =>
-      noterJournal(uid, { t: horloge(), type: 'defi', nom: adversaire, resultat: r, montant }, { gagnes: r === 'gagne' ? 1 : 0, perdus: r === 'perdu' ? 1 : 0, nuls: r === 'nul' ? 1 : 0 }),
+    resultat: (uid, adversaire, r, montant) => {
+      noterJournal(uid, { t: horloge(), type: 'defi', nom: adversaire, resultat: r, montant }, { gagnes: r === 'gagne' ? 1 : 0, perdus: r === 'perdu' ? 1 : 0, nuls: r === 'nul' ? 1 : 0 });
+      if (r === 'gagne') evenementContrat(uid, 'defiGagne');
+    },
     sontAmis: (a, b) => !!portes.get(a)?.amis.includes(b),
     notifier: (uid, d) => notifier(uid, 'casino_defi', d),
     annoncer: (a) => annoncer(a),
@@ -520,6 +620,7 @@ export function creerCasino(options: OptionsCasino) {
       course: course.resume(),
       baronWheel: roueBW.resume(),
       ...(p ? { profil: { ...progressionCasino(p.mise + p.bonusXp), demandes: p.recues.length, invitations: defis.invitations(uid), defi: defis.enCours(uid) } } : {}),
+      ...(p ? { contrats: vueContrats(uid, p) } : {}),
       ...(() => {
         const a = jeuALaffiche(t);
         return a ? { affiche: { ...a, bonus: p && p.affiche.debut === a.debut ? p.affiche.bonus : 0 } } : {};
@@ -596,6 +697,9 @@ export function creerCasino(options: OptionsCasino) {
           activite: null,
           journalAjouts: [],
           defisAjouts: null,
+          salonJ: normaliserEtatSalon(c?.salon),
+          salonAEcrire: false,
+          dernieresMises: {},
           niveauAEcrire: false,
           envoisAEcrire: false,
           ecrituresLancees: 0,
@@ -624,7 +728,8 @@ export function creerCasino(options: OptionsCasino) {
       // d'une mise à jour du site, ou un versement hors salon l'aurait changé).
       const c = stats.casino;
       const calme = lancees === p.ecrituresLancees && !p.ecrituresEnVol && !p.occupe;
-      if (c && calme && !p.enAttente && !p.record && !p.activite && !p.journalAjouts.length && !p.defisAjouts && !p.niveauAEcrire && !p.envoisAEcrire) {
+      if (c && calme && !p.enAttente && !p.record && !p.activite && !p.journalAjouts.length && !p.defisAjouts && !p.niveauAEcrire && !p.envoisAEcrire && !p.salonAEcrire) {
+        p.salonJ = normaliserEtatSalon(c.salon);
         p.solde = c.solde;
         p.mise = c.mise ?? 0;
         p.bonusXp = c.bonusXp ?? 0;
@@ -819,6 +924,8 @@ export function creerCasino(options: OptionsCasino) {
         if (!p.toursGratuits && !p.bonus.length) p.miseGratuite = 0;
         if (gainGrosLot) annoncer({ nom: p.nom, jeu: 'machine', gain, grosLot: true });
         else if (gain >= MULTIPLE_GROS_GAIN * mise) annoncer({ nom: p.nom, jeu: 'machine', gain });
+        if (r.casse || r.roue || r.freeGames) evenementContrat(id.uid, 'bonusMachine');
+        if (gainGrosLot) evenementContrat(id.uid, 'jackpot');
         sauverSalon();
         repondre(rappel, { ok: true, machine: { ...r, gain, gainGrosLot, gratuit, mise }, casino: vue(id.uid) });
       } finally {
@@ -855,6 +962,7 @@ export function creerCasino(options: OptionsCasino) {
         }
         // Annonce au salon : gros gain, ou jackpot MAJOR / GRAND du bonus Jetons du Baron.
         const jackpot = resultat.bonusJetons ? meilleurJackpot(resultat.bonusJetons) : null;
+        if (jackpot) evenementContrat(id.uid, 'jackpot');
         // L'annonce attend la fin de l'animation chez le joueur (rouleaux, événement, bonus), pour ne rien lui gâcher.
         if (resultat.gain >= MULTIPLE_GROS_GAIN * mise || jackpot === 'major' || jackpot === 'grand') {
           const annonce = { nom: p.nom, jeu: 'nuits' as const, gain: resultat.gain, ...(jackpot === 'major' || jackpot === 'grand' ? { jackpot } : {}) };
@@ -921,11 +1029,57 @@ export function creerCasino(options: OptionsCasino) {
         p.record = Math.max(p.record, gain);
         suivre(id.uid, 'machine', 0, gain);
       }
-      if (c.type === 'grosLot') annoncer({ nom: p.nom, jeu: 'roueBaron', gain, grosLot: true });
+      if (c.type === 'grosLot') {
+        annoncer({ nom: p.nom, jeu: 'roueBaron', gain, grosLot: true });
+        evenementContrat(id.uid, 'jackpot');
+      }
       else if (gain >= MULTIPLE_GROS_GAIN * b.mise) annoncer({ nom: p.nom, jeu: 'roueBaron', gain });
       if (!p.toursGratuits && !p.bonus.length) p.miseGratuite = 0;
       sauverSalon();
       repondre(rappel, { ok: true, roueBaron: { case: i, gain, tours, grosLot: c.type === 'grosLot' }, casino: vue(id.uid) });
+    });
+
+    // Changer un contrat du jour pas encore rempli : une fois par jour, contre des rubis.
+    socket.on('casino_contrat_changer', async (data: { index?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      rafraichirSalon(id.uid, p);
+      const r = changerContrat(p.salonJ, Number(data?.index), niveauDe(p), (n) => randomInt(Math.max(1, n)));
+      if (r !== 'ok') {
+        const msg: Record<typeof r, [string, string]> = {
+          deja: ['Tu as déjà changé un contrat aujourd’hui.', 'You have already swapped a contract today.'],
+          fait: ['Ce contrat est déjà rempli.', 'This contract is already done.'],
+          rubis: [`Il faut ${PRIX_CHANGER_CONTRAT} rubis pour changer un contrat.`, `You need ${PRIX_CHANGER_CONTRAT} rubies to swap a contract.`],
+          introuvable: ['Contrat introuvable.', 'Contract not found.'],
+        };
+        return repondre(rappel, { ok: false, erreur: L(...msg[r]), casino: vue(id.uid) });
+      }
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, casino: vue(id.uid) });
+    });
+
+    // Dépannage : des rubis contre des dollars, quand on est ruiné (une fois par jour). Jamais l'inverse.
+    socket.on('casino_depannage', async (_data: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      if (p.occupe) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      const jour = jourParis(horloge());
+      const e = p.salonJ;
+      if (p.solde >= SEUIL_DEPANNAGE) return repondre(rappel, { ok: false, erreur: L(`Le dépannage n’est possible que sous ${formatDollars(SEUIL_DEPANNAGE)}.`, `Bailouts are only possible under ${formatDollars(SEUIL_DEPANNAGE, true)}.`), casino: vue(id.uid) });
+      if (e.depannage === jour) return repondre(rappel, { ok: false, erreur: L('Un seul dépannage par jour : reviens demain.', 'One bailout a day: come back tomorrow.'), casino: vue(id.uid) });
+      if (e.rubis < PRIX_DEPANNAGE) return repondre(rappel, { ok: false, erreur: L(`Il faut ${PRIX_DEPANNAGE} rubis.`, `You need ${PRIX_DEPANNAGE} rubies.`), casino: vue(id.uid) });
+      const montant = dollarsDepannage(niveauDe(p));
+      e.rubis -= PRIX_DEPANNAGE;
+      e.depannage = jour;
+      mouvement(id.uid, p, montant);
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, depannage: montant, casino: vue(id.uid) });
     });
 
     socket.on('disconnect', () => {
@@ -1137,6 +1291,8 @@ export function creerCasino(options: OptionsCasino) {
         return erreur(rappel, `Plafond du jour : tu peux encore envoyer ${formatDollars(reste)}.`, `Daily limit: you can still send ${formatDollars(reste, true)}.`);
       }
       if (p.solde < montant) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
+      // Les dollars d'un dépannage ne partent pas chez un ami : après un dépannage, les envois reprennent demain.
+      if (p.salonJ.depannage === jour) return erreur(rappel, 'Après un dépannage, les envois reprennent demain.', 'After a bailout, transfers resume tomorrow.');
       mouvement(id.uid, p, -montant);
       p.envois = { jour, total: deja + montant };
       p.envoisAEcrire = true;
