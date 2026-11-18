@@ -1534,26 +1534,32 @@ function Accueil({
     <div className="ac" style={{ '--fond-etage': `url(${e.image})` } as CSSProperties}>
       <header className="ac-barre">
         <button type="button" className="ac-moi" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
-          <CadreAvatar avatar={vue.avatar} niveau={niveau} taille={46} special={cadreSpecial(c?.cadres)} />
-          {vue.profil && <BarreXp xp={vue.profil.xp} xpNiveau={vue.profil.xpNiveau} xpSuivant={vue.profil.xpSuivant} fine />}
+          <CadreAvatar avatar={vue.avatar} niveau={niveau} taille={58} special={cadreSpecial(c?.cadres)} sansNiveau />
+          <span className="ac-niveau">
+            <b>{tr(`Niv. ${niveau}`, `Lvl ${niveau}`)}</b>
+            {vue.profil && <BarreXp xp={vue.profil.xp} xpNiveau={vue.profil.xpNiveau} xpSuivant={vue.profil.xpSuivant} fine />}
+          </span>
         </button>
-        <div className="ac-compteurs">
-          <span className="ac-compteur ac-rubis">
-            <img src="/cartes/rubis-icone.webp" alt={tr('Rubis', 'Rubies')} />
-            <b>{(c?.rubis ?? 0).toLocaleString(tr('fr-FR', 'en-US'))}</b>
-          </span>
-          <span className="ac-compteur ac-dollars">
-            <img src="/cartes/jeton-ivoire.webp" alt="$" />
-            <b title={dollars(solde)}>{dollarsCourt(solde)}</b>
-          </span>
-        </div>
-        <CarteDeMembre vue={vue} />
+        <span className="ac-compteur ac-rubis">
+          <img src="/cartes/rubis-icone.webp" alt={tr('Rubis', 'Rubies')} />
+          <b>{(c?.rubis ?? 0).toLocaleString(tr('fr-FR', 'en-US'))}</b>
+        </span>
+        <span className="ac-compteur ac-dollars">
+          <img src="/cartes/jeton-ivoire.webp" alt="$" />
+          <b title={dollars(solde)}>{dollarsCourt(solde)}</b>
+        </span>
+        <img className="ac-logo" src="/cartes/logo-casino.webp" alt="Baron's Fortune" draggable={false} />
+        <span className="ac-carte-membre">
+          <CarteDeMembre vue={vue} />
+        </span>
         <button type="button" className="ac-menu" onClick={() => setMenu(true)} aria-label={tr('Menu du salon', 'Lounge menu')}>
           <img src="/cartes/icone-menu.webp" alt="" />
         </button>
       </header>
 
-      <ALaUne elements={une} />
+      <div className="ac-une-haut">
+        <ALaUne elements={une} />
+      </div>
 
       <nav className="ac-etages" aria-label={tr('Les étages de l’hôtel', 'Hotel floors')}>
         {ETAGES.map((x) => {
@@ -1577,6 +1583,11 @@ function Accueil({
           <Penthouse vue={vue} appel={appel} onVue={onVue} />
         ) : (
           <div className="ac-cartes">
+            {une.length > 0 && (
+              <div className="ac-une-carte">
+                <ALaUne elements={une} />
+              </div>
+            )}
             {etageActif === 'scene' && (
               <div className="ac-carte-fn">
                 <BandeauFolleNuit vue={vue} onOuvrir={ouvert ? onFolleNuit : () => onEtage('scene')} />

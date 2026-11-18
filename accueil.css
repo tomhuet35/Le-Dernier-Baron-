@@ -1,87 +1,99 @@
-/* L'accueil du Salon privé : barre du haut, « À la une », les étages de l'hôtel et leurs jeux, le dock. */
+/* L'accueil du Salon privé : barre du haut, « À la une », les étages de l'hôtel et leurs jeux, le dock.
+   L'écran est rempli de haut en bas : la scène (les jeux de l'étage) prend toute la place entre la barre et le dock. */
 
 .ac {
-  width: min(100%, 1100px); margin: 0 auto; padding: 0 10px calc(104px + env(safe-area-inset-bottom));
-  display: grid; gap: 12px; align-content: start;
+  --dock: calc(92px + env(safe-area-inset-bottom));
+  width: min(100%, 1280px); height: 100dvh; margin: 0 auto; padding: 0 10px var(--dock);
+  display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr);
   grid-template-areas: 'barre' 'une' 'etages' 'scene';
 }
 .ac > * { min-width: 0; }
 
-/* ---------- La barre du haut ---------- */
+/* ---------- La barre du haut : un bandeau doré, bien visible ---------- */
 .ac-barre {
-  grid-area: barre; position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px;
-  margin: 0 -10px; padding: max(6px, env(safe-area-inset-top)) 10px 6px;
-  background: linear-gradient(180deg, #4a0610, #1b0d08); border-bottom: 2px solid var(--or);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6); border-radius: 0 0 16px 16px;
+  grid-area: barre; position: relative; z-index: 20; display: flex; align-items: center; gap: 8px;
+  margin: 0 -10px; min-height: 70px; padding: max(6px, env(safe-area-inset-top)) 10px 8px;
+  background: linear-gradient(180deg, #6b0a18 0%, #3c0107 70%, #24080a 100%);
+  border-bottom: 3px solid var(--or); border-radius: 0 0 20px 20px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.65), inset 0 -2px 0 #4a3112, inset 0 1px 0 rgba(255, 241, 196, 0.25);
 }
-.ac-moi { flex: none; display: grid; justify-items: center; gap: 3px; width: 58px; padding: 0; border: 0; background: none; }
-.ac-moi .cs-barre-xp, .ac-moi > span:last-child { width: 100%; }
-.ac-compteurs { flex: 1; display: flex; gap: 6px; min-width: 0; }
-.ac-compteur { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 3px 10px 3px 3px; border-radius: 99px; border: 1px solid rgba(231, 194, 122, 0.55); background: rgba(0, 0, 0, 0.55); box-shadow: inset 0 1px 0 rgba(255, 241, 196, 0.12); }
-.ac-compteur img { flex: none; width: 26px; height: 26px; object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7)); }
-.ac-compteur b { font-family: var(--titre); font-weight: 400; font-size: 15px; color: var(--or-vif); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ac-rubis { flex: none; }
-.ac-rubis b { color: #ff8fa3; }
-.ac-dollars { flex: 0 1 auto; }
-.ac-barre .ht-carte-bouton { width: 50px; }
-.ac-menu { flex: none; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 50%; background: none; }
+.ac-moi { flex: none; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; text-align: left; }
+.ac-niveau { display: grid; gap: 3px; width: 64px; }
+.ac-niveau b { font-family: var(--titre); font-weight: 400; font-size: 15px; color: var(--or-vif); text-shadow: 0 1px 3px #000; }
+.ac-compteur {
+  display: flex; align-items: center; gap: 6px; min-width: 0; height: 42px; padding: 0 14px 0 4px; border-radius: 99px;
+  border: 2px solid var(--or); background: linear-gradient(180deg, #1b0d08, #000); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.ac-compteur img { flex: none; width: 36px; height: 36px; margin-left: -10px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8)); }
+.ac-compteur b { font-family: var(--titre); font-weight: 400; font-size: 19px; color: #fff1c4; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 10px rgba(231, 194, 122, 0.45); }
+.ac-rubis { flex: none; margin-left: 10px; }
+.ac-rubis b { color: #ffb3c1; text-shadow: 0 0 10px rgba(255, 80, 110, 0.5); }
+.ac-dollars { flex: 1 1 auto; margin-left: 10px; }
+.ac-logo { display: none; }
+.ac-carte-membre { display: none; }
+.ac-carte-membre .ht-carte-bouton { width: 66px; }
+.ac-menu { flex: none; width: 46px; height: 46px; margin-left: auto; padding: 0; border: 0; border-radius: 50%; background: none; }
 .ac-menu img { width: 100%; height: 100%; }
 
-/* ---------- À la une ---------- */
-.ac-une { grid-area: une; display: grid; gap: 6px; }
+/* ---------- À la une (téléphone : au-dessus des étages) ---------- */
+.ac-une-haut { grid-area: une; }
+.ac-une { display: grid; gap: 6px; }
 .ac-une-contenu { animation: ac-une 0.45s ease-out both; }
 .ac-une-contenu > * { width: 100%; margin: 0; }
 .ac-une-points { display: flex; justify-content: center; gap: 6px; }
 .ac-une-points button { width: 8px; height: 8px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid var(--or); background: transparent; }
-.ac-une-points button.actif { width: 20px; border-radius: 99px; background: var(--or-vif); }
+.ac-une-points button.actif { width: 22px; border-radius: 99px; background: var(--or-vif); }
+.ac-une-carte { display: none; }
 
-/* ---------- Les étages ---------- */
+/* ---------- Les étages (téléphone : onglets) ---------- */
 .ac-etages { grid-area: etages; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .ac-etage { position: relative; display: grid; padding: 0; overflow: hidden; border-radius: 12px; border: 1px solid var(--filet); background: var(--nuit-2); transition: transform 0.15s, box-shadow 0.2s; }
-.ac-etage img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.ac-etage img { width: 100%; height: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
 .ac-etage span { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 4px 4px; background: linear-gradient(transparent, rgba(10, 5, 3, 0.95) 55%); font-family: var(--titre); font-size: 13px; color: var(--creme); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ac-etage small { position: absolute; top: 4px; right: 4px; padding: 0 5px; border-radius: 99px; background: rgba(10, 5, 3, 0.85); font-size: 10.5px; color: var(--creme); }
-.ac-etage.actif { border-color: var(--or-vif); box-shadow: 0 0 0 1px var(--or-vif), 0 0 16px rgba(231, 194, 122, 0.5); transform: translateY(-2px); }
+.ac-etage.actif { border-color: var(--or-vif); box-shadow: 0 0 0 1px var(--or-vif), 0 0 16px rgba(231, 194, 122, 0.5); }
 .ac-etage.actif span { color: var(--or-vif); }
 .ac-etage.fermee img { filter: grayscale(0.8) brightness(0.55); }
 
-/* ---------- La scène : les jeux de l'étage ---------- */
+/* ---------- La scène : elle remplit tout l'espace restant, les cartes prennent toute sa hauteur ---------- */
 .ac-scene {
-  grid-area: scene; position: relative; padding: 10px 0 10px; border-radius: 18px; overflow: hidden;
-  border: 1px solid var(--or); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
-  background: linear-gradient(180deg, rgba(10, 5, 3, 0.35), rgba(10, 5, 3, 0.85) 75%), var(--fond-etage) center / cover no-repeat, var(--nuit-2);
+  grid-area: scene; display: flex; flex-direction: column; min-height: 300px; padding: 10px 0 8px; border-radius: 20px; overflow: hidden;
+  border: 2px solid var(--or); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(0, 0, 0, 0.6);
+  background: linear-gradient(180deg, rgba(10, 5, 3, 0.25), rgba(10, 5, 3, 0.75) 80%), var(--fond-etage) center / cover no-repeat, var(--nuit-2);
 }
-.ac-scene-titre { margin: 0 14px 8px; font-family: var(--titre); color: var(--or-vif); font-size: 18px; text-shadow: 0 2px 6px #000; }
+.ac-scene-titre { flex: none; margin: 0 16px 8px; font-family: var(--titre); color: var(--or-vif); font-size: 20px; text-shadow: 0 2px 6px #000; }
 .ac-scene-titre small { display: block; font-family: var(--texte); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--creme-doux); }
 .ac-scene-titre b { font-family: var(--texte); font-size: 13px; color: var(--creme); }
-.ac-cartes { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 14px 12px; scrollbar-width: none; }
+.ac-cartes { flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; padding: 4px 16px 10px; scrollbar-width: none; }
 .ac-cartes::-webkit-scrollbar { display: none; }
-.ac-carte { position: relative; flex: 0 0 min(56vw, 230px); scroll-snap-align: center; animation: ac-carte 0.4s ease-out both; }
-.ac-carte .cas-vignette { width: 100%; aspect-ratio: 3 / 4; }
-.ac-carte-fn { flex: 0 0 min(84vw, 420px); align-self: center; scroll-snap-align: center; }
-.ac-carte-fn .fn-bandeau { width: 100%; margin: 0; }
-.ac-carte-penthouse button { position: relative; display: block; width: 100%; padding: 0; overflow: hidden; border-radius: 14px; border: 2px solid var(--or); aspect-ratio: 3 / 4; }
+.ac-carte { position: relative; flex: none; height: 100%; aspect-ratio: 3 / 4.1; scroll-snap-align: center; animation: ac-carte 0.4s ease-out both; }
+.ac-carte .cas-vignette { width: 100%; height: 100%; aspect-ratio: auto; border-width: 3px; box-shadow: 0 12px 26px rgba(0, 0, 0, 0.7), 0 0 0 1px #4a3112; }
+.ac-carte .cas-vignette-nom { font-size: clamp(17px, 2.2vh, 24px); }
+.ac-carte-fn { flex: none; height: 100%; aspect-ratio: 3 / 4.1; scroll-snap-align: center; }
+.ac-carte-fn .fn-bandeau { width: 100%; height: 100%; margin: 0; display: flex; flex-direction: column; border-width: 3px; }
+.ac-carte-fn .fn-bandeau-affiche { flex: 1; aspect-ratio: auto; }
+.ac-carte-penthouse button { position: relative; display: block; width: 100%; height: 100%; padding: 0; overflow: hidden; border-radius: 14px; border: 3px solid var(--or); }
 .ac-carte-penthouse img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(0.7) brightness(0.6); }
-.ac-cadenas { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 14px; background: rgba(8, 4, 3, 0.55); font-size: 34px; pointer-events: none; }
+.ac-cadenas { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 14px; background: rgba(8, 4, 3, 0.55); font-size: 40px; pointer-events: none; }
 .ac-scene.fermee .cas-vignette img { filter: grayscale(0.8) brightness(0.6); }
-.ac-scene .ht-penthouse { padding: 0 14px 6px; }
-.ac-gros-lot { margin: 2px 14px 0; text-align: center; }
+.ac-scene .ht-penthouse { flex: 1; padding: 0 16px 6px; align-content: start; }
+.ac-gros-lot { flex: none; margin: 2px 16px 0; text-align: center; }
 
 /* ---------- Le dock ---------- */
 .ac-dock {
-  position: fixed; z-index: 30; left: 50%; bottom: 0; translate: -50% 0; width: min(100%, 1100px);
+  position: fixed; z-index: 30; left: 50%; bottom: 0; translate: -50% 0; width: min(100%, 1280px); height: var(--dock);
   display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none;
   padding: 8px 8px calc(6px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, #5a0815, #1b0d08); border-top: 2px solid var(--or); border-radius: 18px 18px 0 0;
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 241, 196, 0.2);
+  background: linear-gradient(180deg, #6b0a18, #24080a); border-top: 3px solid var(--or); border-radius: 22px 22px 0 0;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 241, 196, 0.25);
 }
 .ac-dock::-webkit-scrollbar { display: none; }
-.ac-dock-bouton { position: relative; flex: 1 0 64px; display: grid; justify-items: center; gap: 2px; min-height: 0; padding: 2px 2px 0; border: 0; border-radius: 12px; background: none; }
+.ac-dock-bouton { position: relative; flex: 1 0 66px; display: grid; justify-items: center; align-content: start; gap: 2px; min-height: 0; padding: 2px 2px 0; border: 0; border-radius: 12px; background: none; }
 .ac-dock-bouton:active { transform: scale(0.94); }
-.ac-dock-icone { display: grid; place-items: center; width: 46px; height: 46px; }
+.ac-dock-icone { display: grid; place-items: center; width: 50px; height: 50px; }
 .ac-dock-icone > img, .ac-dock-icone > svg { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)); }
-.ac-dock-icone.rond { padding: 6px; border-radius: 50%; background: radial-gradient(circle at 40% 30%, #8e1c14, #3c0107 75%); box-shadow: 0 0 0 2px #d2a85a, 0 0 0 3px #4a3112, 0 3px 8px rgba(0, 0, 0, 0.6); }
-.ac-dock-info { position: absolute; top: 38px; left: 50%; translate: -50% 0; padding: 0 7px; border-radius: 99px; background: linear-gradient(180deg, #8a55c9, #4a2479); border: 1px solid rgba(255, 255, 255, 0.35); font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; }
+.ac-dock-icone.rond { padding: 7px; border-radius: 50%; background: radial-gradient(circle at 40% 30%, #8e1c14, #3c0107 75%); box-shadow: 0 0 0 2px #d2a85a, 0 0 0 3px #4a3112, 0 3px 8px rgba(0, 0, 0, 0.6); }
+.ac-dock-info { position: absolute; top: 42px; left: 50%; translate: -50% 0; padding: 0 7px; border-radius: 99px; background: linear-gradient(180deg, #8a55c9, #4a2479); border: 1px solid rgba(255, 255, 255, 0.35); font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; }
 .ac-dock-nom { margin-top: 4px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--or-vif); text-shadow: 0 1px 3px #000; white-space: nowrap; }
 .ac-dock-bouton .pastille-nombre { position: absolute; top: -2px; right: 6px; }
 
@@ -96,9 +108,46 @@
 @keyframes ac-carte { from { opacity: 0; transform: translateY(12px) scale(0.97); } }
 @media (prefers-reduced-motion: reduce) { .ac-une-contenu, .ac-carte { animation: none; } }
 
-/* ---------- Écran large (tablette, ordinateur en paysage) : les étages en colonne à gauche, comme une enseigne ---------- */
+/* ---------- Téléphone étroit ---------- */
+@media (max-width: 400px) {
+  .ac-niveau { display: none; }
+  .ac-compteur b { font-size: 16px; }
+}
+
+/* ---------- Écran large (tablette, ordinateur) : étages à gauche, « À la une » devient la première carte ---------- */
 @media (min-width: 820px) and (min-aspect-ratio: 1 / 1) {
-  .ac { grid-template-columns: 150px minmax(0, 1fr); grid-template-areas: 'barre barre' 'etages une' 'etages scene'; }
-  .ac-etages { grid-template-columns: 1fr; align-content: start; align-self: start; position: sticky; top: 76px; padding: 8px; border-radius: 18px; border: 1px solid var(--or); background: linear-gradient(180deg, rgba(90, 8, 24, 0.9), rgba(22, 16, 12, 0.92)); }
-  .ac-carte { flex-basis: 230px; }
+  .ac { --dock: calc(104px + env(safe-area-inset-bottom)); gap: 14px; padding: 0 14px var(--dock); grid-template-columns: 132px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: 'barre barre' 'etages scene'; }
+  .ac-barre { margin: 0 -14px; min-height: 88px; padding: 10px 20px 10px; gap: 14px; }
+  .ac-compteur { height: 50px; }
+  .ac-compteur img { width: 44px; height: 44px; }
+  .ac-compteur b { font-size: 23px; }
+  .ac-dollars { flex: 0 1 auto; min-width: 210px; }
+  .ac-logo { display: block; height: 96px; margin: -4px auto -30px; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.7)); }
+  .ac-carte-membre { display: block; }
+  .ac-menu { margin-left: 0; width: 52px; height: 52px; }
+  .ac-une-haut { display: none; }
+  .ac-etages {
+    grid-template-columns: 1fr; grid-auto-rows: minmax(0, 1fr); align-self: stretch; gap: 8px; padding: 10px 8px; border-radius: 22px;
+    border: 2px solid var(--or); background: linear-gradient(180deg, #6b0a18, #24080a); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+  }
+  .ac-etage img { aspect-ratio: auto; }
+  .ac-etage span { font-size: 15px; }
+  .ac-scene { padding: 14px 0 10px; }
+  .ac-une-carte { display: flex; flex: none; height: 100%; aspect-ratio: 3.3 / 4.1; scroll-snap-align: center; }
+  .ac-une-carte .ac-une { flex: 1; grid-template-rows: minmax(0, 1fr) auto; }
+  .ac-une-carte .ac-une-contenu { min-height: 0; display: flex; }
+  /* Chaque annonce, posée en carte : en colonne, centrée, de la même hauteur que les jeux. */
+  .ac-une-carte .ac-une-contenu > * {
+    flex: 1; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center;
+    padding: 18px 16px; border-radius: 16px; border-width: 3px; overflow: hidden;
+  }
+  .ac-une-carte .ac-une-contenu > * > img { width: 46%; height: auto; max-height: 40%; object-fit: contain; }
+  .ac-une-carte .ac-une-contenu > * > div, .ac-une-carte .ac-une-contenu > * > span { display: grid; justify-items: center; gap: 6px; }
+  .ac-une-carte .cas-cadeau strong { font-size: 34px; }
+  .ac-une-carte .cas-cadeau-bouton, .ac-une-carte .principal { width: 100%; min-height: 52px; font-size: 18px; }
+  .ac-une-carte .fn-bandeau-affiche { width: 100%; flex: 1; aspect-ratio: auto; }
+  .ac-dock { padding: 10px 20px calc(8px + env(safe-area-inset-bottom)); }
+  .ac-dock-icone { width: 60px; height: 60px; }
+  .ac-dock-info { top: 50px; }
+  .ac-dock-nom { font-size: 12px; }
 }
