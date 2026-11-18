@@ -23,7 +23,7 @@ import { Table } from './Table';
 import { FenetreRegles } from './Regles';
 import { FenetreReglages, useReglages } from './Reglages';
 import { lireReglages } from './reglages';
-import { configServeur, ecouterServiceWorker, rattacherNotifications, useInstallation } from './appli';
+import { ESPACE, configServeur, ecouterServiceWorker, rattacherNotifications, useInstallation } from './appli';
 import { tutorielDejaVu } from './Tutoriel';
 import { FenetreSignalementGlobale } from './Moderation';
 import { AVATARS } from './textes';
@@ -371,7 +371,8 @@ export function App() {
   }, [chargerAmis]);
   // Connexion au compte : les notifications déjà activées sur ce téléphone suivent le compte connecté.
   useEffect(() => {
-    if (connectePourAmis) void rattacherNotifications();
+    // Notifications d'invitation du Dernier Baron : jamais rattachées au site du casino (elles ouvriraient le casino).
+    if (connectePourAmis && ESPACE === 'baron') void rattacherNotifications();
   }, [connectePourAmis]);
   // Nouvelle demande d'ami reçue : petite notification sonore.
   const demandesConnues = useRef<number | null>(null);
@@ -414,7 +415,8 @@ export function App() {
     [appel],
   );
   // Salon privé du casino : seulement pour les comptes Créateur, et jamais pendant une partie.
-  const [casinoOuvert, setCasinoOuvert] = useState(false);
+  // Sur le site du casino, le salon s'ouvre tout seul dès que le compte est reconnu.
+  const [casinoOuvert, setCasinoOuvert] = useState(ESPACE === 'casino');
   // Invitation à une table du Salon privé : le casino s'ouvre et rejoint la table de l'ami.
   const [casinoInvitation, setCasinoInvitation] = useState<{ id: string; jeu: 'blackjack' | 'roulette'; code: string } | null>(null);
   const rejoindreInvitation = async (inv: Invitation) => {
@@ -475,7 +477,7 @@ export function App() {
     setCasinoOuvert(false);
     if (m) setMessage(m);
   }, []);
-  const ouvrirCasino = profil?.createur ? () => setCasinoOuvert(true) : undefined;
+  // Le casino a désormais son propre site : plus aucune entrée depuis Le Dernier Baron.
   const ouvrirClasse = useCallback(async () => {
     setClasseOuverte(true);
     const r = await appel('classe_ouvrir');
@@ -488,7 +490,20 @@ export function App() {
   }, [appel]);
 
   let ecran;
-  if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} tapis={tapisActif(profil?.tapis, profil?.xp ?? 0)} poserTapis={poserTapis} />;
+  if (ESPACE === 'casino') {
+    if (casinoOuvert && profil?.createur)
+      ecran = (
+        <EntreeCasino
+          module={chargerCasino}
+          enfants={(pret) => (
+            <Suspense fallback={null}>
+              <Casino appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} onPret={pret} />
+            </Suspense>
+          )}
+        />
+      );
+    else ecran = <PorteCasino compte={compte} entrer={() => setCasinoOuvert(true)} />;
+  } else if (salon?.partie) ecran = <Table salon={salon} appel={appel} quitter={quitter} tapis={tapisActif(profil?.tapis, profil?.xp ?? 0)} poserTapis={poserTapis} />;
   else if (salon?.spectateur) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
   else if (salon) ecran = <Lobby salon={salon} appel={appel} quitter={quitter} compte={compte} amis={amis} />;
   else if (reprise) ecran = <div className="chargement">{tr('Connexion à la partie…', 'Connecting to the game…')}</div>;
@@ -504,7 +519,7 @@ export function App() {
         )}
       />
     );
-  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirCasino={ouvrirCasino} ouvrirClasse={() => void ouvrirClasse()} />;
+  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirClasse={() => void ouvrirClasse()} />;
 
   return (
     <>
@@ -549,6 +564,54 @@ export function App() {
         </div>
       )}
     </>
+  );
+}
+
+/** Site du casino : la porte d'entrée (connexion), avant le salon. Réservé aux comptes membres du Salon privé. */
+function PorteCasino({ compte, entrer }: { compte: EtatCompte; entrer: () => void }) {
+  const [fenetre, setFenetre] = useState<'connexion' | 'inscription' | null>(null);
+  const { profil } = compte;
+  let contenu;
+  if (!compte.pret || compte.chargement || (compte.utilisateur && !profil)) contenu = <p className="porte-info">{tr('Ouverture des portes…', 'Opening the doors…')}</p>;
+  else if (!compte.actif) contenu = <p className="porte-info">{tr('Le casino est fermé pour le moment.', 'The casino is closed for now.')}</p>;
+  else if (!compte.utilisateur)
+    contenu = (
+      <>
+        <p className="porte-info">{tr('Connecte-toi pour entrer au casino.', 'Sign in to enter the casino.')}</p>
+        <button type="button" className="porte-bouton" onClick={() => setFenetre('connexion')}>
+          {tr('Se connecter', 'Sign in')}
+        </button>
+        <button type="button" className="porte-lien" onClick={() => setFenetre('inscription')}>
+          {tr('Créer un compte', 'Create an account')}
+        </button>
+      </>
+    );
+  else if (!profil?.createur)
+    contenu = (
+      <>
+        <p className="porte-info">{tr('Le casino est encore réservé aux membres du Salon privé. Les portes s’ouvriront bientôt à tous.', 'The casino is still members-only. The doors will open to everyone soon.')}</p>
+        <button type="button" className="porte-lien" onClick={() => void compte.module?.deconnecter()}>
+          {tr('Changer de compte', 'Switch account')}
+        </button>
+      </>
+    );
+  else
+    contenu = (
+      <button type="button" className="porte-bouton" onClick={entrer}>
+        {tr('Entrer dans le salon', 'Enter the lounge')}
+      </button>
+    );
+  return (
+    <main className="porte-casino">
+      <img className="porte-logo" src="/cartes/logo-appli-casino.webp" alt="Baron's Fortune" draggable={false} />
+      <h1>Baron&rsquo;s Fortune</h1>
+      <p className="porte-sous-titre">{tr('Le casino du Grand Hôtel du Baron', 'The Grand Hôtel du Baron casino')}</p>
+      {contenu}
+      <p className="porte-mention">{tr('Argent fictif, sans aucune valeur réelle.', 'Play money, with no real value.')}</p>
+      {fenetre && compte.module && (
+        <FenetreConnexion module={compte.module} modeInitial={fenetre} pseudoInitial={lire(CLE_NOM) ?? ''} onFermer={() => setFenetre(null)} onInscrit={compte.apresInscription} />
+      )}
+    </main>
   );
 }
 

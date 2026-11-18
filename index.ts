@@ -16,13 +16,15 @@ const notifications = await creerNotifications(comptes, process.env);
 const contact = process.env.CONTACT_EMAIL?.trim() || 'ledernierbaron@gmail.com';
 // Joueurs de remplissage du classement de la semaine : JOUEURS_FICTIFS=non sur Render pour les retirer.
 const joueursFictifs = process.env.JOUEURS_FICTIFS !== 'non';
+// Deux sites Render à partir du même code : APPLI=casino fait tourner Baron's Fortune, sinon c'est Le Dernier Baron.
+const espace = process.env.APPLI?.trim().toLowerCase() === 'casino' ? 'casino' : 'baron';
 
 // Une erreur imprévue est notée, sans faire tomber le serveur (et avec lui toutes les parties et le casino en cours).
 process.on('unhandledRejection', (e) => console.error('Erreur non rattrapée (promesse) :', e));
 process.on('uncaughtException', (e) => console.error('Erreur non rattrapée :', e));
 
-demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes, notifications, contact, joueursFictifs }).then(({ port: p, fermer }) => {
-  console.log(`Le Dernier Baron est en ligne sur http://localhost:${p}`);
+demarrerServeur({ port, delaiRobot, delaiFinDePli, attentePublique, comptes, notifications, contact, joueursFictifs, espace }).then(({ port: p, fermer }) => {
+  console.log(`${espace === 'casino' ? "Baron's Fortune" : 'Le Dernier Baron'} est en ligne sur http://localhost:${p}`);
   garderEveille();
   // Render arrête le serveur (SIGTERM) à chaque mise à jour du site : les soldes du casino sont écrits et les mises
   // encore en jeu rendues avant de s'arrêter (10 secondes au plus).

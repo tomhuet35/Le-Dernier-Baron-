@@ -7,6 +7,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { socket } from './socket';
 import { tr } from './traduction';
 
+// ---------- Quelle application : Le Dernier Baron, ou Baron's Fortune (le casino, sur son propre site) ----------
+
+/** Le serveur du casino marque sa page (data-espace="casino") : le même code devient alors l'application du casino. */
+export const ESPACE: 'baron' | 'casino' = typeof document !== 'undefined' && document.documentElement.dataset.espace === 'casino' ? 'casino' : 'baron';
+
 // ---------- Configuration publique du serveur (lue une seule fois) ----------
 
 export interface ConfigServeur {

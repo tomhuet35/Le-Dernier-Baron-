@@ -1,6 +1,6 @@
 import express from 'express';
 import { randomBytes, randomInt } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { dirname, join } from 'node:path';
@@ -157,6 +157,24 @@ export interface OptionsServeur {
   joueursFictifs?: boolean;
   /** Salon privé du casino : tirages et regroupement des écritures (remplaçables pour les tests). */
   casino?: Omit<OptionsCasino, 'io' | 'comptes' | 'horloge'>;
+  /**
+   * Quelle application ce serveur fait tourner : « baron » (le jeu de cartes, sans casino), « casino » (Baron's Fortune,
+   * sur son propre site) ou « tout » (les deux, pour les tests et le développement).
+   */
+  espace?: 'tout' | 'baron' | 'casino';
+}
+
+/** La page du casino : même code que le jeu, mais son nom, son icône et sa fiche d'installation à lui. */
+export function pageCasino(html: string): string {
+  return html
+    .replace(/<html([^>]*)>/, '<html$1 data-espace="casino">')
+    .replace(/<title>[^<]*<\/title>/, "<title>Baron's Fortune</title>")
+    .replace(/(<meta name="theme-color" content=")[^"]*"/, '$1#2a0609"')
+    .replace(/(<meta name="description" content=")[^"]*"/, '$1Baron\'s Fortune : le casino du Grand Hôtel du Baron (argent fictif)."')
+    .replace(/(<meta name="apple-mobile-web-app-title" content=")[^"]*"/, '$1Baron\'s Fortune"')
+    .replace('/manifest.webmanifest', '/manifest-casino.webmanifest')
+    .replace('href="/icone-192.png"', 'href="/icone-casino-192.png"')
+    .replace('href="/icone-apple.png"', 'href="/icone-casino-apple.png"');
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -177,7 +195,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const http = createServer(app);
   const io = new Server(http, { cors: { origin: '*' } });
   // Salon privé du casino (comptes Créateur) : seulement avec les comptes joueurs.
-  const casino = comptes ? creerCasino({ io, comptes, horloge: options.horloge, ...options.casino }) : null;
+  const espace = options.espace ?? 'tout';
+  const casino = comptes && espace !== 'baron' ? creerCasino({ io, comptes, horloge: options.horloge, ...options.casino }) : null;
   const salons = new Map<string, Salon>();
   const socketsVersJoueur = new Map<string, { code: string; joueurId: string }>();
   /** Téléphones qui regardent une partie : code du salon regardé. */
@@ -221,7 +240,23 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   if (options.servirClient !== false) {
     const ici = dirname(fileURLToPath(import.meta.url));
     const dossier = [join(ici, 'client'), join(ici, '../dist/client')].find((d) => existsSync(join(d, 'index.html')));
-    if (dossier) {
+    if (dossier && espace === 'casino') {
+      // Site du casino : la page d'accueil est celle du jeu, renommée (lue une fois au démarrage).
+      const page = pageCasino(readFileSync(join(dossier, 'index.html'), 'utf8'));
+      type RepPage = { set(c: string, v: string): { type(t: string): { send(b: string): unknown } } };
+      const envoyerPage = (_req: unknown, res: RepPage) => res.set('Cache-Control', 'no-cache').type('html').send(page);
+      app.get(['/', '/index.html'], envoyerPage);
+      app.use(
+        express.static(dossier, {
+          index: false,
+          extensions: ['html'],
+          setHeaders: (res, chemin) => {
+            res.setHeader('Cache-Control', /[\\/]assets[\\/]/.test(chemin) ? 'public, max-age=31536000, immutable' : 'no-cache');
+          },
+        }),
+      );
+      app.use(envoyerPage);
+    } else if (dossier) {
       // Fichiers du code (nom unique à chaque version) : gardés un an. Le reste (page, images, musique) est revérifié
       // à chaque visite : une image remplacée sur GitHub s'affiche dès le rechargement de la page.
       app.use(

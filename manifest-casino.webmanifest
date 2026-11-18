@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Baron's Fortune",
+  "short_name": "Baron's Fortune",
+  "description": "Le casino du Grand Hôtel du Baron (argent fictif, sans valeur réelle)",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2a0609",
+  "theme_color": "#2a0609",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/icone-casino-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-casino-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-casino-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
