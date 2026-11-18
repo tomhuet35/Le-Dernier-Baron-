@@ -151,3 +151,101 @@
   .ac-dock-info { top: 50px; }
   .ac-dock-nom { font-size: 12px; }
 }
+
+/* =============================================================================================================
+   Habillage avec les images de l'interface (barre-haut, compteur, cadres, onglets, colonne, barre-bas, icônes).
+   Les bandeaux et les pastilles s'étirent par le milieu (border-image) : leurs extrémités ornées gardent leur forme.
+   ============================================================================================================= */
+
+/* Le hall de l'hôtel, derrière tout l'accueil. */
+.ac::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(8, 4, 3, 0.2), rgba(8, 4, 3, 0.55)), url('/cartes/fond-accueil-portrait.webp') center / cover no-repeat, var(--nuit); }
+@media (min-aspect-ratio: 1 / 1) { .ac::before { background-image: linear-gradient(180deg, rgba(8, 4, 3, 0.2), rgba(8, 4, 3, 0.55)), url('/cartes/fond-accueil.webp'); } }
+
+/* La barre du haut : le bandeau de velours aux éventails dorés. */
+.ac-barre {
+  background: none; border: 0; border-radius: 0; box-shadow: none; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7));
+  border-style: solid; border-image: url('/cartes/barre-haut.webp') 0 180 fill / 0 62px / 0 stretch;
+  padding-left: 44px; padding-right: 44px; min-height: 76px;
+}
+.ac-compteur {
+  position: relative; height: 40px; padding: 0 30px 0 6px; background: none; border: 0; box-shadow: none;
+  border-style: solid; border-image: url('/cartes/compteur.webp') 0 100 fill / 0 26px / 0 stretch;
+}
+.ac-compteur > img:first-child { margin-left: -16px; }
+.ac-plus { position: absolute; right: -8px; top: 50%; translate: 0 -50%; width: 28px; height: 28px; min-height: 0; padding: 0; border: 0; background: none; }
+.ac-plus img { width: 100%; height: 100%; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7)); }
+.ac-menu { width: 46px; height: 46px; }
+
+/* Les pastilles rouges : le rubis. */
+.ac .pastille-nombre { min-width: 22px; height: 22px; padding: 0 5px; border: 0; border-radius: 0; background: url('/cartes/pastille-notif.webp') center / contain no-repeat; color: #fff; font-weight: 900; font-size: 11.5px; line-height: 22px; text-shadow: 0 1px 2px #000; box-shadow: none; }
+
+/* Les onglets des étages : cadres dorés (l'actif brille). */
+.ac-etage { overflow: visible; border: 0; border-radius: 0; background: none; box-shadow: none; padding: 5px 9px; }
+.ac-etage::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-style: solid; border-image: url('/cartes/onglet-etage.webp') 16 46 fill / 6px 14px / 0 stretch; }
+.ac-etage.actif { transform: none; box-shadow: none; }
+.ac-etage.actif::after { inset: -6px -8px; border-image: url('/cartes/onglet-etage-actif.webp') 42 70 fill / 12px 20px / 0 stretch; filter: drop-shadow(0 0 8px rgba(255, 210, 120, 0.7)); }
+.ac-etage img { border-radius: 3px; }
+.ac-etage span { left: 9px; right: 9px; bottom: 5px; }
+
+/* La scène : les cartes posées sur le hall, sans panneau autour. */
+.ac-scene { background: none; border: 0; box-shadow: none; overflow: visible; }
+.ac-scene-titre { margin-bottom: 4px; }
+
+/* Les cartes des jeux : l'image dans le cadre doré aux éventails, et le bouton JOUER en bas. */
+.ac-carte { aspect-ratio: 475 / 720; }
+.ac-carte::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: url('/cartes/cadre-carte-jeu.webp') center / 100% 100% no-repeat; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.7)); }
+.ac-carte .cas-vignette { position: absolute; top: 8.6%; right: 6.7%; bottom: 4.2%; left: 6.5%; width: auto; height: auto; border: 0; border-radius: 6px; box-shadow: none; }
+.ac-carte .cas-vignette-nom { padding-bottom: calc(9px + 18%); font-size: clamp(16px, 2vh, 22px); }
+.ac-jouer { position: absolute; z-index: 3; left: 50%; bottom: 3%; width: 70%; translate: -50% 0; pointer-events: none; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)); transition: scale 0.15s; }
+.ac-carte:hover .ac-jouer { scale: 1.05; }
+.ac-carte .ac-cadenas { inset: 8.6% 6.7% 4.2% 6.5%; border-radius: 6px; z-index: 1; }
+.ac-carte-fn { aspect-ratio: 475 / 720; position: relative; }
+.ac-carte-fn::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: url('/cartes/cadre-carte-jeu.webp') center / 100% 100% no-repeat; }
+.ac-carte-fn .fn-bandeau { position: absolute; top: 8.6%; right: 6.7%; bottom: 4.2%; left: 6.5%; width: auto; height: auto; border: 0; border-radius: 6px; }
+.ac-carte-penthouse button { border: 0; }
+
+/* Le dock : le bandeau du bas, et les icônes rondes dorées. */
+.ac-dock {
+  background: none; border: 0; border-radius: 0; box-shadow: none; filter: drop-shadow(0 -8px 16px rgba(0, 0, 0, 0.7));
+  border-style: solid; border-image: url('/cartes/barre-bas.webp') 40 180 0 fill / 18px 60px 0 / 0 stretch;
+  padding-left: 40px; padding-right: 40px; padding-top: 14px;
+}
+.ac-dock-icone { width: 54px; height: 54px; }
+
+/* Écran large : la colonne des étages et la carte « À la une » dans leurs cadres. */
+@media (min-width: 820px) and (min-aspect-ratio: 1 / 1) {
+  .ac-barre { border-image-width: 0 78px; padding-left: 70px; padding-right: 70px; min-height: 92px; }
+  .ac-compteur { height: 50px; padding-right: 36px; border-image-width: 0 32px; }
+  .ac-plus { width: 34px; height: 34px; }
+  .ac-menu { width: 54px; height: 54px; }
+  .ac-etages { background: none; border: 0; box-shadow: none; border-radius: 0; padding: 74px 20px; border-style: solid; border-image: url('/cartes/colonne-etages.webp') 170 0 fill / 64px 0 / 0 stretch; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.7)); }
+  .ac-une-carte { position: relative; aspect-ratio: 482 / 720; }
+  .ac-une-carte::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: url('/cartes/cadre-une.webp') center / 100% 100% no-repeat; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.7)); }
+  .ac-une-carte .ac-une { position: absolute; top: 16.7%; right: 10.8%; bottom: 9.4%; left: 10.6%; }
+  .ac-une-carte .ac-une-contenu > * { border: 0; border-radius: 4px; padding: 12px 10px; }
+  .ac-une-carte .cas-cadeau strong { font-size: 28px; }
+  .ac-dock { border-image-width: 22px 72px 0; padding: 18px 76px calc(8px + env(safe-area-inset-bottom)); }
+  .ac-dock-icone { width: 64px; height: 64px; }
+  .ac-dock-info { top: 54px; }
+}
+
+/* Ajustements : place des compteurs sur téléphone, hauteur du dock, colonne des étages. */
+.ac { --dock: calc(112px + env(safe-area-inset-bottom)); }
+.ac-dock { align-items: flex-start; }
+.ac-rubis { padding-right: 34px; }
+@media (min-width: 601px) { .ac-rubis b { margin-right: 12px; } }
+@media (max-width: 600px) {
+  .ac-barre { padding-left: 26px; padding-right: 26px; gap: 6px; border-image-width: 0 48px; }
+  .ac-plus { display: none; }
+  .ac-compteur { padding-right: 18px; }
+  .ac-rubis { padding-right: 18px; margin-left: 6px; }
+  .ac-dollars { margin-left: 6px; }
+  .ac-compteur b { font-size: 16px; }
+  .ac-compteur > img:first-child { width: 30px; height: 30px; }
+}
+@media (min-width: 820px) and (min-aspect-ratio: 1 / 1) {
+  .ac { --dock: calc(128px + env(safe-area-inset-bottom)); }
+  .ac-etages { padding: 78px 14px; }
+  .ac-etage::after { border-image-width: 5px 10px; }
+  .ac-etage.actif::after { border-image-width: 10px 14px; }
+}
