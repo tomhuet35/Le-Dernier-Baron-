@@ -1539,8 +1539,7 @@ function Accueil({
             <img src="/cartes/bouton-plus.webp" alt="" />
           </button>
         </span>
-        <img className="ac-logo" src="/cartes/logo-casino.webp" alt="Baron's Fortune" draggable={false} />
-        <span className="ac-carte-membre">
+        <span className="ac-carte-membre" style={{ marginLeft: 'auto' }}>
           <CarteDeMembre vue={vue} />
         </span>
         <button type="button" className="ac-menu" onClick={() => setMenu(true)} aria-label={tr('Menu du salon', 'Lounge menu')}>
