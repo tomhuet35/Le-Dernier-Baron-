@@ -92,7 +92,7 @@ export function BoutonsHotel({ vue, appel, onVue, onContrats, onAlbum }: { vue: 
 }
 
 /** Ruiné : des rubis contre des dollars (une fois par jour, jamais l'inverse). */
-function Depannage({ c, appel, onVue }: { c: VueContrats; appel: Appel; onVue: (v: VueCasino) => void }) {
+export function Depannage({ c, appel, onVue }: { c: VueContrats; appel: Appel; onVue: (v: VueCasino) => void }) {
   const [erreur, setErreur] = useState<string | null>(null);
   const [occupe, setOccupe] = useState(false);
   const depanner = async () => {
