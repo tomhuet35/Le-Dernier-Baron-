@@ -54,6 +54,19 @@ import {
   type VueContrats,
 } from '../shared/contrats';
 import { semaineDe } from './classement';
+import { creerVentes } from './ventesCasino';
+import {
+  ajouterObjet,
+  cadreSpecial,
+  objetsDifferents,
+  normaliserCollection,
+  valeurCollection,
+  type AnnonceVente,
+  type CollectionneurSalon,
+  type Lot,
+  type Monnaie,
+  type VueBureau,
+} from '../shared/ventes';
 import type { ExtraCasino, Identite, ServiceComptes, StatsCompte } from './comptes';
 import {
   bonusNiveauCasino,
@@ -230,12 +243,30 @@ export function creerCasino(options: OptionsCasino) {
   const riches = new Map<string, { nom: string; avatar: number; solde: number; niveau?: number }>();
   let minuterieSalon: ReturnType<typeof setTimeout> | null = null;
   let dernierGrosLotDiffuse = 0;
+  /** Salle des ventes : les lots gardés (lus au démarrage), et la plus belle collection de chaque joueur. */
+  let brutVentes: unknown = undefined;
+  const collections = new Map<string, CollectionneurSalon>();
 
   // Gros lot et plus riches, gardés avec les réglages du serveur.
   const chargement = comptes
     .lireParametre('casino')
     .then((brut) => {
-      const d = (brut ?? {}) as { grosLot?: unknown; riches?: unknown; ouvertures?: unknown; defis?: unknown };
+      const d = (brut ?? {}) as { grosLot?: unknown; riches?: unknown; ouvertures?: unknown; defis?: unknown; ventes?: unknown; collections?: unknown };
+      brutVentes = d.ventes;
+      if (d.collections && typeof d.collections === 'object') {
+        for (const [uid, r] of Object.entries(d.collections as Record<string, unknown>)) {
+          const x = r as { nom?: unknown; avatar?: unknown; valeur?: unknown; objets?: unknown; cadre?: unknown };
+          if (typeof x?.valeur === 'number' && x.valeur > 0 && !collections.has(uid))
+            collections.set(uid, {
+              uid,
+              nom: typeof x.nom === 'string' ? x.nom : '',
+              avatar: typeof x.avatar === 'number' ? x.avatar : 1,
+              valeur: x.valeur,
+              objets: typeof x.objets === 'number' ? x.objets : 0,
+              cadre: x.cadre === 'mecene' || x.cadre === 'collectionneur' ? x.cadre : null,
+            });
+        }
+      }
       if (d.ouvertures && typeof d.ouvertures === 'object')
         for (const [k, v] of Object.entries(d.ouvertures as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v)) ouvertures[k] = v;
       if (typeof d.grosLot === 'number' && Number.isFinite(d.grosLot) && d.grosLot >= GROS_LOT_DEPART) grosLot = Math.floor(d.grosLot);
@@ -250,6 +281,7 @@ export function creerCasino(options: OptionsCasino) {
     })
     .catch((e) => console.error('Casino : lecture des réglages impossible :', e))
     .then(() => {
+      ventes.importer(brutVentes);
       // Un cadeau à durée s'ouvre la première fois que le serveur le voit : son heure d'ouverture est gardée.
       const nouveaux = cadeaux.filter((c) => c.duree !== undefined && ouvertures[c.id] === undefined);
       for (const c of nouveaux) ouvertures[c.id] = horloge();
@@ -263,7 +295,7 @@ export function creerCasino(options: OptionsCasino) {
       void comptes.ecrireParametre('casino', reglagesSalon()).catch((e) => console.error('Casino : écriture impossible :', e));
     }, delaiEcriture);
   };
-  const reglagesSalon = () => ({ grosLot, riches: Object.fromEntries(riches), ouvertures, defis: defis.exporter() });
+  const reglagesSalon = () => ({ grosLot, riches: Object.fromEntries(riches), ouvertures, defis: defis.exporter(), ventes: ventes.exporter(), collections: Object.fromEntries(collections) });
 
   async function estCreateur(uid: string): Promise<boolean> {
     const c = createurs.get(uid);
@@ -485,6 +517,8 @@ export function creerCasino(options: OptionsCasino) {
       albumComplet: e.albumComplet,
       depannage: p.solde < SEUIL_DEPANNAGE && e.rubis >= PRIX_DEPANNAGE && e.depannage !== jourParis(t),
       dollarsDepannage: dollarsDepannage(niveauDe(p)),
+      objets: objetsDifferents(e.collection),
+      cadres: e.cadres,
     };
   }
 
@@ -593,6 +627,69 @@ export function creerCasino(options: OptionsCasino) {
     return debut === undefined ? null : debut + DUREE_OUVERTURE_BW;
   };
   const roueBW = creerBaronWheel({ io, banque: banqueDe('baronWheel'), horloge, delais: options.delaisBaronWheel, arret: options.arretBaronWheel, multiplicateurs: options.multiplicateursBaronWheel, ouverture: finOuvertureBW, annoncer: (a) => annoncer(a) });
+  // -------------------------------------------------------------------------------------------------------------
+  // Salle des ventes et Bureau du Baron (shared/ventes.ts, server/ventesCasino.ts)
+
+  /** La plus belle collection : la fiche d'un joueur (retirée s'il n'a plus rien). */
+  function majCollection(uid: string, nom: string, avatar: number, e: { collection: Parameters<typeof valeurCollection>[0]; cadres: string[] }) {
+    const valeur = valeurCollection(e.collection);
+    if (valeur <= 0) return void collections.delete(uid);
+    collections.set(uid, { uid, nom, avatar, valeur, objets: objetsDifferents(e.collection), cadre: cadreSpecial(e.cadres) });
+    sauverSalon();
+  }
+  const classementCollections = () => [...collections.values()].sort((a, b) => b.valeur - a.valeur).slice(0, 10);
+
+  const ventes = creerVentes({
+    horloge,
+    jour: jourParis,
+    fin: lendemainParis,
+    debiter: (uid, monnaie, montant) => {
+      const p = portes.get(uid);
+      if (!p || montant <= 0) return false;
+      if (monnaie === 'dollars') {
+        if (p.solde < montant) return false;
+        mouvement(uid, p, -montant);
+        return true;
+      }
+      if (p.salonJ.rubis < montant) return false;
+      p.salonJ.rubis -= montant;
+      p.salonAEcrire = true;
+      planifier(uid, p);
+      return true;
+    },
+    rendre: (uid, monnaie, montant, lot, par) => {
+      if (monnaie === 'dollars') verserHorsJeu(uid, montant);
+      else {
+        const p = portes.get(uid);
+        if (p) {
+          p.salonJ.rubis = Math.min(RUBIS_MAX, p.salonJ.rubis + montant);
+          p.salonAEcrire = true;
+          planifier(uid, p);
+        } else void comptes.mouvementCasino(uid, 0, undefined, { salonDelta: { rubis: montant } }).catch((e) => console.error('Salle des ventes : rubis non rendus :', e));
+      }
+      const a: AnnonceVente = { type: 'surenchere', objet: lot.objet, par, monnaie, rendu: montant };
+      notifier(uid, 'casino_vente', a);
+    },
+    attribuer: (uid, lot: Lot, valeur) => {
+      const p = portes.get(uid);
+      const montant = lot.meilleure?.montant ?? 0;
+      if (p) {
+        const { complete } = ajouterObjet(p.salonJ, lot.objet, valeur);
+        p.salonAEcrire = true;
+        planifier(uid, p);
+        majCollection(uid, p.nom, p.avatar, p.salonJ);
+        const a: AnnonceVente = { type: 'gagne', objet: lot.objet, montant, monnaie: lot.monnaie, complete };
+        notifier(uid, 'casino_vente', a);
+      } else
+        void comptes
+          .mouvementCasino(uid, 0, undefined, { salonDelta: { objets: [{ id: lot.objet, valeur }] } })
+          .then((s) => s?.casino && majCollection(uid, s.nom, s.avatar, normaliserEtatSalon(s.casino.salon)))
+          .catch((e) => console.error('Salle des ventes : objet non remis :', e));
+    },
+    diffuser: (v) => io.to(SALLE).emit('casino_ventes', v),
+    sauver: () => sauverSalon(),
+  });
+
   const chute = creerChute({ banque: banqueDe('chute'), horloge, hasard: options.hasardChute, chemin: options.cheminChute, delaiAnnonce: options.delaiAnnonceChute, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
@@ -621,6 +718,7 @@ export function creerCasino(options: OptionsCasino) {
       baronWheel: roueBW.resume(),
       ...(p ? { profil: { ...progressionCasino(p.mise + p.bonusXp), demandes: p.recues.length, invitations: defis.invitations(uid), defi: defis.enCours(uid) } } : {}),
       ...(p ? { contrats: vueContrats(uid, p) } : {}),
+      ventes: ventes.vue(),
       ...(() => {
         const a = jeuALaffiche(t);
         return a ? { affiche: { ...a, bonus: p && p.affiche.debut === a.debut ? p.affiche.bonus : 0 } } : {};
@@ -743,6 +841,7 @@ export function creerCasino(options: OptionsCasino) {
         p.roue = c.roue;
         p.cadeaux = c.cadeaux ?? [];
       }
+      if (valeurCollection(p.salonJ.collection) > 0) majCollection(id.uid, p.nom, p.avatar, p.salonJ);
       p.amis = [...(c?.amis ?? p.amis)];
       p.recues = [...(c?.demandesRecues ?? p.recues)];
       p.envoyees = [...(c?.demandesEnvoyees ?? p.envoyees)];
@@ -1061,6 +1160,55 @@ export function creerCasino(options: OptionsCasino) {
       repondre(rappel, { ok: true, casino: vue(id.uid) });
     });
 
+    // Salle des ventes : une enchère sur un des lots du jour (la somme est bloquée, et rendue si quelqu'un surenchérit).
+    socket.on('casino_encherir', async (data: { index?: unknown; montant?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      if (p.occupe) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      const r = ventes.encherir({ uid: id.uid, nom: p.nom, avatar: p.avatar }, Number(data?.index), Number(data?.montant));
+      if (r !== 'ok') {
+        const msg: Record<typeof r, [string, string]> = {
+          introuvable: ['Ce lot n’est plus en vente.', 'This lot is no longer for sale.'],
+          deja: ['Ton enchère est déjà la meilleure.', 'Your bid is already the highest.'],
+          minimum: ['Quelqu’un a enchéri entre-temps : regarde le nouveau minimum.', 'Someone bid in the meantime: check the new minimum.'],
+          trop: ['Cette enchère est bien trop haute.', 'That bid is far too high.'],
+          solde: ['Tu n’as pas de quoi payer cette enchère.', 'You can’t afford this bid.'],
+        };
+        return repondre(rappel, { ok: false, erreur: L(...msg[r]), casino: vue(id.uid) });
+      }
+      repondre(rappel, { ok: true, casino: vue(id.uid) });
+    });
+
+    // Bureau du Baron : la collection d'un joueur (la mienne, ou celle d'un autre), et la plus belle du salon.
+    socket.on('casino_bureau', async (data: { uid?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      if (!portes.has(id.uid) || !dans) return repondre(rappel, INTROUVABLE);
+      const cible = typeof data?.uid === 'string' && data.uid ? data.uid : id.uid;
+      const q = portes.get(cible);
+      let fiche: { nom: string; avatar: number; niveau: number; salon: EtatSalonJoueur } | null = null;
+      if (q) fiche = { nom: q.nom, avatar: q.avatar, niveau: niveauDe(q), salon: q.salonJ };
+      else {
+        const s = await comptes.lire(cible).catch(() => null);
+        if (s?.casino) fiche = { nom: s.nom, avatar: s.avatar, niveau: progressionCasino((s.casino.mise ?? 0) + (s.casino.bonusXp ?? 0)).niveau, salon: normaliserEtatSalon(s.casino.salon) };
+      }
+      if (!fiche) return repondre(rappel, { ok: false, erreur: L('Bureau introuvable.', 'Office not found.') });
+      const bureau: VueBureau = {
+        uid: cible,
+        nom: fiche.nom,
+        avatar: fiche.avatar,
+        niveau: fiche.niveau,
+        collection: normaliserCollection(fiche.salon.collection),
+        valeur: valeurCollection(fiche.salon.collection),
+        cadre: cadreSpecial(fiche.salon.cadres),
+        moi: cible === id.uid,
+        classement: classementCollections(),
+      };
+      repondre(rappel, { ok: true, bureau });
+    });
+
     // Dépannage : des rubis contre des dollars, quand on est ruiné (une fois par jour). Jamais l'inverse.
     socket.on('casino_depannage', async (_data: unknown, rappel?: Rappel) => {
       const id = await acces(rappel);
@@ -1112,6 +1260,7 @@ export function creerCasino(options: OptionsCasino) {
     roueBW.fermer();
     chute.fermer();
     defis.fermer();
+    ventes.fermer();
     await Promise.all([...portes.keys()].map((uid) => ecrire(uid)));
     if (minuterieSalon) {
       clearTimeout(minuterieSalon);

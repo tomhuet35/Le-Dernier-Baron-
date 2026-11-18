@@ -63,9 +63,10 @@ function useReste(reste: number | null, cle: unknown): number | null {
 // ---------------------------------------------------------------------------------------------------------------
 // L'avatar encadré
 
-export function CadreAvatar({ avatar, niveau, taille = 48, sansNiveau, className }: { avatar: number; niveau: number; taille?: number; sansNiveau?: boolean; className?: string }) {
+export function CadreAvatar({ avatar, niveau, taille = 48, sansNiveau, className, special }: { avatar: number; niveau: number; taille?: number; sansNiveau?: boolean; className?: string; special?: string | null }) {
+  // Un cadre spécial (Collectionneur, Mécène) passe devant celui du niveau.
   return (
-    <span className={`cs-avatar cadre-${cadreCasino(niveau)} ${className ?? ''}`} style={{ '--taille': `${taille}px` } as CSSProperties}>
+    <span className={`cs-avatar cadre-${cadreCasino(niveau)} ${special ? `special special-${special}` : ''} ${className ?? ''}`} style={{ '--taille': `${taille}px` } as CSSProperties}>
       <img src={`/cartes/avatar-${avatar}.webp`} alt="" draggable={false} />
       {!sansNiveau && <b className="cs-niveau">{niveau}</b>}
     </span>
@@ -172,6 +173,7 @@ export function EcranProfil({
   onRetour,
   onRejoindre,
   onDefier,
+  onBureau,
 }: {
   uid: string | null;
   appel: Appel;
@@ -180,6 +182,8 @@ export function EcranProfil({
   onRetour: () => void;
   onRejoindre: (p: PositionCasino) => void;
   onDefier: (uid: string) => void;
+  /** Bureau du Baron : la collection de ce joueur. */
+  onBureau?: (uid: string) => void;
 }) {
   const [p, setP] = useState<ProfilCasino | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -253,6 +257,16 @@ export function EcranProfil({
             )}
             <p className="discret">{tr('1 XP pour 1 000 $ misés, dans tous les jeux du salon.', '1 XP per $1,000 bet, in every lounge game.')}</p>
           </section>
+
+          {onBureau && (
+            <button type="button" className="ct-bouton cs-bouton-bureau" onClick={() => onBureau(p.uid)}>
+              <img src="/cartes/objet-globe.webp" alt="" />
+              <span>
+                <strong>{moi ? tr('Mon bureau', 'My office') : tr('Visiter son bureau', 'Visit their office')}</strong>
+                <small>{tr('Sa collection d’objets de la Salle des ventes', 'Their auction-house collection')}</small>
+              </span>
+            </button>
+          )}
 
           {!moi && (
             <section className="cs-actions">

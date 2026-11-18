@@ -48,6 +48,8 @@ import { BarreXp, CadreAvatar, CelebrationNiveau, EcranAmis, EcranDefis, EcranPr
 import { titreCasino, type JeuCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
 import { MachineNuits } from './CasinoNuits';
 import { AnnoncesContrats, BoutonsHotel, EcranAlbum, EcranContrats } from './CasinoContrats';
+import { AnnoncesVentes, BoutonsVentes, EcranBureau, EcranVentes } from './CasinoBureau';
+import { cadreSpecial, type VueVentes } from '../../shared/ventes';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
 import type { EtatCompte } from './Profil';
@@ -1407,7 +1409,7 @@ function Salon({
         <span className="cas-barre-vide" />
       </header>
       <button type="button" className="cas-tresor" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
-        {vue.profil ? <CadreAvatar avatar={vue.avatar} niveau={vue.profil.niveau} taille={62} /> : <img className="cas-tresor-avatar" src={`/cartes/avatar-${vue.avatar}.webp`} alt="" />}
+        {vue.profil ? <CadreAvatar avatar={vue.avatar} niveau={vue.profil.niveau} taille={62} special={cadreSpecial(vue.contrats?.cadres)} /> : <img className="cas-tresor-avatar" src={`/cartes/avatar-${vue.avatar}.webp`} alt="" />}
         <div className="cs-tresor-niveau">
           <small>{tr('Ton solde', 'Your balance')}</small>
           <strong className="cas-solde">{dollars(solde)}</strong>
@@ -1539,7 +1541,9 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau'>('salon');
+  /** Bureau du Baron : le mien (null) ou celui d'un autre joueur. */
+  const [bureauUid, setBureauUid] = useState<string | null>(null);
   /** Profil du casino : le mien (null) ou celui d'un ami ; l'ami présélectionné pour un défi. */
   const [profilUid, setProfilUid] = useState<string | null>(null);
   const [cibleDefi, setCibleDefi] = useState<string | null>(null);
@@ -1659,12 +1663,16 @@ export default function Casino({
         rafraichir();
       }
     };
+    // Salle des ventes : chaque enchère met les lots à jour chez tout le salon.
+    const surVentes = (ventes: VueVentes) => setVue((v) => (v ? { ...v, ventes } : v));
+    socket.on('casino_ventes', surVentes);
     socket.on('casino_niveau', surNiveau);
     socket.on('casino_social', surSocial);
     socket.on('casino_solde', surSolde);
     socket.on('casino_affiche', surAffiche);
     socket.on('casino_defi', surDefi);
     return () => {
+      socket.off('casino_ventes', surVentes);
       socket.off('casino_niveau', surNiveau);
       socket.off('casino_social', surSocial);
       socket.off('casino_solde', surSolde);
@@ -1713,6 +1721,10 @@ export default function Casino({
   const ouvrirProfil = (uid: string | null) => {
     setProfilUid(uid);
     setEcran('profil');
+  };
+  const ouvrirBureau = (uid: string | null) => {
+    setBureauUid(uid);
+    setEcran('bureau');
   };
   const ouvrirDefis = (cible: string | null = null) => {
     setCibleDefi(cible);
@@ -1836,12 +1848,16 @@ export default function Casino({
         onRetour={() => (profilUid ? setEcran('amis') : retourSalon())}
         onRejoindre={(p) => void rejoindre(p)}
         onDefier={(uid) => ouvrirDefis(uid)}
+        onBureau={(uid) => ouvrirBureau(uid === moi ? null : uid)}
       />
     );
   else if (ecran === 'amis')
     contenu = <EcranAmis appel={appel} vue={vue} onVue={setVue} onRetour={retourSalon} onProfil={(uid) => ouvrirProfil(uid)} onRejoindre={(p) => void rejoindre(p)} onDefier={(uid) => ouvrirDefis(uid)} />;
   else if (ecran === 'contrats') contenu = <EcranContrats vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'album') contenu = <EcranAlbum vue={vue} onRetour={retourSalon} />;
+  else if (ecran === 'ventes') contenu = <EcranVentes vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} onBureau={() => ouvrirBureau(null)} />;
+  else if (ecran === 'bureau')
+    contenu = <EcranBureau key={bureauUid ?? 'moi'} uid={bureauUid} appel={appel} onRetour={retourSalon} onVentes={() => setEcran('ventes')} onProfil={(uid) => ouvrirProfil(uid === moi ? null : uid)} />;
   else if (ecran === 'defis') contenu = <EcranDefis appel={appel} vue={vue} moi={moi} defis={defis} cible={cibleDefi} onDefis={setDefis} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'folleNuit')
     contenu = (
@@ -1875,7 +1891,12 @@ export default function Casino({
         onProfil={() => ouvrirProfil(null)}
         onAmis={() => setEcran('amis')}
         onDefis={() => ouvrirDefis()}
-        hotel={<BoutonsHotel vue={vue} appel={appel} onVue={setVue} onContrats={() => setEcran('contrats')} onAlbum={() => setEcran('album')} />}
+        hotel={
+          <>
+            <BoutonsHotel vue={vue} appel={appel} onVue={setVue} onContrats={() => setEcran('contrats')} onAlbum={() => setEcran('album')} />
+            <BoutonsVentes vue={vue} onVentes={() => setEcran('ventes')} onBureau={() => ouvrirBureau(null)} />
+          </>
+        }
         onCadeau={() => void recupererCadeau()}
         onCadeauFini={() =>
           void (async () => {
@@ -1911,6 +1932,12 @@ export default function Casino({
           {toastSocial.texte}
         </button>
       )}
+      <AnnoncesVentes
+        onAnnonce={rafraichirVue}
+        onOuvrir={(e) => {
+          if (ecran === 'salon' || ecran === 'ventes' || ecran === 'bureau' || ecran === 'contrats' || ecran === 'album') (e === 'bureau' ? ouvrirBureau(null) : setEcran(e));
+        }}
+      />
       <AnnoncesContrats
         onAnnonce={rafraichirVue}
         onOuvrir={(e) => {
