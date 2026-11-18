@@ -5,6 +5,7 @@
  * Une image oubliée ici se charge simplement à la demande, comme avant.
  */
 export const IMAGES_SALON = [
+  '/cartes/icone-riches.webp',
   '/cartes/barre-haut.webp',
   '/cartes/barre-bas.webp',
   '/cartes/compteur.webp',
