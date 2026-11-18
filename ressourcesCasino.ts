@@ -5,6 +5,13 @@
  * Une image oubliée ici se charge simplement à la demande, comme avant.
  */
 export const IMAGES_SALON = [
+  '/cartes/hotel-hall.webp',
+  '/cartes/telegramme.webp',
+  '/cartes/carte-membre-bronze.webp',
+  '/cartes/carte-membre-argent.webp',
+  '/cartes/carte-membre-or.webp',
+  '/cartes/carte-membre-noire.webp',
+  '/cartes/groom-accueil.webp',
   '/cartes/marteau-encheres.webp',
   '/cartes/objet-globe.webp',
   '/cartes/logo-casino.webp',
@@ -35,6 +42,15 @@ export const IMAGES_SALON = [
 ];
 
 export const IMAGES_JEUX = [
+  '/cartes/etage-bar.webp',
+  '/cartes/etage-tables.webp',
+  '/cartes/etage-scene.webp',
+  '/cartes/etage-penthouse.webp',
+  '/cartes/semaine-fond.webp',
+  '/cartes/coffre-jour7.webp',
+  '/cartes/groom-courrier.webp',
+  '/cartes/groom-explique.webp',
+  '/cartes/groom-bravo.webp',
   '/cartes/bureau-baron.webp',
   '/cartes/salle-des-ventes.webp',
   '/cartes/objet-voiture.webp',

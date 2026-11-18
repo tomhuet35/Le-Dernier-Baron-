@@ -10,6 +10,7 @@ import type { ContenuCasse } from './machineASous';
 import type { VueDefi } from './profilCasino';
 import type { VueContrats } from './contrats';
 import type { VueVentes } from './ventes';
+import type { VueHotel } from './hotel';
 
 /** Bonus de la machine à sous en cours (à finir avant de rejouer) : le Casse du coffre ou la Roue du Baron. */
 export type VueBonusMachine =
@@ -136,6 +137,8 @@ export interface VueCasino {
   contrats?: VueContrats;
   /** Salle des ventes : les 3 lots du jour et la fin des enchères. */
   ventes?: VueVentes;
+  /** Grand Hôtel : niveau, carte de membre, Semaine du Baron, happy hour, champagne du Penthouse. */
+  hotel?: VueHotel;
 }
 
 export interface AnnonceCasino {

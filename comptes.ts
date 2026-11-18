@@ -309,7 +309,7 @@ export interface ServiceComptes {
   /** Cadeau du Baron : ajoute la somme une seule fois ; « deja » s'il est déjà récupéré, null sans casino. */
   recupererCadeauCasino(uid: string, id: string, montant: number): Promise<StatsCompte | 'deja' | null>;
   /** Roulette du salon : ajoute le gain de la case ; « deja » si elle a déjà été tournée ce jour-là, null sans casino. */
-  tournerRoueSalon(uid: string, jour: string, tirage: number): Promise<{ stats: StatsCompte; gain: number } | 'deja' | null>;
+  tournerRoueSalon(uid: string, jour: string, tirage: number, multiplicateur?: number): Promise<{ stats: StatsCompte; gain: number } | 'deja' | null>;
   /** Ajoute (ou rafraîchit) l'abonnement aux notifications d'un appareil ; les plus anciens partent au-delà de 5. */
   abonnerPush(uid: string, abonnement: Omit<AbonnementPush, 'depuis'>): Promise<StatsCompte | null>;
   /** Retire des abonnements (désactivés par le joueur, ou expirés). */
@@ -702,11 +702,12 @@ export function creerServiceComptes(parties: {
       });
       return res.donne ? stats : 'deja';
     },
-    tournerRoueSalon: async (uid, jour, tirage) => {
+    tournerRoueSalon: async (uid, jour, tirage, multiplicateur = 1) => {
       const actuel = await stockage.lire(uid);
       if (!actuel?.casino) return null;
       if (actuel.casino.roue === jour) return 'deja';
-      const gain = CASES_ROUE_SALON[tirage] ?? 0;
+      // La carte de membre multiplie le gain (×1 à ×3).
+      const gain = Math.round((CASES_ROUE_SALON[tirage] ?? 0) * Math.min(3, Math.max(1, multiplicateur)));
       const res = { donne: false };
       const stats = await stockage.modifier(uid, (avant) => {
         const base = avant ?? actuel;
