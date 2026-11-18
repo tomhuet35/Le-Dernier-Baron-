@@ -18,7 +18,7 @@
 .chg-rideau.droite::after { left: 0; }
 .chg.ouvre .chg-rideau.gauche { transform: translateX(-102%) skewX(-4deg); }
 .chg.ouvre .chg-rideau.droite { transform: translateX(102%) skewX(4deg); }
-.chg.ouvre { background: transparent; transition: background 0.4s; }
+.chg.ouvre { background: transparent; transition: background 0.4s; pointer-events: none; }
 
 /* La scène : un projecteur sur le logo. */
 .chg-scene {
