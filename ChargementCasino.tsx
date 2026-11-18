@@ -90,13 +90,18 @@ export function EntreeCasino({ module, enfants }: { module: () => Promise<unknow
   }, [module]);
 
   const tout = codeCharge && imagesFinies && salonPret && tempsMin;
+  // Tout est prêt : le rideau s'ouvre.
   useEffect(() => {
     if (!tout || etat !== 'charge') return;
     setEtat('ouverture');
-    const t = window.setTimeout(() => setEtat('fini'), 1300);
     chargerJeuxEnFond();
-    return () => window.clearTimeout(t);
   }, [tout, etat]);
+  // Puis la page disparaît (dans son propre effet : le changement d'état ci-dessus ne doit pas annuler ce minuteur).
+  useEffect(() => {
+    if (etat !== 'ouverture') return;
+    const t = window.setTimeout(() => setEtat('fini'), 1300);
+    return () => window.clearTimeout(t);
+  }, [etat]);
 
   // La barre : le code (30 %), les images du salon (55 %), l'entrée au salon (15 %).
   const progression = Math.round(100 * ((codeCharge ? 0.3 : 0) + 0.55 * (imagesFinies ? 1 : images / Math.max(1, IMAGES_SALON.length)) + (salonPret ? 0.15 : 0)));
