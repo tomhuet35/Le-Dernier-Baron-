@@ -1,0 +1,85 @@
+/* Grand Hôtel du Baron : Salle des ventes, Bureau du Baron, cadres d'avatar spéciaux. */
+
+/* ---------- Cadres spéciaux (au-dessus de ceux des niveaux) ---------- */
+.cs-avatar.special-collectionneur { --anneau: conic-gradient(from 0deg, #2a6b4f, #e7c27a, #fff1c4, #3d8a66, #e7c27a, #2a6b4f); --lueur: rgba(120, 220, 170, 0.55); }
+.cs-avatar.special-mecene { --anneau: conic-gradient(from 0deg, #6b0f1a, #ffe9a8, #ff4d6d, #fff1c4, #b3132f, #ffe9a8, #6b0f1a); --lueur: rgba(255, 90, 120, 0.75); }
+.cs-avatar.special::before { content: ''; position: absolute; inset: 0; border-radius: 50%; z-index: -1; background: inherit; filter: blur(calc(var(--taille) * 0.06)); animation: cs-tourne 5s linear infinite; }
+.cs-avatar.special-mecene::after {
+  content: ''; position: absolute; top: calc(var(--taille) * -0.2); left: 50%; width: calc(var(--taille) * 0.36); height: calc(var(--taille) * 0.36); transform: translateX(-50%);
+  background: url('/cartes/rubis-icone.webp') center / contain no-repeat; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+}
+@media (prefers-reduced-motion: reduce) { .cs-avatar.special::before { animation: none; } }
+
+/* ---------- Dans le salon et le profil ---------- */
+.bv-boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cs-bouton-bureau { width: 100%; }
+
+/* ---------- Couleurs des raretés ---------- */
+.rarete-commun { --r: #c98a4b; --r-lueur: rgba(201, 138, 75, 0.35); }
+.rarete-rare { --r: #9fc4ff; --r-lueur: rgba(120, 170, 255, 0.4); }
+.rarete-precieux { --r: #ffd36b; --r-lueur: rgba(255, 210, 110, 0.5); }
+.rarete-legendaire { --r: #ff5c7c; --r-lueur: rgba(255, 70, 110, 0.6); }
+
+/* ---------- La Salle des ventes ---------- */
+.bv-scene { position: relative; margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--or); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6); }
+.bv-scene > img { display: block; width: 100%; aspect-ratio: 16 / 7; object-fit: cover; object-position: center 35%; }
+.bv-scene p { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; padding: 22px 10px 8px; background: linear-gradient(transparent, rgba(10, 5, 3, 0.92) 55%); font-family: var(--titre); color: var(--or-vif); text-shadow: 0 2px 6px #000; }
+.bv-scene p img { width: 28px; height: 28px; object-fit: contain; }
+.bv-lots { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.bv-lot {
+  display: grid; grid-template-columns: 120px 1fr; gap: 12px; align-items: center; padding: 12px; border-radius: 16px;
+  border: 1px solid var(--r); background: linear-gradient(180deg, rgba(60, 1, 7, 0.88), rgba(22, 16, 12, 0.94));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6), 0 0 18px var(--r-lueur); animation: ct-arrive 0.45s calc(var(--i) * 0.1s) both ease-out;
+}
+.bv-lot.en-tete { box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6), 0 0 0 2px var(--or-vif), 0 0 22px rgba(231, 194, 122, 0.5); }
+.bv-socle { position: relative; display: grid; place-items: center; aspect-ratio: 1; border-radius: 12px; background: radial-gradient(circle at 50% 30%, rgba(255, 230, 170, 0.35), transparent 60%), linear-gradient(180deg, #2a1810, #120a06); overflow: hidden; }
+.bv-socle::after { content: ''; position: absolute; left: 12%; right: 12%; bottom: 8%; height: 12%; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.7), transparent); }
+.bv-socle img { position: relative; z-index: 1; width: 88%; height: 88%; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); animation: bv-flotte 4s ease-in-out infinite; }
+.bv-infos { display: grid; gap: 4px; min-width: 0; }
+.bv-rarete { font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--r); font-weight: 700; }
+.bv-nom { font-family: var(--titre); font-weight: 400; font-size: 18px; line-height: 1.15; color: var(--or-vif); }
+.bv-meilleure { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 14px; }
+.bv-meilleure img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid var(--or); }
+.bv-meilleure > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bv-depart { font-size: 14px; }
+.bv-dollars { font-family: var(--titre); color: var(--or-vif); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bv-encherir { justify-self: start; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; }
+.bv-encherir .bv-dollars { color: inherit; }
+.bv-tete { justify-self: start; padding: 4px 12px; border-radius: 99px; background: linear-gradient(180deg, #e7c27a, #a8742a); color: #2a1408; font-weight: 700; font-size: 13px; }
+.bv-aide { margin: 0; text-align: center; font-size: 13px; }
+.bv-lien { justify-self: center; background: none; border: 0; color: var(--or-vif); text-decoration: underline; }
+.bv-fenetre { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.bv-fenetre h2 { margin: 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.bv-fenetre-objet { width: 120px; height: 120px; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); }
+.bv-choix { display: grid; gap: 8px; width: 100%; }
+.bv-choix button { padding: 10px; border-radius: 12px; }
+.bv-choix button.choisi { border-color: var(--or-vif); box-shadow: 0 0 0 2px var(--or-vif) inset, 0 0 12px rgba(231, 194, 122, 0.4); }
+
+/* ---------- Le Bureau du Baron ---------- */
+.bv-entete { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--or); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6); }
+.bv-entete-fond { display: block; width: 100%; aspect-ratio: 16 / 8; object-fit: cover; }
+.bv-entete-qui { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 12px; padding: 30px 14px 12px; background: linear-gradient(transparent, rgba(10, 5, 3, 0.94) 50%); }
+.bv-entete-qui > span { display: grid; gap: 2px; min-width: 0; }
+.bv-entete-qui strong { font-family: var(--titre); font-weight: 400; font-size: 19px; color: var(--or-vif); }
+.bv-entete-qui b { font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.bv-cadre-nom { color: #ff8fa3; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; font-size: 11px; }
+.bv-vitrines { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.bv-vitrine {
+  position: relative; display: grid; justify-items: center; gap: 2px; padding: 10px 8px 10px; border-radius: 12px; text-align: center;
+  border: 1px solid rgba(231, 194, 122, 0.35); background: radial-gradient(ellipse at 50% 0%, rgba(255, 230, 170, 0.18), transparent 65%), linear-gradient(180deg, #2a1810, #140b07);
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35), 0 8px 18px rgba(0, 0, 0, 0.5);
+  animation: ct-arrive 0.4s calc(var(--i) * 0.05s) both ease-out;
+}
+.bv-vitrine::before { content: ''; position: absolute; inset: 6px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06); background: linear-gradient(130deg, rgba(255, 255, 255, 0.08), transparent 35%); pointer-events: none; }
+.bv-vitrine img { width: 82%; aspect-ratio: 1; object-fit: contain; }
+.bv-vitrine strong { font-family: var(--titre); font-weight: 400; font-size: 14px; line-height: 1.15; color: var(--or-vif); }
+.bv-vitrine small { font-size: 11.5px; color: var(--r); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.bv-vitrine.pleine { border-color: var(--r); box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35), 0 8px 18px rgba(0, 0, 0, 0.5), 0 0 16px var(--r-lueur); }
+.bv-vitrine.pleine img { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); }
+.bv-vitrine.vide img { filter: brightness(0) drop-shadow(0 0 1px rgba(231, 194, 122, 0.5)); opacity: 0.45; }
+.bv-vitrine.vide strong { color: var(--creme-doux); }
+.bv-classement-qui { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; text-align: left; }
+
+@keyframes bv-flotte { 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .bv-lot, .bv-vitrine, .bv-socle img { animation: none; } }
+@media (min-width: 560px) { .bv-vitrines { grid-template-columns: repeat(5, 1fr); } }

@@ -13,6 +13,7 @@
  * Tout ce fichier est pur : le serveur (salonCasino.ts) lui passe les événements et applique les récompenses.
  */
 import { JEUX_CASINO, NOMS_JEUX_CASINO, type JeuCasino } from './profilCasino';
+import { normaliserCollection, type Collection } from './ventes';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Réglages
@@ -142,6 +143,11 @@ export interface EtatSalonJoueur {
   albumComplet: boolean;
   /** Dernier jour du dépannage (heure de Paris). */
   depannage?: string;
+  /** Bureau du Baron : les objets gagnés à la Salle des ventes, et la récompense de la collection complète. */
+  collection: Collection;
+  collectionComplete: boolean;
+  /** Cadres d'avatar spéciaux gagnés (« collectionneur » : l'album ; « mecene » : la collection). */
+  cadres: string[];
 }
 
 /** Petit hasard reproductible (le même jour donne les mêmes contrats, même si le serveur redémarre). */
@@ -180,6 +186,9 @@ export function etatSalonVide(): EtatSalonJoueur {
     contrats: { jour: '', liste: [], change: false, tous: false, jeux: [], victoires: [], semaine: '', grosCoups: [], jeuxSemaine: [] },
     album: {},
     albumComplet: false,
+    collection: {},
+    collectionComplete: false,
+    cadres: [],
   };
 }
 
@@ -360,6 +369,7 @@ export function collerMorceau(e: EtatSalonJoueur, jeu: JeuCasino | null, hasard:
     e.albumComplet = true;
     finiAlbum = true;
     e.rubis = Math.min(RUBIS_MAX, e.rubis + RUBIS_ALBUM);
+    if (!e.cadres.includes('collectionneur')) e.cadres = [...e.cadres, 'collectionneur'];
   }
   return { jeu: page, case: k, page: finiPage, album: finiAlbum };
 }
@@ -382,6 +392,9 @@ export interface VueContrats {
   /** Le dépannage est-il possible maintenant ? */
   depannage: boolean;
   dollarsDepannage: number;
+  /** Bureau : objets différents de la collection, et cadres spéciaux gagnés. */
+  objets: number;
+  cadres: string[];
 }
 
 /** Ce que le serveur envoie au téléphone quand un contrat se termine, un morceau se colle, ou une page se complète. */
@@ -438,5 +451,10 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
     for (const [j, m] of Object.entries(b.album as Record<string, unknown>)) if (JEUX_CASINO.includes(j as JeuCasino)) e.album[j as JeuCasino] = entier(m) & PAGE_COMPLETE;
   e.albumComplet = b.albumComplet === true;
   if (typeof b.depannage === 'string') e.depannage = texte(b.depannage);
+  e.collection = normaliserCollection(b.collection);
+  e.collectionComplete = b.collectionComplete === true;
+  e.cadres = Array.isArray(b.cadres) ? [...new Set(b.cadres.filter((x): x is string => x === 'collectionneur' || x === 'mecene'))] : [];
+  // L'album complet donne son cadre (comptes d'avant le cadre compris).
+  if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;
 }

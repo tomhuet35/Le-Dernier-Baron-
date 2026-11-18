@@ -11,7 +11,8 @@ import { join } from 'node:path';
 import { estLangue, type Langue } from '../shared/langue';
 import { estTapis, niveauDepuisXp, tapisActif, tapisDebloque, TAPIS_PAR_DEFAUT, type IdTapis, type ResultatJoueur } from '../shared/niveaux';
 import { CASES_ROUE_SALON, SOLDE_DEPART, SOLDE_MAX } from '../shared/casino';
-import { normaliserEtatSalon, type EtatSalonJoueur } from '../shared/contrats';
+import { normaliserEtatSalon, RUBIS_MAX, type EtatSalonJoueur } from '../shared/contrats';
+import { ajouterObjet, type IdObjet } from '../shared/ventes';
 import { AMIS_MAX_CASINO, estJeuCasino, JOURNAL_MAX, type BilanDefis, type EntreeJournalCasino, type JeuCasino, type StatsJeuCasino } from '../shared/profilCasino';
 import { gainDeCase, PERSONNAGES_ROULETTE, type GainRoulette } from '../shared/roulette';
 import type { EntreeHistorique, ProfilCompte } from '../shared/types';
@@ -111,6 +112,8 @@ export interface ExtraCasino {
   defis?: BilanDefis;
   /** Rubis, contrats et album : l'état entier, qui remplace l'ancien. */
   salon?: EtatSalonJoueur;
+  /** Pour un joueur absent : des rubis rendus (enchère dépassée) et des objets gagnés à la Salle des ventes. */
+  salonDelta?: { rubis?: number; objets?: { id: IdObjet; valeur: number }[] };
 }
 
 /** Lien d'amitié du casino : demander, accepter, refuser ou retirer. */
@@ -203,6 +206,12 @@ export function appliquerExtraCasino(c: CasinoCompte, extra: ExtraCasino | undef
     r.defis = { gagnes: d.gagnes + extra.defis.gagnes, perdus: d.perdus + extra.defis.perdus, nuls: d.nuls + extra.defis.nuls };
   }
   if (extra.salon) r.salon = extra.salon;
+  if (extra.salonDelta) {
+    const e = normaliserEtatSalon(r.salon);
+    if (extra.salonDelta.rubis) e.rubis = Math.min(RUBIS_MAX, Math.max(0, e.rubis + Math.round(extra.salonDelta.rubis)));
+    for (const o of extra.salonDelta.objets ?? []) ajouterObjet(e, o.id, o.valeur);
+    r.salon = e;
+  }
   return r;
 }
 
