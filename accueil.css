@@ -351,3 +351,40 @@ body > .voile { z-index: 200; }
   .ac-etage { padding: 6px 9px; }
   .ac-etage img { width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; object-position: center 45%; }
 }
+
+/* =============================================================================================================
+   Téléphone : des barres sobres. Les grands bandeaux ornés (barre-haut, barre-bas) sont faits pour les grands écrans ;
+   sur un téléphone, leurs éventails écrasent les compteurs et les icônes. Ici : velours uni et un seul filet doré.
+   ============================================================================================================= */
+@media (max-width: 600px) {
+  .ac-barre {
+    border: 0 !important; border-image: none !important; filter: none !important;
+    margin: 0 -10px; min-height: 0; padding: max(8px, env(safe-area-inset-top)) 12px 8px; gap: 8px;
+    background: linear-gradient(180deg, #5a0815, #2a0609);
+    border-bottom: 2px solid var(--or) !important; border-radius: 0 0 18px 18px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  }
+  .ac-moi .cs-avatar { --taille: 46px !important; width: 46px !important; height: 46px !important; }
+  .ac-compteur {
+    height: 36px; padding: 0 12px 0 4px !important; border-image: none !important;
+    border: 1px solid rgba(231, 194, 122, 0.7) !important; border-radius: 99px; background: rgba(0, 0, 0, 0.55);
+  }
+  .ac-compteur > img:first-child { width: 28px !important; height: 28px !important; margin-left: -6px; }
+  .ac-compteur b { font-size: 16px !important; }
+  .ac-rubis { margin-left: 4px; }
+  .ac-menu { width: 40px; height: 40px; }
+
+  .ac-dock {
+    border: 0 !important; border-image: none !important; filter: none !important;
+    padding: 8px 6px calc(6px + env(safe-area-inset-bottom)) !important;
+    background: linear-gradient(180deg, #5a0815, #2a0609); border-top: 2px solid var(--or) !important; border-radius: 18px 18px 0 0;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.6);
+  }
+  .ac-dock::before { display: none; }
+  .ac-dock-bouton { flex: 0 0 68px; }
+  .ac-dock-icone { width: 44px; height: 44px; }
+  .ac-dock-info { top: 36px; font-size: 9.5px; padding: 0 6px; }
+  .ac-dock-nom { margin-top: 6px; font-size: 9.5px; letter-spacing: 0.02em; }
+  .ac-dock-bouton .pastille-nombre { top: -4px; right: 8px; min-width: 18px; height: 18px; line-height: 18px; font-size: 10px; }
+  .ac { --dock: calc(84px + env(safe-area-inset-bottom)); }
+}
