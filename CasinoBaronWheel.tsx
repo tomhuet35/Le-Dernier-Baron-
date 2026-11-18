@@ -568,6 +568,13 @@ function Voitures() {
 }
 
 /** LA GRANDE ÉVASION : trois itinéraires, puis la course-poursuite dans Paris. */
+/** Les obstacles de chaque rue : 1 barrière, 2 charrette, 3 tonneaux, 4 gendarme. */
+const OBSTACLES_ROUTE: Record<(typeof ROUTES_BW)[number], number[]> = {
+  boulevard: [1, 4, 1],
+  ruelles: [2, 3, 4],
+  souterrains: [3, 3],
+};
+
 function BonusEvasion({ b, nom, ouvert, choisir, v }: PropsBonus) {
   const choix = b.mesChoix[0];
   // Ce que l'écran suit : mon itinéraire, sinon le plus choisi du salon.
@@ -584,8 +591,9 @@ function BonusEvasion({ b, nom, ouvert, choisir, v }: PropsBonus) {
             <img src={`/cartes/bw-route-${route}.webp`} alt="" draggable={false} />
             <img src={`/cartes/bw-route-${route}.webp`} alt="" draggable={false} />
           </div>
-          {[1, 2, 3, 4].map((k) => (
-            <img key={k} className={`bw-obstacle o${k}`} src={`/cartes/bw-obstacle-${k}.webp`} alt="" draggable={false} />
+          {/* Seulement les obstacles qui vont avec la rue choisie (pas de charrette de fruits dans les égouts). */}
+          {OBSTACLES_ROUTE[route].map((k, i) => (
+            <img key={`${route}-${k}`} className={`bw-obstacle o${i + 1}`} src={`/cartes/bw-obstacle-${k}.webp`} alt="" draggable={false} />
           ))}
           <Voitures />
         </div>

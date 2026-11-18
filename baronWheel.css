@@ -278,12 +278,12 @@
 .bw-evasion.revele.arrete .bw-defile .bw-voiture { animation: none; }
 .bw-evasion.revele.arrete .bw-defile .bw-voiture.police { left: 26%; }
 .bw-evasion.revele.arrete .bw-defile .bw-voiture.baron { left: 58%; }
-.bw-obstacle { position: absolute; bottom: 4%; z-index: 7; height: 28%; width: auto; max-width: none; left: 110%; filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.6)); }
-.bw-evasion.poursuite .bw-obstacle { animation: bw-obstacle 2.6s linear both; }
-.bw-obstacle.o1 { animation-delay: 0.6s !important; }
-.bw-obstacle.o2 { animation-delay: 2.6s !important; height: 30%; }
-.bw-obstacle.o3 { animation-delay: 4.6s !important; }
-.bw-obstacle.o4 { animation-delay: 6.4s !important; height: 40%; }
+.bw-obstacle { position: absolute; bottom: 4%; z-index: 4; height: 26%; width: auto; max-width: none; left: 110%; visibility: hidden; filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.6)); }
+/* Les obstacles passent derrière les voitures, sur le bord de la route, et seulement pendant la poursuite. */
+.bw-evasion.poursuite .bw-obstacle { visibility: visible; animation: bw-obstacle 2.6s linear both; }
+.bw-obstacle.o1 { animation-delay: 0.8s !important; }
+.bw-obstacle.o2 { animation-delay: 3.4s !important; }
+.bw-obstacle.o3 { animation-delay: 6s !important; }
 @keyframes bw-obstacle { to { left: -40%; } }
 .bw-fumee-pot { position: absolute; left: -6%; bottom: 14%; width: 22%; aspect-ratio: 1.4; border-radius: 50%; background: radial-gradient(closest-side, rgba(200, 200, 200, 0.75), transparent); filter: blur(4px); opacity: 0; }
 .bw-defile .bw-fumee-pot { animation: bw-pot 0.7s ease-out infinite; }
@@ -424,7 +424,7 @@
   .bw-evasion.revele.arrete .bw-defile .bw-voiture.police { left: 14%; }
   .bw-evasion.revele.arrete .bw-defile .bw-voiture.baron { left: 44%; }
   .bw-evasion.revele.evade .bw-defile .bw-voiture.police { left: -70%; }
-  .bw-obstacle { bottom: 27%; height: 20%; }
+  .bw-obstacle { bottom: 24%; height: 17%; }
   .bw-route-fond { top: 0; bottom: 22%; }
   .bw-defile::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22%; background: linear-gradient(180deg, #1c1410, #0b0806); }
   .bw-issue img { height: 62%; bottom: 22%; }
