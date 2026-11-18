@@ -51,6 +51,7 @@ import { AnnoncesContrats, EcranAlbum, EcranContrats } from './CasinoContrats';
 import { AnnoncesVentes, EcranBureau, EcranVentes } from './CasinoBureau';
 import { EcranCercles } from './CasinoCercles';
 import { EcranBourse } from './CasinoBourse';
+import { EcranMarche } from './CasinoMarche';
 import { cadreSpecial, type VueVentes } from '../../shared/ventes';
 import { AccueilGroom, AnnoncesHotel, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, Penthouse } from './CasinoHotel';
 import { etage, etageDuJeu, etageOuvert, ETAGES, type Etage } from '../../shared/hotel';
@@ -1312,7 +1313,7 @@ type TableActive = { jeu: 'blackjack'; v: VueTableBJ } | { jeu: 'roulette'; v: V
 const EVT_TABLE: Record<JeuTable, string> = { blackjack: 'casino_bj', roulette: 'casino_rl' };
 
 /** Les tables ouvertes d'un jeu (blackjack ou roulette) : en rejoindre une, ou en ouvrir une nouvelle (avec des bots). */
-function FenetreTables({ jeu, vue, appel, onTable, onVue, onFermer }: { jeu: JeuTable; vue: VueCasino; appel: Appel; onTable: (t: TableActive) => void; onVue: (v: VueCasino) => void; onFermer: () => void }) {
+function FenetreTables({ jeu, vip, vue, appel, onTable, onVue, onFermer }: { jeu: JeuTable; vip?: boolean; vue: VueCasino; appel: Appel; onTable: (t: TableActive) => void; onVue: (v: VueCasino) => void; onFermer: () => void }) {
   const [bots, setBots] = useState(2);
   const [erreur, setErreur] = useState<string | null>(null);
   useEffect(() => {
@@ -1330,9 +1331,10 @@ function FenetreTables({ jeu, vue, appel, onTable, onVue, onFermer }: { jeu: Jeu
     if (r.ok && r.table) onTable({ jeu, v: r.table } as TableActive);
     else setErreur(r.erreur ?? tr('Table indisponible.', 'Table unavailable.'));
   };
-  const liste = (jeu === 'blackjack' ? vue.tables : vue.tablesRoulette) ?? [];
+  // Les tables VIP (Penthouse) et les tables ordinaires sont listées à part.
+  const liste = ((jeu === 'blackjack' ? vue.tables : vue.tablesRoulette) ?? []).filter((t) => !!t.vip === !!vip);
   return (
-    <Fenetre titre={jeu === 'blackjack' ? 'Blackjack' : tr('Roulette', 'Roulette')} onFermer={onFermer}>
+    <Fenetre titre={`${vip ? '★ VIP · ' : ''}${jeu === 'blackjack' ? 'Blackjack' : tr('Roulette', 'Roulette')}`} onFermer={onFermer}>
       {liste.length > 0 ? (
         <ul className="cas-tables">
           {liste.map((t) => (
@@ -1374,12 +1376,16 @@ function FenetreTables({ jeu, vue, appel, onTable, onVue, onFermer }: { jeu: Jeu
             +
           </button>
         </div>
-        <button type="button" className="principal large" onClick={() => void ouvrir('creer', { bots })}>
+        <button type="button" className="principal large" onClick={() => void ouvrir('creer', { bots, vip: !!vip })}>
           {tr('Ouvrir une table', 'Open a table')}
         </button>
       </div>
       <p className="discret">
-        {jeu === 'blackjack'
+        {vip
+          ? jeu === 'blackjack'
+            ? tr('Table VIP : mises de 10 000 à 2 500 000 $.', 'VIP table: bets from $10,000 to $2,500,000.')
+            : tr('Table VIP : jetons de 10 000 à 5 000 000 $, 10 000 000 $ au plus par tour.', 'VIP table: chips from $10,000 to $5,000,000, $10,000,000 at most per spin.')
+          : jeu === 'blackjack'
           ? tr('Mises de 1 000 à 250 000 $. Tes amis créateurs voient ta table ici, et tu peux les inviter depuis la table.', 'Bets from $1,000 to $250,000. Your creator friends see your table here, and you can invite them from the table.')
           : tr('Roulette européenne, un seul zéro. Jetons de 1 000 à 500 000 $, 1 000 000 $ au plus par tour. Invite tes amis créateurs depuis la table.', 'European roulette, single zero. Chips from $1,000 to $500,000, $1,000,000 at most per spin. Invite your creator friends from the table.')}
       </p>
@@ -1471,9 +1477,13 @@ function Accueil({
   onQuitter,
   onCercles,
   onBourse,
+  onVip,
+  onMarche,
 }: {
   onCercles: () => void;
   onBourse: () => void;
+  onVip: (j: 'blackjack' | 'roulette') => void;
+  onMarche: () => void;
   vue: VueCasino;
   appel: Appel;
   onVue: (v: VueCasino) => void;
@@ -1525,7 +1535,7 @@ function Accueil({
     <div className="ac" style={{ '--fond-etage': `url(${e.image})` } as CSSProperties}>
       <header className="ac-barre">
         <button type="button" className="ac-moi" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
-          <CadreAvatar avatar={vue.avatar} niveau={niveau} taille={58} special={cadreSpecial(c?.cadres)} sansNiveau />
+          <CadreAvatar avatar={vue.avatar} niveau={niveau} taille={58} special={cadreSpecial(c?.cadres, c?.cadreChoisi)} sansNiveau />
           <span className="ac-niveau">
             <b>{tr(`Niv. ${niveau}`, `Lvl ${niveau}`)}</b>
             {vue.profil && <BarreXp xp={vue.profil.xp} xpNiveau={vue.profil.xpNiveau} xpSuivant={vue.profil.xpSuivant} fine />}
@@ -1576,7 +1586,7 @@ function Accueil({
           {!ouvert && <b> · {tr(`ouvre au niveau ${e.niveau}`, `opens at level ${e.niveau}`)}</b>}
         </p>
         {etageActif === 'penthouse' && ouvert ? (
-          <Penthouse vue={vue} appel={appel} onVue={onVue} />
+          <Penthouse vue={vue} appel={appel} onVue={onVue} onVip={onVip} />
         ) : (
           <div className="ac-cartes">
             {une.length > 0 && (
@@ -1621,6 +1631,7 @@ function Accueil({
           <BoutonDock rond={false} icone={<img src="/cartes/icone-bureau.webp" alt="" />} nom={tr('Bureau', 'Office')} info={c ? `${c.objets}/10` : null} onClick={onBureau} />
           <BoutonDock icone={<img src="/cartes/blason-lion.webp" alt="" />} nom={tr('Cercles', 'Circles')} onClick={onCercles} rond={false} />
           <BoutonDock icone={<img src="/cartes/telescripteur.webp" alt="" />} nom={tr('Bourse', 'Exchange')} onClick={onBourse} />
+          <BoutonDock icone={<img src="/cartes/icone-boutique.webp" alt="" />} nom={tr('Marché', 'Market')} onClick={onMarche} rond={false} />
           <BoutonDock icone={<img src="/cartes/icone-amis-dock.webp" alt="" />} nom={tr('Amis', 'Friends')} pastille={vue.profil?.demandes || null} onClick={onAmis} rond={false} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-defis.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
           <BoutonDock icone={<img src="/cartes/icone-riches.webp" alt="" />} nom={tr('Riches', 'Richest')} onClick={() => setRiches(true)} rond={false} />
@@ -1693,7 +1704,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'cercles' | 'bourse'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'cercles' | 'bourse' | 'marche'>('salon');
   /** Grand Hôtel : l'étage ouvert, l'étage fermé montré par le Groom, la Semaine du Baron. */
   const [etageActif, setEtageActif] = useState<Etage>('bar');
   const [etageFerme, setEtageFerme] = useState<Etage | null>(null);
@@ -1714,6 +1725,7 @@ export default function Casino({
   defisRef.current = defis;
   const [roue, setRoue] = useState(false);
   const [fenetreTables, setFenetreTables] = useState<JeuTable | null>(null);
+  const [tablesVip, setTablesVip] = useState(false);
   const [table, setTable] = useState<TableActive | null>(null);
   const tableRef = useRef<{ jeu: JeuTable; code: string } | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -2025,6 +2037,7 @@ export default function Casino({
   else if (ecran === 'contrats') contenu = <EcranContrats vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'album') contenu = <EcranAlbum vue={vue} onRetour={retourSalon} />;
   else if (ecran === 'cercles') contenu = <EcranCercles vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} />;
+  else if (ecran === 'marche') contenu = <EcranMarche vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'bourse') contenu = <EcranBourse vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'ventes') contenu = <EcranVentes vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} onBureau={() => ouvrirBureau(null)} />;
   else if (ecran === 'bureau')
@@ -2064,6 +2077,8 @@ export default function Casino({
         onQuitter={() => onQuitter()}
         onCercles={() => setEcran('cercles')}
         onBourse={() => setEcran('bourse')}
+        onVip={(j) => (setTablesVip(true), setFenetreTables(j))}
+        onMarche={() => setEcran('marche')}
       />
     );
   return (
@@ -2071,7 +2086,7 @@ export default function Casino({
       <Garde key={ecran} onRetour={retourSalon} libelleRetour={tr('Retour au salon', 'Back to the lounge')}>
         {contenu}
       </Garde>
-      {fenetreTables && vue && <FenetreTables key={fenetreTables} jeu={fenetreTables} vue={vue} appel={appel} onTable={allerTable} onVue={setVue} onFermer={() => setFenetreTables(null)} />}
+      {fenetreTables && vue && <FenetreTables key={`${fenetreTables}-${tablesVip}`} jeu={fenetreTables} vip={tablesVip} vue={vue} appel={appel} onTable={allerTable} onVue={setVue} onFermer={() => (setFenetreTables(null), setTablesVip(false))} />}
       {info && <div className="toast">{info}</div>}
       {cadeau !== null && (
         <Celebration

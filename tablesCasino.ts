@@ -7,6 +7,7 @@
  * est débitée à la donne, le doublement, la séparation et l'assurance au moment où ils sont joués, et les gains
  * crédités à la fin. Les bots ont un argent illimité, jamais enregistré.
  */
+import { FACTEUR_VIP } from '../shared/hotel';
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import {
@@ -88,12 +89,14 @@ interface Table {
   numero: number;
   melange: boolean;
   paye: boolean;
+  /** Table VIP du Penthouse : mises multipliées par FACTEUR_VIP. */
+  vip: boolean;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const MISES_BOTS = [5_000, 10_000, 10_000, 25_000, 25_000, 50_000, 100_000];
 
-export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino; horloge?: () => number; hasard?: (n: number) => number; delais?: Partial<DelaisTables>; sabot?: () => CarteBJ[] }) {
+export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino; horloge?: () => number; hasard?: (n: number) => number; delais?: Partial<DelaisTables>; sabot?: () => CarteBJ[]; vipAutorise?: (uid: string) => boolean }) {
   const { io, banque } = options;
   const horloge = options.horloge ?? Date.now;
   const hasard = options.hasard ?? ((n: number) => randomInt(n));
@@ -114,6 +117,7 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
     const maPlace = d?.places.find((p) => p.id === siegeId);
     return {
       code: t.code,
+      vip: t.vip,
       numero: t.numero,
       phase: t.etape === 'mises' || !d ? 'mises' : d.phase,
       reste: t.fin === null ? null : Math.max(0, t.fin - horloge()),
@@ -188,7 +192,7 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
     t.melange = false;
     for (const s of t.sieges) {
       s.pret = s.bot;
-      s.mise = s.bot ? MISES_BOTS[hasard(MISES_BOTS.length)] : 0;
+      s.mise = s.bot ? MISES_BOTS[hasard(MISES_BOTS.length)] * (t.vip ? FACTEUR_VIP : 1) : 0;
     }
     planifier(t, D.mises, () => lancerDonne(t));
     diffuser(t);
@@ -364,15 +368,16 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
     const erreur = (rappel: unknown, fr: string, en: string) => repondre(rappel, { ok: false, erreur: L(fr, en) });
     let dernierMessage = 0;
 
-    socket.on('casino_bj_creer', async (data: { bots?: unknown } = {}, rappel?: Rappel) => {
+    socket.on('casino_bj_creer', async (data: { bots?: unknown; vip?: unknown } = {}, rappel?: Rappel) => {
       const id = await ctx.acces(rappel);
       if (!id) return;
       if (!ctx.enSalon(id.uid)) return repondre(rappel, { ok: false, erreur: 'Introuvable.' });
+      if (data?.vip === true && !options.vipAutorise?.(id.uid)) return repondre(rappel, { ok: false, erreur: ctx.L('Les tables VIP sont réservées aux membres du Penthouse (niveau 40).', 'VIP tables are for Penthouse members (level 40).') });
       if (liens.has(socket.id)) quitter(socket.id);
       let code = '';
       do code = Array.from({ length: 4 }, () => LETTRES[hasard(LETTRES.length)]).join('');
       while (tables.has(code));
-      const t: Table = { code, hote: '', sieges: [], sabot: [], donne: null, etape: 'mises', fin: null, duree: null, minuterie: null, messages: [], numero: 0, melange: false, paye: false };
+      const t: Table = { code, hote: '', sieges: [], sabot: [], donne: null, etape: 'mises', fin: null, duree: null, minuterie: null, messages: [], numero: 0, melange: false, paye: false, vip: data?.vip === true };
       tables.set(code, t);
       const s = asseoir(t, socket, id);
       t.hote = s.id;
@@ -388,6 +393,7 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
       if (!ctx.enSalon(id.uid)) return repondre(rappel, { ok: false, erreur: 'Introuvable.' });
       const t = tables.get(String(data?.code ?? '').toUpperCase());
       if (!t) return erreur(rappel, 'Cette table est fermée.', 'This table is closed.');
+      if (t.vip && !options.vipAutorise?.(id.uid)) return erreur(rappel, 'Les tables VIP sont réservées aux membres du Penthouse (niveau 40).', 'VIP tables are for Penthouse members (level 40).');
       const deja = t.sieges.some((s) => s.uid === id.uid);
       if (!deja && t.sieges.length >= PLACES_BJ) return erreur(rappel, 'La table est complète.', 'The table is full.');
       const lien = liens.get(socket.id);
@@ -409,7 +415,7 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
       if (data?.ajouter) {
         if (m.t.sieges.length >= PLACES_BJ) return erreur(rappel, 'La table est complète.', 'The table is full.');
         const b = nouveauBot();
-        if (m.t.etape === 'mises') b.mise = MISES_BOTS[hasard(MISES_BOTS.length)];
+        if (m.t.etape === 'mises') b.mise = MISES_BOTS[hasard(MISES_BOTS.length)] * (m.t.vip ? FACTEUR_VIP : 1);
         m.t.sieges.push(b);
       } else {
         const enJeu = new Set(m.t.etape === 'donne' ? (m.t.donne?.places.map((p) => p.id) ?? []) : []);
@@ -427,8 +433,9 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
       const m = maTable();
       if (!m || m.t.etape !== 'mises') return erreur(rappel, 'Les mises sont fermées.', 'Betting is closed.');
       const montant = Number(data?.montant);
-      if (montant !== 0 && (!Number.isInteger(montant) || montant < MISE_MIN_BJ || montant > MISE_MAX_BJ || montant % 1000 !== 0))
-        return erreur(rappel, 'Mise impossible (de 1 000 à 250 000 $).', 'Invalid bet ($1,000 to $250,000).');
+      const f = m.t.vip ? FACTEUR_VIP : 1;
+      if (montant !== 0 && (!Number.isInteger(montant) || montant < MISE_MIN_BJ * f || montant > MISE_MAX_BJ * f || montant % 1000 !== 0))
+        return erreur(rappel, m.t.vip ? 'Mise impossible (de 10 000 à 2 500 000 $).' : 'Mise impossible (de 1 000 à 250 000 $).', m.t.vip ? 'Invalid bet ($10,000 to $2,500,000).' : 'Invalid bet ($1,000 to $250,000).');
       if (montant > banque.solde(id.uid)) return erreur(rappel, 'Solde insuffisant pour cette mise.', 'Not enough money for this bet.');
       m.s.mise = montant;
       m.s.pret = true;
@@ -498,7 +505,7 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
 
   /** Les tables ouvertes, pour l'accueil du salon. */
   const resume = (): ResumeTableBJ[] =>
-    [...tables.values()].map((t) => ({ code: t.code, joueurs: t.sieges.map((s) => ({ nom: s.nom, avatar: s.avatar, bot: s.bot })), max: PLACES_BJ }));
+    [...tables.values()].map((t) => ({ code: t.code, vip: t.vip, joueurs: t.sieges.map((s) => ({ nom: s.nom, avatar: s.avatar, bot: s.bot })), max: PLACES_BJ }));
 
   /** La table où ce téléphone est assis (pour inviter des amis). */
   const tableDe = (socketId: string) => liens.get(socketId)?.code ?? null;

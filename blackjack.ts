@@ -321,6 +321,8 @@ export interface PlaceVueBJ {
 export type PhaseTableBJ = 'mises' | PhaseDonneBJ;
 export interface VueTableBJ {
   code: string;
+  /** Table VIP du Penthouse (mises ×10). */
+  vip?: boolean;
   numero: number;
   phase: PhaseTableBJ;
   /** Temps restant pour l'étape en cours (mises, assurance, décision), en millisecondes. */
@@ -343,6 +345,7 @@ export interface VueTableBJ {
 }
 export interface ResumeTableBJ {
   code: string;
+  vip?: boolean;
   joueurs: { nom: string; avatar: number; bot: boolean }[];
   max: number;
 }

@@ -15,6 +15,7 @@
 import { JEUX_CASINO, NOMS_JEUX_CASINO, type JeuCasino } from './profilCasino';
 import { normaliserCollection, type Collection } from './ventes';
 import { normaliserPortefeuille, type Portefeuille } from './bourse';
+import { CADRES_MARCHE, normaliserMarche, type EtatMarche } from './marche';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Réglages
@@ -156,6 +157,9 @@ export interface EtatSalonJoueur {
   champagne?: string;
   /** La Bourse de 1929 : les actions du joueur. */
   portefeuille: Portefeuille;
+  /** Le Marché noir du jour, et le cadre spécial porté (null : le plus beau gagné). */
+  marche: EtatMarche;
+  cadreChoisi: string | null;
 }
 
 /** Petit hasard reproductible (le même jour donne les mêmes contrats, même si le serveur redémarre). */
@@ -200,6 +204,8 @@ export function etatSalonVide(): EtatSalonJoueur {
     semaineBaron: { semaine: '', pris: [] },
     pertes: { semaine: '', mise: 0, gain: 0 },
     portefeuille: {},
+    marche: { jour: '', relances: 0, achats: [] },
+    cadreChoisi: null,
   };
 }
 
@@ -410,6 +416,8 @@ export interface VueContrats {
   /** Bureau : objets différents de la collection, et cadres spéciaux gagnés. */
   objets: number;
   cadres: string[];
+  /** Le cadre porté (null : le plus beau gagné). */
+  cadreChoisi: string | null;
 }
 
 /** Ce que le serveur envoie au téléphone quand un contrat se termine, un morceau se colle, ou une page se complète. */
@@ -468,13 +476,15 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   if (typeof b.depannage === 'string') e.depannage = texte(b.depannage);
   e.collection = normaliserCollection(b.collection);
   e.collectionComplete = b.collectionComplete === true;
-  e.cadres = Array.isArray(b.cadres) ? [...new Set(b.cadres.filter((x): x is string => x === 'collectionneur' || x === 'mecene'))] : [];
+  e.cadres = Array.isArray(b.cadres) ? [...new Set(b.cadres.filter((x): x is string => x === 'collectionneur' || x === 'mecene' || CADRES_MARCHE.includes(x as never)))] : [];
   const sb = (b.semaineBaron && typeof b.semaineBaron === 'object' ? b.semaineBaron : {}) as Record<string, unknown>;
   e.semaineBaron = { semaine: texte(sb.semaine), pris: Array.isArray(sb.pris) ? [...new Set(sb.pris.filter((x): x is number => Number.isInteger(x) && x >= 0 && x <= 6))] : [] };
   const pe = (b.pertes && typeof b.pertes === 'object' ? b.pertes : {}) as Record<string, unknown>;
   e.pertes = { semaine: texte(pe.semaine), mise: entier(pe.mise), gain: entier(pe.gain) };
   if (typeof b.champagne === 'string') e.champagne = texte(b.champagne);
   e.portefeuille = normaliserPortefeuille(b.portefeuille);
+  e.marche = normaliserMarche(b.marche);
+  e.cadreChoisi = typeof b.cadreChoisi === 'string' && e.cadres.includes(b.cadreChoisi) ? b.cadreChoisi : null;
   // L'album complet donne son cadre (comptes d'avant le cadre compris).
   if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;

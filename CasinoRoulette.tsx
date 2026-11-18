@@ -16,7 +16,7 @@ import { Celebration, Fenetre, jouerEffet, mouvementReduit } from './ui';
 const dollars = (n: number) => formatDollars(n, EN);
 /** Montant court écrit sur un jeton : 25k, 1,5M… */
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
-const imageJeton = (v: number) => (v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
+const imageJeton = (v: number) => (v >= 5_000_000 ? 'argent' : v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
 const COULEURS = { rouge: '#8e1c14', noir: '#141010', vert: '#0f6b3a' };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -443,7 +443,9 @@ const nomCouleur = (n: number) => (n === 0 ? tr('Zéro', 'Zero') : couleurNumero
 export function TableRoulette({ v, appel, onQuitter }: { v: VueTableRoulette; appel: Appel; onQuitter: () => void }) {
   const sens = useSens();
   const moi = v.places.find((p) => p.moi);
-  const [jeton, setJeton] = useState(JETONS_ROULETTE[1]);
+  // Table VIP du Penthouse : jetons multipliés par 10.
+  const jetons = JETONS_ROULETTE.map((j) => j * (v.vip ? 10 : 1));
+  const [jeton, setJeton] = useState(jetons[1]);
   const [survol, setSurvol] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -507,7 +509,7 @@ export function TableRoulette({ v, appel, onQuitter }: { v: VueTableRoulette; ap
           ‹ {tr('Salon', 'Lounge')}
         </button>
         <span className="bj-code">
-          {tr('Roulette', 'Roulette')} · {v.code}
+          {v.vip ? '★ VIP · ' : ''}{tr('Roulette', 'Roulette')} · {v.code}
         </span>
         <span className="cas-solde-petit">{dollars(v.solde)}</span>
       </header>
@@ -557,7 +559,7 @@ export function TableRoulette({ v, appel, onQuitter }: { v: VueTableRoulette; ap
 
         <section className="rl-commandes" role="group" aria-label={tr('Tes mises', 'Your bets')}>
           <div className="bj-jetons">
-            {JETONS_ROULETTE.map((j) => (
+            {jetons.map((j) => (
               <button key={j} type="button" className={`bj-jeton ${j === jeton ? 'choisi' : ''}`} onClick={() => (setJeton(j), jouerEffet('jeton'))} disabled={j > v.solde && j !== jeton} aria-pressed={j === jeton} aria-label={dollars(j)}>
                 <img src={`/cartes/jeton-${imageJeton(j)}.webp`} alt="" />
                 <span>{court(j)}</span>

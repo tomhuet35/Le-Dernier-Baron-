@@ -216,9 +216,11 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
     if (!r.ok) setErreur(r.erreur ?? tr('Action impossible.', 'Action not allowed.'));
     return r.ok;
   };
+  // Table VIP du Penthouse : jetons et limites multipliés par 10.
+  const f = v.vip ? 10 : 1;
   const ajouter = (j: number) => {
     jouerEffet('jeton');
-    setMise((m) => Math.min(MISE_MAX_BJ, v.solde, m + j));
+    setMise((m) => Math.min(MISE_MAX_BJ * f, v.solde, m + j));
   };
   const miser = async (montant: number) => {
     if (await envoyer('casino_bj_miser', { montant })) {
@@ -243,7 +245,7 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
           ‹ {tr('Salon', 'Lounge')}
         </button>
         <span className="bj-code">
-          {tr('Table', 'Table')} {v.code}
+          {v.vip ? '★ VIP · ' : ''}{tr('Table', 'Table')} {v.code}
         </span>
         <span className="cas-solde-petit">{dollars(v.solde)}</span>
       </header>
@@ -291,12 +293,15 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
         {v.phase === 'mises' && moi && !moi.pret && (
           <>
             <div className="bj-jetons">
-              {JETONS_BJ.map((j) => (
-                <button key={j} type="button" className="bj-jeton" onClick={() => ajouter(j)} disabled={mise + j > MISE_MAX_BJ || mise + j > v.solde} aria-label={dollars(j)}>
-                  <img src={`/cartes/jeton-${JETON_IMAGE[j]}.webp`} alt="" />
-                  <span>{j >= 1000 ? `${j / 1000}k` : j}</span>
+              {JETONS_BJ.map((base) => {
+                const j = base * f;
+                return (
+                <button key={j} type="button" className="bj-jeton" onClick={() => ajouter(j)} disabled={mise + j > MISE_MAX_BJ * f || mise + j > v.solde} aria-label={dollars(j)}>
+                  <img src={`/cartes/jeton-${JETON_IMAGE[base]}.webp`} alt="" />
+                  <span>{j >= 1_000_000 ? `${j / 1_000_000}M` : j >= 1000 ? `${j / 1000}k` : j}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
             <p className="bj-mise-encours">
               {tr('Ta mise', 'Your bet')} <strong>{dollars(mise)}</strong>
@@ -306,11 +311,11 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
                 {tr('Effacer', 'Clear')}
               </button>
               {derniereMise > 0 && !mise && (
-                <button type="button" onClick={() => void miser(Math.min(derniereMise, v.solde))} disabled={v.solde < MISE_MIN_BJ}>
+                <button type="button" onClick={() => void miser(Math.min(derniereMise, v.solde))} disabled={v.solde < MISE_MIN_BJ * f}>
                   {tr('Même mise', 'Same bet')}
                 </button>
               )}
-              <button type="button" className="bj-principal" onClick={() => void miser(mise)} disabled={mise < MISE_MIN_BJ}>
+              <button type="button" className="bj-principal" onClick={() => void miser(mise)} disabled={mise < MISE_MIN_BJ * f}>
                 {tr('Miser', 'Bet')}
               </button>
               <button type="button" onClick={() => void miser(0)}>

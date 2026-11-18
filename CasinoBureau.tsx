@@ -7,7 +7,6 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import type { VueCasino } from '../../shared/casino';
 import {
   arrondiHaut,
-  CADRES_SPECIAUX,
   IDS_OBJETS,
   NOMS_RARETE,
   OBJETS,
@@ -21,6 +20,7 @@ import {
 import type { Appel } from './App';
 import { CadreAvatar } from './CasinoSocial';
 import { Rubis } from './CasinoContrats';
+import { NOMS_CADRES } from '../../shared/marche';
 import { dollars } from './casinoOutils';
 import { useAttente } from './RouletteDuJour';
 import { socket } from './socket';
@@ -232,7 +232,7 @@ export function EcranBureau({ uid, appel, onRetour, onVentes, onProfil }: { uid:
                 <small>
                   {tr('Valeur de la collection', 'Collection value')} : <b>{dollars(b.valeur)}</b>
                 </small>
-                {b.cadre && <small className="bv-cadre-nom">{tr(...CADRES_SPECIAUX[b.cadre])}</small>}
+                {b.cadre && NOMS_CADRES[b.cadre] && <small className="bv-cadre-nom">{tr(...NOMS_CADRES[b.cadre])}</small>}
               </span>
             </div>
           </section>
