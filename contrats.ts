@@ -16,6 +16,7 @@ import { JEUX_CASINO, NOMS_JEUX_CASINO, type JeuCasino } from './profilCasino';
 import { normaliserCollection, type Collection } from './ventes';
 import { normaliserPortefeuille, type Portefeuille } from './bourse';
 import { CADRES_MARCHE, normaliserMarche, type EtatMarche } from './marche';
+import { estTenue, normaliserTenues } from './tailleur';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Réglages
@@ -160,6 +161,9 @@ export interface EtatSalonJoueur {
   /** Le Marché noir du jour, et le cadre spécial porté (null : le plus beau gagné). */
   marche: EtatMarche;
   cadreChoisi: string | null;
+  /** Le Tailleur : les tenues achetées (numéros d'avatar) et celle portée au salon (null : le personnage du compte). */
+  tenues: number[];
+  tenue: number | null;
 }
 
 /** Petit hasard reproductible (le même jour donne les mêmes contrats, même si le serveur redémarre). */
@@ -206,6 +210,8 @@ export function etatSalonVide(): EtatSalonJoueur {
     portefeuille: {},
     marche: { jour: '', relances: 0, achats: [] },
     cadreChoisi: null,
+    tenues: [],
+    tenue: null,
   };
 }
 
@@ -418,6 +424,9 @@ export interface VueContrats {
   cadres: string[];
   /** Le cadre porté (null : le plus beau gagné). */
   cadreChoisi: string | null;
+  /** Le Tailleur : tenues achetées et tenue portée. */
+  tenues: number[];
+  tenue: number | null;
 }
 
 /** Ce que le serveur envoie au téléphone quand un contrat se termine, un morceau se colle, ou une page se complète. */
@@ -485,6 +494,8 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   e.portefeuille = normaliserPortefeuille(b.portefeuille);
   e.marche = normaliserMarche(b.marche);
   e.cadreChoisi = typeof b.cadreChoisi === 'string' && e.cadres.includes(b.cadreChoisi) ? b.cadreChoisi : null;
+  e.tenues = normaliserTenues(b.tenues);
+  e.tenue = estTenue(b.tenue) && e.tenues.includes(b.tenue) ? b.tenue : null;
   // L'album complet donne son cadre (comptes d'avant le cadre compris).
   if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;

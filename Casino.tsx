@@ -52,6 +52,7 @@ import { AnnoncesVentes, EcranBureau, EcranVentes } from './CasinoBureau';
 import { EcranCercles } from './CasinoCercles';
 import { EcranBourse } from './CasinoBourse';
 import { EcranMarche } from './CasinoMarche';
+import { EcranTailleur } from './CasinoTailleur';
 import { cadreSpecial, type VueVentes } from '../../shared/ventes';
 import { AccueilGroom, AnnoncesHotel, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, Penthouse } from './CasinoHotel';
 import { etage, etageDuJeu, etageOuvert, ETAGES, type Etage } from '../../shared/hotel';
@@ -1479,11 +1480,13 @@ function Accueil({
   onBourse,
   onVip,
   onMarche,
+  onTailleur,
 }: {
   onCercles: () => void;
   onBourse: () => void;
   onVip: (j: 'blackjack' | 'roulette') => void;
   onMarche: () => void;
+  onTailleur: () => void;
   vue: VueCasino;
   appel: Appel;
   onVue: (v: VueCasino) => void;
@@ -1632,6 +1635,7 @@ function Accueil({
           <BoutonDock icone={<img src="/cartes/blason-lion.webp" alt="" />} nom={tr('Cercles', 'Circles')} onClick={onCercles} rond={false} />
           <BoutonDock icone={<img src="/cartes/telescripteur.webp" alt="" />} nom={tr('Bourse', 'Exchange')} onClick={onBourse} />
           <BoutonDock icone={<img src="/cartes/icone-boutique.webp" alt="" />} nom={tr('Marché', 'Market')} onClick={onMarche} rond={false} />
+          <BoutonDock icone={<img src="/cartes/icone-tailleur.webp" alt="" />} nom={tr('Tailleur', 'Tailor')} onClick={onTailleur} rond={false} />
           <BoutonDock icone={<img src="/cartes/icone-amis-dock.webp" alt="" />} nom={tr('Amis', 'Friends')} pastille={vue.profil?.demandes || null} onClick={onAmis} rond={false} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-defis.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
           <BoutonDock icone={<img src="/cartes/icone-riches.webp" alt="" />} nom={tr('Riches', 'Richest')} onClick={() => setRiches(true)} rond={false} />
@@ -1704,7 +1708,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'cercles' | 'bourse' | 'marche'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'cercles' | 'bourse' | 'marche' | 'tailleur'>('salon');
   /** Grand Hôtel : l'étage ouvert, l'étage fermé montré par le Groom, la Semaine du Baron. */
   const [etageActif, setEtageActif] = useState<Etage>('bar');
   const [etageFerme, setEtageFerme] = useState<Etage | null>(null);
@@ -2037,6 +2041,7 @@ export default function Casino({
   else if (ecran === 'contrats') contenu = <EcranContrats vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'album') contenu = <EcranAlbum vue={vue} onRetour={retourSalon} />;
   else if (ecran === 'cercles') contenu = <EcranCercles vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} />;
+  else if (ecran === 'tailleur') contenu = <EcranTailleur vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'marche') contenu = <EcranMarche vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'bourse') contenu = <EcranBourse vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'ventes') contenu = <EcranVentes vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} onBureau={() => ouvrirBureau(null)} />;
@@ -2079,6 +2084,7 @@ export default function Casino({
         onBourse={() => setEcran('bourse')}
         onVip={(j) => (setTablesVip(true), setFenetreTables(j))}
         onMarche={() => setEcran('marche')}
+        onTailleur={() => setEcran('tailleur')}
       />
     );
   return (
