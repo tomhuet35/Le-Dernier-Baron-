@@ -50,6 +50,8 @@ import { MachineNuits } from './CasinoNuits';
 import { AnnoncesContrats, BoutonsHotel, EcranAlbum, EcranContrats } from './CasinoContrats';
 import { AnnoncesVentes, BoutonsVentes, EcranBureau, EcranVentes } from './CasinoBureau';
 import { cadreSpecial, type VueVentes } from '../../shared/ventes';
+import { AccueilGroom, AnnoncesHotel, BandeauHappyHour, BandeauSemaine, CarteDeMembre, EtageFerme, FenetreSemaine, HotelVue, Penthouse } from './CasinoHotel';
+import { etage, etageDuJeu, etageOuvert, type Etage } from '../../shared/hotel';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
 import type { EtatCompte } from './Profil';
@@ -1183,6 +1185,33 @@ function Vignette({ jeu, onOuvrir, ruban, affiche }: { jeu: (typeof JEUX)[number
 }
 
 /** La vignette du salon qui mène à ce jeu (les deux machines sont derrière la même). */
+/** Le ruban d'une vignette de jeu (nouveau, en direct, ouverture…). */
+function rubanJeu(id: (typeof JEUX)[number]['id'], vue: VueCasino): string | undefined {
+  return (
+    id === 'festin'
+                ? vue.coffres?.enCours
+                  ? tr('En cours', 'In play')
+                  : tr('Nouveau', 'New')
+                : id === 'couronne'
+                  ? vue.couronne?.spectateurs
+                    ? tr('En direct', 'Live')
+                    : tr('Nouveau', 'New')
+                  : id === 'chute'
+                    ? tr('Nouveau', 'New')
+                    : id === 'baronWheel'
+                      ? vue.baronWheel?.ouverture
+                        ? tr('Ouverture', 'Opening')
+                        : vue.baronWheel?.enDirect && vue.baronWheel.spectateurs
+                          ? tr('En direct', 'Live')
+                          : tr('Nouveau', 'New')
+                    : id === 'course'
+                      ? vue.course?.enDirect && vue.course.spectateurs
+                        ? tr('En direct', 'Live')
+                        : tr('Nouveau', 'New')
+                      : undefined
+  );
+}
+
 const VIGNETTE_DU_JEU: Record<JeuCasino, (typeof JEUX)[number]['id'] | null> = {
   machine: 'machines',
   nuits: 'machines',
@@ -1352,6 +1381,52 @@ function FenetreTables({ jeu, vue, appel, onTable, onVue, onFermer }: { jeu: Jeu
   );
 }
 
+/** Les jeux de chaque étage de l'hôtel (vignettes du salon). */
+const JEUX_ETAGE: Record<Etage, (typeof JEUX)[number]['id'][]> = {
+  bar: ['machines', 'festin'],
+  tables: ['blackjack', 'roulette', 'poker'],
+  scene: ['baronWheel', 'course', 'couronne', 'chute'],
+  penthouse: [],
+};
+
+/** Un étage du Grand Hôtel : son décor et ses jeux. */
+function EcranEtage({ id, vue, appel, onVue, onRetour, onVignette, onFolleNuit, onBaronWheel }: { id: Etage; vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onRetour: () => void; onVignette: (id: (typeof JEUX)[number]['id']) => void; onFolleNuit: () => void; onBaronWheel: () => void }) {
+  const e = etage(id);
+  const solde = useSoldeAnime(vue.solde);
+  return (
+    <div className="cas-ecran ht-ecran-etage" style={{ '--fond-etage': `url(${e.image})` } as CSSProperties}>
+      <header className="cas-barre">
+        <button type="button" className="cas-retour" onClick={onRetour}>
+          ‹ {tr('Hall', 'Lobby')}
+        </button>
+        <h1>{tr(...e.nom)}</h1>
+        <span className="cas-solde-petit">{dollars(solde)}</span>
+      </header>
+      <p className="ht-etage-titre">
+        <small>{tr(...e.numero)}</small>
+      </p>
+      {id === 'scene' && (
+        <>
+          <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} />
+          <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} />
+        </>
+      )}
+      {id === 'penthouse' ? (
+        <Penthouse vue={vue} appel={appel} onVue={onVue} />
+      ) : (
+        <div className="cas-jeux">
+          {JEUX.filter((j) => JEUX_ETAGE[id].includes(j.id)).map((j) => (
+            <Vignette key={j.id} jeu={j} affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id} onOuvrir={j.id === 'poker' ? undefined : () => onVignette(j.id)} ruban={rubanJeu(j.id, vue)} />
+          ))}
+        </div>
+      )}
+      <div className="cas-pied">
+        <BoutonMusique />
+      </div>
+    </div>
+  );
+}
+
 function Salon({
   vue,
   onRoue,
@@ -1373,8 +1448,11 @@ function Salon({
   onAmis,
   onDefis,
   hotel,
+  immeuble,
 }: {
   vue: VueCasino;
+  /** Grand Hôtel : l'hôtel en coupe et ses étages (à la place de la grille des jeux). */
+  immeuble?: ReactNode;
   /** Grand Hôtel : rubis, contrats et album (sous les boutons du profil). */
   hotel?: ReactNode;
   onProfil: () => void;
@@ -1460,41 +1538,7 @@ function Salon({
         </span>
         {!attente && <span className="pastille-nombre">1</span>}
       </button>
-      <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} />
-      <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} />
-      <div className="cas-jeux">
-        {JEUX.map((j) => (
-          <Vignette
-            key={j.id}
-            jeu={j}
-            affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id}
-            onOuvrir={j.id === 'machines' ? onMachines : j.id === 'blackjack' ? onBlackjack : j.id === 'roulette' ? onRoulette : j.id === 'festin' ? onFestin : j.id === 'couronne' ? onCouronne : j.id === 'chute' ? onChute : j.id === 'course' ? onCourse : j.id === 'baronWheel' ? onBaronWheel : undefined}
-            ruban={
-              j.id === 'festin'
-                ? vue.coffres?.enCours
-                  ? tr('En cours', 'In play')
-                  : tr('Nouveau', 'New')
-                : j.id === 'couronne'
-                  ? vue.couronne?.spectateurs
-                    ? tr('En direct', 'Live')
-                    : tr('Nouveau', 'New')
-                  : j.id === 'chute'
-                    ? tr('Nouveau', 'New')
-                    : j.id === 'baronWheel'
-                      ? vue.baronWheel?.ouverture
-                        ? tr('Ouverture', 'Opening')
-                        : vue.baronWheel?.enDirect && vue.baronWheel.spectateurs
-                          ? tr('En direct', 'Live')
-                          : tr('Nouveau', 'New')
-                    : j.id === 'course'
-                      ? vue.course?.enDirect && vue.course.spectateurs
-                        ? tr('En direct', 'Live')
-                        : tr('Nouveau', 'New')
-                      : undefined
-            }
-          />
-        ))}
-      </div>
+      {immeuble}
       <p className="cas-gros-lot">
         {tr('Gros lot du Bandit du Baron', 'Baron’s Bandit jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
       </p>
@@ -1541,7 +1585,11 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'etage'>('salon');
+  /** Grand Hôtel : l'étage ouvert, l'étage fermé montré par le Groom, la Semaine du Baron. */
+  const [etageActif, setEtageActif] = useState<Etage>('bar');
+  const [etageFerme, setEtageFerme] = useState<Etage | null>(null);
+  const [semaineOuverte, setSemaineOuverte] = useState(false);
   /** Bureau du Baron : le mien (null) ou celui d'un autre joueur. */
   const [bureauUid, setBureauUid] = useState<string | null>(null);
   /** Profil du casino : le mien (null) ou celui d'un ami ; l'ami présélectionné pour un défi. */
@@ -1713,7 +1761,30 @@ export default function Casino({
     });
   }, [appel]);
   /** Ouvre un jeu du salon (depuis le bandeau du jeu à l'affiche). */
+  const niveauHotel = vue?.hotel?.niveau ?? 1;
+  /** Un étage fermé (niveau trop bas) : le Groom l'explique au lieu d'ouvrir. */
+  const etageBloque = (j: JeuCasino) => {
+    const e = etageDuJeu(j);
+    if (etageOuvert(niveauHotel, e)) return false;
+    setEtageFerme(e);
+    return true;
+  };
+  const ouvrirEtage = (e: Etage) => {
+    if (!etageOuvert(niveauHotel, e)) return setEtageFerme(e);
+    setEtageActif(e);
+    setEcran('etage');
+  };
+  /** Retour depuis un jeu : à son étage. */
+  const retourEtage = (j: JeuCasino) => {
+    setEtageActif(etageDuJeu(j));
+    setEcran('etage');
+    void appel('casino_vue').then((r) => {
+      const casino = (r as unknown as { casino?: VueCasino }).casino;
+      if (r.ok && casino) setVue(casino);
+    });
+  };
   const ouvrirJeu = (j: JeuCasino) => {
+    if (etageBloque(j)) return;
     if (j === 'blackjack' || j === 'roulette') return setFenetreTables(j);
     setEcran(j === 'coffres' ? 'festin' : j);
   };
@@ -1739,6 +1810,7 @@ export default function Casino({
   };
   /** Rejoindre un ami : son jeu (et sa table, au blackjack ou à la roulette). */
   const rejoindre = async (p: PositionCasino) => {
+    if (p.ecran !== 'salon' && etageBloque(p.ecran)) return;
     if ((p.ecran === 'blackjack' || p.ecran === 'roulette') && p.table) {
       if (tableRef.current) await appel(`${EVT_TABLE[tableRef.current.jeu]}_quitter`);
       const r = (await appel(`${EVT_TABLE[p.ecran]}_rejoindre`, { code: p.table })) as { ok: boolean; erreur?: string; table?: VueTableBJ & VueTableRoulette };
@@ -1760,7 +1832,8 @@ export default function Casino({
     const jeu = tableRef.current?.jeu ?? 'blackjack';
     tableRef.current = null;
     setTable(null);
-    setEcran('salon');
+    setEtageActif('tables');
+    setEcran('etage');
     await appel(`${EVT_TABLE[jeu]}_quitter`);
     const r = (await appel('casino_vue')) as { ok: boolean; casino?: VueCasino };
     if (r.ok && r.casino) setVue(r.casino);
@@ -1799,7 +1872,7 @@ export default function Casino({
 
   let contenu: ReactNode;
   if (!vue) contenu = <div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>;
-  else if (ecran === 'machines') contenu = <ChoixMachines vue={vue} onMachine={setEcran} onRetour={() => setEcran('salon')} />;
+  else if (ecran === 'machines') contenu = <ChoixMachines vue={vue} onMachine={setEcran} onRetour={() => retourEtage('machine')} />;
   else if (ecran === 'machine') contenu = <Machine vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
   else if (ecran === 'nuits') contenu = <MachineNuits vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
   else if (ecran === 'table' && table?.jeu === 'blackjack') contenu = <TableBlackjack v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
@@ -1810,13 +1883,7 @@ export default function Casino({
         vue={vue}
         appel={appel}
         onVue={setVue}
-        onRetour={() => {
-          setEcran('salon');
-          void appel('casino_vue').then((r) => {
-            const casino = (r as unknown as { casino?: VueCasino }).casino;
-            if (r.ok && casino) setVue(casino);
-          });
-        }}
+        onRetour={() => retourEtage('coffres')}
       />
     );
   else if (ecran === 'couronne')
@@ -1825,18 +1892,12 @@ export default function Casino({
         vue={vue}
         appel={appel}
         onVue={setVue}
-        onRetour={() => {
-          setEcran('salon');
-          void appel('casino_vue').then((r) => {
-            const casino = (r as unknown as { casino?: VueCasino }).casino;
-            if (r.ok && casino) setVue(casino);
-          });
-        }}
+        onRetour={() => retourEtage('couronne')}
       />
     );
-  else if (ecran === 'chute') contenu = <JeuChute vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
-  else if (ecran === 'course') contenu = <JeuCourse vue={vue} appel={appel} onRetour={retourSalon} />;
-  else if (ecran === 'baronWheel') contenu = <JeuBaronWheel vue={vue} appel={appel} onRetour={retourSalon} />;
+  else if (ecran === 'chute') contenu = <JeuChute vue={vue} appel={appel} onVue={setVue} onRetour={() => retourEtage('chute')} />;
+  else if (ecran === 'course') contenu = <JeuCourse vue={vue} appel={appel} onRetour={() => retourEtage('course')} />;
+  else if (ecran === 'baronWheel') contenu = <JeuBaronWheel vue={vue} appel={appel} onRetour={() => retourEtage('baronWheel')} />;
   else if (ecran === 'profil')
     contenu = (
       <EcranProfil
@@ -1853,6 +1914,19 @@ export default function Casino({
     );
   else if (ecran === 'amis')
     contenu = <EcranAmis appel={appel} vue={vue} onVue={setVue} onRetour={retourSalon} onProfil={(uid) => ouvrirProfil(uid)} onRejoindre={(p) => void rejoindre(p)} onDefier={(uid) => ouvrirDefis(uid)} />;
+  else if (ecran === 'etage')
+    contenu = (
+      <EcranEtage
+        id={etageActif}
+        vue={vue}
+        appel={appel}
+        onVue={setVue}
+        onRetour={retourSalon}
+        onVignette={(j) => (j === 'blackjack' || j === 'roulette' ? setFenetreTables(j) : j !== 'poker' && setEcran(j))}
+        onFolleNuit={() => setEcran('folleNuit')}
+        onBaronWheel={() => setEcran('baronWheel')}
+      />
+    );
   else if (ecran === 'contrats') contenu = <EcranContrats vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'album') contenu = <EcranAlbum vue={vue} onRetour={retourSalon} />;
   else if (ecran === 'ventes') contenu = <EcranVentes vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} onBureau={() => ouvrirBureau(null)} />;
@@ -1863,13 +1937,7 @@ export default function Casino({
     contenu = (
       <ShowFolleNuit
         appel={appel}
-        onRetour={() => {
-          setEcran('salon');
-          void appel('casino_vue').then((r) => {
-            const casino = (r as unknown as { casino?: VueCasino }).casino;
-            if (r.ok && casino) setVue(casino);
-          });
-        }}
+        onRetour={() => retourEtage('folleNuit')}
       />
     );
   else
@@ -1891,8 +1959,14 @@ export default function Casino({
         onProfil={() => ouvrirProfil(null)}
         onAmis={() => setEcran('amis')}
         onDefis={() => ouvrirDefis()}
+        immeuble={<HotelVue vue={vue} onEtage={ouvrirEtage} />}
         hotel={
           <>
+            <div className="ht-ligne">
+              <CarteDeMembre vue={vue} />
+              <BandeauSemaine vue={vue} onOuvrir={() => setSemaineOuverte(true)} />
+            </div>
+            <BandeauHappyHour vue={vue} />
             <BoutonsHotel vue={vue} appel={appel} onVue={setVue} onContrats={() => setEcran('contrats')} onAlbum={() => setEcran('album')} />
             <BoutonsVentes vue={vue} onVentes={() => setEcran('ventes')} onBureau={() => ouvrirBureau(null)} />
           </>
@@ -1932,6 +2006,10 @@ export default function Casino({
           {toastSocial.texte}
         </button>
       )}
+      {etageFerme && vue && <EtageFerme id={etageFerme} niveau={niveauHotel} onFermer={() => setEtageFerme(null)} />}
+      {semaineOuverte && vue && <FenetreSemaine vue={vue} appel={appel} onVue={setVue} onFermer={() => setSemaineOuverte(false)} />}
+      {vue && ecran === 'salon' && <AccueilGroom />}
+      <AnnoncesHotel onAnnonce={rafraichirVue} />
       <AnnoncesVentes
         onAnnonce={rafraichirVue}
         onOuvrir={(e) => {

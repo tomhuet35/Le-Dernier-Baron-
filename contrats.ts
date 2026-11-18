@@ -148,6 +148,11 @@ export interface EtatSalonJoueur {
   collectionComplete: boolean;
   /** Cadres d'avatar spéciaux gagnés (« collectionneur » : l'album ; « mecene » : la collection). */
   cadres: string[];
+  /** Grand Hôtel : la Semaine du Baron (jours pris, 0 lundi … 6 dimanche), les mises et gains de la semaine (pour la
+   * Ristourne du lundi), et le dernier jour du champagne du Penthouse. */
+  semaineBaron: { semaine: string; pris: number[] };
+  pertes: { semaine: string; mise: number; gain: number };
+  champagne?: string;
 }
 
 /** Petit hasard reproductible (le même jour donne les mêmes contrats, même si le serveur redémarre). */
@@ -189,6 +194,8 @@ export function etatSalonVide(): EtatSalonJoueur {
     collection: {},
     collectionComplete: false,
     cadres: [],
+    semaineBaron: { semaine: '', pris: [] },
+    pertes: { semaine: '', mise: 0, gain: 0 },
   };
 }
 
@@ -202,6 +209,10 @@ export function rafraichirContrats(e: EtatSalonJoueur, uid: string, jour: string
   }
   if (e.contrats.semaine !== semaine) {
     e.contrats = { ...e.contrats, semaine, grosCoups: grosCoupsNeufs(niveau), jeuxSemaine: [] };
+    change = true;
+  }
+  if (e.semaineBaron.semaine !== semaine) {
+    e.semaineBaron = { semaine, pris: [] };
     change = true;
   }
   return change;
@@ -454,6 +465,11 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   e.collection = normaliserCollection(b.collection);
   e.collectionComplete = b.collectionComplete === true;
   e.cadres = Array.isArray(b.cadres) ? [...new Set(b.cadres.filter((x): x is string => x === 'collectionneur' || x === 'mecene'))] : [];
+  const sb = (b.semaineBaron && typeof b.semaineBaron === 'object' ? b.semaineBaron : {}) as Record<string, unknown>;
+  e.semaineBaron = { semaine: texte(sb.semaine), pris: Array.isArray(sb.pris) ? [...new Set(sb.pris.filter((x): x is number => Number.isInteger(x) && x >= 0 && x <= 6))] : [] };
+  const pe = (b.pertes && typeof b.pertes === 'object' ? b.pertes : {}) as Record<string, unknown>;
+  e.pertes = { semaine: texte(pe.semaine), mise: entier(pe.mise), gain: entier(pe.gain) };
+  if (typeof b.champagne === 'string') e.champagne = texte(b.champagne);
   // L'album complet donne son cadre (comptes d'avant le cadre compris).
   if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;

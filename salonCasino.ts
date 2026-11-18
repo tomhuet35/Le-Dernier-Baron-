@@ -55,6 +55,7 @@ import {
 } from '../shared/contrats';
 import { semaineDe } from './classement';
 import { creerVentes } from './ventesCasino';
+import { cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type VueHotel } from '../shared/hotel';
 import {
   ajouterObjet,
   cadreSpecial,
@@ -219,6 +220,7 @@ const SALLE = 'casino';
 const INTROUVABLE: Reponse = { ok: false, erreur: 'Introuvable.' };
 /** Délai minimal entre deux tours de machine (les rouleaux tournent bien plus longtemps à l'écran). */
 const ECART_TOURS_MS = 350;
+const ETAGE_FERME: [string, string] = ['Cet étage de l’hôtel n’est pas encore ouvert pour toi : monte de niveau !', 'This floor of the hotel isn’t open to you yet: level up!'];
 
 export function creerCasino(options: OptionsCasino) {
   const { io, comptes } = options;
@@ -403,6 +405,10 @@ export function creerCasino(options: OptionsCasino) {
   function suivre(uid: string, jeu: JeuCasino, misee: number, gagnee: number) {
     const p = portes.get(uid);
     if (p) {
+      // Grand Hôtel : les mises et gains de la semaine (Ristourne du lundi).
+      rafraichirSalon(uid, p);
+      p.salonJ.pertes = { ...p.salonJ.pertes, mise: Math.max(0, p.salonJ.pertes.mise + misee), gain: p.salonJ.pertes.gain + Math.max(0, gagnee) };
+      p.salonAEcrire = true;
       const avant = niveauDe(p);
       p.mise = Math.max(0, p.mise + misee);
       p.gagne = Math.max(0, p.gagne + gagnee);
@@ -429,6 +435,12 @@ export function creerCasino(options: OptionsCasino) {
             notifier(uid, 'casino_affiche', { jeu, bonus, total: p.affiche.bonus, debut: aff.debut });
           }
         }
+      }
+      // Happy hour (21 h – 22 h à Paris) : les mises comptent double pour l'XP (une mise rendue est retirée aussi).
+      if (misee && happyHour(horloge()).enCours) {
+        const extra = misee > 0 ? misee : Math.max(misee, -p.bonusXp);
+        p.bonusXp += extra;
+        a.bonusXp = (a.bonusXp ?? 0) + extra;
       }
       // Grande ouverture de The Baron's Wheel : ses mises comptent double pour l'XP (une seule fois si elle est aussi à l'affiche).
       if (jeu === 'baronWheel' && aff?.jeu !== jeu && misee) {
@@ -459,7 +471,21 @@ export function creerCasino(options: OptionsCasino) {
   /** Nouveau jour, nouvelle semaine : de nouveaux contrats. */
   function rafraichirSalon(uid: string, p: Porte) {
     const t = horloge();
-    if (rafraichirContrats(p.salonJ, uid, jourParis(t), semaineDe(t).cle, niveauDe(p))) {
+    const semaine = semaineDe(t).cle;
+    // Nouvelle semaine : la Ristourne du Baron (carte noire) rend une part des pertes de la semaine passée.
+    if (p.salonJ.pertes.semaine !== semaine) {
+      const { semaine: avant, mise, gain } = p.salonJ.pertes;
+      p.salonJ.pertes = { semaine, mise: 0, gain: 0 };
+      p.salonAEcrire = true;
+      const montant = avant ? ristourne(niveauDe(p), mise, gain) : 0;
+      if (montant > 0) {
+        mouvement(uid, p, montant);
+        const a: AnnonceHotel = { type: 'ristourne', montant };
+        notifier(uid, 'casino_hotel', a);
+      }
+      planifier(uid, p);
+    }
+    if (rafraichirContrats(p.salonJ, uid, jourParis(t), semaine, niveauDe(p))) {
       p.salonAEcrire = true;
       planifier(uid, p);
     }
@@ -522,6 +548,21 @@ export function creerCasino(options: OptionsCasino) {
     };
   }
 
+  function vueHotel(uid: string, p: Porte): VueHotel {
+    rafraichirSalon(uid, p);
+    const t = horloge();
+    const niveau = niveauDe(p);
+    const jour = jourSemaineParis(t);
+    const pris = p.salonJ.semaineBaron.pris;
+    return {
+      niveau,
+      carte: carteMembre(niveau).id,
+      semaine: { jour, pris, cadeau: pris.includes(jour) ? null : cadeauSemaine(jour, niveau, pris), coffreComplet: [0, 1, 2, 3, 4, 5].every((j) => pris.includes(j)) },
+      happyHour: happyHour(t),
+      champagne: etageOuvert(niveau, 'penthouse') && p.salonJ.champagne !== jourParis(t) ? champagnePenthouse(niveau) : null,
+    };
+  }
+
   /** Nouveau niveau : les bonus des niveaux franchis (chacun versé une seule fois), et la fête sur le téléphone. */
   function monterNiveau(uid: string, p: Porte, niveau: number) {
     const avant = p.niveauPaye;
@@ -574,6 +615,9 @@ export function creerCasino(options: OptionsCasino) {
     solde: banque.solde,
     joueur: banque.joueur,
     debiter: (uid, montant) => {
+      // Grand Hôtel : pas de mise dans un jeu dont l'étage n'est pas encore ouvert au joueur.
+      const p = portes.get(uid);
+      if (p && !jeuOuvert(niveauDe(p), jeu)) return false;
       if (!banque.debiter(uid, montant)) return false;
       suivre(uid, jeu, montant, 0);
       return true;
@@ -719,6 +763,7 @@ export function creerCasino(options: OptionsCasino) {
       ...(p ? { profil: { ...progressionCasino(p.mise + p.bonusXp), demandes: p.recues.length, invitations: defis.invitations(uid), defi: defis.enCours(uid) } } : {}),
       ...(p ? { contrats: vueContrats(uid, p) } : {}),
       ventes: ventes.vue(),
+      ...(p ? { hotel: vueHotel(uid, p) } : {}),
       ...(() => {
         const a = jeuALaffiche(t);
         return a ? { affiche: { ...a, bonus: p && p.affiche.debut === a.debut ? p.affiche.bonus : 0 } } : {};
@@ -960,7 +1005,7 @@ export function creerCasino(options: OptionsCasino) {
       try {
         await ecrire(id.uid); // le solde de Firestore est à jour avant la transaction de la roue
         const tirage = tirageRoue() % CASES_ROUE_SALON.length;
-        const r = await comptes.tournerRoueSalon(id.uid, jourParis(horloge()), tirage);
+        const r = await comptes.tournerRoueSalon(id.uid, jourParis(horloge()), tirage, carteMembre(niveauDe(p)).roue);
         if (r === null) return repondre(rappel, INTROUVABLE);
         if (r === 'deja') return repondre(rappel, { ok: false, erreur: L('Tu as déjà tourné la roulette du salon aujourd’hui : reviens demain !', 'You have already spun the lounge wheel today: come back tomorrow!') });
         p.solde = r.stats.casino?.solde ?? p.solde + r.gain;
@@ -988,6 +1033,7 @@ export function creerCasino(options: OptionsCasino) {
       if (p.bonus.length) return repondre(rappel, { ok: false, erreur: L('Termine d’abord ton bonus.', 'Finish your bonus first.'), casino: vue(id.uid) });
       const gratuit = p.toursGratuits > 0;
       const mise = gratuit ? p.miseGratuite : Number(data?.mise);
+      if (!jeuOuvert(niveauDe(p), 'machine')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
       if (!gratuit && !MISES_MACHINE.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
       if (!gratuit && p.solde < mise) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant pour cette mise.', 'Not enough money for this bet.') });
       p.occupe = true;
@@ -1044,6 +1090,7 @@ export function creerCasino(options: OptionsCasino) {
       const gratuit = e.gratuits > 0;
       // Pendant une descente de police, la mise reste celle du tour où elle a commencé.
       const mise = gratuit ? e.miseGratuite : (e.collantes?.mise ?? Number(data?.mise));
+      if (!jeuOuvert(niveauDe(p), 'nuits')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
       if (!gratuit && !MISES_MACHINE.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
       if (!gratuit && p.solde < mise) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant pour cette mise.', 'Not enough money for this bet.') });
       p.occupe = true;
@@ -1207,6 +1254,44 @@ export function creerCasino(options: OptionsCasino) {
         classement: classementCollections(),
       };
       repondre(rappel, { ok: true, bureau });
+    });
+
+    // Semaine du Baron : le télégramme du jour (du lundi au dimanche, heure de Paris), une fois par jour.
+    socket.on('casino_semaine', async (_data: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      rafraichirSalon(id.uid, p);
+      const jour = jourSemaineParis(horloge());
+      const e = p.salonJ;
+      if (e.semaineBaron.pris.includes(jour)) return repondre(rappel, { ok: false, erreur: L('Tu as déjà ouvert le télégramme du jour.', 'You already opened today’s telegram.'), casino: vue(id.uid) });
+      const cadeau = cadeauSemaine(jour, niveauDe(p), e.semaineBaron.pris);
+      e.semaineBaron = { ...e.semaineBaron, pris: [...e.semaineBaron.pris, jour] };
+      e.rubis = Math.min(RUBIS_MAX, e.rubis + cadeau.rubis);
+      mouvement(id.uid, p, cadeau.dollars);
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, cadeau, jour, casino: vue(id.uid) });
+    });
+
+    // Penthouse : le champagne du jour (membres du Penthouse, une fois par jour).
+    socket.on('casino_champagne', async (_data: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      const niveau = niveauDe(p);
+      if (!etageOuvert(niveau, 'penthouse')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
+      const jour = jourParis(horloge());
+      if (p.salonJ.champagne === jour) return repondre(rappel, { ok: false, erreur: L('Le champagne du jour est déjà servi : reviens demain.', 'Today’s champagne has been served: come back tomorrow.'), casino: vue(id.uid) });
+      const cadeau = champagnePenthouse(niveau);
+      p.salonJ.champagne = jour;
+      p.salonJ.rubis = Math.min(RUBIS_MAX, p.salonJ.rubis + cadeau.rubis);
+      mouvement(id.uid, p, cadeau.dollars);
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, cadeau, casino: vue(id.uid) });
     });
 
     // Dépannage : des rubis contre des dollars, quand on est ruiné (une fois par jour). Jamais l'inverse.

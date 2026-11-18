@@ -1,0 +1,99 @@
+/* Le Grand Hôtel du Baron : l'hôtel en coupe, les étages, la carte de membre, la Semaine du Baron, le Groom. */
+
+/* ---------- L'hôtel en coupe ---------- */
+.ht-hotel { display: grid; gap: 10px; }
+.ht-hotel h2 { margin: 0; text-align: center; font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 21px; text-shadow: 0 2px 8px #000; }
+.ht-coupe { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--or); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.65), 0 0 24px rgba(231, 194, 122, 0.18); }
+.ht-coupe > img { display: block; width: 100%; aspect-ratio: 1400 / 788; }
+.ht-zone { position: absolute; left: 16%; right: 6%; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer; transition: background 0.2s, box-shadow 0.2s; }
+.ht-zone:hover, .ht-zone:focus-visible { background: rgba(255, 220, 140, 0.14); box-shadow: inset 0 0 0 2px rgba(255, 220, 140, 0.7); }
+.ht-zone.choisie { background: rgba(255, 220, 140, 0.3); box-shadow: inset 0 0 0 2px #fff1c4, 0 0 24px rgba(255, 220, 140, 0.8); }
+.ht-zone.fermee { background: rgba(8, 4, 3, 0.55); backdrop-filter: grayscale(0.8); }
+.ht-cadenas { position: absolute; right: 8px; top: 50%; translate: 0 -50%; padding: 2px 9px; border-radius: 99px; background: rgba(22, 16, 12, 0.9); border: 1px solid rgba(231, 194, 122, 0.6); font-size: 11.5px; color: var(--creme); white-space: nowrap; }
+
+.ht-ascenseur { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ht-etage { display: grid; grid-template-columns: 72px 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 6px 12px 6px 6px; border-radius: 12px; border: 1px solid var(--or); background: linear-gradient(90deg, rgba(60, 1, 7, 0.9), rgba(22, 16, 12, 0.92)); text-align: left; }
+.ht-etage img { width: 72px; height: 44px; border-radius: 8px; object-fit: cover; }
+.ht-etage span { display: grid; min-width: 0; }
+.ht-etage small { font-size: 11.5px; color: var(--creme-doux); }
+.ht-etage strong { font-family: var(--titre); font-weight: 400; font-size: 17px; color: var(--or-vif); }
+.ht-etage b { font-size: 22px; color: var(--or-vif); }
+.ht-etage.fermee { border-color: var(--filet); filter: saturate(0.4); }
+.ht-etage.fermee img { filter: brightness(0.5) grayscale(0.7); }
+
+/* ---------- Un étage ---------- */
+.ht-ecran-etage { position: relative; }
+.ht-ecran-etage::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(8, 4, 3, 0.55), rgba(8, 4, 3, 0.9) 60%), var(--fond-etage) center top / cover no-repeat, var(--nuit); }
+.ht-etage-titre { margin: 0; text-align: center; }
+.ht-etage-titre small { display: block; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--creme-doux); }
+
+/* ---------- Carte de membre ---------- */
+.ht-carte-bouton { flex: none; width: 74px; padding: 0; border: 0; background: none; transform: rotate(-6deg); filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)); transition: transform 0.2s; }
+.ht-carte-bouton:hover { transform: rotate(-2deg) scale(1.05); }
+.ht-carte-bouton img { display: block; width: 100%; }
+.ht-carte-fenetre { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.ht-carte-fenetre h2 { margin: 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.ht-carte-fenetre ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.ht-carte-fenetre li::before { content: '◆ '; color: var(--or-vif); }
+.ht-carte-grande { width: min(100%, 320px); filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.7)); animation: ht-carte 0.6s ease-out both; }
+
+/* ---------- Bandeaux (Semaine du Baron, happy hour) ---------- */
+.ht-bandeau { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border-radius: 14px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.9); text-align: left; }
+.ht-bandeau img { width: 42px; height: 42px; object-fit: contain; }
+.ht-bandeau span { display: grid; min-width: 0; }
+.ht-bandeau strong { font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.ht-bandeau small { font-size: 12.5px; color: var(--creme-doux); }
+.ht-bandeau .pastille-nombre { position: absolute; top: -6px; right: -6px; }
+.ht-semaine.pret { border-color: var(--or-vif); box-shadow: 0 0 16px rgba(231, 194, 122, 0.35); }
+.ht-semaine.pret img { animation: ht-telegramme 1.6s ease-in-out infinite; }
+.ht-happy-x2 { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe9a8, #a8742a); color: #2a1408; font-family: var(--titre); font-size: 18px; }
+.ht-happy.en-cours { border-color: var(--or-vif); background: linear-gradient(90deg, rgba(90, 8, 24, 0.9), rgba(22, 16, 12, 0.92)); }
+.ht-happy.en-cours .ht-happy-x2 { animation: ht-pulse 1.2s ease-in-out infinite; }
+
+/* ---------- La Semaine du Baron ---------- */
+.ht-semaine-fenetre { width: min(94vw, 460px); max-height: 94dvh; overflow: auto; border-radius: 16px; border: 1px solid var(--or); background: var(--nuit); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); }
+.ht-calendrier { position: relative; }
+.ht-calendrier > img { display: block; width: 100%; aspect-ratio: 1024 / 1536; max-height: 62dvh; object-fit: cover; object-position: top; }
+.ht-case { position: absolute; display: grid; place-items: center; border-radius: 6px; }
+.ht-case img { width: 62%; height: 62%; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
+.ht-case b { font-size: clamp(26px, 9vw, 44px); color: #7a1a12; text-shadow: 0 1px 0 rgba(255, 241, 196, 0.6); }
+.ht-case.prise { background: rgba(255, 241, 196, 0.15); }
+.ht-case.manquee { opacity: 0.35; filter: grayscale(1); }
+.ht-case.aujourdhui { box-shadow: 0 0 0 3px #fff1c4, 0 0 20px rgba(255, 230, 160, 0.9); animation: ht-pulse 1.6s ease-in-out infinite; }
+.ht-semaine-bas { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px 10px; padding: 12px 14px; }
+.ht-semaine-bas > :not(.ht-groom-mini):not(span):not(button.principal) { grid-column: 1 / -1; }
+.ht-semaine-bas strong { font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.ht-semaine-bas > span { display: grid; gap: 2px; }
+.ht-groom-mini { width: 56px; height: 62px; object-fit: contain; object-position: top; }
+.ht-semaine-regle { margin: 0; font-size: 12px; }
+.ht-gain { display: flex !important; align-items: center; gap: 6px; flex-wrap: wrap; font-family: var(--titre); color: var(--or-vif); }
+
+/* ---------- Le Groom ---------- */
+.ht-groom-voile { align-items: end; }
+.ht-groom { position: relative; display: grid; grid-template-columns: minmax(140px, 46%) 1fr; align-items: end; width: min(98vw, 560px); margin: 0 auto; }
+.ht-groom-image { width: 100%; max-height: 60dvh; object-fit: contain; object-position: bottom; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.7)); animation: ht-groom 0.5s ease-out both; }
+.ht-bulle { position: relative; margin: 0 0 18% -6%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--or); background: linear-gradient(180deg, #fff6df, #ecd9b4); color: #3a2414; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); animation: ht-bulle 0.4s 0.2s ease-out both; }
+.ht-bulle::before { content: ''; position: absolute; left: -10px; bottom: 26px; border: 10px solid transparent; border-right-color: #f4e4c2; border-left: 0; }
+.ht-bulle strong { display: block; margin-bottom: 4px; font-family: var(--titre); font-weight: 400; font-size: 18px; color: #6b0f1a; }
+.ht-bulle p { margin: 0 0 10px; font-size: 14px; line-height: 1.4; }
+.ht-bulle-boutons { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ---------- Le Penthouse ---------- */
+.ht-penthouse { display: grid; gap: 12px; }
+.ht-champagne, .ht-vip { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--or-vif); background: linear-gradient(180deg, rgba(60, 1, 7, 0.88), rgba(22, 16, 12, 0.94)); box-shadow: 0 0 20px rgba(231, 194, 122, 0.25); }
+.ht-champagne img { width: 64px; height: 64px; object-fit: contain; }
+.ht-champagne > span { flex: 1; display: grid; gap: 4px; }
+.ht-champagne strong, .ht-vip strong { font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 18px; }
+.ht-vip { display: grid; gap: 4px; border-style: dashed; box-shadow: none; }
+.ht-vip p { margin: 0; }
+
+@keyframes ht-telegramme { 50% { transform: rotate(-8deg) scale(1.08); } }
+@keyframes ht-pulse { 50% { transform: scale(1.06); } }
+@keyframes ht-carte { from { opacity: 0; transform: rotateY(80deg) scale(0.8); } }
+@keyframes ht-groom { from { opacity: 0; transform: translateX(-30px); } }
+@keyframes ht-bulle { from { opacity: 0; transform: scale(0.85); } }
+@media (prefers-reduced-motion: reduce) {
+  .ht-semaine.pret img, .ht-happy.en-cours .ht-happy-x2, .ht-case.aujourdhui, .ht-carte-grande, .ht-groom-image, .ht-bulle { animation: none; }
+}
+.ht-ligne { display: flex; align-items: center; gap: 10px; }
+.ht-ligne > .ht-bandeau { flex: 1; min-width: 0; }
