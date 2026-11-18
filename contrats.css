@@ -1,0 +1,126 @@
+/* Grand Hôtel du Baron : contrats du salon, album du Baron, rubis. */
+
+/* ---------- Les rubis ---------- */
+.ct-rubis { --t: 20px; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; white-space: nowrap; }
+.ct-rubis img { width: var(--t); height: var(--t); object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7)); }
+.ct-rubis b { font-family: var(--titre); font-weight: 400; color: #ff8fa3; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+.ct-rubis-barre { grid-column: 3; justify-self: end; padding: 4px 10px 4px 6px; border-radius: 99px; border: 1px solid rgba(255, 110, 140, 0.5); background: rgba(22, 16, 12, 0.85); }
+
+/* ---------- Dans le salon ---------- */
+.ct-boutons { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: stretch; }
+.ct-bouton { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 10px; border-radius: 14px; border: 1px solid var(--or); background: linear-gradient(180deg, rgba(60, 1, 7, 0.85), rgba(22, 16, 12, 0.92)); text-align: left; }
+.ct-bouton img { width: 38px; height: 38px; object-fit: contain; flex: none; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)); }
+.ct-bouton .ct-bouton-vignette { width: 30px; height: 40px; }
+.ct-bouton span { display: grid; min-width: 0; }
+.ct-bouton strong { font-family: var(--titre); font-weight: 400; font-size: 17px; color: var(--or-vif); }
+.ct-bouton small { font-size: 12px; color: var(--creme-doux); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-bouton .pastille-nombre { position: absolute; top: -6px; right: -6px; }
+.ct-rubis-salon { padding: 0 12px 0 8px; border-radius: 14px; border: 1px solid rgba(255, 110, 140, 0.45); background: rgba(22, 16, 12, 0.85); font-size: 18px; }
+
+.ct-depannage { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(255, 110, 140, 0.6); background: linear-gradient(180deg, rgba(90, 8, 24, 0.85), rgba(22, 16, 12, 0.92)); }
+.ct-depannage img { width: 48px; height: 48px; object-fit: contain; }
+.ct-depannage div { display: grid; gap: 2px; }
+.ct-depannage strong { font-family: var(--titre); font-weight: 400; color: #ffd0d8; }
+.ct-depannage small { font-size: 12.5px; color: var(--creme); }
+
+/* ---------- Les contrats ---------- */
+.ct-contrats { position: relative; }
+.ct-contrats::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: url('/cartes/contrats-fond.webp') center / cover no-repeat, var(--nuit); filter: brightness(0.75); }
+.ct-bureau { display: grid; gap: 10px; }
+.ct-intro { margin: 0; text-align: center; font-family: var(--titre); color: var(--creme); text-shadow: 0 2px 6px #000; }
+.ct-dossiers { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.ct-dossier {
+  position: relative; display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: start; padding: 12px 14px; border-radius: 6px;
+  background: linear-gradient(180deg, #e9d3a3, #d7bb84); color: #3a2414; border: 1px solid #a07a3e;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55), inset 0 0 30px rgba(120, 80, 30, 0.35);
+  rotate: calc((var(--i) - 1) * 0.6deg);
+  animation: ct-arrive 0.45s calc(var(--i) * 0.08s) both ease-out;
+}
+.ct-dossier-icone { width: 56px; height: 74px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); }
+.ct-dossier-corps { display: grid; gap: 5px; min-width: 0; }
+.ct-dossier-corps > strong { font-family: var(--titre); font-weight: 400; font-size: 17px; line-height: 1.2; color: #4a1a0e; }
+.ct-barre { position: relative; height: 10px; border-radius: 99px; background: rgba(60, 30, 10, 0.25); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
+.ct-barre i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, #8e1c14, #d2a85a); transition: width 0.6s ease; }
+.ct-barre.fine { height: 6px; background: rgba(255, 241, 196, 0.15); }
+.ct-progres { font-size: 12.5px; font-variant-numeric: tabular-nums; color: #5a3a20; }
+.ct-recompense { font-size: 12.5px; color: #5a3a20; }
+.ct-recompense .ct-rubis b { color: #9e1028; text-shadow: none; }
+.ct-changer { justify-self: start; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
+.ct-dossier.fait { filter: saturate(0.85); }
+.ct-dossier.fait .ct-dossier-corps > strong { text-decoration: line-through; text-decoration-color: rgba(142, 28, 20, 0.6); }
+.ct-tampon { position: absolute; right: 6px; top: 50%; width: 46%; max-width: 190px; translate: 0 -50%; rotate: -12deg; opacity: 0.88; pointer-events: none; mix-blend-mode: multiply; }
+.ct-tampon.frappe { animation: ct-frappe 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.ct-bonus { margin: 0; padding: 8px 12px; border-radius: 12px; text-align: center; background: rgba(22, 16, 12, 0.85); border: 1px dashed rgba(231, 194, 122, 0.5); }
+.ct-bonus.fait { border-style: solid; border-color: var(--or-vif); color: var(--or-vif); }
+.ct-fin { margin: 0; text-align: center; font-size: 13px; color: var(--creme-doux); text-shadow: 0 1px 4px #000; }
+
+.ct-semaine { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.9); }
+.ct-semaine h2 { margin: 0; font-family: var(--titre); font-weight: 400; font-size: 19px; color: var(--or-vif); }
+.ct-semaine ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ct-gros-coup { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.ct-gros-coup-texte { display: grid; gap: 4px; }
+.ct-gros-coup-texte strong { font-weight: 600; font-size: 14px; }
+.ct-gros-coup.fait strong { color: var(--or-vif); }
+.ct-gros-coup-gain { font-family: var(--titre); color: var(--or-vif); }
+
+.ct-confirme p { margin: 0 0 8px; }
+.ct-confirme-boutons { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ---------- L'album ---------- */
+.ct-album::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at 50% 30%, #3c0107, var(--nuit) 70%); }
+.ct-couverture { position: relative; display: block; width: min(78%, 360px); margin: 0 auto; padding: 0; border: 0; background: none; border-radius: 6px 14px 14px 6px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7); transition: transform 0.2s; }
+.ct-couverture:hover { transform: rotate(-1deg) scale(1.01); }
+.ct-couverture img { display: block; width: 100%; border-radius: inherit; }
+.ct-couverture-ouvrir { position: absolute; left: 50%; bottom: 7%; translate: -50% 0; padding: 6px 18px; border-radius: 99px; background: rgba(22, 16, 12, 0.85); border: 1px solid var(--or-vif); font-family: var(--titre); color: var(--or-vif); }
+.ct-album-total { margin: 0; text-align: center; font-family: var(--titre); color: var(--or-vif); }
+.ct-sommaire { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.ct-sommaire button { position: relative; display: grid; justify-items: center; gap: 2px; width: 100%; padding: 4px; border-radius: 10px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.8); }
+.ct-sommaire button.complete { border-color: var(--or-vif); box-shadow: 0 0 10px rgba(231, 194, 122, 0.4); }
+.ct-sommaire img { width: 100%; aspect-ratio: 3 / 4; object-fit: contain; }
+.ct-sommaire small { font-size: 11.5px; color: var(--creme-doux); font-variant-numeric: tabular-nums; }
+.ct-album-aide { margin: 0; text-align: center; font-size: 13px; }
+.ct-page-titre { margin: 0; text-align: center; font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 22px; }
+
+/* La page de l'image album-page (1086 × 1448) : 6 cases dorées, 2 colonnes × 3 rangées. */
+.ct-page { position: relative; width: min(100%, 520px); margin: 0 auto; aspect-ratio: 1086 / 1448; background: url('/cartes/album-page.webp') center / 100% 100% no-repeat; border-radius: 4px 12px 12px 4px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7); animation: ct-page 0.35s ease-out both; }
+.ct-case {
+  position: absolute; left: calc(14.7% + var(--col) * 40%); top: calc(11.7% + var(--rang) * 26.55%); width: 33.1%; height: 21.8%;
+  display: grid; place-items: center; background-size: 200% 300%; background-position: calc(var(--col) * 100%) calc(var(--rang) * 50%); background-repeat: no-repeat;
+}
+.ct-case i { font-family: var(--titre); font-style: normal; font-size: clamp(18px, 6vw, 32px); color: rgba(120, 80, 30, 0.35); }
+.ct-case.collee { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
+.ct-case.nouvelle { animation: ct-colle 0.6s ease-out both; }
+.ct-page.complete { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(231, 194, 122, 0.45); }
+.ct-page-ruban { position: absolute; left: 50%; bottom: 3.5%; translate: -50% 0; padding: 4px 16px; border-radius: 4px; background: linear-gradient(180deg, #b8281d, #6b0f1a); border: 1px solid var(--or-vif); font-family: var(--titre); color: #fff1c4; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
+.ct-tourner { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.ct-tourner button { width: 46px; height: 46px; border-radius: 50%; font-size: 26px; line-height: 1; }
+.ct-tourner span { font-family: var(--titre); color: var(--or-vif); font-variant-numeric: tabular-nums; }
+
+/* ---------- Les annonces ---------- */
+.ct-annonce {
+  position: fixed; z-index: 60; left: 50%; top: max(12px, env(safe-area-inset-top)); translate: -50% 0; width: min(92vw, 420px);
+  display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; padding: 8px 14px 8px 8px; border-radius: 14px; text-align: left;
+  border: 1px solid var(--or); background: linear-gradient(180deg, rgba(60, 1, 7, 0.96), rgba(22, 16, 12, 0.97)); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+  animation: ct-annonce 0.4s ease-out both;
+}
+.ct-annonce.grande { border-color: var(--or-vif); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 24px rgba(231, 194, 122, 0.35); }
+.ct-annonce span { display: grid; gap: 1px; min-width: 0; }
+.ct-annonce strong { font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 16px; }
+.ct-annonce small { font-size: 12.5px; color: var(--creme); }
+.ct-annonce-gains { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ct-annonce-tampon { width: 84px; rotate: -10deg; animation: ct-frappe 0.5s 0.15s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.ct-annonce-vignette { width: 40px; height: 52px; object-fit: contain; }
+
+@keyframes ct-arrive { from { opacity: 0; transform: translateY(14px); } }
+@keyframes ct-frappe { 0% { opacity: 0; scale: 2.2; } 60% { opacity: 1; scale: 0.92; } 100% { scale: 1; } }
+@keyframes ct-colle { 0% { opacity: 0; scale: 1.4; rotate: 8deg; } 100% { opacity: 1; scale: 1; rotate: 0deg; } }
+@keyframes ct-page { from { opacity: 0; transform: perspective(900px) rotateY(-12deg); transform-origin: left center; } }
+@keyframes ct-annonce { from { opacity: 0; translate: -50% -20px; } }
+@media (prefers-reduced-motion: reduce) {
+  .ct-dossier, .ct-tampon.frappe, .ct-case.nouvelle, .ct-page, .ct-annonce, .ct-annonce-tampon { animation: none; }
+}
+@media (max-width: 380px) {
+  .ct-boutons { grid-template-columns: 1fr 1fr; }
+  .ct-rubis-salon { grid-column: 1 / -1; justify-self: center; padding: 4px 12px; }
+  .ct-sommaire { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+}

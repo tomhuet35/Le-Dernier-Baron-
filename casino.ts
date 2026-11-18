@@ -8,6 +8,7 @@ import type { CaseFN } from './folleNuit';
 import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, MONTANT_OUVERTURE_BW, type CaseBW } from './baronWheel';
 import type { ContenuCasse } from './machineASous';
 import type { VueDefi } from './profilCasino';
+import type { VueContrats } from './contrats';
 
 /** Bonus de la machine à sous en cours (à finir avant de rejouer) : le Casse du coffre ou la Roue du Baron. */
 export type VueBonusMachine =
@@ -130,6 +131,8 @@ export interface VueCasino {
   baronWheel?: { enDirect: boolean; spectateurs: number; historique: CaseBW[]; ouverture: number | null };
   /** Le jeu à l'affiche (XP doublée, bonus sur les gains) et le bonus déjà touché pendant son créneau. */
   affiche?: VueAffiche;
+  /** Grand Hôtel du Baron : rubis, contrats du jour et de la semaine, album, dépannage. */
+  contrats?: VueContrats;
 }
 
 export interface AnnonceCasino {

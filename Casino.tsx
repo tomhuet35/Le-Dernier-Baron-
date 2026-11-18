@@ -47,6 +47,7 @@ import { BandeauAffiche, PuceAffiche } from './CasinoAffiche';
 import { BarreXp, CadreAvatar, CelebrationNiveau, EcranAmis, EcranDefis, EcranProfil, PuceDefi, texteDefi, texteSocial, type FeteNiveau } from './CasinoSocial';
 import { titreCasino, type JeuCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
 import { MachineNuits } from './CasinoNuits';
+import { AnnoncesContrats, BoutonsHotel, EcranAlbum, EcranContrats } from './CasinoContrats';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
 import type { EtatCompte } from './Profil';
@@ -1369,8 +1370,11 @@ function Salon({
   onProfil,
   onAmis,
   onDefis,
+  hotel,
 }: {
   vue: VueCasino;
+  /** Grand Hôtel : rubis, contrats et album (sous les boutons du profil). */
+  hotel?: ReactNode;
   onProfil: () => void;
   onAmis: () => void;
   onDefis: () => void;
@@ -1433,6 +1437,7 @@ function Salon({
           {!!vue.profil?.invitations && <span className="pastille-nombre">{vue.profil.invitations}</span>}
         </button>
       </div>
+      {hotel}
       {vue.cadeau && <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} />}
       {vue.affiche && <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} />}
       <button type="button" className={`cas-bouton-roue ${attente ? '' : 'prete'}`} onClick={onRoue}>
@@ -1531,7 +1536,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album'>('salon');
   /** Profil du casino : le mien (null) ou celui d'un ami ; l'ami présélectionné pour un défi. */
   const [profilUid, setProfilUid] = useState<string | null>(null);
   const [cibleDefi, setCibleDefi] = useState<string | null>(null);
@@ -1824,6 +1829,8 @@ export default function Casino({
     );
   else if (ecran === 'amis')
     contenu = <EcranAmis appel={appel} vue={vue} onVue={setVue} onRetour={retourSalon} onProfil={(uid) => ouvrirProfil(uid)} onRejoindre={(p) => void rejoindre(p)} onDefier={(uid) => ouvrirDefis(uid)} />;
+  else if (ecran === 'contrats') contenu = <EcranContrats vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
+  else if (ecran === 'album') contenu = <EcranAlbum vue={vue} onRetour={retourSalon} />;
   else if (ecran === 'defis') contenu = <EcranDefis appel={appel} vue={vue} moi={moi} defis={defis} cible={cibleDefi} onDefis={setDefis} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'folleNuit')
     contenu = (
@@ -1857,6 +1864,7 @@ export default function Casino({
         onProfil={() => ouvrirProfil(null)}
         onAmis={() => setEcran('amis')}
         onDefis={() => ouvrirDefis()}
+        hotel={<BoutonsHotel vue={vue} appel={appel} onVue={setVue} onContrats={() => setEcran('contrats')} onAlbum={() => setEcran('album')} />}
         onCadeau={() => void recupererCadeau()}
         onCadeauFini={() =>
           void (async () => {
@@ -1892,6 +1900,13 @@ export default function Casino({
           {toastSocial.texte}
         </button>
       )}
+      <AnnoncesContrats
+        onAnnonce={rafraichirVue}
+        onOuvrir={(e) => {
+          // Depuis un jeu, l'annonce se ferme seulement (on ne quitte pas une partie en cours).
+          if (ecran === 'salon' || ecran === 'contrats' || ecran === 'album') setEcran(e);
+        }}
+      />
       {fete && vue && <CelebrationNiveau key={fete.id} fete={fete} avatar={vue.avatar} onFermer={() => setFete(null)} />}
     </div>
   );

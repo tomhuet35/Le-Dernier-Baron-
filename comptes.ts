@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { estLangue, type Langue } from '../shared/langue';
 import { estTapis, niveauDepuisXp, tapisActif, tapisDebloque, TAPIS_PAR_DEFAUT, type IdTapis, type ResultatJoueur } from '../shared/niveaux';
 import { CASES_ROUE_SALON, SOLDE_DEPART, SOLDE_MAX } from '../shared/casino';
+import { normaliserEtatSalon, type EtatSalonJoueur } from '../shared/contrats';
 import { AMIS_MAX_CASINO, estJeuCasino, JOURNAL_MAX, type BilanDefis, type EntreeJournalCasino, type JeuCasino, type StatsJeuCasino } from '../shared/profilCasino';
 import { gainDeCase, PERSONNAGES_ROULETTE, type GainRoulette } from '../shared/roulette';
 import type { EntreeHistorique, ProfilCompte } from '../shared/types';
@@ -94,6 +95,8 @@ export interface CasinoCompte {
   /** Activité récente (envois, défis, niveaux), la plus récente d'abord. */
   journal?: EntreeJournalCasino[];
   defis?: BilanDefis;
+  /** Grand Hôtel du Baron : rubis, contrats du jour et de la semaine, album, dépannage. */
+  salon?: EtatSalonJoueur;
 }
 
 /** Ce qu'une écriture du casino ajoute au compte, en plus du solde. */
@@ -106,6 +109,8 @@ export interface ExtraCasino {
   journal?: EntreeJournalCasino[];
   /** Défis à ajouter au bilan. */
   defis?: BilanDefis;
+  /** Rubis, contrats et album : l'état entier, qui remplace l'ancien. */
+  salon?: EtatSalonJoueur;
 }
 
 /** Lien d'amitié du casino : demander, accepter, refuser ou retirer. */
@@ -165,6 +170,7 @@ function normaliserCasino(brut: unknown): CasinoCompte | null {
     ...(c.defis && typeof c.defis === 'object'
       ? { defis: { gagnes: entier((c.defis as Record<string, unknown>).gagnes), perdus: entier((c.defis as Record<string, unknown>).perdus), nuls: entier((c.defis as Record<string, unknown>).nuls) } }
       : {}),
+    ...(c.salon !== undefined ? { salon: normaliserEtatSalon(c.salon) } : {}),
   };
 }
 
@@ -196,6 +202,7 @@ export function appliquerExtraCasino(c: CasinoCompte, extra: ExtraCasino | undef
     const d = c.defis ?? { gagnes: 0, perdus: 0, nuls: 0 };
     r.defis = { gagnes: d.gagnes + extra.defis.gagnes, perdus: d.perdus + extra.defis.perdus, nuls: d.nuls + extra.defis.nuls };
   }
+  if (extra.salon) r.salon = extra.salon;
   return r;
 }
 
