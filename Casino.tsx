@@ -1099,9 +1099,10 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // ---------------------------------------------------------------------------------------------------------------
 // Le salon
 
-const JEUX: { id: 'baronWheel' | 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
-  { id: 'baronWheel', nom: ['The Baron’s Wheel', 'The Baron’s Wheel'], image: '/cartes/casino-baron-wheel-bandeau.webp', repli: '/cartes/casino-baron-wheel-bandeau-petit.webp' },
-  { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines.webp', repli: '/cartes/casino-machine.webp' },
+const JEUX: { id: 'baronWheel' | 'folleNuit' | 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+  { id: 'baronWheel', nom: ['The Baron’s Wheel', 'The Baron’s Wheel'], image: '/cartes/casino-baron-wheel-affiche.webp', repli: '/cartes/casino-baron-wheel-bandeau-petit.webp' },
+  { id: 'folleNuit', nom: ['La Folle Nuit', 'Crazy Night'], image: '/cartes/casino-folle-nuit-affiche.webp', repli: '/cartes/casino-folle-nuit.webp' },
+  { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines-affiche.webp', repli: '/cartes/casino-machines.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
   { id: 'blackjack', nom: ['Blackjack', 'Blackjack'], image: '/cartes/casino-blackjack.webp', repli: '/cartes/billets_05.webp' },
   { id: 'couronne', nom: ['Le Vol de la Couronne', 'The Flight of the Crown'], image: '/cartes/casino-couronne.webp', repli: '/cartes/baron.webp' },
@@ -1190,6 +1191,7 @@ function Vignette({ jeu, onOuvrir, ruban, affiche }: { jeu: (typeof JEUX)[number
 /** La vignette du salon qui mène à ce jeu (les deux machines sont derrière la même). */
 /** Le ruban d'une vignette de jeu (nouveau, en direct, ouverture…). */
 function rubanJeu(id: (typeof JEUX)[number]['id'], vue: VueCasino): string | undefined {
+  if (id === 'folleNuit') return vue.folleNuit?.enDirect ? tr('En direct', 'Live') : undefined;
   return (
     id === 'festin'
                 ? vue.coffres?.enCours
@@ -1220,7 +1222,7 @@ const VIGNETTE_DU_JEU: Record<JeuCasino, (typeof JEUX)[number]['id'] | null> = {
   nuits: 'machines',
   blackjack: 'blackjack',
   roulette: 'roulette',
-  folleNuit: null,
+  folleNuit: 'folleNuit',
   coffres: 'festin',
   couronne: 'couronne',
   chute: 'chute',
@@ -1388,7 +1390,7 @@ function FenetreTables({ jeu, vue, appel, onTable, onVue, onFermer }: { jeu: Jeu
 const JEUX_ETAGE: Record<Etage, (typeof JEUX)[number]['id'][]> = {
   bar: ['machines', 'festin'],
   tables: ['blackjack', 'roulette', 'poker'],
-  scene: ['baronWheel', 'course', 'couronne', 'chute'],
+  scene: ['folleNuit', 'baronWheel', 'course', 'couronne', 'chute'],
   penthouse: [],
 };
 
@@ -1577,11 +1579,6 @@ function Accueil({
                 <ALaUne elements={une} />
               </div>
             )}
-            {etageActif === 'scene' && (
-              <div className="ac-carte-fn">
-                <BandeauFolleNuit vue={vue} onOuvrir={ouvert ? onFolleNuit : () => onEtage('scene')} />
-              </div>
-            )}
             {cartes.map((j) => (
               <div key={j.id} className="ac-carte">
                 <Vignette
@@ -1610,15 +1607,17 @@ function Accueil({
       </section>
 
       <nav className="ac-dock" aria-label={tr('Le salon', 'The lounge')}>
-        <BoutonDock icone={<img src="/cartes/icone-roulette.webp" alt="" />} nom={tr('Roulette', 'Wheel')} pastille={attenteRoue ? null : 1} info={attenteRoue} onClick={onRoue} rond={false} />
-        <BoutonDock rond={false} icone={<img src="/cartes/icone-semaine.webp" alt="" />} nom={tr('Semaine', 'Week')} pastille={vue.hotel?.semaine.cadeau ? 1 : null} info={vue.hotel ? `${vue.hotel.semaine.pris.length}/7` : null} onClick={onSemaine} />
-        <BoutonDock rond={false} icone={<img src="/cartes/icone-contrats.webp" alt="" />} nom={tr('Contrats', 'Contracts')} pastille={restants || null} onClick={onContrats} />
-        <BoutonDock rond={false} icone={<img src="/cartes/icone-album.webp" alt="" />} nom={tr('Album', 'Album')} info={`${pieces}/${JEUX_CASINO.length * MORCEAUX_PAGE}`} onClick={onAlbum} />
-        <BoutonDock rond={false} icone={<img src="/cartes/icone-ventes.webp" alt="" />} nom={tr('Ventes', 'Auctions')} info={finVentes} onClick={onVentes} />
-        <BoutonDock rond={false} icone={<img src="/cartes/icone-bureau.webp" alt="" />} nom={tr('Bureau', 'Office')} info={c ? `${c.objets}/10` : null} onClick={onBureau} />
-        <BoutonDock icone={<img src="/cartes/icone-amis.webp" alt="" />} nom={tr('Amis', 'Friends')} pastille={vue.profil?.demandes || null} onClick={onAmis} rond={false} />
-        <BoutonDock rond={false} icone={<img src="/cartes/icone-defis.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
-        <BoutonDock icone={<img src="/cartes/icone-riches.webp" alt="" />} nom={tr('Riches', 'Richest')} onClick={() => setRiches(true)} rond={false} />
+        <div className="ac-dock-defile">
+          <BoutonDock icone={<img src="/cartes/icone-roulette.webp" alt="" />} nom={tr('Roulette', 'Wheel')} pastille={attenteRoue ? null : 1} info={attenteRoue} onClick={onRoue} rond={false} />
+          <BoutonDock rond={false} icone={<img src="/cartes/icone-semaine.webp" alt="" />} nom={tr('Semaine', 'Week')} pastille={vue.hotel?.semaine.cadeau ? 1 : null} info={vue.hotel ? `${vue.hotel.semaine.pris.length}/7` : null} onClick={onSemaine} />
+          <BoutonDock rond={false} icone={<img src="/cartes/icone-contrats.webp" alt="" />} nom={tr('Contrats', 'Contracts')} pastille={restants || null} onClick={onContrats} />
+          <BoutonDock rond={false} icone={<img src="/cartes/icone-album.webp" alt="" />} nom={tr('Album', 'Album')} info={`${pieces}/${JEUX_CASINO.length * MORCEAUX_PAGE}`} onClick={onAlbum} />
+          <BoutonDock rond={false} icone={<img src="/cartes/icone-ventes.webp" alt="" />} nom={tr('Ventes', 'Auctions')} info={finVentes} onClick={onVentes} />
+          <BoutonDock rond={false} icone={<img src="/cartes/icone-bureau.webp" alt="" />} nom={tr('Bureau', 'Office')} info={c ? `${c.objets}/10` : null} onClick={onBureau} />
+          <BoutonDock icone={<img src="/cartes/icone-amis.webp" alt="" />} nom={tr('Amis', 'Friends')} pastille={vue.profil?.demandes || null} onClick={onAmis} rond={false} />
+          <BoutonDock rond={false} icone={<img src="/cartes/icone-defis.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
+          <BoutonDock icone={<img src="/cartes/icone-riches.webp" alt="" />} nom={tr('Riches', 'Richest')} onClick={() => setRiches(true)} rond={false} />
+        </div>
       </nav>
 
       {menu && (
