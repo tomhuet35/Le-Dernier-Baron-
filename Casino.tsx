@@ -1413,23 +1413,6 @@ function BoutonDock({ icone, nom, pastille, info, onClick, rond = true }: { icon
   );
 }
 
-/** L'icône de la roulette du salon (dessinée). */
-function IconeRoulette() {
-  return (
-    <svg className="bouton-roulette-icone" viewBox="0 0 40 40" aria-hidden="true">
-      <circle cx="20" cy="20" r="19.5" fill="#d2a85a" />
-      <circle cx="20" cy="20" r="17" fill="#1b120c" />
-      {CASES_ROUE_SALON.map((_, i) => {
-        const a1 = ((i * 45 - 90) * Math.PI) / 180;
-        const a2 = (((i + 1) * 45 - 90) * Math.PI) / 180;
-        const c = i === CASE_VERTE_SALON ? COULEURS_ROUE.vert : i % 2 ? COULEURS_ROUE.noir : COULEURS_ROUE.rouge;
-        return <path key={i} d={`M20 20 L${20 + 16 * Math.cos(a1)} ${20 + 16 * Math.sin(a1)} A16 16 0 0 1 ${20 + 16 * Math.cos(a2)} ${20 + 16 * Math.sin(a2)} Z`} fill={c} stroke="#e7c27a" strokeWidth="0.6" />;
-      })}
-      <circle cx="20" cy="20" r="5" fill="#d2a85a" />
-    </svg>
-  );
-}
-
 /** « À la une » : une seule annonce à la fois (cadeau, dépannage, jeu à l'affiche, spectacle en direct…), qui tourne. */
 function ALaUne({ elements }: { elements: { cle: string; contenu: ReactNode }[] }) {
   const [i, setI] = useState(0);
@@ -1543,17 +1526,23 @@ function Accueil({
         <span className="ac-compteur ac-rubis">
           <img src="/cartes/rubis-icone.webp" alt={tr('Rubis', 'Rubies')} />
           <b>{(c?.rubis ?? 0).toLocaleString(tr('fr-FR', 'en-US'))}</b>
+          <button type="button" className="ac-plus" onClick={onContrats} aria-label={tr('Gagner des rubis : les contrats', 'Earn rubies: contracts')}>
+            <img src="/cartes/bouton-plus.webp" alt="" />
+          </button>
         </span>
         <span className="ac-compteur ac-dollars">
           <img src="/cartes/jeton-ivoire.webp" alt="$" />
           <b title={dollars(solde)}>{dollarsCourt(solde)}</b>
+          <button type="button" className="ac-plus" onClick={onRoue} aria-label={tr('Roulette du salon', 'Lounge wheel')}>
+            <img src="/cartes/bouton-plus.webp" alt="" />
+          </button>
         </span>
         <img className="ac-logo" src="/cartes/logo-casino.webp" alt="Baron's Fortune" draggable={false} />
         <span className="ac-carte-membre">
           <CarteDeMembre vue={vue} />
         </span>
         <button type="button" className="ac-menu" onClick={() => setMenu(true)} aria-label={tr('Menu du salon', 'Lounge menu')}>
-          <img src="/cartes/icone-menu.webp" alt="" />
+          <img src="/cartes/bouton-menu.webp" alt="" />
         </button>
       </header>
 
@@ -1601,6 +1590,7 @@ function Accueil({
                   onOuvrir={j.id === 'poker' ? undefined : ouvert ? () => onVignette(j.id) : () => onEtage(etageActif)}
                   ruban={ouvert ? rubanJeu(j.id, vue) : undefined}
                 />
+                {ouvert && j.id !== 'poker' && <img className="ac-jouer" src="/cartes/bouton-jouer.webp" alt="" aria-hidden="true" />}
                 {!ouvert && <span className="ac-cadenas">🔒</span>}
               </div>
             ))}
@@ -1620,14 +1610,14 @@ function Accueil({
       </section>
 
       <nav className="ac-dock" aria-label={tr('Le salon', 'The lounge')}>
-        <BoutonDock icone={<IconeRoulette />} nom={tr('Roulette', 'Wheel')} pastille={attenteRoue ? null : 1} info={attenteRoue} onClick={onRoue} rond={false} />
-        <BoutonDock icone={<img src="/cartes/telegramme.webp" alt="" />} nom={tr('Semaine', 'Week')} pastille={vue.hotel?.semaine.cadeau ? 1 : null} info={vue.hotel ? `${vue.hotel.semaine.pris.length}/7` : null} onClick={onSemaine} />
-        <BoutonDock icone={<img src="/cartes/contrat-icone.webp" alt="" />} nom={tr('Contrats', 'Contracts')} pastille={restants || null} onClick={onContrats} />
-        <BoutonDock icone={<img src="/cartes/album-couverture.webp" alt="" />} nom={tr('Album', 'Album')} info={`${pieces}/${JEUX_CASINO.length * MORCEAUX_PAGE}`} onClick={onAlbum} />
-        <BoutonDock icone={<img src="/cartes/marteau-encheres.webp" alt="" />} nom={tr('Ventes', 'Auctions')} info={finVentes} onClick={onVentes} />
-        <BoutonDock icone={<img src="/cartes/objet-globe.webp" alt="" />} nom={tr('Bureau', 'Office')} info={c ? `${c.objets}/10` : null} onClick={onBureau} />
+        <BoutonDock icone={<img src="/cartes/icone-roulette.webp" alt="" />} nom={tr('Roulette', 'Wheel')} pastille={attenteRoue ? null : 1} info={attenteRoue} onClick={onRoue} rond={false} />
+        <BoutonDock rond={false} icone={<img src="/cartes/icone-semaine.webp" alt="" />} nom={tr('Semaine', 'Week')} pastille={vue.hotel?.semaine.cadeau ? 1 : null} info={vue.hotel ? `${vue.hotel.semaine.pris.length}/7` : null} onClick={onSemaine} />
+        <BoutonDock rond={false} icone={<img src="/cartes/icone-contrats.webp" alt="" />} nom={tr('Contrats', 'Contracts')} pastille={restants || null} onClick={onContrats} />
+        <BoutonDock rond={false} icone={<img src="/cartes/icone-album.webp" alt="" />} nom={tr('Album', 'Album')} info={`${pieces}/${JEUX_CASINO.length * MORCEAUX_PAGE}`} onClick={onAlbum} />
+        <BoutonDock rond={false} icone={<img src="/cartes/icone-ventes.webp" alt="" />} nom={tr('Ventes', 'Auctions')} info={finVentes} onClick={onVentes} />
+        <BoutonDock rond={false} icone={<img src="/cartes/icone-bureau.webp" alt="" />} nom={tr('Bureau', 'Office')} info={c ? `${c.objets}/10` : null} onClick={onBureau} />
         <BoutonDock icone={<img src="/cartes/icone-amis.webp" alt="" />} nom={tr('Amis', 'Friends')} pastille={vue.profil?.demandes || null} onClick={onAmis} rond={false} />
-        <BoutonDock icone={<img src="/cartes/icone-invitation.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
+        <BoutonDock rond={false} icone={<img src="/cartes/icone-defis.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
         <BoutonDock icone={<img src="/cartes/icone-scores.webp" alt="" />} nom={tr('Riches', 'Richest')} onClick={() => setRiches(true)} rond={false} />
       </nav>
 

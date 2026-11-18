@@ -5,6 +5,27 @@
  * Une image oubliée ici se charge simplement à la demande, comme avant.
  */
 export const IMAGES_SALON = [
+  '/cartes/barre-haut.webp',
+  '/cartes/barre-bas.webp',
+  '/cartes/compteur.webp',
+  '/cartes/bouton-menu.webp',
+  '/cartes/bouton-plus.webp',
+  '/cartes/pastille-notif.webp',
+  '/cartes/fond-accueil.webp',
+  '/cartes/fond-accueil-portrait.webp',
+  '/cartes/cadre-carte-jeu.webp',
+  '/cartes/cadre-une.webp',
+  '/cartes/onglet-etage.webp',
+  '/cartes/onglet-etage-actif.webp',
+  '/cartes/colonne-etages.webp',
+  '/cartes/bouton-jouer.webp',
+  '/cartes/icone-roulette.webp',
+  '/cartes/icone-semaine.webp',
+  '/cartes/icone-contrats.webp',
+  '/cartes/icone-album.webp',
+  '/cartes/icone-ventes.webp',
+  '/cartes/icone-bureau.webp',
+  '/cartes/icone-defis.webp',
   '/cartes/hotel-hall.webp',
   '/cartes/telegramme.webp',
   '/cartes/carte-membre-bronze.webp',
@@ -42,6 +63,7 @@ export const IMAGES_SALON = [
 ];
 
 export const IMAGES_JEUX = [
+  '/cartes/icone-boutique.webp',
   '/cartes/etage-bar.webp',
   '/cartes/etage-tables.webp',
   '/cartes/etage-scene.webp',
