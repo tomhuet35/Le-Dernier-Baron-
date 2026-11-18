@@ -31,9 +31,11 @@ import { BoutonMusique, Chat, Couronne, CouronneRang, Defilant, Fenetre, IconeIm
 import { BanniereBaron, CelebrationRecompense, FenetreClassement } from './Classement';
 import { BoutonRoulette, FenetreRoulette } from './RouletteDuJour';
 import type { GainRoulette } from '../../shared/roulette';
+import { EntreeCasino } from './ChargementCasino';
 
-/** Salon privé du casino (comptes Créateur) : chargé à part, seulement quand un créateur l'ouvre. */
-const Casino = lazy(() => import('./Casino'));
+/** Salon privé du casino (comptes Créateur) : chargé à part, seulement quand un créateur l'ouvre (derrière sa page de chargement). */
+const chargerCasino = () => import('./Casino');
+const Casino = lazy(chargerCasino);
 
 /** Clé dorée du Salon privé (l'image icone-salon.webp la remplace dès qu'elle est en ligne). */
 function IconeSalon() {
@@ -493,9 +495,14 @@ export function App() {
   else if (classeOuverte) ecran = <SalonClasse vue={classe} appel={appel} compte={compte} majVue={setClasse} fermer={fermerClasse} />;
   else if (casinoOuvert && profil?.createur)
     ecran = (
-      <Suspense fallback={<div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>}>
-        <Casino appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} />
-      </Suspense>
+      <EntreeCasino
+        module={chargerCasino}
+        enfants={(pret) => (
+          <Suspense fallback={null}>
+            <Casino appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} onPret={pret} />
+          </Suspense>
+        )}
+      />
     );
   else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirCasino={ouvrirCasino} ouvrirClasse={() => void ouvrirClasse()} />;
 

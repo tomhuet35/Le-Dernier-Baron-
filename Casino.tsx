@@ -1527,8 +1527,11 @@ export default function Casino({
   onQuitter,
   invitation,
   onInvitation,
+  onPret,
 }: {
   appel: Appel;
+  /** Le salon est ouvert (la page de chargement peut lever le rideau). */
+  onPret?: () => void;
   compte: EtatCompte;
   onQuitter: (message?: string) => void;
   /** Invitation d'un ami acceptée : la table à rejoindre dès l'entrée au salon. */
@@ -1558,6 +1561,14 @@ export default function Casino({
   const [annonce, setAnnonce] = useState<AnnonceCasino | null>(null);
   const minuterieAnnonce = useRef(0);
   const entreRef = useRef(false);
+
+  // Le salon est ouvert : la page de chargement lève le rideau.
+  const ouvert = !!vue;
+  const pretRef = useRef(onPret);
+  pretRef.current = onPret;
+  useEffect(() => {
+    if (ouvert) pretRef.current?.();
+  }, [ouvert]);
 
   // Musique d'ambiance du salon (jazz de cabaret) tant qu'on est au casino.
   useEffect(() => {
