@@ -1,0 +1,35 @@
+/* Le Tailleur du Baron : la boutique, le tailleur, les tenues par gamme, l'essayage. */
+.tl-ecran { position: relative; }
+.tl-ecran::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(8, 4, 3, 0.15), rgba(8, 4, 3, 0.85) 60%), url('/cartes/tailleur-fond.webp') center top / cover no-repeat, var(--nuit); }
+.tl-accueil { display: flex; align-items: flex-end; gap: 6px; min-height: 230px; }
+.tl-tailleur { width: 34%; max-width: 190px; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.8)); animation: mn-arrive 0.6s ease-out both; }
+.tl-bulle { flex: 1; display: grid; gap: 8px; margin-bottom: 14%; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.94); }
+.tl-bulle p { margin: 0; font-family: var(--titre); color: var(--creme); }
+.tl-portee { display: flex; align-items: center; gap: 8px; }
+.tl-portee img { width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--or-vif); object-fit: cover; }
+.tl-portee span { display: grid; }
+.tl-portee small { font-size: 11px; color: var(--creme-doux); }
+.tl-portee strong { font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.tl-bulle .petit { justify-self: start; }
+
+.tl-gamme { display: grid; gap: 8px; }
+.tl-gamme h2 { margin: 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 20px; text-shadow: 0 2px 6px #000; }
+.tl-gamme ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.tl-tenue { position: relative; display: grid; justify-items: center; gap: 6px; width: 100%; padding: 10px 8px 12px; border-radius: 16px; border: 1px solid var(--or); background: linear-gradient(180deg, rgba(60, 1, 7, 0.9), rgba(22, 16, 12, 0.95)); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.6); text-align: center; animation: ct-arrive 0.4s calc(var(--i) * 0.06s) both ease-out; }
+.tl-tenue img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; border: 3px solid #d2a85a; box-shadow: 0 0 0 2px #4a3112, 0 6px 14px rgba(0, 0, 0, 0.6); }
+.tl-tenue strong { font-family: var(--titre); font-weight: 400; color: var(--creme); line-height: 1.15; min-height: 2.3em; display: grid; place-items: center; }
+.tl-etiquette { display: inline-flex; align-items: center; justify-content: center; min-width: 110px; min-height: 40px; padding: 4px 18px 4px 26px; background: url('/cartes/etiquette-prix.webp') center / 100% 100% no-repeat; color: #3a1810; font-weight: 800; font-size: 14px; }
+.tl-etiquette .ct-rubis b { color: #9e1028; text-shadow: none; }
+.tl-dollars { color: #3a1810; }
+.tl-tenue.possedee { border-color: var(--or-vif); }
+.tl-tenue.portee { border-color: var(--or-vif); box-shadow: 0 0 0 2px var(--or-vif), 0 0 22px rgba(231, 194, 122, 0.5); }
+.tl-tenue.baronne { border-color: #ff5c7c; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 70, 110, 0.45); }
+.tl-gamme.prestige h2 { color: #ffd0d8; }
+
+.tl-essai { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.tl-miroir { width: min(70vw, 280px); padding: 12px; border-radius: 50% 50% 14px 14px; border: 4px solid #d2a85a; background: radial-gradient(circle at 50% 30%, rgba(255, 230, 170, 0.25), #1b0d08 70%); box-shadow: 0 0 0 3px #4a3112, 0 14px 30px rgba(0, 0, 0, 0.7); }
+.tl-miroir img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 50% 50% 8px 8px; animation: ce-blason 0.5s ease-out both; }
+.tl-essai h2 { margin: 6px 0 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); }
+.tl-essai p { margin: 0; }
+.tl-essai .principal { display: inline-flex; align-items: center; gap: 6px; }
+@media (min-width: 640px) { .tl-gamme ul { grid-template-columns: repeat(4, 1fr); } }

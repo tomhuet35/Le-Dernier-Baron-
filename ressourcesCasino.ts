@@ -5,6 +5,7 @@
  * Une image oubliée ici se charge simplement à la demande, comme avant.
  */
 export const IMAGES_SALON = [
+  '/cartes/icone-tailleur.webp',
   '/cartes/icone-boutique.webp',
   '/cartes/blason-lion.webp',
   '/cartes/telescripteur.webp',
@@ -77,6 +78,20 @@ export const IMAGES_SALON = [
 ];
 
 export const IMAGES_JEUX = [
+  '/cartes/tailleur-fond.webp',
+  '/cartes/tailleur.webp',
+  '/cartes/etiquette-prix.webp',
+  '/cartes/avatar-10.webp',
+  '/cartes/avatar-11.webp',
+  '/cartes/avatar-12.webp',
+  '/cartes/avatar-13.webp',
+  '/cartes/avatar-14.webp',
+  '/cartes/avatar-15.webp',
+  '/cartes/avatar-16.webp',
+  '/cartes/avatar-17.webp',
+  '/cartes/avatar-18.webp',
+  '/cartes/avatar-19.webp',
+  '/cartes/avatar-20.webp',
   '/cartes/receleur.webp',
   '/cartes/marche-noir-fond.webp',
   '/cartes/malle.webp',

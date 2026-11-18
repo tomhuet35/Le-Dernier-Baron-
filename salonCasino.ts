@@ -57,6 +57,7 @@ import { semaineDe } from './classement';
 import { creerVentes } from './ventesCasino';
 import { creerCercles, type ResultatCercle } from './cerclesCasino';
 import { creerBourse } from './bourseCasino';
+import { avatarCasino, tenue as tenueDe } from '../shared/tailleur';
 import { etal, PRIX_RELANCE, rafraichirMarche, RELANCES_MAX, valeurObjetMarche, type VueMarche } from '../shared/marche';
 import { ACTIONS_MAX, acheter, devisAchat, estAction, MONTANTS_ACHAT, produitVente, vendre, type VueBourse } from '../shared/bourse';
 import { cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type VueHotel } from '../shared/hotel';
@@ -169,6 +170,8 @@ export interface OptionsCasino {
 interface Porte {
   nom: string;
   avatar: number;
+  /** Le personnage du compte (sans tenue du Tailleur). */
+  avatarCompte: number;
   /** Solde à jour (ce qui est dans Firestore + ce qui attend d'y être écrit). */
   solde: number;
   enAttente: number;
@@ -551,7 +554,19 @@ export function creerCasino(options: OptionsCasino) {
       objets: objetsDifferents(e.collection),
       cadres: e.cadres,
       cadreChoisi: e.cadreChoisi,
+      tenues: e.tenues,
+      tenue: e.tenue,
     };
+  }
+
+  /** Nouvelle tenue portée : le personnage change partout au salon. */
+  function changerAvatarSalon(uid: string, p: Porte) {
+    p.avatar = avatarCasino(p.avatarCompte, p.salonJ);
+    p.salonAEcrire = true;
+    planifier(uid, p);
+    majRiche(uid, p);
+    cercles.majJoueur(uid, p.nom, p.avatar);
+    if (valeurCollection(p.salonJ.collection) > 0) majCollection(uid, p.nom, p.avatar, p.salonJ);
   }
 
   function vueHotel(uid: string, p: Porte): VueHotel {
@@ -892,6 +907,7 @@ export function creerCasino(options: OptionsCasino) {
           ecrituresEnVol: 0,
           nom: stats.nom || id.nom || '',
           avatar: stats.avatar,
+          avatarCompte: stats.avatar,
           solde: stats.casino?.solde ?? 0,
           enAttente: 0,
           record: 0,
@@ -929,6 +945,9 @@ export function creerCasino(options: OptionsCasino) {
         p.roue = c.roue;
         p.cadeaux = c.cadeaux ?? [];
       }
+      // Le Tailleur : au salon, on porte sa tenue (si on en a choisi une) à la place du personnage du compte.
+      p.avatarCompte = stats.avatar;
+      p.avatar = avatarCasino(stats.avatar, p.salonJ);
       if (valeurCollection(p.salonJ.collection) > 0) majCollection(id.uid, p.nom, p.avatar, p.salonJ);
       cercles.majJoueur(id.uid, p.nom, p.avatar);
       p.amis = [...(c?.amis ?? p.amis)];
@@ -1441,6 +1460,41 @@ export function creerCasino(options: OptionsCasino) {
       planifier(id.uid, p);
       repondre(rappel, { ok: true, marche: vueMarche(id.uid, p), casino: vue(id.uid) });
     });
+    // ----- Le Tailleur -----
+    socket.on('casino_tailleur_acheter', async (d: { n?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      if (p.occupe) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      const t = tenueDe(Number(d?.n));
+      const e = p.salonJ;
+      if (!t) return repondre(rappel, { ok: false, erreur: L('Tenue introuvable.', 'Outfit not found.') });
+      if (e.tenues.includes(t.n)) return repondre(rappel, { ok: false, erreur: L('Cette tenue est déjà à toi.', 'You already own this outfit.') });
+      if (t.monnaie === 'rubis') {
+        if (e.rubis < t.prix) return repondre(rappel, { ok: false, erreur: L(`Il te faut ${t.prix} rubis.`, `You need ${t.prix} rubies.`) });
+        e.rubis -= t.prix;
+      } else {
+        if (p.solde < t.prix) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant.', 'Not enough money.') });
+        mouvement(id.uid, p, -t.prix);
+      }
+      e.tenues = [...e.tenues, t.n];
+      e.tenue = t.n;
+      changerAvatarSalon(id.uid, p);
+      repondre(rappel, { ok: true, casino: vue(id.uid) });
+    });
+    socket.on('casino_tailleur_porter', async (d: { n?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      const n = d?.n === null ? null : Number(d?.n);
+      if (n !== null && !p.salonJ.tenues.includes(n)) return repondre(rappel, { ok: false, erreur: L('Tenue introuvable.', 'Outfit not found.') });
+      p.salonJ.tenue = n;
+      changerAvatarSalon(id.uid, p);
+      repondre(rappel, { ok: true, casino: vue(id.uid) });
+    });
+
     socket.on('casino_cadre_choisir', async (d: { cadre?: unknown } = {}, rappel?: Rappel) => {
       const id = await acces(rappel);
       if (!id) return;
