@@ -5,6 +5,11 @@
  * Une image oubliée ici se charge simplement à la demande, comme avant.
  */
 export const IMAGES_SALON = [
+  '/cartes/barre-bas-dock.webp',
+  '/cartes/barre-bas-eventail.webp',
+  '/cartes/casino-machines-affiche.webp',
+  '/cartes/casino-baron-wheel-affiche.webp',
+  '/cartes/casino-folle-nuit-affiche.webp',
   '/cartes/icone-riches.webp',
   '/cartes/barre-haut.webp',
   '/cartes/barre-bas.webp',
