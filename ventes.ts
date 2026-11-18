@@ -180,14 +180,15 @@ export function ajouterObjet(e: EtatSalonJoueur, objet: IdObjet, valeur: number)
   return { complete: false };
 }
 
-/** Cadres d'avatar spéciaux (au-dessus de ceux des niveaux). */
-export type CadreSpecial = 'collectionneur' | 'mecene';
+/** Cadres d'avatar spéciaux (au-dessus de ceux des niveaux) : gagnés (collectionneur, mécène) ou achetés au Marché noir. */
+export type CadreSpecial = string;
 export const CADRES_SPECIAUX: Record<CadreSpecial, [string, string]> = {
   collectionneur: ['Collectionneur', 'Collector'],
   mecene: ['Mécène', 'Patron'],
 };
-/** Le plus beau cadre spécial d'un joueur. */
-export const cadreSpecial = (cadres: readonly string[] | undefined): CadreSpecial | null => (cadres?.includes('mecene') ? 'mecene' : cadres?.includes('collectionneur') ? 'collectionneur' : null);
+/** Le cadre spécial porté : celui que le joueur a choisi, sinon le plus beau gagné, sinon le premier acheté. */
+export const cadreSpecial = (cadres: readonly string[] | undefined, choisi?: string | null): CadreSpecial | null =>
+  choisi && cadres?.includes(choisi) ? choisi : cadres?.includes('mecene') ? 'mecene' : cadres?.includes('collectionneur') ? 'collectionneur' : (cadres?.[0] ?? null);
 
 export function normaliserCollection(v: unknown): Collection {
   const c: Collection = {};

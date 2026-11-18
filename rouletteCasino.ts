@@ -113,6 +113,8 @@ export interface PlaceVueRoulette {
 
 export interface VueTableRoulette {
   code: string;
+  /** Table VIP du Penthouse (jetons et plafonds ×10). */
+  vip?: boolean;
   numero: number;
   phase: 'mises' | 'tirage' | 'resultat';
   /** Temps restant de la phase (ms) et sa durée. */

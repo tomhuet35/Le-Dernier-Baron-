@@ -7,6 +7,7 @@
  * Un joueur qui part laisse ses mises : elles sont jouées et payées quand même. Les bots misent un peu au hasard,
  * avec un argent illimité jamais enregistré.
  */
+import { FACTEUR_VIP } from '../shared/hotel';
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import { JETONS_ROULETTE, MAX_CASE_ROULETTE, MAX_TOUR_ROULETTE, MISES_ROULETTE, PLACES_ROULETTE, retourMise, SIMPLES, type JetonPoseRoulette, type VueTableRoulette } from '../shared/rouletteCasino';
@@ -64,6 +65,8 @@ interface Table {
   tirage: number | null;
   resultats: Map<string, number>;
   messages: { nom: string; texte: string }[];
+  /** Table VIP du Penthouse : jetons et plafonds multipliés par FACTEUR_VIP. */
+  vip: boolean;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -78,7 +81,9 @@ export function creerTablesRoulette(options: {
   tirage?: () => number;
   delais?: Partial<DelaisRoulette>;
   annoncer?: (a: AnnonceCasino) => void;
+  vipAutorise?: (uid: string) => boolean;
 }) {
+  const fv = (t: Table) => (t.vip ? FACTEUR_VIP : 1);
   const { io, banque } = options;
   const horloge = options.horloge ?? Date.now;
   const hasard = options.hasard ?? ((n: number) => randomInt(n));
@@ -106,6 +111,7 @@ export function creerTablesRoulette(options: {
       else groupes.set(k, { ...p });
     }
     return {
+      vip: t.vip,
       code: t.code,
       numero: t.numero,
       phase: t.etape,
@@ -184,7 +190,7 @@ export function creerTablesRoulette(options: {
             if (!tables.has(t.code) || !ouvertes(t) || !t.sieges.includes(s)) return;
             const choix = hasard(10);
             const cle = choix < 5 ? SIMPLES[hasard(SIMPLES.length)] : choix < 7 ? `douzaine-${1 + hasard(3)}` : choix < 8 ? `colonne-${1 + hasard(3)}` : PLEINS[hasard(PLEINS.length)];
-            const montant = JETONS_ROULETTE[hasard(3)];
+            const montant = JETONS_ROULETTE[hasard(3)] * fv(t);
             t.poses.push({ cle, montant, place: s.id });
             diffuser(t);
           }, quand),
@@ -302,15 +308,16 @@ export function creerTablesRoulette(options: {
     };
     let dernierMessage = 0;
 
-    socket.on('casino_rl_creer', async (data: { bots?: unknown } = {}, rappel?: Rappel) => {
+    socket.on('casino_rl_creer', async (data: { bots?: unknown; vip?: unknown } = {}, rappel?: Rappel) => {
       const id = await ctx.acces(rappel);
       if (!id) return;
       if (!ctx.enSalon(id.uid)) return repondre(rappel, { ok: false, erreur: 'Introuvable.' });
+      if (data?.vip === true && !options.vipAutorise?.(id.uid)) return repondre(rappel, { ok: false, erreur: ctx.L('Les tables VIP sont réservées aux membres du Penthouse (niveau 40).', 'VIP tables are for Penthouse members (level 40).') });
       if (liens.has(socket.id)) quitter(socket.id);
       let code = '';
       do code = Array.from({ length: 4 }, () => LETTRES[hasard(LETTRES.length)]).join('');
       while (tables.has(code));
-      const t: Table = { code, hote: '', sieges: [], etape: 'mises', fin: null, duree: null, minuterie: null, minuteriesBots: [], poses: [], precedentes: new Map(), historique: [], numero: 0, tirage: null, resultats: new Map(), messages: [] };
+      const t: Table = { code, hote: '', sieges: [], etape: 'mises', fin: null, duree: null, minuterie: null, minuteriesBots: [], poses: [], precedentes: new Map(), historique: [], numero: 0, tirage: null, resultats: new Map(), messages: [], vip: data?.vip === true };
       tables.set(code, t);
       const s = asseoir(t, socket, id);
       t.hote = s.id;
@@ -326,6 +333,7 @@ export function creerTablesRoulette(options: {
       if (!ctx.enSalon(id.uid)) return repondre(rappel, { ok: false, erreur: 'Introuvable.' });
       const t = tables.get(String(data?.code ?? '').toUpperCase());
       if (!t) return erreur(rappel, 'Cette table est fermée.', 'This table is closed.');
+      if (t.vip && !options.vipAutorise?.(id.uid)) return erreur(rappel, 'Les tables VIP sont réservées aux membres du Penthouse (niveau 40).', 'VIP tables are for Penthouse members (level 40).');
       const deja = t.sieges.some((s) => s.uid === id.uid);
       if (!deja && t.sieges.length >= PLACES_ROULETTE) return erreur(rappel, 'La table est complète.', 'The table is full.');
       const lien = liens.get(socket.id);
@@ -361,10 +369,11 @@ export function creerTablesRoulette(options: {
       if (!m) return;
       const cle = String(data?.cle ?? '');
       const montant = Number(data?.montant);
-      if (!MISES_ROULETTE.has(cle) || !JETONS_ROULETTE.includes(montant)) return erreur(rappel, 'Mise impossible.', 'Invalid bet.');
+      const f = fv(m.t);
+      if (!MISES_ROULETTE.has(cle) || !JETONS_ROULETTE.map((j) => j * f).includes(montant)) return erreur(rappel, 'Mise impossible.', 'Invalid bet.');
       const mes = posesDe(m.t, m.s.id);
-      if (total(mes.filter((p) => p.cle === cle)) + montant > MAX_CASE_ROULETTE) return erreur(rappel, 'Pas plus de 500 000 $ sur une même case.', 'No more than $500,000 on one spot.');
-      if (total(mes) + montant > MAX_TOUR_ROULETTE) return erreur(rappel, 'Pas plus de 1 000 000 $ par tour.', 'No more than $1,000,000 per spin.');
+      if (total(mes.filter((p) => p.cle === cle)) + montant > MAX_CASE_ROULETTE * f) return erreur(rappel, `Pas plus de ${(MAX_CASE_ROULETTE * f).toLocaleString('fr-FR')} $ sur une même case.`, `No more than $${(MAX_CASE_ROULETTE * f).toLocaleString('en-US')} on one spot.`);
+      if (total(mes) + montant > MAX_TOUR_ROULETTE * f) return erreur(rappel, `Pas plus de ${(MAX_TOUR_ROULETTE * f).toLocaleString('fr-FR')} $ par tour.`, `No more than $${(MAX_TOUR_ROULETTE * f).toLocaleString('en-US')} per spin.`);
       if (!banque.debiter(m.id.uid, montant)) return erreur(rappel, 'Solde insuffisant pour ce jeton.', 'Not enough money for this chip.');
       m.t.poses.push({ cle, montant, place: m.s.id });
       diffuser(m.t);
@@ -388,8 +397,9 @@ export function creerTablesRoulette(options: {
       const mes = posesDe(m.t, m.s.id);
       const parCase = new Map<string, number>();
       for (const p of [...mes, ...ajout]) parCase.set(p.cle, (parCase.get(p.cle) ?? 0) + p.montant);
-      if ([...parCase.values()].some((v) => v > MAX_CASE_ROULETTE)) return erreur(rappel, 'Pas plus de 500 000 $ sur une même case.', 'No more than $500,000 on one spot.');
-      if (total(mes) + total(ajout) > MAX_TOUR_ROULETTE) return erreur(rappel, 'Pas plus de 1 000 000 $ par tour.', 'No more than $1,000,000 per spin.');
+      const f = fv(m.t);
+      if ([...parCase.values()].some((v) => v > MAX_CASE_ROULETTE * f)) return erreur(rappel, `Pas plus de ${(MAX_CASE_ROULETTE * f).toLocaleString('fr-FR')} $ sur une même case.`, `No more than $${(MAX_CASE_ROULETTE * f).toLocaleString('en-US')} on one spot.`);
+      if (total(mes) + total(ajout) > MAX_TOUR_ROULETTE * f) return erreur(rappel, `Pas plus de ${(MAX_TOUR_ROULETTE * f).toLocaleString('fr-FR')} $ par tour.`, `No more than $${(MAX_TOUR_ROULETTE * f).toLocaleString('en-US')} per spin.`);
       if (!banque.debiter(m.id.uid, total(ajout))) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
       for (const a of ajout) m.t.poses.push({ ...a, place: m.s.id });
       diffuser(m.t);
@@ -439,7 +449,7 @@ export function creerTablesRoulette(options: {
 
   /** Les tables ouvertes, pour l'accueil du salon. */
   const resume = (): ResumeTableBJ[] =>
-    [...tables.values()].map((t) => ({ code: t.code, joueurs: t.sieges.filter((s) => !s.parti).map((s) => ({ nom: s.nom, avatar: s.avatar, bot: s.bot })), max: PLACES_ROULETTE }));
+    [...tables.values()].map((t) => ({ code: t.code, vip: t.vip, joueurs: t.sieges.filter((s) => !s.parti).map((s) => ({ nom: s.nom, avatar: s.avatar, bot: s.bot })), max: PLACES_ROULETTE }));
 
   /** La table où ce téléphone est assis (pour inviter des amis). */
   const tableDe = (socketId: string) => liens.get(socketId)?.code ?? null;

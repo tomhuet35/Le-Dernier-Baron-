@@ -81,7 +81,7 @@
 /* ---------- Le Penthouse ---------- */
 .ht-penthouse { display: grid; gap: 12px; }
 .ht-champagne, .ht-vip { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--or-vif); background: linear-gradient(180deg, rgba(60, 1, 7, 0.88), rgba(22, 16, 12, 0.94)); box-shadow: 0 0 20px rgba(231, 194, 122, 0.25); }
-.ht-champagne img { width: 64px; height: 64px; object-fit: contain; }
+.ht-champagne > img { width: 64px; height: 64px; object-fit: contain; }
 .ht-champagne > span { flex: 1; display: grid; gap: 4px; }
 .ht-champagne strong, .ht-vip strong { font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 18px; }
 .ht-vip { display: grid; gap: 4px; border-style: dashed; box-shadow: none; }
@@ -97,3 +97,7 @@
 }
 .ht-ligne { display: flex; align-items: center; gap: 10px; }
 .ht-ligne > .ht-bandeau { flex: 1; min-width: 0; }
+.ht-vip-boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.ht-vip-table { position: relative; display: grid; padding: 0; overflow: hidden; border-radius: 12px; border: 2px solid var(--or-vif); aspect-ratio: 4 / 3; box-shadow: 0 0 16px rgba(231, 194, 122, 0.35); }
+.ht-vip-table img { width: 100%; height: 100%; object-fit: cover; }
+.ht-vip-table span { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 6px 6px; background: linear-gradient(transparent, rgba(10, 5, 3, 0.95) 55%); font-family: var(--titre); color: var(--or-vif); text-align: center; }

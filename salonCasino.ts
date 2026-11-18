@@ -57,6 +57,7 @@ import { semaineDe } from './classement';
 import { creerVentes } from './ventesCasino';
 import { creerCercles, type ResultatCercle } from './cerclesCasino';
 import { creerBourse } from './bourseCasino';
+import { etal, PRIX_RELANCE, rafraichirMarche, RELANCES_MAX, valeurObjetMarche, type VueMarche } from '../shared/marche';
 import { ACTIONS_MAX, acheter, devisAchat, estAction, MONTANTS_ACHAT, produitVente, vendre, type VueBourse } from '../shared/bourse';
 import { cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type VueHotel } from '../shared/hotel';
 import {
@@ -549,6 +550,7 @@ export function creerCasino(options: OptionsCasino) {
       dollarsDepannage: dollarsDepannage(niveauDe(p)),
       objets: objetsDifferents(e.collection),
       cadres: e.cadres,
+      cadreChoisi: e.cadreChoisi,
     };
   }
 
@@ -661,8 +663,13 @@ export function creerCasino(options: OptionsCasino) {
     sauver: () => sauverSalon(),
     echelle: options.echelleDefis,
   });
-  const tables = creerTablesBlackjack({ io, banque: banqueDe('blackjack'), horloge, delais: options.delaisTables, sabot: options.sabotBlackjack });
-  const roulettes = creerTablesRoulette({ io, banque: banqueDe('roulette'), horloge, delais: options.delaisRoulette, tirage: options.tirageRoulette, annoncer: (a) => annoncer(a) });
+  /** Les tables VIP : réservées aux membres du Penthouse. */
+  const vipAutorise = (uid: string) => {
+    const p = portes.get(uid);
+    return !!p && etageOuvert(niveauDe(p), 'penthouse');
+  };
+  const tables = creerTablesBlackjack({ io, banque: banqueDe('blackjack'), horloge, delais: options.delaisTables, sabot: options.sabotBlackjack, vipAutorise });
+  const roulettes = creerTablesRoulette({ io, banque: banqueDe('roulette'), horloge, delais: options.delaisRoulette, tirage: options.tirageRoulette, annoncer: (a) => annoncer(a), vipAutorise });
   const coffres = creerCoffres({ banque: banqueDe('coffres'), hasard: options.hasardCoffres, placer: options.placerBadgesCoffres, annoncer: (a) => annoncer(a) });
   const show = creerShowFolleNuit({ io, banque: banqueDe('folleNuit'), horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, annoncer: (a) => annoncer(a) });
   const couronne = creerVolCouronne({ io, banque: banqueDe('couronne'), horloge, delais: options.delaisCouronne, k: options.kCouronne, tirage: options.tirageCouronne, annoncer: (a) => annoncer(a) });
@@ -679,10 +686,10 @@ export function creerCasino(options: OptionsCasino) {
   // Salle des ventes et Bureau du Baron (shared/ventes.ts, server/ventesCasino.ts)
 
   /** La plus belle collection : la fiche d'un joueur (retirée s'il n'a plus rien). */
-  function majCollection(uid: string, nom: string, avatar: number, e: { collection: Parameters<typeof valeurCollection>[0]; cadres: string[] }) {
+  function majCollection(uid: string, nom: string, avatar: number, e: { collection: Parameters<typeof valeurCollection>[0]; cadres: string[]; cadreChoisi?: string | null }) {
     const valeur = valeurCollection(e.collection);
     if (valeur <= 0) return void collections.delete(uid);
-    collections.set(uid, { uid, nom, avatar, valeur, objets: objetsDifferents(e.collection), cadre: cadreSpecial(e.cadres) });
+    collections.set(uid, { uid, nom, avatar, valeur, objets: objetsDifferents(e.collection), cadre: cadreSpecial(e.cadres, e.cadreChoisi) });
     sauverSalon();
   }
   const classementCollections = () => [...collections.values()].sort((a, b) => b.valeur - a.valeur).slice(0, 10);
@@ -1286,7 +1293,7 @@ export function creerCasino(options: OptionsCasino) {
         niveau: fiche.niveau,
         collection: normaliserCollection(fiche.salon.collection),
         valeur: valeurCollection(fiche.salon.collection),
-        cadre: cadreSpecial(fiche.salon.cadres),
+        cadre: cadreSpecial(fiche.salon.cadres, fiche.salon.cadreChoisi),
         moi: cible === id.uid,
         classement: classementCollections(),
       };
@@ -1372,6 +1379,80 @@ export function creerCasino(options: OptionsCasino) {
       if (horloge() - dernierMessage < 800) return repondre(rappel, { ok: false, erreur: L('Doucement !', 'Slow down!') });
       dernierMessage = horloge();
       void actionCercle(rappel, (id, p) => cercles.message(qui(id, p), d?.texte));
+    });
+
+    // ----- Le Marché noir -----
+    const vueMarche = (uid: string, p: Porte): VueMarche => {
+      const e = p.salonJ;
+      const t = horloge();
+      if (rafraichirMarche(e, jourParis(t))) (p.salonAEcrire = true), planifier(uid, p);
+      const articles = etal(uid, e.marche.jour, e.marche.relances, niveauDe(p)).map((a, i) => ({
+        ...a,
+        achete: e.marche.achats.includes(i),
+        possede: a.type === 'cadre' ? e.cadres.includes(a.cadre) : false,
+      }));
+      return { articles, relances: RELANCES_MAX - e.marche.relances, fin: lendemainParis(t), cadres: e.cadres, cadreChoisi: e.cadreChoisi };
+    };
+    socket.on('casino_marche', async (_d: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      repondre(rappel, { ok: true, marche: vueMarche(id.uid, p) });
+    });
+    socket.on('casino_marche_acheter', async (d: { index?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      const v = vueMarche(id.uid, p);
+      const i = Number(d?.index);
+      const a = v.articles[i];
+      const e = p.salonJ;
+      if (!a) return repondre(rappel, { ok: false, erreur: L('Article introuvable.', 'Item not found.') });
+      if (a.achete) return repondre(rappel, { ok: false, erreur: L('Tu as déjà acheté cet article aujourd’hui.', 'You already bought this item today.') });
+      if (a.possede) return repondre(rappel, { ok: false, erreur: L('Tu as déjà ce cadre.', 'You already own this frame.') });
+      if (e.rubis < a.prix) return repondre(rappel, { ok: false, erreur: L(`Il te faut ${a.prix} rubis.`, `You need ${a.prix} rubies.`) });
+      e.rubis -= a.prix;
+      e.marche = { ...e.marche, achats: [...e.marche.achats, i] };
+      if (a.type === 'cadre') {
+        e.cadres = [...e.cadres, a.cadre];
+        e.cadreChoisi = a.cadre;
+      } else if (a.type === 'objet') {
+        ajouterObjet(e, a.objet, valeurObjetMarche(a.objet));
+      } else mouvement(id.uid, p, a.dollars);
+      if (a.type !== 'mallette') majCollection(id.uid, p.nom, p.avatar, e);
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, marche: vueMarche(id.uid, p), casino: vue(id.uid) });
+    });
+    socket.on('casino_marche_relancer', async (_d: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      vueMarche(id.uid, p);
+      const e = p.salonJ;
+      if (e.marche.relances >= RELANCES_MAX) return repondre(rappel, { ok: false, erreur: L('Le receleur n’a plus rien d’autre aujourd’hui.', 'The fence has nothing else today.') });
+      if (e.rubis < PRIX_RELANCE) return repondre(rappel, { ok: false, erreur: L(`Il te faut ${PRIX_RELANCE} rubis.`, `You need ${PRIX_RELANCE} rubies.`) });
+      e.rubis -= PRIX_RELANCE;
+      e.marche = { ...e.marche, relances: e.marche.relances + 1, achats: [] };
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, marche: vueMarche(id.uid, p), casino: vue(id.uid) });
+    });
+    socket.on('casino_cadre_choisir', async (d: { cadre?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      const c = d?.cadre;
+      if (c !== null && (typeof c !== 'string' || !p.salonJ.cadres.includes(c))) return repondre(rappel, { ok: false, erreur: L('Cadre introuvable.', 'Frame not found.') });
+      p.salonJ.cadreChoisi = c;
+      majCollection(id.uid, p.nom, p.avatar, p.salonJ);
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, marche: vueMarche(id.uid, p), casino: vue(id.uid) });
     });
 
     // ----- La Bourse de 1929 -----

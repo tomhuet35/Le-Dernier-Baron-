@@ -1,0 +1,34 @@
+/* Le Marché noir : la ruelle, le receleur, l'étal, les cadres. */
+.mn-ecran { position: relative; }
+.mn-ecran::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(8, 4, 3, 0.35), rgba(8, 4, 3, 0.9) 55%), url('/cartes/marche-noir-fond.webp') center / cover no-repeat, var(--nuit); }
+.mn-ruelle { display: flex; align-items: flex-end; gap: 8px; min-height: 200px; }
+.mn-receleur { width: 42%; max-width: 220px; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.8)); animation: mn-arrive 0.6s ease-out both; }
+.mn-bulle { position: relative; flex: 1; margin: 0 0 28%; padding: 12px 14px; border-radius: 14px; background: rgba(22, 16, 12, 0.94); border: 1px solid var(--or); font-family: var(--titre); color: var(--creme); }
+.mn-bulle small { display: block; margin-top: 6px; font-family: var(--texte); font-size: 12px; color: var(--creme-doux); }
+.mn-etal { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.mn-article { display: grid; justify-items: center; gap: 4px; padding: 12px 10px; border-radius: 16px; text-align: center; border: 1px solid var(--or); background: linear-gradient(180deg, rgba(60, 1, 7, 0.9), rgba(22, 16, 12, 0.95)); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.6); animation: ct-arrive 0.4s both ease-out; }
+.mn-visuel { display: grid; place-items: center; width: 100%; aspect-ratio: 1; max-width: 120px; }
+.mn-visuel img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); }
+.mn-article strong { font-family: var(--titre); font-weight: 400; color: var(--or-vif); line-height: 1.15; }
+.mn-article small { font-size: 12px; color: var(--creme-doux); }
+.mn-acheter { margin-top: 4px; min-width: 90px; display: inline-flex; justify-content: center; }
+.mn-article.fini { opacity: 0.6; filter: saturate(0.6); }
+.mn-relancer { justify-self: center; display: inline-flex; align-items: center; gap: 6px; }
+.mn-relancer small { font-size: 12px; opacity: 0.8; }
+.mn-cadres { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--or); background: rgba(22, 16, 12, 0.92); }
+.mn-cadres h2 { margin: 0; font-family: var(--titre); font-weight: 400; color: var(--or-vif); font-size: 18px; }
+.mn-cadres ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.mn-cadres button { display: grid; justify-items: center; gap: 4px; padding: 8px; border-radius: 12px; border: 1px solid var(--filet); background: var(--nuit-3); min-width: 82px; }
+.mn-cadres button.choisi { border-color: var(--or-vif); box-shadow: 0 0 0 2px var(--or-vif) inset; }
+.mn-cadres small { font-size: 11px; white-space: nowrap; }
+.mn-confirme p { margin: 0 0 10px; font-family: var(--titre); font-size: 20px; color: var(--or-vif); text-align: center; }
+@keyframes mn-arrive { from { opacity: 0; transform: translateX(-30px); } }
+@media (min-width: 640px) { .mn-etal { grid-template-columns: repeat(4, 1fr); } }
+
+/* Les cadres rares du receleur (s'ajoutent aux cadres spéciaux de bureau.css). */
+.cs-avatar.special-nuit { --anneau: conic-gradient(from 0deg, #0b1a4a, #c9d6ff, #1b2f7a, #fff8dc, #0b1a4a); --lueur: rgba(140, 170, 255, 0.6); }
+.cs-avatar.special-jazz { --anneau: conic-gradient(from 0deg, #3d1260, #e7c27a, #6a1fa3, #fff1c4, #3d1260); --lueur: rgba(199, 125, 255, 0.55); }
+.cs-avatar.special-diamant { --anneau: conic-gradient(from 0deg, #101010, #e8f4ff, #3a3a3a, #ffffff, #101010); --lueur: rgba(220, 240, 255, 0.7); }
+.cs-avatar.special-prohibition { --anneau: conic-gradient(from 0deg, #4a2a10, #c98a4b, #2a1408, #e9c27a, #4a2a10); --lueur: rgba(201, 138, 75, 0.55); }
+.cs-avatar.special-velours { --anneau: conic-gradient(from 0deg, #4a0610, #ff4d6d, #7a0d1c, #ffd0d8, #4a0610); --lueur: rgba(255, 77, 109, 0.6); }
+.cs-avatar.special-neon { --anneau: conic-gradient(from 0deg, #ffb300, #fff1c4, #ff6d00, #ffe08a, #ffb300); --lueur: rgba(255, 200, 60, 0.85); }

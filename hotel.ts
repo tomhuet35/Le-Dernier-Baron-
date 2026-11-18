@@ -28,6 +28,8 @@ export const ETAGES: { id: Etage; nom: [string, string]; numero: [string, string
 export const etage = (id: Etage) => ETAGES.find((e) => e.id === id)!;
 export const etageDuJeu = (jeu: JeuCasino): Etage => ETAGES.find((e) => e.jeux.includes(jeu))?.id ?? 'bar';
 export const etageOuvert = (niveau: number, id: Etage) => niveau >= etage(id).niveau;
+/** Les tables VIP du Penthouse : mises et jetons multipliés par 10. */
+export const FACTEUR_VIP = 10;
 export const jeuOuvert = (niveau: number, jeu: JeuCasino) => etageOuvert(niveau, etageDuJeu(jeu));
 
 // ---------------------------------------------------------------------------------------------------------------

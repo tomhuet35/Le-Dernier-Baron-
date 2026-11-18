@@ -347,7 +347,7 @@ export function BandeauHappyHour({ vue }: { vue: VueCasino }) {
 // ---------------------------------------------------------------------------------------------------------------
 // Le Penthouse
 
-export function Penthouse({ vue, appel, onVue }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void }) {
+export function Penthouse({ vue, appel, onVue, onVip }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onVip?: (j: 'blackjack' | 'roulette') => void }) {
   const [recu, setRecu] = useState<CadeauSemaine | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const champagne = vue.hotel?.champagne ?? null;
@@ -374,8 +374,18 @@ export function Penthouse({ vue, appel, onVue }: { vue: VueCasino; appel: Appel;
         )}
       </section>
       <section className="ht-vip">
-        <strong>{tr('Les tables VIP', 'The VIP tables')}</strong>
-        <p className="discret">{tr('Blackjack et roulette aux mises dix fois plus hautes : bientôt au Penthouse.', 'Blackjack and roulette with ten times higher stakes: coming soon to the Penthouse.')}</p>
+        <strong>★ {tr('Les tables VIP', 'The VIP tables')}</strong>
+        <p className="discret">{tr('Blackjack et roulette aux mises dix fois plus hautes, entre membres du Penthouse.', 'Blackjack and roulette with ten times higher stakes, among Penthouse members.')}</p>
+        <div className="ht-vip-boutons">
+          <button type="button" className="ht-vip-table" onClick={() => onVip?.('blackjack')}>
+            <img src="/cartes/casino-blackjack.webp" alt="" />
+            <span>Blackjack VIP</span>
+          </button>
+          <button type="button" className="ht-vip-table" onClick={() => onVip?.('roulette')}>
+            <img src="/cartes/casino-roulette.webp" alt="" />
+            <span>{tr('Roulette VIP', 'VIP Roulette')}</span>
+          </button>
+        </div>
       </section>
     </div>
   );
