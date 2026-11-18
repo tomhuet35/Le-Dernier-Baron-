@@ -92,6 +92,7 @@ export const IMAGES_JEUX = [
   '/cartes/avatar-18.webp',
   '/cartes/avatar-19.webp',
   '/cartes/avatar-20.webp',
+  '/cartes/avatar-21.webp',
   '/cartes/receleur.webp',
   '/cartes/marche-noir-fond.webp',
   '/cartes/malle.webp',

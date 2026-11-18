@@ -50,7 +50,7 @@ Le jeu est en français et en anglais : il suit la langue du téléphone, et Ré
 
 **Le Marché noir** (Salon privé) : chaque jour, un étal de 4 articles payés en rubis, propre à chaque joueur : deux cadres d'avatar rares (40 rubis), un objet de collection pour le bureau (2,5 fois sa mise de départ en rubis) et une mallette de dollars (8 rubis). Il change à minuit (heure de Paris) ; on peut le relancer 3 fois par jour pour 5 rubis. Le joueur choisit le cadre qu'il porte parmi ceux gagnés ou achetés. Réglages dans `shared/marche.ts`.
 
-**Le Tailleur du Baron** (Salon privé) : une boutique de 11 tenues, chacune un personnage complet (images `avatar-10` à `avatar-20`). Tenues de ville à 50 M$, de soirée à 500 M$, de prestige à 150 rubis (la Baronne : 300). Une tenue achetée se porte au salon à la place du personnage du compte (tables, classements, cercles, défis) ; on peut revenir à son personnage habituel. Réglages dans `shared/tailleur.ts`.
+**Le Tailleur du Baron** (Salon privé) : une boutique de 12 tenues, chacune un personnage complet (images `avatar-10` à `avatar-21`). Tenues de ville à 50 M$, de soirée à 500 M$, de prestige à 150 rubis (la Baronne : 300). Une tenue achetée se porte au salon à la place du personnage du compte (tables, classements, cercles, défis) ; on peut revenir à son personnage habituel. Réglages dans `shared/tailleur.ts`.
 
 **Regarder un ami jouer** : dans la liste d'amis, le bouton « Regarder » apparaît quand un ami est en pleine partie (sauf le tutoriel). Le spectateur suit la partie depuis la place de son ami, sans jamais recevoir de carte en main ni les annonces avant leur révélation ; il lit le chat sans écrire. Les joueurs voient qui regarde (pastille 👁 sur le tapis), 10 spectateurs au plus par table.
 

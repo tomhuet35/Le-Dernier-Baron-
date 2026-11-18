@@ -1,6 +1,6 @@
 /**
  * Le Tailleur du Baron (Grand Hôtel du Baron) : une boutique de tenues pour le salon. Chaque tenue est un personnage
- * complet (images cartes/avatar-10.webp à avatar-20.webp) qu'on achète une fois, puis qu'on porte au salon à la place
+ * complet (images cartes/avatar-10.webp à avatar-21.webp) qu'on achète une fois, puis qu'on porte au salon à la place
  * de son personnage habituel (tables, classements, cercles, défis…). Tenues de ville et de soirée en dollars, tenues
  * de prestige en rubis. On peut toujours revenir à son personnage habituel.
  */
@@ -23,6 +23,7 @@ export const TENUES: Tenue[] = [
   { n: 14, nom: ['La Meneuse de revue', 'The Showgirl'], gamme: 'soiree', prix: 500_000_000, monnaie: 'dollars' },
   { n: 15, nom: ['Le Pianiste', 'The Pianist'], gamme: 'soiree', prix: 500_000_000, monnaie: 'dollars' },
   { n: 16, nom: ['L’Héritière', 'The Heiress'], gamme: 'soiree', prix: 500_000_000, monnaie: 'dollars' },
+  { n: 21, nom: ['Le Crooner', 'The Crooner'], gamme: 'soiree', prix: 500_000_000, monnaie: 'dollars' },
   { n: 17, nom: ['Le Parrain', 'The Don'], gamme: 'prestige', prix: 150, monnaie: 'rubis' },
   { n: 18, nom: ['L’Espionne', 'The Spy'], gamme: 'prestige', prix: 150, monnaie: 'rubis' },
   { n: 19, nom: ['Le Magicien', 'The Magician'], gamme: 'prestige', prix: 150, monnaie: 'rubis' },
