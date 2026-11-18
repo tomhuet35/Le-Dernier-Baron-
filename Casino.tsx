@@ -45,13 +45,16 @@ import { JeuCourse } from './CasinoCourse';
 import { BandeauOuvertureBW, JeuBaronWheel } from './CasinoBaronWheel';
 import { BandeauAffiche, PuceAffiche } from './CasinoAffiche';
 import { BarreXp, CadreAvatar, CelebrationNiveau, EcranAmis, EcranDefis, EcranProfil, PuceDefi, texteDefi, texteSocial, type FeteNiveau } from './CasinoSocial';
-import { titreCasino, type JeuCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
+import { JEUX_CASINO, type JeuCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
 import { MachineNuits } from './CasinoNuits';
-import { AnnoncesContrats, BoutonsHotel, EcranAlbum, EcranContrats } from './CasinoContrats';
-import { AnnoncesVentes, BoutonsVentes, EcranBureau, EcranVentes } from './CasinoBureau';
+import { AnnoncesContrats, EcranAlbum, EcranContrats } from './CasinoContrats';
+import { AnnoncesVentes, EcranBureau, EcranVentes } from './CasinoBureau';
 import { cadreSpecial, type VueVentes } from '../../shared/ventes';
-import { AccueilGroom, AnnoncesHotel, BandeauHappyHour, BandeauSemaine, CarteDeMembre, EtageFerme, FenetreSemaine, HotelVue, Penthouse } from './CasinoHotel';
-import { etage, etageDuJeu, etageOuvert, type Etage } from '../../shared/hotel';
+import { AccueilGroom, AnnoncesHotel, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, Penthouse } from './CasinoHotel';
+import { etage, etageDuJeu, etageOuvert, ETAGES, type Etage } from '../../shared/hotel';
+import { MORCEAUX_PAGE, morceauxDe } from '../../shared/contrats';
+import { Depannage } from './CasinoContrats';
+import './accueil.css';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
 import type { EtatCompte } from './Profil';
@@ -1381,7 +1384,7 @@ function FenetreTables({ jeu, vue, appel, onTable, onVue, onFermer }: { jeu: Jeu
   );
 }
 
-/** Les jeux de chaque étage de l'hôtel (vignettes du salon). */
+/** Les jeux de chaque étage de l'hôtel (cartes de l'accueil). La Folle Nuit a sa propre carte, sur la scène. */
 const JEUX_ETAGE: Record<Etage, (typeof JEUX)[number]['id'][]> = {
   bar: ['machines', 'festin'],
   tables: ['blackjack', 'roulette', 'poker'],
@@ -1389,178 +1392,276 @@ const JEUX_ETAGE: Record<Etage, (typeof JEUX)[number]['id'][]> = {
   penthouse: [],
 };
 
-/** Un étage du Grand Hôtel : son décor et ses jeux. */
-function EcranEtage({ id, vue, appel, onVue, onRetour, onVignette, onFolleNuit, onBaronWheel }: { id: Etage; vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onRetour: () => void; onVignette: (id: (typeof JEUX)[number]['id']) => void; onFolleNuit: () => void; onBaronWheel: () => void }) {
-  const e = etage(id);
-  const solde = useSoldeAnime(vue.solde);
+/** Le solde en bref pour la barre du haut : 1,52 Md $, 48,3 M $ (en entier sous le million). */
+function dollarsCourt(n: number): string {
+  const f = (x: number, u: string, uEn: string) => tr(`${x.toLocaleString('fr-FR', { maximumFractionDigits: x < 10 ? 2 : 1 })} ${u} $`, `$${x.toLocaleString('en-US', { maximumFractionDigits: x < 10 ? 2 : 1 })}${uEn}`);
+  if (n >= 1e12) return f(n / 1e12, 'Bn', 'T');
+  if (n >= 1e9) return f(n / 1e9, 'Md', 'B');
+  if (n >= 1e6) return f(n / 1e6, 'M', 'M');
+  return dollars(n);
+}
+
+/** Un bouton du dock (en bas de l'accueil) : icône ronde, nom, pastille ou minuterie. */
+function BoutonDock({ icone, nom, pastille, info, onClick, rond = true }: { icone: ReactNode; nom: string; pastille?: number | string | null; info?: string | null; onClick: () => void; rond?: boolean }) {
   return (
-    <div className="cas-ecran ht-ecran-etage" style={{ '--fond-etage': `url(${e.image})` } as CSSProperties}>
-      <header className="cas-barre">
-        <button type="button" className="cas-retour" onClick={onRetour}>
-          ‹ {tr('Hall', 'Lobby')}
-        </button>
-        <h1>{tr(...e.nom)}</h1>
-        <span className="cas-solde-petit">{dollars(solde)}</span>
-      </header>
-      <p className="ht-etage-titre">
-        <small>{tr(...e.numero)}</small>
-      </p>
-      {id === 'scene' && (
-        <>
-          <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} />
-          <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} />
-        </>
-      )}
-      {id === 'penthouse' ? (
-        <Penthouse vue={vue} appel={appel} onVue={onVue} />
-      ) : (
-        <div className="cas-jeux">
-          {JEUX.filter((j) => JEUX_ETAGE[id].includes(j.id)).map((j) => (
-            <Vignette key={j.id} jeu={j} affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id} onOuvrir={j.id === 'poker' ? undefined : () => onVignette(j.id)} ruban={rubanJeu(j.id, vue)} />
-          ))}
-        </div>
-      )}
-      <div className="cas-pied">
-        <BoutonMusique />
-      </div>
-    </div>
+    <button type="button" className="ac-dock-bouton" onClick={onClick}>
+      <span className={`ac-dock-icone ${rond ? 'rond' : ''}`}>{icone}</span>
+      {!!pastille && <span className="pastille-nombre">{pastille}</span>}
+      {info && <span className="ac-dock-info">{info}</span>}
+      <span className="ac-dock-nom">{nom}</span>
+    </button>
   );
 }
 
-function Salon({
+/** L'icône de la roulette du salon (dessinée). */
+function IconeRoulette() {
+  return (
+    <svg className="bouton-roulette-icone" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="19.5" fill="#d2a85a" />
+      <circle cx="20" cy="20" r="17" fill="#1b120c" />
+      {CASES_ROUE_SALON.map((_, i) => {
+        const a1 = ((i * 45 - 90) * Math.PI) / 180;
+        const a2 = (((i + 1) * 45 - 90) * Math.PI) / 180;
+        const c = i === CASE_VERTE_SALON ? COULEURS_ROUE.vert : i % 2 ? COULEURS_ROUE.noir : COULEURS_ROUE.rouge;
+        return <path key={i} d={`M20 20 L${20 + 16 * Math.cos(a1)} ${20 + 16 * Math.sin(a1)} A16 16 0 0 1 ${20 + 16 * Math.cos(a2)} ${20 + 16 * Math.sin(a2)} Z`} fill={c} stroke="#e7c27a" strokeWidth="0.6" />;
+      })}
+      <circle cx="20" cy="20" r="5" fill="#d2a85a" />
+    </svg>
+  );
+}
+
+/** « À la une » : une seule annonce à la fois (cadeau, dépannage, jeu à l'affiche, spectacle en direct…), qui tourne. */
+function ALaUne({ elements }: { elements: { cle: string; contenu: ReactNode }[] }) {
+  const [i, setI] = useState(0);
+  const [pause, setPause] = useState(false);
+  const n = elements.length;
+  useEffect(() => {
+    if (n < 2 || pause) return;
+    const t = window.setInterval(() => setI((x) => (x + 1) % n), 6500);
+    return () => window.clearInterval(t);
+  }, [n, pause]);
+  if (!n) return null;
+  const k = i % n;
+  return (
+    <section className="ac-une" onPointerDown={() => setPause(true)}>
+      <div key={elements[k].cle} className="ac-une-contenu">
+        {elements[k].contenu}
+      </div>
+      {n > 1 && (
+        <div className="ac-une-points" role="tablist">
+          {elements.map((e, j) => (
+            <button key={e.cle} type="button" role="tab" aria-selected={j === k} aria-label={String(j + 1)} className={j === k ? 'actif' : ''} onClick={() => (setI(j), setPause(true))} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** L'accueil du salon : barre du haut, « À la une », les étages de l'hôtel et leurs jeux, le dock. */
+function Accueil({
   vue,
-  onRoue,
-  onMachines,
-  onBlackjack,
-  onRoulette,
+  appel,
+  onVue,
+  etageActif,
+  onEtage,
+  onVignette,
   onFolleNuit,
-  onFestin,
-  onCouronne,
-  onChute,
-  onCourse,
   onBaronWheel,
   onAffiche,
   onRafraichir,
   onCadeau,
   onCadeauFini,
-  onQuitter,
-  onProfil,
+  onRoue,
+  onSemaine,
+  onContrats,
+  onAlbum,
+  onVentes,
+  onBureau,
   onAmis,
   onDefis,
-  hotel,
-  immeuble,
+  onProfil,
+  onQuitter,
 }: {
   vue: VueCasino;
-  /** Grand Hôtel : l'hôtel en coupe et ses étages (à la place de la grille des jeux). */
-  immeuble?: ReactNode;
-  /** Grand Hôtel : rubis, contrats et album (sous les boutons du profil). */
-  hotel?: ReactNode;
-  onProfil: () => void;
-  onAmis: () => void;
-  onDefis: () => void;
-  onRoue: () => void;
-  onMachines: () => void;
-  onBlackjack: () => void;
-  onRoulette: () => void;
+  appel: Appel;
+  onVue: (v: VueCasino) => void;
+  etageActif: Etage;
+  onEtage: (e: Etage) => void;
+  onVignette: (id: (typeof JEUX)[number]['id']) => void;
   onFolleNuit: () => void;
-  onFestin: () => void;
-  onCouronne: () => void;
-  onChute: () => void;
-  onCourse: () => void;
   onBaronWheel: () => void;
-  /** Ouvrir le jeu à l'affiche ; relire le salon (le jeu à l'affiche a changé). */
   onAffiche: (j: JeuCasino) => void;
   onRafraichir: () => void;
   onCadeau: () => void;
   onCadeauFini: () => void;
+  onRoue: () => void;
+  onSemaine: () => void;
+  onContrats: () => void;
+  onAlbum: () => void;
+  onVentes: () => void;
+  onBureau: () => void;
+  onAmis: () => void;
+  onDefis: () => void;
+  onProfil: () => void;
   onQuitter: () => void;
 }) {
   const solde = useSoldeAnime(vue.solde);
-  const attente = useAttente(vue.roueProchaine);
+  const attenteRoue = useAttente(vue.roueProchaine);
+  const finVentes = useAttente(vue.ventes?.fin);
+  const [menu, setMenu] = useState(false);
+  const [riches, setRiches] = useState(false);
+  const niveau = vue.hotel?.niveau ?? vue.profil?.niveau ?? 1;
+  const c = vue.contrats;
+  const e = etage(etageActif);
+  const ouvert = etageOuvert(niveau, etageActif);
+
+  // À la une : seulement ce qui compte maintenant.
+  const une: { cle: string; contenu: ReactNode }[] = [];
+  if (vue.cadeau) une.push({ cle: `cadeau-${vue.cadeau.fin}`, contenu: <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} /> });
+  if (c?.depannage) une.push({ cle: 'depannage', contenu: <Depannage c={c} appel={appel} onVue={onVue} /> });
+  if (vue.affiche) une.push({ cle: `affiche-${vue.affiche.debut}`, contenu: <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} /> });
+  const hh = vue.hotel?.happyHour;
+  if (hh && (hh.enCours || hh.debut - Date.now() < 3 * 3_600_000)) une.push({ cle: 'happy', contenu: <BandeauHappyHour vue={vue} /> });
+  if (vue.baronWheel?.ouverture) une.push({ cle: 'ouverture-bw', contenu: <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} /> });
+  if (vue.folleNuit?.enDirect && etageOuvert(niveau, 'scene')) une.push({ cle: 'folle-nuit', contenu: <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} /> });
+
+  const restants = c ? c.jour.filter((x) => !x.fait).length : 0;
+  const pieces = c ? JEUX_CASINO.reduce((s, j) => s + morceauxDe(c.album[j]), 0) : 0;
+  const cartes = JEUX.filter((j) => JEUX_ETAGE[etageActif].includes(j.id));
+
   return (
-    <div className="cas-ecran cas-salon">
-      <header className="cas-barre">
-        <button type="button" className="cas-retour" onClick={onQuitter}>
-          ‹ {tr('Quitter', 'Leave')}
+    <div className="ac" style={{ '--fond-etage': `url(${e.image})` } as CSSProperties}>
+      <header className="ac-barre">
+        <button type="button" className="ac-moi" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
+          <CadreAvatar avatar={vue.avatar} niveau={niveau} taille={46} special={cadreSpecial(c?.cadres)} />
+          {vue.profil && <BarreXp xp={vue.profil.xp} xpNiveau={vue.profil.xpNiveau} xpSuivant={vue.profil.xpSuivant} fine />}
         </button>
-        <h1>{tr('Salon privé', 'Private lounge')}</h1>
-        <span className="cas-barre-vide" />
-      </header>
-      <button type="button" className="cas-tresor" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
-        {vue.profil ? <CadreAvatar avatar={vue.avatar} niveau={vue.profil.niveau} taille={62} special={cadreSpecial(vue.contrats?.cadres)} /> : <img className="cas-tresor-avatar" src={`/cartes/avatar-${vue.avatar}.webp`} alt="" />}
-        <div className="cs-tresor-niveau">
-          <small>{tr('Ton solde', 'Your balance')}</small>
-          <strong className="cas-solde">{dollars(solde)}</strong>
-          {vue.profil && (
-            <>
-              <small>
-                {tr(`Niveau ${vue.profil.niveau}`, `Level ${vue.profil.niveau}`)} · {tr(...titreCasino(vue.profil.niveau))}
-              </small>
-              <BarreXp xp={vue.profil.xp} xpNiveau={vue.profil.xpNiveau} xpSuivant={vue.profil.xpSuivant} fine />
-            </>
-          )}
+        <div className="ac-compteurs">
+          <span className="ac-compteur ac-rubis">
+            <img src="/cartes/rubis-icone.webp" alt={tr('Rubis', 'Rubies')} />
+            <b>{(c?.rubis ?? 0).toLocaleString(tr('fr-FR', 'en-US'))}</b>
+          </span>
+          <span className="ac-compteur ac-dollars">
+            <img src="/cartes/jeton-ivoire.webp" alt="$" />
+            <b title={dollars(solde)}>{dollarsCourt(solde)}</b>
+          </span>
         </div>
-      </button>
-      <div className="cs-boutons-salon">
-        <button type="button" onClick={onProfil}>
-          <strong>{tr('Profil', 'Profile')}</strong>
-          <small>{vue.profil ? tr(`Niv. ${vue.profil.niveau}`, `Lvl ${vue.profil.niveau}`) : '—'}</small>
+        <CarteDeMembre vue={vue} />
+        <button type="button" className="ac-menu" onClick={() => setMenu(true)} aria-label={tr('Menu du salon', 'Lounge menu')}>
+          <img src="/cartes/icone-menu.webp" alt="" />
         </button>
-        <button type="button" onClick={onAmis}>
-          <strong>{tr('Amis', 'Friends')}</strong>
-          <small>{tr('Envois, rejoindre', 'Gifts, join')}</small>
-          {!!vue.profil?.demandes && <span className="pastille-nombre">{vue.profil.demandes}</span>}
-        </button>
-        <button type="button" onClick={onDefis}>
-          <strong>{tr('Défis', 'Challenges')}</strong>
-          <small>{vue.profil?.defi ? tr('En cours !', 'Live!') : tr('1 contre 1', '1 vs 1')}</small>
-          {!!vue.profil?.invitations && <span className="pastille-nombre">{vue.profil.invitations}</span>}
-        </button>
-      </div>
-      {hotel}
-      {vue.cadeau && <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} />}
-      {vue.affiche && <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} />}
-      <button type="button" className={`cas-bouton-roue ${attente ? '' : 'prete'}`} onClick={onRoue}>
-        <svg className="bouton-roulette-icone" viewBox="0 0 40 40" aria-hidden="true">
-          <circle cx="20" cy="20" r="19.5" fill="#d2a85a" />
-          <circle cx="20" cy="20" r="17" fill="#1b120c" />
-          {CASES_ROUE_SALON.map((_, i) => {
-            const a1 = ((i * 45 - 90) * Math.PI) / 180;
-            const a2 = (((i + 1) * 45 - 90) * Math.PI) / 180;
-            const c = i === CASE_VERTE_SALON ? COULEURS_ROUE.vert : i % 2 ? COULEURS_ROUE.noir : COULEURS_ROUE.rouge;
-            return <path key={i} d={`M20 20 L${20 + 16 * Math.cos(a1)} ${20 + 16 * Math.sin(a1)} A16 16 0 0 1 ${20 + 16 * Math.cos(a2)} ${20 + 16 * Math.sin(a2)} Z`} fill={c} stroke="#e7c27a" strokeWidth="0.6" />;
-          })}
-          <circle cx="20" cy="20" r="5" fill="#d2a85a" />
-        </svg>
-        <span>
-          <strong>{tr('Roulette du salon', 'Lounge wheel')}</strong>
-          <small>{attente ? tr(`Prochain tour dans ${attente}`, `Next spin in ${attente}`) : tr('Jusqu’à 1 million de dollars !', 'Up to one million dollars!')}</small>
-        </span>
-        {!attente && <span className="pastille-nombre">1</span>}
-      </button>
-      {immeuble}
-      <p className="cas-gros-lot">
-        {tr('Gros lot du Bandit du Baron', 'Baron’s Bandit jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
-      </p>
-      {vue.riches.length > 0 && (
-        <section className="cas-riches">
-          <h2>{tr('Les plus riches du salon', 'Richest in the lounge')}</h2>
-          <ol>
-            {vue.riches.map((r, i) => (
-              <li key={`${i}-${r.nom}`} className={r.moi ? 'moi' : ''}>
-                <span className="cas-riche-rang">{i + 1}</span>
-                <CadreAvatar avatar={r.avatar} niveau={r.niveau ?? 1} taille={34} sansNiveau />
-                <span className="cas-riche-nom">{r.nom || tr('Créateur', 'Creator')}</span>
-                <strong>{dollars(r.solde)}</strong>
-              </li>
+      </header>
+
+      <ALaUne elements={une} />
+
+      <nav className="ac-etages" aria-label={tr('Les étages de l’hôtel', 'Hotel floors')}>
+        {ETAGES.map((x) => {
+          const o = etageOuvert(niveau, x.id);
+          return (
+            <button key={x.id} type="button" className={`ac-etage ${x.id === etageActif ? 'actif' : ''} ${o ? '' : 'fermee'}`} onClick={() => onEtage(x.id)} aria-pressed={x.id === etageActif}>
+              <img src={x.image} alt="" />
+              <span>{tr(...x.nom)}</span>
+              {!o && <small>🔒 {x.niveau}</small>}
+            </button>
+          );
+        })}
+      </nav>
+
+      <section className={`ac-scene ${ouvert ? '' : 'fermee'}`}>
+        <p className="ac-scene-titre">
+          <small>{tr(...e.numero)}</small> {tr(...e.nom)}
+          {!ouvert && <b> · {tr(`ouvre au niveau ${e.niveau}`, `opens at level ${e.niveau}`)}</b>}
+        </p>
+        {etageActif === 'penthouse' && ouvert ? (
+          <Penthouse vue={vue} appel={appel} onVue={onVue} />
+        ) : (
+          <div className="ac-cartes">
+            {etageActif === 'scene' && (
+              <div className="ac-carte-fn">
+                <BandeauFolleNuit vue={vue} onOuvrir={ouvert ? onFolleNuit : () => onEtage('scene')} />
+              </div>
+            )}
+            {cartes.map((j) => (
+              <div key={j.id} className="ac-carte">
+                <Vignette
+                  jeu={j}
+                  affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id}
+                  onOuvrir={j.id === 'poker' ? undefined : ouvert ? () => onVignette(j.id) : () => onEtage(etageActif)}
+                  ruban={ouvert ? rubanJeu(j.id, vue) : undefined}
+                />
+                {!ouvert && <span className="ac-cadenas">🔒</span>}
+              </div>
             ))}
-          </ol>
-        </section>
+            {etageActif === 'penthouse' && (
+              <div className="ac-carte ac-carte-penthouse">
+                <button type="button" onClick={() => onEtage('penthouse')}>
+                  <img src="/cartes/etage-penthouse.webp" alt="" />
+                  <span className="ac-cadenas">🔒</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        <p className="cas-gros-lot ac-gros-lot">
+          {tr('Gros lot du Bandit', 'Bandit jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
+        </p>
+      </section>
+
+      <nav className="ac-dock" aria-label={tr('Le salon', 'The lounge')}>
+        <BoutonDock icone={<IconeRoulette />} nom={tr('Roulette', 'Wheel')} pastille={attenteRoue ? null : 1} info={attenteRoue} onClick={onRoue} rond={false} />
+        <BoutonDock icone={<img src="/cartes/telegramme.webp" alt="" />} nom={tr('Semaine', 'Week')} pastille={vue.hotel?.semaine.cadeau ? 1 : null} info={vue.hotel ? `${vue.hotel.semaine.pris.length}/7` : null} onClick={onSemaine} />
+        <BoutonDock icone={<img src="/cartes/contrat-icone.webp" alt="" />} nom={tr('Contrats', 'Contracts')} pastille={restants || null} onClick={onContrats} />
+        <BoutonDock icone={<img src="/cartes/album-couverture.webp" alt="" />} nom={tr('Album', 'Album')} info={`${pieces}/${JEUX_CASINO.length * MORCEAUX_PAGE}`} onClick={onAlbum} />
+        <BoutonDock icone={<img src="/cartes/marteau-encheres.webp" alt="" />} nom={tr('Ventes', 'Auctions')} info={finVentes} onClick={onVentes} />
+        <BoutonDock icone={<img src="/cartes/objet-globe.webp" alt="" />} nom={tr('Bureau', 'Office')} info={c ? `${c.objets}/10` : null} onClick={onBureau} />
+        <BoutonDock icone={<img src="/cartes/icone-amis.webp" alt="" />} nom={tr('Amis', 'Friends')} pastille={vue.profil?.demandes || null} onClick={onAmis} rond={false} />
+        <BoutonDock icone={<img src="/cartes/icone-invitation.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
+        <BoutonDock icone={<img src="/cartes/icone-scores.webp" alt="" />} nom={tr('Riches', 'Richest')} onClick={() => setRiches(true)} rond={false} />
+      </nav>
+
+      {menu && (
+        <Fenetre titre={tr('Salon privé', 'Private lounge')} onFermer={() => setMenu(false)}>
+          <div className="ac-menu-liste">
+            <button type="button" onClick={() => (setMenu(false), onProfil())}>
+              <img src="/cartes/icone-profil.webp" alt="" /> {tr('Mon profil', 'My profile')}
+            </button>
+            <button type="button" onClick={() => (setMenu(false), onAmis())}>
+              <img src="/cartes/icone-amis.webp" alt="" /> {tr('Amis', 'Friends')}
+            </button>
+            <button type="button" onClick={() => (setMenu(false), onDefis())}>
+              <img src="/cartes/icone-invitation.webp" alt="" /> {tr('Défis', 'Challenges')}
+            </button>
+            <button type="button" onClick={() => (setMenu(false), onBureau())}>
+              <img src="/cartes/objet-globe.webp" alt="" /> {tr('Mon bureau', 'My office')}
+            </button>
+            <button type="button" onClick={() => (setMenu(false), setRiches(true))}>
+              <img src="/cartes/icone-scores.webp" alt="" /> {tr('Les plus riches', 'Richest players')}
+            </button>
+            <BoutonMusique />
+            <button type="button" className="ac-quitter" onClick={() => (setMenu(false), onQuitter())}>
+              ‹ {tr('Quitter le salon', 'Leave the lounge')}
+            </button>
+          </div>
+          <p className="cas-mention">{tr('Argent fictif, sans aucune valeur réelle.', 'Play money, with no real value.')}</p>
+        </Fenetre>
       )}
-      <div className="cas-pied">
-        <BoutonMusique />
-      </div>
-      <p className="cas-mention">{tr('Argent fictif, sans aucune valeur réelle.', 'Play money, with no real value.')}</p>
+      {riches && (
+        <Fenetre titre={tr('Les plus riches du salon', 'Richest in the lounge')} onFermer={() => setRiches(false)}>
+          <section className="cas-riches ac-riches">
+            <ol>
+              {vue.riches.map((r, i) => (
+                <li key={`${i}-${r.nom}`} className={r.moi ? 'moi' : ''}>
+                  <span className="cas-riche-rang">{i + 1}</span>
+                  <CadreAvatar avatar={r.avatar} niveau={r.niveau ?? 1} taille={34} sansNiveau />
+                  <span className="cas-riche-nom">{r.nom || tr('Créateur', 'Creator')}</span>
+                  <strong>{dollars(r.solde)}</strong>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </Fenetre>
+      )}
     </div>
   );
 }
@@ -1585,7 +1686,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'etage'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau'>('salon');
   /** Grand Hôtel : l'étage ouvert, l'étage fermé montré par le Groom, la Semaine du Baron. */
   const [etageActif, setEtageActif] = useState<Etage>('bar');
   const [etageFerme, setEtageFerme] = useState<Etage | null>(null);
@@ -1769,15 +1870,15 @@ export default function Casino({
     setEtageFerme(e);
     return true;
   };
+  /** Un étage de l'accueil ; un second appui sur un étage fermé fait venir le Groom. */
   const ouvrirEtage = (e: Etage) => {
-    if (!etageOuvert(niveauHotel, e)) return setEtageFerme(e);
+    if (e === etageActif && !etageOuvert(niveauHotel, e)) return setEtageFerme(e);
     setEtageActif(e);
-    setEcran('etage');
   };
-  /** Retour depuis un jeu : à son étage. */
+  /** Retour depuis un jeu : à l'accueil, sur l'étage du jeu. */
   const retourEtage = (j: JeuCasino) => {
     setEtageActif(etageDuJeu(j));
-    setEcran('etage');
+    setEcran('salon');
     void appel('casino_vue').then((r) => {
       const casino = (r as unknown as { casino?: VueCasino }).casino;
       if (r.ok && casino) setVue(casino);
@@ -1833,7 +1934,7 @@ export default function Casino({
     tableRef.current = null;
     setTable(null);
     setEtageActif('tables');
-    setEcran('etage');
+    setEcran('salon');
     await appel(`${EVT_TABLE[jeu]}_quitter`);
     const r = (await appel('casino_vue')) as { ok: boolean; casino?: VueCasino };
     if (r.ok && r.casino) setVue(r.casino);
@@ -1914,19 +2015,6 @@ export default function Casino({
     );
   else if (ecran === 'amis')
     contenu = <EcranAmis appel={appel} vue={vue} onVue={setVue} onRetour={retourSalon} onProfil={(uid) => ouvrirProfil(uid)} onRejoindre={(p) => void rejoindre(p)} onDefier={(uid) => ouvrirDefis(uid)} />;
-  else if (ecran === 'etage')
-    contenu = (
-      <EcranEtage
-        id={etageActif}
-        vue={vue}
-        appel={appel}
-        onVue={setVue}
-        onRetour={retourSalon}
-        onVignette={(j) => (j === 'blackjack' || j === 'roulette' ? setFenetreTables(j) : j !== 'poker' && setEcran(j))}
-        onFolleNuit={() => setEcran('folleNuit')}
-        onBaronWheel={() => setEcran('baronWheel')}
-      />
-    );
   else if (ecran === 'contrats') contenu = <EcranContrats vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'album') contenu = <EcranAlbum vue={vue} onRetour={retourSalon} />;
   else if (ecran === 'ventes') contenu = <EcranVentes vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} onBureau={() => ouvrirBureau(null)} />;
@@ -1942,42 +2030,28 @@ export default function Casino({
     );
   else
     contenu = (
-      <Salon
+      <Accueil
         vue={vue}
-        onRoue={() => setRoue(true)}
-        onMachines={() => setEcran('machines')}
-        onBlackjack={() => setFenetreTables('blackjack')}
-        onRoulette={() => setFenetreTables('roulette')}
+        appel={appel}
+        onVue={setVue}
+        etageActif={etageActif}
+        onEtage={ouvrirEtage}
+        onVignette={(j) => (j === 'blackjack' || j === 'roulette' ? setFenetreTables(j) : j !== 'poker' && setEcran(j))}
         onFolleNuit={() => setEcran('folleNuit')}
-        onFestin={() => setEcran('festin')}
-        onCouronne={() => setEcran('couronne')}
-        onChute={() => setEcran('chute')}
-        onCourse={() => setEcran('course')}
         onBaronWheel={() => setEcran('baronWheel')}
         onAffiche={ouvrirJeu}
         onRafraichir={rafraichirVue}
-        onProfil={() => ouvrirProfil(null)}
+        onCadeau={() => void recupererCadeau()}
+        onCadeauFini={rafraichirVue}
+        onRoue={() => setRoue(true)}
+        onSemaine={() => setSemaineOuverte(true)}
+        onContrats={() => setEcran('contrats')}
+        onAlbum={() => setEcran('album')}
+        onVentes={() => setEcran('ventes')}
+        onBureau={() => ouvrirBureau(null)}
         onAmis={() => setEcran('amis')}
         onDefis={() => ouvrirDefis()}
-        immeuble={<HotelVue vue={vue} onEtage={ouvrirEtage} />}
-        hotel={
-          <>
-            <div className="ht-ligne">
-              <CarteDeMembre vue={vue} />
-              <BandeauSemaine vue={vue} onOuvrir={() => setSemaineOuverte(true)} />
-            </div>
-            <BandeauHappyHour vue={vue} />
-            <BoutonsHotel vue={vue} appel={appel} onVue={setVue} onContrats={() => setEcran('contrats')} onAlbum={() => setEcran('album')} />
-            <BoutonsVentes vue={vue} onVentes={() => setEcran('ventes')} onBureau={() => ouvrirBureau(null)} />
-          </>
-        }
-        onCadeau={() => void recupererCadeau()}
-        onCadeauFini={() =>
-          void (async () => {
-            const r = (await appel('casino_vue')) as { ok: boolean; casino?: VueCasino };
-            if (r.ok && r.casino) setVue(r.casino);
-          })()
-        }
+        onProfil={() => ouvrirProfil(null)}
         onQuitter={() => onQuitter()}
       />
     );
