@@ -249,3 +249,11 @@
   .ac-etage::after { border-image-width: 5px 10px; }
   .ac-etage.actif::after { border-image-width: 10px 14px; }
 }
+
+/* Le jeu est posé dans #racine (760 px au plus) : l'accueil du salon sort de ce cadre pour prendre toute la largeur
+   de l'écran (iPad, ordinateur), centré, 1280 px au plus. */
+.ac { width: min(100vw, 1280px); margin-left: calc(50% - min(50vw, 640px)); }
+#racine:has(.ac) { padding-top: 0; padding-bottom: 0; }
+@media (min-width: 820px) and (min-aspect-ratio: 1 / 1) {
+  .ac-etage span { font-size: 14px; white-space: normal; line-height: 1.1; }
+}
