@@ -3,6 +3,7 @@
  * hour, le Groom et le Penthouse. Le serveur tient tout (shared/hotel.ts, server/salonCasino.ts).
  */
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { VueCasino } from '../../shared/casino';
 import { CARTES_MEMBRE, carteMembre, carteSuivante, COFFRE_COMPLET, ETAGES, etageOuvert, type AnnonceHotel, type CadeauSemaine, type Etage } from '../../shared/hotel';
 import type { Appel } from './App';
@@ -172,7 +173,9 @@ export function CarteDeMembre({ vue }: { vue: VueCasino }) {
       <button type="button" className="ht-carte-bouton" onClick={() => setOuverte(true)} aria-label={tr(...c.nom)}>
         <img src={`/cartes/carte-membre-${c.id}.webp`} alt="" />
       </button>
-      {ouverte && (
+      {ouverte &&
+        // Dans le corps de la page : la barre du haut (où est la carte) ne doit pas enfermer la fenêtre.
+        createPortal(
         <div className="voile" role="dialog" aria-modal="true" onClick={() => setOuverte(false)}>
           <div className="fenetre ht-carte-fenetre" onClick={(e) => e.stopPropagation()}>
             <img className="ht-carte-grande" src={`/cartes/carte-membre-${c.id}.webp`} alt={tr(...c.nom)} />
@@ -191,8 +194,9 @@ export function CarteDeMembre({ vue }: { vue: VueCasino }) {
               {tr('Fermer', 'Close')}
             </button>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </>
   );
 }

@@ -319,3 +319,26 @@
   .ac-dock-info { top: 52px; }
   .ac { --dock: calc(130px + env(safe-area-inset-bottom)); }
 }
+
+/* Le fond de l'écran : le décor de l'étage choisi (assombri pour que les cartes ressortent). */
+.ac::before, .ac::before { background: radial-gradient(120% 90% at 50% 40%, rgba(8, 4, 3, 0.35), rgba(8, 4, 3, 0.85)), var(--fond-etage) center / cover no-repeat, var(--nuit) !important; transition: background 0.4s; }
+
+/* La barre du haut ne crée plus de cadre pour les fenêtres (l'ombre passe par l'image elle-même). */
+.ac-barre { filter: none; }
+
+/* Les onglets d'étage : l'image numérotée en entier. */
+.ac-etage img { aspect-ratio: 16 / 9; object-fit: cover; }
+@media (min-width: 820px) and (min-aspect-ratio: 1 / 1) {
+  .ac-etages { grid-auto-rows: auto; align-content: center; }
+  .ac-etage img { height: auto; aspect-ratio: 16 / 9; }
+}
+
+/* L'étiquette « Grande ouverture » de la Roue reste lisible sur le velours. */
+.ac-une-carte .bw-bandeau-ouverture em { color: #3a1810 !important; }
+body > .voile { z-index: 200; }
+@media (min-width: 820px) and (min-aspect-ratio: 1 / 1) {
+  .ac { grid-template-columns: 176px minmax(0, 1fr); }
+  .ac-etages { gap: 18px; padding: 84px 16px; align-content: space-evenly; }
+  .ac-etage { padding: 6px 10px; }
+  .ac-etage span { font-size: 15px; bottom: 6px; }
+}
