@@ -3,8 +3,8 @@ import { etatSalonVide, normaliserEtatSalon } from '../shared/contrats';
 import { avatarCasino, TENUES, tenue } from '../shared/tailleur';
 
 describe('Le Tailleur', () => {
-  it('a 11 tenues aux numéros 10 à 20, en dollars puis en rubis', () => {
-    expect(TENUES.map((t) => t.n)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+  it('a 12 tenues aux numéros 10 à 21, en dollars puis en rubis', () => {
+    expect(TENUES.map((t) => t.n)).toEqual([10, 11, 12, 13, 14, 15, 16, 21, 17, 18, 19, 20]);
     expect(tenue(20)).toMatchObject({ monnaie: 'rubis', prix: 300 });
     expect(tenue(9)).toBeNull();
   });
