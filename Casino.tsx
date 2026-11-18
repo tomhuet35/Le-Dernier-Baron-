@@ -1556,8 +1556,8 @@ function Accueil({
           const o = etageOuvert(niveau, x.id);
           return (
             <button key={x.id} type="button" className={`ac-etage ${x.id === etageActif ? 'actif' : ''} ${o ? '' : 'fermee'}`} onClick={() => onEtage(x.id)} aria-pressed={x.id === etageActif}>
-              <img src={x.image} alt="" />
-              <span>{tr(...x.nom)}</span>
+              <img src={`/cartes/etage-onglet-${x.id}.webp`} alt="" />
+              <span>{x.id === 'penthouse' ? 'Penthouse' : tr(...x.nom)}</span>
               {!o && <small>🔒 {x.niveau}</small>}
             </button>
           );
