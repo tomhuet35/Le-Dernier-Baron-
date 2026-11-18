@@ -5,6 +5,8 @@
  * Une image oubliée ici se charge simplement à la demande, comme avant.
  */
 export const IMAGES_SALON = [
+  '/cartes/blason-lion.webp',
+  '/cartes/telescripteur.webp',
   '/cartes/icone-amis-dock.webp',
   '/cartes/etage-onglet-bar.webp',
   '/cartes/etage-onglet-tables.webp',
@@ -74,6 +76,24 @@ export const IMAGES_SALON = [
 ];
 
 export const IMAGES_JEUX = [
+  '/cartes/cercle-salon.webp',
+  '/cartes/cercle-cagnotte.webp',
+  '/cartes/blason-aigle.webp',
+  '/cartes/blason-rose.webp',
+  '/cartes/blason-pique.webp',
+  '/cartes/blason-serpent.webp',
+  '/cartes/blason-hibou.webp',
+  '/cartes/blason-cheval.webp',
+  '/cartes/blason-loup.webp',
+  '/cartes/bourse-salle.webp',
+  '/cartes/journal-krach.webp',
+  '/cartes/journal-hausse.webp',
+  '/cartes/action-wagons.webp',
+  '/cartes/action-champagne.webp',
+  '/cartes/action-petroles.webp',
+  '/cartes/action-radio.webp',
+  '/cartes/action-acier.webp',
+  '/cartes/action-diamants.webp',
   '/cartes/icone-boutique.webp',
   '/cartes/etage-bar.webp',
   '/cartes/etage-tables.webp',

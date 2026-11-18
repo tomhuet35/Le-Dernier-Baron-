@@ -49,6 +49,8 @@ import { JEUX_CASINO, type JeuCasino, type PositionCasino, type VueDefi } from '
 import { MachineNuits } from './CasinoNuits';
 import { AnnoncesContrats, EcranAlbum, EcranContrats } from './CasinoContrats';
 import { AnnoncesVentes, EcranBureau, EcranVentes } from './CasinoBureau';
+import { EcranCercles } from './CasinoCercles';
+import { EcranBourse } from './CasinoBourse';
 import { cadreSpecial, type VueVentes } from '../../shared/ventes';
 import { AccueilGroom, AnnoncesHotel, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, Penthouse } from './CasinoHotel';
 import { etage, etageDuJeu, etageOuvert, ETAGES, type Etage } from '../../shared/hotel';
@@ -1467,7 +1469,11 @@ function Accueil({
   onDefis,
   onProfil,
   onQuitter,
+  onCercles,
+  onBourse,
 }: {
+  onCercles: () => void;
+  onBourse: () => void;
   vue: VueCasino;
   appel: Appel;
   onVue: (v: VueCasino) => void;
@@ -1613,6 +1619,8 @@ function Accueil({
           <BoutonDock rond={false} icone={<img src="/cartes/icone-album.webp" alt="" />} nom={tr('Album', 'Album')} info={`${pieces}/${JEUX_CASINO.length * MORCEAUX_PAGE}`} onClick={onAlbum} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-ventes.webp" alt="" />} nom={tr('Ventes', 'Auctions')} info={finVentes} onClick={onVentes} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-bureau.webp" alt="" />} nom={tr('Bureau', 'Office')} info={c ? `${c.objets}/10` : null} onClick={onBureau} />
+          <BoutonDock icone={<img src="/cartes/blason-lion.webp" alt="" />} nom={tr('Cercles', 'Circles')} onClick={onCercles} rond={false} />
+          <BoutonDock icone={<img src="/cartes/telescripteur.webp" alt="" />} nom={tr('Bourse', 'Exchange')} onClick={onBourse} />
           <BoutonDock icone={<img src="/cartes/icone-amis-dock.webp" alt="" />} nom={tr('Amis', 'Friends')} pastille={vue.profil?.demandes || null} onClick={onAmis} rond={false} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-defis.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
           <BoutonDock icone={<img src="/cartes/icone-riches.webp" alt="" />} nom={tr('Riches', 'Richest')} onClick={() => setRiches(true)} rond={false} />
@@ -1685,7 +1693,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'cercles' | 'bourse'>('salon');
   /** Grand Hôtel : l'étage ouvert, l'étage fermé montré par le Groom, la Semaine du Baron. */
   const [etageActif, setEtageActif] = useState<Etage>('bar');
   const [etageFerme, setEtageFerme] = useState<Etage | null>(null);
@@ -2016,6 +2024,8 @@ export default function Casino({
     contenu = <EcranAmis appel={appel} vue={vue} onVue={setVue} onRetour={retourSalon} onProfil={(uid) => ouvrirProfil(uid)} onRejoindre={(p) => void rejoindre(p)} onDefier={(uid) => ouvrirDefis(uid)} />;
   else if (ecran === 'contrats') contenu = <EcranContrats vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'album') contenu = <EcranAlbum vue={vue} onRetour={retourSalon} />;
+  else if (ecran === 'cercles') contenu = <EcranCercles vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} />;
+  else if (ecran === 'bourse') contenu = <EcranBourse vue={vue} appel={appel} onVue={setVue} onRetour={retourSalon} />;
   else if (ecran === 'ventes') contenu = <EcranVentes vue={vue} appel={appel} moi={moi} onVue={setVue} onRetour={retourSalon} onBureau={() => ouvrirBureau(null)} />;
   else if (ecran === 'bureau')
     contenu = <EcranBureau key={bureauUid ?? 'moi'} uid={bureauUid} appel={appel} onRetour={retourSalon} onVentes={() => setEcran('ventes')} onProfil={(uid) => ouvrirProfil(uid === moi ? null : uid)} />;
@@ -2052,6 +2062,8 @@ export default function Casino({
         onDefis={() => ouvrirDefis()}
         onProfil={() => ouvrirProfil(null)}
         onQuitter={() => onQuitter()}
+        onCercles={() => setEcran('cercles')}
+        onBourse={() => setEcran('bourse')}
       />
     );
   return (
