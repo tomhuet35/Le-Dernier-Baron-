@@ -255,9 +255,7 @@ export function JeuTickets({ vue, appel, onVue, onRetour }: { vue: VueCasino; ap
       <section className="tk-scene">
         <div className={`tk-ticket tk-${modele} ${gagne ? 'gagne' : ''}`} style={{ '--tk-image': `url('/cartes/ticket-${modele}.webp')` } as CSSProperties}>
           <div className="tk-entete">
-            <small>{tr('Le Grand Hôtel du Baron', 'The Baron’s Grand Hotel')}</small>
             <strong>{tr(...infos.nom)}</strong>
-            <span>{tr(`Gros lot : ${dollars(infos.prix * infos.grosLot)}`, `Top prize: ${dollars(infos.prix * infos.grosLot)}`)}</span>
           </div>
           <div className="tk-zone">
             <div className="tk-grille">
@@ -273,8 +271,13 @@ export function JeuTickets({ vue, appel, onVue, onRetour }: { vue: VueCasino; ap
             </div>
             {ticket ? <Couche cle={ticket.id} decouvert={decouvert} onDecouvert={decouvrir} /> : <div className="tk-couche-vide">{tr('Achète un ticket pour gratter', 'Buy a ticket to scratch')}</div>}
           </div>
-          <p className="tk-regle">{tr('Trois montants identiques : tu gagnes ce montant. Le ×2 double le gain !', 'Three matching amounts: you win that amount. The ×2 doubles the win!')}</p>
         </div>
+        <p className="tk-regle">
+          {tr(
+            `Trois montants identiques : tu gagnes ce montant. Le ×2 double le gain ! Gros lot : ${dollars(infos.prix * infos.grosLot)}.`,
+            `Three matching amounts: you win that amount. The ×2 doubles the win! Top prize: ${dollars(infos.prix * infos.grosLot)}.`,
+          )}
+        </p>
 
         <div className="tk-bas" aria-live="polite">
           {ticket && decouvert ? (
