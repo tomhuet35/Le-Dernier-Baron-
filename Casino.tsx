@@ -54,8 +54,8 @@ import { EcranBourse } from './CasinoBourse';
 import { EcranMarche } from './CasinoMarche';
 import { EcranTailleur } from './CasinoTailleur';
 import { cadreSpecial, type VueVentes } from '../../shared/ventes';
-import { AccueilGroom, AnnoncesHotel, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, Penthouse } from './CasinoHotel';
-import { etage, etageDuJeu, etageOuvert, ETAGES, type Etage } from '../../shared/hotel';
+import { AccueilGroom, AnnoncesHotel, CadeauBienvenue, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, Penthouse } from './CasinoHotel';
+import { etage, etageDuJeu, etageOuvert, ETAGES, type CadeauSemaine, type Etage } from '../../shared/hotel';
 import { MORCEAUX_PAGE, morceauxDe } from '../../shared/contrats';
 import { Depannage } from './CasinoContrats';
 import './accueil.css';
@@ -1720,6 +1720,7 @@ export default function Casino({
   const [cibleDefi, setCibleDefi] = useState<string | null>(null);
   const [defis, setDefis] = useState<VueDefi[]>([]);
   const [fete, setFete] = useState<FeteNiveau | null>(null);
+  const [bienvenue, setBienvenue] = useState<CadeauSemaine | null>(null);
   const [toastSocial, setToastSocial] = useState<{ texte: string; vers: 'amis' | 'defis'; id: number } | null>(null);
   const minuterieToast = useRef(0);
   const moi = compte.uid ?? '';
@@ -1754,8 +1755,9 @@ export default function Casino({
 
   const entrer = useCallback(async () => {
     for (let essai = 0; essai < 4; essai++) {
-      const r = (await appel('casino_entrer')) as { ok: boolean; erreur?: string; casino?: VueCasino };
+      const r = (await appel('casino_entrer')) as { ok: boolean; erreur?: string; casino?: VueCasino; bienvenue?: CadeauSemaine };
       if (r.ok && r.casino) {
+        if (r.bienvenue) setBienvenue(r.bienvenue);
         if (!entreRef.current) jouerEffet('casino_entree');
         entreRef.current = true;
         setVue(r.casino);
@@ -2129,6 +2131,7 @@ export default function Casino({
           if (ecran === 'salon' || ecran === 'contrats' || ecran === 'album') setEcran(e);
         }}
       />
+      {bienvenue && <CadeauBienvenue cadeau={bienvenue} onFermer={() => setBienvenue(null)} />}
       {fete && vue && <CelebrationNiveau key={fete.id} fete={fete} avatar={vue.avatar} onFermer={() => setFete(null)} />}
     </div>
   );

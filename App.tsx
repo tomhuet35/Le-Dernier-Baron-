@@ -1,3 +1,4 @@
+import { CADEAU_COMPTE } from '../../shared/hotel';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS, NB_AVATARS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
@@ -638,6 +639,14 @@ function PorteCasino({ compte, entrer }: { compte: EtatCompte; entrer: () => voi
       </button>
     </div>
   );
+  const cadeauCompte = (
+    <p className="porte-cadeau">
+      🎁 {tr(
+        `Crée ton compte : ${CADEAU_COMPTE.dollars.toLocaleString('fr-FR')} $ et ${CADEAU_COMPTE.rubis} rubis offerts, et ta progression sur tous tes appareils.`,
+        `Create your account: $${CADEAU_COMPTE.dollars.toLocaleString('en-US')} and ${CADEAU_COMPTE.rubis} rubies free, and your progress on all your devices.`,
+      )}
+    </p>
+  );
   let contenu;
   if (!compte.pret || compte.chargement || (compte.utilisateur && !profil)) contenu = <p className="porte-info">{tr('Ouverture des portes…', 'Opening the doors…')}</p>;
   else if (!compte.actif) contenu = <p className="porte-info">{tr('Le casino est fermé pour le moment.', 'The casino is closed for now.')}</p>;
@@ -649,7 +658,7 @@ function PorteCasino({ compte, entrer }: { compte: EtatCompte; entrer: () => voi
         </button>
         <p className="porte-note">{tr('Ta progression est gardée sur cet appareil.', 'Your progress is kept on this device.')}</p>
         {liensCompte}
-        <p className="porte-note">{tr('Avec un compte, tu la retrouves sur tous tes appareils.', 'With an account, you get it back on all your devices.')}</p>
+        {cadeauCompte}
       </>
     );
   else
@@ -660,8 +669,9 @@ function PorteCasino({ compte, entrer }: { compte: EtatCompte; entrer: () => voi
         </button>
         {compte.invite ? (
           <>
-            <p className="porte-note">{tr('Tu joues en invité : ta progression est gardée sur cet appareil. Crée un compte pour l’emporter partout.', 'You are playing as a guest: your progress is kept on this device. Create an account to take it everywhere.')}</p>
+            <p className="porte-note">{tr('Tu joues en invité : ta progression est gardée sur cet appareil.', 'You are playing as a guest: your progress is kept on this device.')}</p>
             {liensCompte}
+            {cadeauCompte}
           </>
         ) : (
           <button type="button" className="porte-lien" onClick={() => void compte.module?.deconnecter()}>

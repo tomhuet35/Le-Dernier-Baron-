@@ -164,6 +164,8 @@ export interface EtatSalonJoueur {
   /** Le Tailleur : les tenues achetées (numéros d'avatar) et celle portée au salon (null : le personnage du compte). */
   tenues: number[];
   tenue: number | null;
+  /** Le cadeau de bienvenue du compte a été remis. */
+  bienvenue?: boolean;
 }
 
 /** Petit hasard reproductible (le même jour donne les mêmes contrats, même si le serveur redémarre). */
@@ -496,6 +498,7 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   e.cadreChoisi = typeof b.cadreChoisi === 'string' && e.cadres.includes(b.cadreChoisi) ? b.cadreChoisi : null;
   e.tenues = normaliserTenues(b.tenues);
   e.tenue = estTenue(b.tenue) && e.tenues.includes(b.tenue) ? b.tenue : null;
+  if (b.bienvenue === true) e.bienvenue = true;
   // L'album complet donne son cadre (comptes d'avant le cadre compris).
   if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;

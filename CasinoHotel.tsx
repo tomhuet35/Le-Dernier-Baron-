@@ -49,6 +49,20 @@ export function Groom({ pose, children, onFermer, action }: { pose: 'accueil' | 
 
 const CLE_ACCUEIL = 'baron-groom-accueil';
 /** Le premier passage à l'hôtel : le Groom accueille le joueur (une fois par téléphone). */
+/** Le cadeau de bienvenue du compte, remis par le Groom à la première entrée au salon. */
+export function CadeauBienvenue({ cadeau, onFermer }: { cadeau: CadeauSemaine; onFermer: () => void }) {
+  return (
+    <Groom pose="bravo" onFermer={onFermer}>
+      <strong>{tr('Bienvenue parmi les membres !', 'Welcome among the members!')}</strong>
+      <p>{tr('Le Baron t’offre ton cadeau de bienvenue :', 'The Baron offers you your welcome gift:')}</p>
+      <Gain c={cadeau} />
+      <button type="button" className="principal" onClick={onFermer}>
+        {tr('Merci, Baron !', 'Thank you, Baron!')}
+      </button>
+    </Groom>
+  );
+}
+
 export function AccueilGroom() {
   const [ouvert, setOuvert] = useState(() => {
     try {
