@@ -95,8 +95,13 @@ export function Symbole({ s, className }: { s: SymboleMachine; className?: strin
 
 const CASES_SALON: CaseRoue[] = CASES_ROUE_SALON.map((v, i) =>
   i === CASE_VERTE_SALON
-    ? { fond: COULEURS_ROUE.vert, lignes: ['1', 'MILLION'] }
-    : { fond: i % 2 ? COULEURS_ROUE.noir : COULEURS_ROUE.rouge, lignes: [v.toLocaleString(EN ? 'en-US' : 'fr-FR').replace(/\s/g, ' '), '$'], petit: true },
+    ? { fond: COULEURS_ROUE.vert, lignes: [String(v / 1_000_000), 'MILLIONS'] }
+    : {
+        fond: i % 2 ? COULEURS_ROUE.noir : COULEURS_ROUE.rouge,
+        // Les millions en court (« 1,5 M ») pour tenir dans la case.
+        lignes: v >= 1_000_000 ? [(v / 1_000_000).toLocaleString(EN ? 'en-US' : 'fr-FR'), 'M $'] : [v.toLocaleString(EN ? 'en-US' : 'fr-FR').replace(/\s/g, ' '), '$'],
+        petit: true,
+      },
 );
 
 function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
