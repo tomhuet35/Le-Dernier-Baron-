@@ -1,0 +1,28 @@
+/* Roulette du Baron : salle, feutre, croupier Victor, dolly, et la plongée sur la roue pendant le lancer. */
+.rl-ecran::before { content: ''; position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(10, 3, 3, 0.7), rgba(10, 3, 3, 0.86)), url('/cartes/rl-salle.webp') center / cover no-repeat, #120304; }
+.rl-tapis-zone { background: #4a0710 url('/cartes/rl-feutre.webp') center / 320px repeat !important; border-color: #8a6424 !important; }
+.rl-jeton-texte { font-family: system-ui, sans-serif; fill: #fff4d6; stroke: rgba(20, 6, 4, 0.92); }
+
+/* Victor : son buste et sa bulle. */
+.rl-croupier { position: relative; display: flex; align-items: flex-end; min-height: 92px; }
+.rl-croupier > img { width: 92px; height: auto; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.6)); transform-origin: 50% 100%; animation: bj2-respire 4.5s ease-in-out infinite; }
+.rl-croupier.parle > img { animation: rl-geste 0.6s ease-in-out 2, bj2-respire 4.5s 1.2s ease-in-out infinite; }
+@keyframes rl-geste { 50% { transform: rotate(-2.5deg) translateY(-2%); } }
+.rl-croupier-nom { position: absolute; left: 46px; bottom: -4px; translate: -50% 0; padding: 0 9px; border-radius: 99px; background: linear-gradient(180deg, #7a0d17, #3a0609); border: 1px solid #e7c27a; color: #ffe3a3; font-family: var(--titre); font-size: 12px; }
+.rl-bulle { position: absolute; left: 96px; top: 6px; width: max-content; max-width: min(56vw, 300px); padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: #fff7e4; color: #3a1608; font-weight: 700; font-size: 13.5px; line-height: 1.25; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55); animation: bj2-bulle 3.6s ease-out both; z-index: 3; }
+
+/* Le marqueur du numéro sorti : il se pose en rebondissant. */
+.rl-dolly { filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.6)); animation: rl-dolly 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes rl-dolly { from { transform: translateY(-80%) scale(1.3); opacity: 0; } }
+
+/* La plongée : pendant le lancer, la roue vient au centre de l'écran, en grand, sur la salle. */
+.rl-ecran.plonge::after { content: ''; position: fixed; inset: 0; z-index: 55; background: radial-gradient(ellipse at 50% 50%, rgba(10, 3, 3, 0.25), rgba(10, 3, 3, 0.9) 70%), url('/cartes/rl-salle.webp') center / cover no-repeat; animation: rl-fondu 0.5s ease-out both; }
+.rl-ecran.plonge .rl-cylindre-zone { position: fixed; left: 50%; top: 47%; z-index: 60; width: min(94vw, 78dvh); translate: -50% -50%; animation: rl-plonge 0.9s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+.rl-ecran.plonge .rl-croupier { position: fixed; left: max(10px, 3vw); bottom: max(10px, 3vh); z-index: 61; }
+.rl-ecran.plonge .rl-croupier > img { width: min(32vw, 190px); }
+.rl-ecran.plonge .rl-croupier-nom { left: calc(min(32vw, 190px) / 2); }
+.rl-ecran.plonge .rl-bulle { left: calc(min(32vw, 190px) - 10px); top: 10%; font-size: 15px; }
+@keyframes rl-fondu { from { opacity: 0; } }
+@keyframes rl-plonge { from { transform: scale(0.45) rotateX(55deg); opacity: 0; } 60% { opacity: 1; } }
+.rl-ecran.plonge .rl-cylindre { filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.8)); }
+@media (prefers-reduced-motion: reduce) { .rl-croupier > img, .rl-dolly { animation: none !important; } }

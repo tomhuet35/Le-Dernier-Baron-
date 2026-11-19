@@ -12,11 +12,14 @@ import { colonneDe, couleurNumero, CYLINDRE, JETONS_ROULETTE, MISES_ROULETTE, ra
 import type { Appel } from './App';
 import { EN, tr } from './traduction';
 import { Celebration, Fenetre, jouerEffet, mouvementReduit } from './ui';
+import './roulette.css';
+import './blackjack.css';
 
 const dollars = (n: number) => formatDollars(n, EN);
 /** Montant court écrit sur un jeton : 25k, 1,5M… */
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
-const imageJeton = (v: number) => (v >= 5_000_000 ? 'argent' : v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
+/** Les jetons du Baron (communs au blackjack) ; au-delà de 500K (tables VIP), le 500K. */
+const imageJeton = (v: number) => (v >= 500_000 ? 'bj-500k' : v >= 100_000 ? 'bj-100k' : v >= 25_000 ? 'bj-25k' : v >= 5_000 ? 'bj-5k' : 'bj-1k');
 const COULEURS = { rouge: '#8e1c14', noir: '#141010', vert: '#0f6b3a' };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -281,14 +284,24 @@ function Tapis({
           return (
             <g key={`${cle}-${j.place}`} className={`rl-jeton ${pl?.moi ? 'moi' : ''} ${etat}`} pointerEvents="none">
               <image href={`/cartes/jeton-${imageJeton(j.montant)}.webp`} x={x} y={y} width={taille} height={taille} />
-              <text x={x + taille / 2} y={y + taille / 2} className="rl-jeton-texte" style={{ fontSize: taille * 0.3 }}>
-                {court(j.montant)}
-              </text>
+              {k === liste.length - 1 && (
+                <text x={x + taille / 2} y={y + taille * 1.02} className="rl-jeton-texte" style={{ fontSize: taille * 0.28 }}>
+                  {court(liste.reduce((s, z) => s + z.montant, 0))}
+                </text>
+              )}
               {!pl?.moi && pl && <image href={`/cartes/avatar-${pl.avatar}.webp`} x={x + taille * 0.62} y={y + taille * 0.58} width={taille * 0.46} height={taille * 0.46} clipPath="url(#rl-rond)" className="rl-jeton-avatar" />}
             </g>
           );
         });
       })}
+      {/* Le marqueur du croupier (la « dolly ») sur le numéro sorti. */}
+      {resultat &&
+        (() => {
+          const r = caseNumero(sorti!, sens);
+          const c = centre(r);
+          const w = Math.min(e.x, e.y) * 0.55;
+          return <image key={`dolly-${v.numero}`} className="rl-dolly" href="/cartes/rl-marqueur.webp" x={c.x * e.x - w / 2} y={c.y * e.y - w * 1.52 * 0.8} width={w} height={w * 1.52} pointerEvents="none" />;
+        })()}
     </svg>
   );
 }
@@ -357,8 +370,9 @@ function Cylindre({ v }: { v: VueTableRoulette }) {
           <stop offset="100%" stopColor="#9b9488" />
         </radialGradient>
       </defs>
-      <circle r="110" fill="url(#rl-bois)" stroke="#d2a85a" strokeWidth="2" />
-      <circle r="100" fill="#1b120c" stroke="#8a6424" strokeWidth="1.2" />
+      {/* La cuvette (acajou, piste, déflecteurs) ; la roue des numéros tourne dans son disque central. */}
+      <image href="/cartes/rl-cuvette.webp" x="-112" y="-112" width="224" height="224" />
+      <g transform="scale(0.845)">
       <g className="rl-roue" style={{ transform: `rotate(${roue}deg)`, ...transition(bille?.anime ? DUREE_BILLE : 0, 'cubic-bezier(0.15, 0.55, 0.25, 1)') }}>
         {CYLINDRE.map((n, i) => {
           const a = i * ANGLE;
@@ -374,22 +388,16 @@ function Cylindre({ v }: { v: VueTableRoulette }) {
           );
         })}
         <circle r="56" fill="url(#rl-bois)" stroke="#d2a85a" strokeWidth="1.4" />
-        {[0, 90, 180, 270].map((a) => (
-          <g key={a} transform={`rotate(${a})`}>
-            <rect x="-2.2" y="-44" width="4.4" height="34" rx="2" fill="url(#rl-or)" />
-            <circle cy="-46" r="4.2" fill="url(#rl-or)" />
-          </g>
-        ))}
-        <circle r="13" fill="url(#rl-or)" stroke="#5a3d12" strokeWidth="1" />
-        <circle r="5" fill="#fff2c6" />
+        <image href="/cartes/rl-moyeu.webp" x="-52" y="-52" width="104" height="104" />
       </g>
       {bille && (
         <g style={{ transform: `rotate(${bille.angle}deg)`, ...transition(bille.anime ? DUREE_BILLE : 0, 'cubic-bezier(0.1, 0.5, 0.2, 1)') }}>
           <g key={bille.tour} className={`rl-bille ${bille.anime ? 'tombe' : ''}`} style={{ animationDuration: `${DUREE_BILLE}ms` }}>
-            <circle r="4.6" fill="url(#rl-bille)" stroke="#5a5048" strokeWidth="0.4" />
+            <image href="/cartes/rl-bille.webp" x="-5.4" y="-5.4" width="10.8" height="10.8" />
           </g>
         </g>
       )}
+      </g>
     </svg>
   );
 }
@@ -453,6 +461,47 @@ export function TableRoulette({ v, appel, onQuitter }: { v: VueTableRoulette; ap
   const [fete, setFete] = useState<number | null>(null);
   const precedente = useRef<VueTableRoulette | null>(null);
 
+  // Victor, le croupier, annonce le jeu ; pendant le lancer, la caméra plonge sur la roue.
+  const [phrase, setPhrase] = useState<{ texte: string; id: number } | null>(null);
+  const dire = (fr: string, en: string) => setPhrase({ texte: tr(fr, en), id: Date.now() + Math.random() });
+  useEffect(() => {
+    if (!phrase) return;
+    const t = window.setTimeout(() => setPhrase(null), 3600);
+    return () => window.clearTimeout(t);
+  }, [phrase]);
+  const [plonge, setPlonge] = useState(false);
+  const annonce = useRef<{ numero: number; closes: boolean; phase: string } | null>(null);
+  useEffect(() => {
+    const a = annonce.current;
+    const neuf = !a || a.numero !== v.numero || a.phase !== v.phase || a.closes !== v.closes;
+    annonce.current = { numero: v.numero, closes: v.closes, phase: v.phase };
+    if (!neuf) return;
+    if (v.phase === 'mises' && !v.closes) dire('Faites vos jeux, mesdames et messieurs !', 'Place your bets, ladies and gentlemen!');
+    else if (v.phase === 'mises' && v.closes) dire('Rien ne va plus !', 'No more bets!');
+    else if (v.phase === 'tirage') dire('Les jeux sont faits…', 'Bets are closed…');
+    else if (v.phase === 'resultat' && v.tirage !== null) {
+      const n = v.tirage;
+      const t = window.setTimeout(
+        () =>
+          n === 0
+            ? dire('Zéro ! La banque sourit.', 'Zero! The bank smiles.')
+            : dire(`Le ${n}, ${couleurNumero(n) === 'rouge' ? 'rouge' : 'noir'}, ${n % 2 ? 'impair' : 'pair'} et ${n <= 18 ? 'manque' : 'passe'} !`, `${n}, ${couleurNumero(n) === 'rouge' ? 'red' : 'black'}, ${n % 2 ? 'odd' : 'even'}!`),
+        300,
+      );
+      return () => window.clearTimeout(t);
+    }
+  }, [v.numero, v.phase, v.closes, v.tirage]);
+  useEffect(() => {
+    if (mouvementReduit()) return setPlonge(false);
+    if (v.phase === 'tirage' && (v.reste ?? 0) > 2500) return setPlonge(true);
+    if (v.phase === 'resultat') {
+      const t = window.setTimeout(() => setPlonge(false), 2600);
+      return () => window.clearTimeout(t);
+    }
+    if (v.phase === 'mises') setPlonge(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v.phase, v.numero]);
+
   // Sons et fête : le résultat de mon tour.
   useEffect(() => {
     const p = precedente.current;
@@ -503,7 +552,7 @@ export function TableRoulette({ v, appel, onQuitter }: { v: VueTableRoulette; ap
     );
 
   return (
-    <div className={`cas-ecran rl-ecran rl-${sens}`}>
+    <div className={`cas-ecran rl-ecran rl-${sens} ${plonge ? 'plonge' : ''}`}>
       <header className="cas-barre">
         <button type="button" className="cas-retour" onClick={onQuitter}>
           ‹ {tr('Salon', 'Lounge')}
@@ -520,6 +569,15 @@ export function TableRoulette({ v, appel, onQuitter }: { v: VueTableRoulette; ap
             <Cylindre v={v} />
           </div>
           <div className="rl-infos">
+            <div className={`rl-croupier ${phrase ? 'parle' : ''}`}>
+              <img src="/cartes/rl-croupier.webp" alt={tr('Victor, le croupier', 'Victor, the croupier')} draggable={false} />
+              <span className="rl-croupier-nom">Victor</span>
+              {phrase && (
+                <span key={phrase.id} className="rl-bulle" role="status">
+                  {phrase.texte}
+                </span>
+              )}
+            </div>
             <div className="rl-statut" role="status">
               {statut}
               <Minuteur v={v} />
