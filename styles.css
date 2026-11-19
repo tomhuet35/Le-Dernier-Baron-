@@ -1511,3 +1511,16 @@ html[data-espace='casino'] { background: #120204; }
 .porte-note { max-width: 320px; margin: 0; font-size: 13px; line-height: 1.4; color: #e9d9bb; opacity: 0.8; }
 .porte-liens { display: flex; align-items: center; gap: 10px; color: #e7c27a; }
 .porte-cadeau { max-width: 330px; margin: 2px 0 0; padding: 10px 14px; border: 1px solid rgba(255, 215, 116, 0.55); border-radius: 12px; background: rgba(0, 0, 0, 0.35); color: #ffe3a3; font-size: 13.5px; line-height: 1.4; }
+
+/* Pop-up « Télécharge l'application » (au lancement, jusqu'à l'installation). */
+body > .voile.popup-installation { z-index: 300; }
+.popup-installation-fenetre { width: min(92vw, 380px); padding: 22px 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; border: 2px solid #c9a24a; border-radius: 20px; background: radial-gradient(ellipse at 50% 0%, #2d2116, #110c08 75%); color: var(--creme, #f3e7cf); box-shadow: 0 20px 44px rgba(0, 0, 0, 0.75); animation: popup-installation-entree 0.35s ease-out; }
+.popup-installation-fenetre.casino { border-color: #ffd774; background: radial-gradient(ellipse at 50% 0%, #6a0b1b, #2a0609 75%); }
+@keyframes popup-installation-entree { from { transform: translateY(18px) scale(0.96); opacity: 0; } }
+.popup-installation-icone { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6); }
+.popup-installation-fenetre h2 { margin: 4px 0 0; font-size: 22px; color: #ffd774; }
+.popup-installation-fenetre p { margin: 0; font-size: 14.5px; line-height: 1.45; opacity: 0.92; }
+.popup-installation-etapes { margin: 4px 0; padding-left: 22px; text-align: left; font-size: 14.5px; line-height: 1.7; }
+.popup-installation-partage { display: inline-block; padding: 0 6px; border: 1px solid currentColor; border-radius: 6px; font-size: 12px; line-height: 1.5; }
+.popup-installation-bouton { min-width: 200px; margin-top: 4px; padding: 12px 24px; border-radius: 99px; border: 2px solid #ffd774; background: linear-gradient(180deg, #c8222f, #7a0d17); color: #fff4d6; font-size: 17px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); }
+.popup-installation-plus-tard { border: 0; background: none; color: #e7c27a; text-decoration: underline; font-size: 14px; padding: 6px; cursor: pointer; }

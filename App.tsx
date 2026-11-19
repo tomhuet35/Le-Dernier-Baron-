@@ -1,4 +1,5 @@
 import { CADEAU_COMPTE } from '../../shared/hotel';
+import { createPortal } from 'react-dom';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_JOUEURS, MIN_JOUEURS, NB_AVATARS } from '../../shared/config';
 import { estWeekendXpDouble, tapisActif, TRANCHES, type IdTapis } from '../../shared/niveaux';
@@ -581,6 +582,7 @@ export function App() {
   return (
     <>
       {ecran}
+      {!salon && !reprise && <PopupInstallation />}
       {salon && !salon.partie && <Chat salon={salon} appel={appel} />}
       {recompense && !salon && !reprise && <CelebrationRecompense recompense={recompense} onFermer={() => setRecompense(null)} />}
       {!connecte && <div className="bandeau-reseau">{tr('Connexion perdue. Reconnexion en cours…', 'Connection lost. Reconnecting…')}</div>}
@@ -1004,6 +1006,72 @@ function SalonClasse({ vue, appel, compte, majVue, fermer }: { vue: VueClasse | 
       </section>
 
     </main>
+  );
+}
+
+/** Pop-up « Télécharge l'application » au lancement : jusqu'à l'installation, et au plus tous les 3 jours après « Plus tard ». */
+const CLE_POPUP_INSTALLATION = 'popup-installation';
+const DELAI_POPUP_INSTALLATION = 3 * 24 * 3600 * 1000;
+function PopupInstallation() {
+  const { etat, installer } = useInstallation();
+  const [lance, setLance] = useState(false);
+  const [ferme, setFerme] = useState(() => {
+    const dernier = Number(lire(CLE_POPUP_INSTALLATION) ?? 0);
+    return Date.now() - dernier < DELAI_POPUP_INSTALLATION;
+  });
+  // Laisse passer l'écran de chargement avant de se montrer.
+  useEffect(() => {
+    const t = window.setTimeout(() => setLance(true), 3500);
+    return () => window.clearTimeout(t);
+  }, []);
+  if (!lance || ferme || (etat !== 'proposer' && etat !== 'ios')) return null;
+  const plusTard = () => {
+    ecrire(CLE_POPUP_INSTALLATION, String(Date.now()));
+    setFerme(true);
+  };
+  const casino = ESPACE === 'casino';
+  const nom = casino ? 'Baron’s Fortune' : 'Le Dernier Baron';
+  return createPortal(
+    <div className="voile popup-installation" role="dialog" aria-modal="true" aria-label={tr('Télécharger l’application', 'Download the app')} onClick={plusTard}>
+      <div className={`popup-installation-fenetre ${casino ? 'casino' : ''}`} onClick={(e) => e.stopPropagation()}>
+        <img className="popup-installation-icone" src={casino ? '/icone-casino-192.png' : '/icone-192.png'} alt="" width={96} height={96} />
+        <h2>{tr('Télécharge l’application', 'Download the app')}</h2>
+        <p>
+          {tr(
+            `Ajoute ${nom} sur ton écran d’accueil : plein écran, lancement en un geste, comme une vraie appli. C’est gratuit et ça ne prend aucune place.`,
+            `Add ${nom} to your home screen: full screen, one-tap launch, just like a real app. It’s free and takes no space.`,
+          )}
+        </p>
+        {etat === 'ios' ? (
+          <ol className="popup-installation-etapes">
+            <li>
+              {tr('Appuie sur', 'Tap')} <b>{tr('Partager', 'Share')}</b> <span className="popup-installation-partage" aria-hidden="true">⬆︎</span> {tr('dans la barre du navigateur', 'in the browser bar')}
+            </li>
+            <li>
+              {tr('Choisis', 'Choose')} <b>{tr('« Sur l’écran d’accueil »', '“Add to Home Screen”')}</b>
+            </li>
+            <li>
+              {tr('Appuie sur', 'Tap')} <b>{tr('Ajouter', 'Add')}</b>
+            </li>
+          </ol>
+        ) : (
+          <button
+            type="button"
+            className="popup-installation-bouton"
+            onClick={() => {
+              void installer();
+              plusTard();
+            }}
+          >
+            {tr('Installer', 'Install')}
+          </button>
+        )}
+        <button type="button" className="popup-installation-plus-tard" onClick={plusTard}>
+          {etat === 'ios' ? tr('J’ai compris', 'Got it') : tr('Plus tard', 'Later')}
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
