@@ -3,6 +3,7 @@
  * Étape 1 : le salon (solde, plus riches, annonces), la roulette du salon (une par jour) et la machine à sous
  * « Le Bandit du Baron ». Tout l'argent est fictif et tenu par le serveur.
  */
+import { echelleCoffreRubis, GROS_LOT_COFFRE_RUBIS, MISES_COFFRE_RUBIS, type MiseCoffreRubis } from '../../shared/coffreRubis';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   CASE_VERTE_SALON,
@@ -1284,6 +1285,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
         ? tr(`${annonce.nom} a récupéré ${dollars(annonce.gain)} au Vol de la Couronne !`, `${annonce.nom} cashed out ${dollars(annonce.gain)} on the Flight of the Crown!`)
       : annonce.jeu === 'chute'
         ? tr(`${annonce.nom} a fait tomber ${dollars(annonce.gain)} à la Chute des Écus !`, `${annonce.nom} dropped ${dollars(annonce.gain)} on the Falling Crowns!`)
+      : annonce.jeu === 'coffreRubis'
+        ? tr(`${annonce.nom} a ouvert le gros lot du Coffre-fort aux rubis : ${dollars(annonce.gain)} !`, `${annonce.nom} opened the Ruby Safe jackpot: ${dollars(annonce.gain)}!`)
       : annonce.jeu === 'tickets'
         ? tr(`${annonce.nom} a gratté ${dollars(annonce.gain)} aux Tickets du Baron !`, `${annonce.nom} scratched ${dollars(annonce.gain)} on the Baron’s Tickets!`)
       : annonce.jeu === 'baronWheel'
@@ -1546,7 +1549,91 @@ function Offre({ o }: { o: OffreBoutique }) {
   );
 }
 
-function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => void; ouvrir: (f: () => void) => void; onRoue: () => void; onMarche: () => void; onTailleur: () => void }) {
+/** Le Coffre-fort aux rubis : trois coffres, un seul à ouvrir, des dollars jusqu'au gros lot. */
+function CoffreRubis({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
+  const [mise, setMise] = useState<MiseCoffreRubis>(5);
+  const [ouvert, setOuvert] = useState<{ choix: number; gain: number; autres: [number, number] } | null>(null);
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [fete, setFete] = useState(false);
+  const rubis = vue.contrats?.rubis ?? 0;
+  const k = echelleCoffreRubis(mise);
+  const ouvrir = async (choix: number) => {
+    if (occupe || ouvert) return;
+    if (rubis < mise) return setErreur(tr(`Il te faut ${mise} rubis : gagne-les avec les contrats et l’album.`, `You need ${mise} rubies: earn them with contracts and the album.`));
+    setOccupe(true);
+    setErreur(null);
+    jouerEffet('jeton');
+    const r = (await appel('casino_coffre_rubis', { mise })) as { ok: boolean; erreur?: string; gain?: number; autres?: [number, number]; casino?: VueCasino };
+    if (!r.ok || r.gain === undefined || !r.autres || !r.casino) {
+      setOccupe(false);
+      return setErreur(r.erreur ?? tr('Le coffre est bloqué, réessaie.', 'The safe is stuck, try again.'));
+    }
+    const nouvelle = r.casino;
+    const gain = r.gain;
+    setOuvert({ choix, gain, autres: r.autres });
+    window.setTimeout(() => {
+      onVue(nouvelle);
+      setOccupe(false);
+      const gros = gain >= 50_000_000 * k;
+      jouerEffet(gros ? 'roulette_gros_lot' : 'machine_pieces');
+      if (gros) setFete(true);
+    }, 900);
+  };
+  const montant = (i: number) => (!ouvert ? null : i === ouvert.choix ? ouvert.gain : ouvert.autres[i < ouvert.choix ? i : i - 1]);
+  return (
+    <Fenetre titre={tr('Le Coffre-fort aux rubis', 'The Ruby Safe')} onFermer={occupe ? undefined : onFermer} large>
+      <div className="cr">
+        <p className="cr-intro">{tr('Choisis un coffre : il cache des dollars, jusqu’au gros lot !', 'Pick a safe: it hides dollars, up to the jackpot!')}</p>
+        <p className="cr-gros-lot">
+          {tr('Gros lot', 'Jackpot')} <strong>{dollars(GROS_LOT_COFFRE_RUBIS * k)}</strong>
+        </p>
+        <div className="cr-coffres">
+          {[0, 1, 2].map((i) => {
+            const m = montant(i);
+            const choisi = ouvert?.choix === i;
+            return (
+              <button key={i} type="button" className={`cr-coffre ${ouvert ? (choisi ? 'choisi' : 'autre') : ''}`} disabled={occupe || !!ouvert} onClick={() => void ouvrir(i)}>
+                <img src="/cartes/machine-coffre.webp" alt="" draggable={false} />
+                {m !== null && <span className={`cr-gain ${m >= GROS_LOT_COFFRE_RUBIS * k ? 'gros' : ''}`}>{dollarsCourt(m)}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {ouvert ? (
+          <button type="button" className="principal large" disabled={occupe} onClick={() => setOuvert(null)}>
+            {tr('Rejouer', 'Play again')}
+          </button>
+        ) : (
+          <div className="cr-mises" role="radiogroup" aria-label={tr('Mise', 'Bet')}>
+            {MISES_COFFRE_RUBIS.map((x) => (
+              <button key={x} type="button" role="radio" aria-checked={x === mise} className={x === mise ? 'actif' : ''} onClick={() => setMise(x)}>
+                <img src="/cartes/rubis-icone.webp" alt="" />
+                {x}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="cr-solde">
+          <img src="/cartes/rubis-icone.webp" alt="" /> {tr(`${rubis} rubis`, `${rubis} rubies`)}
+        </p>
+        {erreur && <p className="cas-erreur">{erreur}</p>}
+        <p className="cr-note">{tr('Les rubis se gagnent avec les contrats, l’album et la semaine du Baron.', 'Rubies are earned with contracts, the album and the Baron’s week.')}</p>
+      </div>
+      {fete && ouvert && (
+        <Celebration
+          titre={ouvert.gain >= GROS_LOT_COFFRE_RUBIS * k ? tr('LE GROS LOT !', 'THE JACKPOT!') : tr('Gros gain !', 'Big win!')}
+          etiquette={tr(`Gain : ${dollars(ouvert.gain)}`, `Win: ${dollars(ouvert.gain)}`)}
+          medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollarsCourt(ouvert.gain)}</strong>}
+          legende={tr('Ajouté à ton solde', 'Added to your balance')}
+          onFermer={() => setFete(false)}
+        />
+      )}
+    </Fenetre>
+  );
+}
+
+function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => void; ouvrir: (f: () => void) => void; onRoue: () => void; onMarche: () => void; onTailleur: () => void; onCoffre: () => void }) {
   const { attenteRoue, ouvrir } = props;
   const [rayon, setRayon] = useState('debutant');
   const [rotLuxe, setRotLuxe] = useState(0);
@@ -1589,6 +1676,17 @@ function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => vo
             </span>
           </div>
         </section>
+
+        <button type="button" className="bq-coffre-rubis" onClick={() => ouvrir(props.onCoffre)}>
+          <img src="/cartes/machine-coffre.webp" alt="" />
+          <span>
+            <b>{tr('Le Coffre-fort aux rubis', 'The Ruby Safe')}</b>
+            <small>{tr('Paie en rubis, ouvre un coffre : jusqu’à 10 milliards $ !', 'Pay in rubies, open a safe: up to $10 billion!')}</small>
+          </span>
+          <i className="bq-bouton">
+            <img src="/cartes/rubis-icone.webp" alt="" />5
+          </i>
+        </button>
 
         <nav className="bq-onglets" aria-label={tr('Rayons', 'Departments')}>
           {RAYONS_OFFRES.map((x) => (
@@ -1733,6 +1831,7 @@ function Accueil({
   const [menu, setMenu] = useState(false);
   const [riches, setRiches] = useState(false);
   const [boutique, setBoutique] = useState(false);
+  const [coffreRubis, setCoffreRubis] = useState(false);
   const niveau = vue.hotel?.niveau ?? vue.profil?.niveau ?? 1;
   const c = vue.contrats;
   const e = etage(etageActif);
@@ -1812,7 +1911,7 @@ function Accueil({
           </button>
         </span>
         <span className="ac-compteur ac-dollars">
-          <img src="/cartes/jeton-ivoire.webp" alt="$" />
+          <img src="/cartes/dollars-icone.webp" alt="$" />
           <b title={dollars(solde)}>{dollarsCourt(solde)}</b>
           <button type="button" className="ac-plus" onClick={onRoue} aria-label={tr('Roulette du salon', 'Lounge wheel')}>
             <img src="/cartes/bouton-plus.webp" alt="" />
@@ -1960,8 +2059,10 @@ function Accueil({
           onRoue={onRoue}
           onMarche={onMarche}
           onTailleur={onTailleur}
+          onCoffre={() => setCoffreRubis(true)}
         />
       )}
+      {coffreRubis && <CoffreRubis vue={vue} appel={appel} onVue={onVue} onFermer={() => setCoffreRubis(false)} />}
       {riches && (
         <Fenetre titre={tr('Les plus riches du salon', 'Richest in the lounge')} onFermer={() => setRiches(false)}>
           <section className="cas-riches ac-riches">
