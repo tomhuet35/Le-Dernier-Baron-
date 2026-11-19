@@ -41,6 +41,7 @@ export const VIGNETTES_ALBUM: Record<JeuCasino, string> = {
   coffres: 'coffres',
   couronne: 'couronne',
   chute: 'chute',
+  tickets: 'tickets',
   course: 'course',
   baronWheel: 'roue',
 };
