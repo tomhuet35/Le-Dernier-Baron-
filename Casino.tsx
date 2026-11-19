@@ -1608,6 +1608,11 @@ function Accueil({
   const happy = !!vue.hotel?.happyHour.enCours;
   const grille = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
+  const [defile, setDefile] = useState({ gauche: false, droite: true });
+  useEffect(() => {
+    const g = grille.current;
+    if (g) setDefile({ gauche: g.scrollLeft > 8, droite: g.scrollLeft + g.clientWidth < g.scrollWidth - 8 });
+  }, []);
 
   return (
     <div className="ac ac-sans-etages">
@@ -1652,7 +1657,21 @@ function Accueil({
 
       {/* Tous les jeux, en grille de 3 × 2 (pages qu'on fait glisser) ; chacun s'ouvre à son niveau. */}
       <section className="ac-scene ac-grille-zone">
-        <div className="ac-grille" ref={grille} onScroll={(ev) => setPage(Math.round(ev.currentTarget.scrollLeft / Math.max(1, ev.currentTarget.clientWidth)))}>
+        <button type="button" className="ac-fleche gauche" disabled={!defile.gauche} onClick={() => grille.current?.scrollBy({ left: -grille.current.clientWidth * 0.8, behavior: 'smooth' })} aria-label={tr('Jeux précédents', 'Previous games')}>
+          ‹
+        </button>
+        <button type="button" className="ac-fleche droite" disabled={!defile.droite} onClick={() => grille.current?.scrollBy({ left: grille.current.clientWidth * 0.8, behavior: 'smooth' })} aria-label={tr('Jeux suivants', 'Next games')}>
+          ›
+        </button>
+        <div
+          className="ac-grille"
+          ref={grille}
+          onScroll={(ev) => {
+            const g = ev.currentTarget;
+            setPage(Math.round(g.scrollLeft / Math.max(1, g.clientWidth)));
+            setDefile({ gauche: g.scrollLeft > 8, droite: g.scrollLeft + g.clientWidth < g.scrollWidth - 8 });
+          }}
+        >
           {pages.map((liste, k) => (
             <div key={k} className="ac-page">
               {liste.map((j) => {
