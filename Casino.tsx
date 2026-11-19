@@ -1464,7 +1464,7 @@ function dollarsCourt(n: number): string {
  * Les offres en argent réel de la Boutique : maquette, pas encore à vendre (aucun paiement branché).
  * `image` : bq-<image>.webp ; `photo` : une illustration en largeur plutôt qu'un objet détouré.
  */
-type OffreBoutique = { id: string; image: string; photo?: boolean; nom: [string, string]; contenu: [string, string][]; prix: string; ruban?: [string, string]; vedette?: boolean; avant?: string };
+type OffreBoutique = { id: string; image: string; photo?: boolean; nom: [string, string]; contenu: [string, string][]; prix: string; ruban?: [string, string]; vedette?: boolean; avant?: string; combo?: boolean };
 const RAYONS_OFFRES: { id: string; titre: [string, string]; offres: OffreBoutique[] }[] = [
   {
     id: 'debutant',
@@ -1479,9 +1479,9 @@ const RAYONS_OFFRES: { id: string; titre: [string, string]; offres: OffreBoutiqu
     id: 'combines',
     titre: ['Rubis + dollars', 'Rubies + dollars'],
     offres: [
-      { id: 'bourse', image: 'rubis-bourse', nom: ['Bourse du joueur', 'Player’s purse'], contenu: [['30 rubis', '30 rubies'], ['50 M $', '$50M']], prix: '1,99 €' },
-      { id: 'tenues', image: 'tenues-legendaires', photo: true, nom: ['Tenues légendaires', 'Legendary outfits'], contenu: [['2 tenues exclusives', '2 exclusive outfits'], ['200 rubis', '200 rubies'], ['300 M $', '$300M']], prix: '7,99 €', ruban: ['Exclusif', 'Exclusive'] },
-      { id: 'grand-coffre', image: 'rubis-tresor', nom: ['Coffre du Baron', 'Baron’s chest'], contenu: [['800 rubis', '800 rubies'], ['3 Md $', '$3B']], prix: '24,99 €', ruban: ['+40 %', '+40%'] },
+      { id: 'bourse', combo: true, image: 'rubis-bourse', nom: ['Bourse du joueur', 'Player’s purse'], contenu: [['30 rubis', '30 rubies'], ['50 M $', '$50M']], prix: '1,99 €' },
+      { id: 'tenues', combo: true, image: 'tenues-legendaires', photo: true, nom: ['Tenues légendaires', 'Legendary outfits'], contenu: [['2 tenues exclusives', '2 exclusive outfits'], ['200 rubis', '200 rubies'], ['300 M $', '$300M']], prix: '7,99 €', ruban: ['Exclusif', 'Exclusive'] },
+      { id: 'grand-coffre', combo: true, image: 'rubis-tresor', nom: ['Coffre du Baron', 'Baron’s chest'], contenu: [['800 rubis', '800 rubies'], ['3 Md $', '$3B']], prix: '24,99 €', ruban: ['+40 %', '+40%'] },
     ],
   },
   {
@@ -1533,6 +1533,12 @@ function Offre({ o }: { o: OffreBoutique }) {
       {o.ruban && <span className="bq-ruban">{tr(...o.ruban)}</span>}
       <div className="bq-visuel">
         <img src={`/cartes/bq-${o.image}.webp`} alt="" draggable={false} />
+        {o.combo && (
+          <>
+            <img className="bq-combo rubis" src="/cartes/bq-rubis-poignee.webp" alt="" draggable={false} />
+            <img className="bq-combo dollars" src="/cartes/bq-dollars-liasse.webp" alt="" draggable={false} />
+          </>
+        )}
       </div>
       <b>{tr(...o.nom)}</b>
       <ul>
