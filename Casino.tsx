@@ -103,16 +103,17 @@ export function Symbole({ s, className }: { s: SymboleMachine; className?: strin
  * flèche : 8 cases, la case `i` est à `POSITION_CASE[i] × 45°` (sens des aiguilles d'une montre, depuis le haut).
  */
 const POSITION_CASE = [1, 2, 3, 4, 5, 6, 7, 0];
-export function RoueIllustree({ image, libelles, rotation, tourne, gagnante, petit }: { image: string; libelles: [string, string][]; rotation: number; tourne: boolean; gagnante: number | null; petit?: boolean }) {
+export function RoueIllustree({ image, libelles, rotation, tourne, gagnante, petit }: { image: string; libelles: [string, string, string][]; rotation: number; tourne: boolean; gagnante: number | null; petit?: boolean }) {
   return (
     <div className={`rj ${tourne ? 'tourne' : ''} ${petit ? 'petit' : ''}`}>
       <img className="rj-support" src="/cartes/roue-support.webp" alt="" draggable={false} />
       <div className="rj-roue" style={{ transform: `rotate(${rotation}deg)`, transitionDuration: tourne ? `${DUREE_ROUE_MS}ms` : '0ms' }}>
         <img src={`/cartes/${image}.webp`} alt="" draggable={false} />
-        {libelles.map(([a, b], i) => (
-          <span key={i} className={`rj-case ${gagnante === i ? 'gagnante' : ''}`} style={{ transform: `rotate(${POSITION_CASE[i] * 45}deg)` }}>
+        {libelles.map(([a, b, icone], i) => (
+          <span key={i} className={`rj-case ${gagnante === i ? 'gagnante' : ''} ${a.length > 3 ? 'long' : ''}`} style={{ transform: `rotate(${POSITION_CASE[i] * 45}deg)` }}>
             <b>{a}</b>
             <small>{b}</small>
+            <img src={`/cartes/${icone}.webp`} alt="" draggable={false} />
           </span>
         ))}
       </div>
@@ -122,7 +123,11 @@ export function RoueIllustree({ image, libelles, rotation, tourne, gagnante, pet
 }
 /** L'angle qui amène la case `i` sous la flèche (après quelques tours). */
 const angleRoue = (i: number) => 360 * 6 + (360 - POSITION_CASE[i] * 45) + (Math.random() - 0.5) * 45 * 0.6;
-const LIBELLES_JOUR: [string, string][] = CASES_ROUE_SALON.map((v) => (v >= 1_000_000 ? [(v / 1_000_000).toLocaleString(EN ? 'en-US' : 'fr-FR'), v === 1_000_000 ? 'MILLION' : 'MILLIONS'] : [(v / 1000).toLocaleString(EN ? 'en-US' : 'fr-FR'), EN ? 'THOUSAND $' : 'MILLE $']));
+/** L'icône de chaque montant de la roue du jour : liasse, mallette, lingot, coffre, couronne pour le gros lot. */
+const iconeMontant = (v: number) => (v >= 10_000_000 ? 'couronne' : v >= 3_000_000 ? 'machine-coffre' : v >= 2_000_000 ? 'butin-lingot' : v >= 1_000_000 ? 'bq-dollars-mallette' : 'bq-dollars-liasse');
+const LIBELLES_JOUR: [string, string, string][] = CASES_ROUE_SALON.map((v) =>
+  v >= 1_000_000 ? [(v / 1_000_000).toLocaleString(EN ? 'en-US' : 'fr-FR'), v === 1_000_000 ? 'MILLION' : 'MILLIONS', iconeMontant(v)] : [(v / 1000).toLocaleString(EN ? 'en-US' : 'fr-FR'), EN ? 'THOUSAND $' : 'MILLE $', iconeMontant(v)],
+);
 
 function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
   const [rotation, setRotation] = useState(0);
@@ -1508,15 +1513,15 @@ const RAYONS_OFFRES: { id: string; titre: [string, string]; offres: OffreBoutiqu
 ];
 
 /** La roue de luxe (payante) : ses 8 cases, dont la case ×25 (qui multiplie par 25 le gros lot de la roue du jour). */
-const LIBELLES_LUXE: [string, string][] = [
-  ['×25', EN ? 'JACKPOT' : 'GROS LOT'],
-  ['100', EN ? 'RUBIES' : 'RUBIS'],
-  ['1', EN ? 'BILLION $' : 'MILLIARD $'],
-  [EN ? 'OUTFIT' : 'TENUE', EN ? 'LEGENDARY' : 'LÉGENDAIRE'],
-  ['500', EN ? 'MILLION $' : 'MILLIONS $'],
-  ['250', EN ? 'RUBIES' : 'RUBIS'],
-  ['×10', EN ? 'JACKPOT' : 'GROS LOT'],
-  ['2', EN ? 'BILLION $' : 'MILLIARDS $'],
+const LIBELLES_LUXE: [string, string, string][] = [
+  ['×25', EN ? 'JACKPOT' : 'GROS LOT', 'couronne'],
+  ['100', EN ? 'RUBIES' : 'RUBIS', 'bq-rubis-sac'],
+  ['1', EN ? 'BILLION $' : 'MILLIARD $', 'bq-dollars-mallette'],
+  [EN ? 'OUTFIT' : 'TENUE', EN ? 'LEGENDARY' : 'LÉGENDAIRE', 'bq-tenue'],
+  ['500', EN ? 'MILLION $' : 'MILLIONS $', 'bq-dollars-liasse'],
+  ['250', EN ? 'RUBIES' : 'RUBIS', 'bq-rubis-coffre'],
+  ['×10', EN ? 'JACKPOT' : 'GROS LOT', 'bq-cle'],
+  ['2', EN ? 'BILLION $' : 'MILLIARDS $', 'machine-coffre'],
 ];
 
 function Offre({ o }: { o: OffreBoutique }) {
