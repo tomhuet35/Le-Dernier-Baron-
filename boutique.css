@@ -32,9 +32,9 @@
 .bq-rayon span { display: grid; gap: 2px; }
 .bq-offre { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; border-radius: 14px; border: 1px solid rgba(231, 194, 122, 0.55); background: linear-gradient(180deg, rgba(70, 8, 30, 0.75), rgba(0, 0, 0, 0.65)); text-align: center; overflow: hidden; }
 .bq-offre.vedette { border: 2px solid #ffd774; box-shadow: 0 0 16px rgba(255, 215, 116, 0.45), inset 0 0 22px rgba(255, 215, 116, 0.12); }
-.bq-visuel { width: 100%; height: 96px; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.bq-visuel img { width: auto; height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6)); }
-.bq-offre.photo .bq-visuel { height: auto; aspect-ratio: 3 / 2; border-radius: 10px; overflow: hidden; }
+.bq-visuel { width: 100%; aspect-ratio: 3 / 2; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 10px; background: radial-gradient(ellipse at 50% 60%, rgba(255, 200, 90, 0.22), transparent 70%); }
+.bq-visuel img { width: 92%; height: 92%; max-width: none; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6)); }
+.bq-offre.photo .bq-visuel { background: none; }
 .bq-offre.photo .bq-visuel img { width: 100%; height: 100%; max-width: none; object-fit: cover; filter: none; }
 .bq-offres { align-items: stretch; }
 .bq-offres.n1 .bq-offre.photo .bq-visuel { max-height: 220px; }
