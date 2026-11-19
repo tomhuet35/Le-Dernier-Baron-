@@ -235,6 +235,8 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       emulateurAuth: comptes?.emulateurAuth ?? null,
       contact: contact && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact) ? contact : null,
       vapid: notifications?.clePublique ?? null,
+      // Le Salon privé tourne-t-il sur ce serveur ? (Le Dernier Baron le garde tant que le casino n'a pas son site.)
+      casino: casino !== null,
     });
   });
   if (options.servirClient !== false) {

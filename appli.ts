@@ -20,6 +20,8 @@ export interface ConfigServeur {
   /** Clé publique des notifications (null : notifications désactivées sur le serveur). */
   vapid?: string | null;
   contact?: string | null;
+  /** Le Salon privé tourne sur ce serveur. */
+  casino?: boolean;
 }
 let config: Promise<ConfigServeur | null> | null = null;
 export function configServeur(): Promise<ConfigServeur | null> {
