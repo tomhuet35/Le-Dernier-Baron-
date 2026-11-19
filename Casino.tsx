@@ -1595,10 +1595,33 @@ function Accueil({
   // En tête : l'Happy Hour (toujours annoncée) et le jeu en XP double.
   const hh = vue.hotel?.happyHour;
   if (hh?.enCours) une.unshift({ cle: 'happy', fond: 'happy-hour', logo: '/cartes/logo-appli-casino.webp', contenu: <BandeauHappyHour vue={vue} /> });
+  // La Boutique, toujours à la une, juste après l'Happy Hour et le jeu à l'affiche.
+  une.push({
+    cle: 'boutique',
+    fond: 'boutique',
+    logo: '/cartes/icone-boutique.webp',
+    contenu: (
+      <div className="ac-une-boutique">
+        <span>
+          <small>{tr('Le Grand Hôtel du Baron', 'The Baron’s Grand Hotel')}</small>
+          <strong>{tr('La Boutique', 'The Shop')}</strong>
+          <em>{tr('Roulette du jour, Marché noir, Tailleur…', 'Daily wheel, Black Market, Tailor…')}</em>
+        </span>
+        <button type="button" className="principal" onClick={() => setBoutique(true)}>
+          {tr('Entrer', 'Enter')} ›
+        </button>
+      </div>
+    ),
+  });
   if (vue.affiche) une.splice(hh?.enCours ? 1 : 0, 0, { cle: `affiche-${vue.affiche.debut}`, fond: 'affiche', logo: logoJeu(vue.affiche.jeu), contenu: <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} /> });
   if (vue.baronWheel?.ouverture) une.push({ cle: 'ouverture-bw', fond: 'ouverture-bw', logo: logoJeu('baronWheel'), contenu: <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} /> });
   if (vue.folleNuit?.enDirect && etageOuvert(niveau, 'scene')) une.push({ cle: 'folle-nuit', fond: 'folle-nuit', logo: logoJeu('folleNuit'), contenu: <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} /> });
 
+  {
+    const i = une.findIndex((x) => x.cle === 'boutique');
+    const [b] = une.splice(i, 1);
+    une.splice(une.filter((x) => x.cle === 'happy' || x.cle.startsWith('affiche-')).length, 0, b);
+  }
   const restants = c ? c.jour.filter((x) => !x.fait).length : 0;
   const pieces = c ? JEUX_CASINO.reduce((s, j) => s + morceauxDe(c.album[j]), 0) : 0;
   // Les jeux, du premier ouvert au dernier (le poker « bientôt » à la fin), par pages de 6.
