@@ -18,7 +18,7 @@ export type VueBonusMachine =
   | { type: 'roue'; mise: number };
 
 /** Solde de départ, au premier passage au salon. */
-export const SOLDE_DEPART = 1_000_000;
+export const SOLDE_DEPART = 10_000_000;
 /** Plafond du solde (au-delà, l'argent gagné est perdu). */
 export const SOLDE_MAX = 1_000_000_000_000;
 
