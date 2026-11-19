@@ -477,7 +477,12 @@ export function App() {
     setCasinoOuvert(false);
     if (m) setMessage(m);
   }, []);
-  // Le casino a désormais son propre site : plus aucune entrée depuis Le Dernier Baron.
+  // Entrée du Salon privé depuis Le Dernier Baron (badge Créateur), tant que ce serveur fait aussi tourner le casino.
+  const [casinoIci, setCasinoIci] = useState(false);
+  useEffect(() => {
+    if (ESPACE === 'baron') void configServeur().then((c) => setCasinoIci(c?.casino === true));
+  }, []);
+  const ouvrirCasino = ESPACE === 'baron' && casinoIci && profil?.createur ? () => setCasinoOuvert(true) : undefined;
   const ouvrirClasse = useCallback(async () => {
     setClasseOuverte(true);
     const r = await appel('classe_ouvrir');
@@ -519,7 +524,7 @@ export function App() {
         )}
       />
     );
-  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirClasse={() => void ouvrirClasse()} />;
+  else ecran = <Accueil appel={appel} compte={compte} enLigne={enLigne} amis={amis} ouvrirCasino={ouvrirCasino} ouvrirClasse={() => void ouvrirClasse()} />;
 
   return (
     <>

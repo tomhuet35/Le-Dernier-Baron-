@@ -17,7 +17,9 @@ const contact = process.env.CONTACT_EMAIL?.trim() || 'ledernierbaron@gmail.com';
 // Joueurs de remplissage du classement de la semaine : JOUEURS_FICTIFS=non sur Render pour les retirer.
 const joueursFictifs = process.env.JOUEURS_FICTIFS !== 'non';
 // Deux sites Render à partir du même code : APPLI=casino fait tourner Baron's Fortune, sinon c'est Le Dernier Baron.
-const espace = process.env.APPLI?.trim().toLowerCase() === 'casino' ? 'casino' : 'baron';
+// En attendant que le site du casino soit créé, Le Dernier Baron garde le Salon privé (badge Créateur) ;
+// CASINO_SEPARE=oui sur le service du Dernier Baron le retire, une fois Baron's Fortune en ligne.
+const espace = process.env.APPLI?.trim().toLowerCase() === 'casino' ? 'casino' : process.env.CASINO_SEPARE?.trim().toLowerCase() === 'oui' ? 'baron' : 'tout';
 
 // Une erreur imprévue est notée, sans faire tomber le serveur (et avec lui toutes les parties et le casino en cours).
 process.on('unhandledRejection', (e) => console.error('Erreur non rattrapée (promesse) :', e));
