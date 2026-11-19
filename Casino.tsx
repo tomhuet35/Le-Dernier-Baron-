@@ -42,6 +42,8 @@ import { JeuFestin } from './CasinoFestin';
 import { JeuCouronne } from './CasinoCouronne';
 import { JeuChute } from './CasinoChute';
 import { JeuTickets } from './CasinoTickets';
+import { ChargementJeu } from './ChargementJeu';
+import type { JeuACharger } from './ressourcesJeux';
 import { JeuCourse } from './CasinoCourse';
 import { BandeauOuvertureBW, JeuBaronWheel } from './CasinoBaronWheel';
 import { BandeauAffiche, PuceAffiche } from './CasinoAffiche';
@@ -2157,6 +2159,14 @@ export default function Casino({
         onTailleur={() => setEcran('tailleur')}
       />
     );
+  // Premier lancement d'un jeu dans la visite : son écran de chargement (images, musique, sons), puis le jeu.
+  const jeuACharger: JeuACharger | null =
+    ecran === 'table' && table
+      ? table.jeu
+      : ecran === 'machine' || ecran === 'nuits' || ecran === 'folleNuit' || ecran === 'festin' || ecran === 'couronne' || ecran === 'chute' || ecran === 'course' || ecran === 'baronWheel' || ecran === 'tickets'
+        ? ecran
+        : null;
+  if (vue && jeuACharger) contenu = <ChargementJeu key={jeuACharger} jeu={jeuACharger}>{contenu}</ChargementJeu>;
   return (
     <div className="cas">
       <Garde key={ecran} onRetour={retourSalon} libelleRetour={tr('Retour au salon', 'Back to the lounge')}>
