@@ -102,3 +102,5 @@
 .pk-lacher { width: min(100%, 420px); }
 .pk-solde { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 700; }
 .pk-note { margin: 0; font-size: 12px; opacity: 0.7; }
+.pk-mises button { position: relative; }
+.pk-bonus { position: absolute; top: -9px; right: -6px; padding: 0 6px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #b07818); color: #2a1004; font-size: 11px; font-weight: 900; }
