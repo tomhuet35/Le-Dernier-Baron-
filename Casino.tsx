@@ -1627,12 +1627,21 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
   };
 
   return (
-    <Fenetre titre={tr('Le Plinko du Baron', 'The Baron’s Plinko')} onFermer={occupe ? undefined : onFermer} large>
-      <div className="pk">
+    // En plein écran, sans défilement : le plateau prend toute la hauteur disponible, les commandes à côté (paysage) ou dessous (portrait).
+    <div className="voile pk-voile" role="dialog" aria-modal="true" aria-label={tr('Le Plinko du Baron', 'The Baron’s Plinko')} onClick={occupe ? undefined : onFermer}>
+      <div className="pk" onClick={(e) => e.stopPropagation()}>
+        {!occupe && (
+          <button type="button" className="fermer pk-fermer" onClick={onFermer} aria-label={tr('Fermer', 'Close')}>
+            ×
+          </button>
+        )}
+        <div className="pk-tete">
         <img className="pk-logo" src="/cartes/pk-logo.webp" alt={tr('Le Plinko du Baron', 'The Baron’s Plinko')} draggable={false} />
         <p className="pk-intro">
           {tr('Jusqu’à', 'Up to')} <strong>{dollarsCourt(mise * DOLLARS_PAR_RUBIS[mise] * MULTI_MAX_PLINKO)}</strong> !
         </p>
+        </div>
+        <div className="pk-scene">
         <svg className="pk-plateau" viewBox={`0 0 ${PL.largeur} ${PL.hauteur}`} role="img" aria-label={tr('Plateau du Plinko', 'Plinko board')}>
           <image href="/cartes/pk-plateau.webp" x="0" y="0" width={PL.largeur} height={PL.hauteur} />
           {Array.from({ length: RANGEES_PLINKO }, (_, k) =>
@@ -1656,6 +1665,8 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
           <image ref={bille} className="pk-bille" href="/cartes/pk-bille.webp" x={PL.centre - 21} y={PL.entonnoir - 60} width="42" height="42" />
         </svg>
         {resultat && resultat.multi >= 100 && <img key={resultat.id} className="pk-explosion" src="/cartes/pk-jackpot.webp" alt="" aria-hidden="true" />}
+        </div>
+        <div className="pk-panneau">
         <p className="pk-resultat" aria-live="polite">
           {resultat ? (
             <>
@@ -1682,6 +1693,7 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
         </p>
         {erreur && <p className="cas-erreur">{erreur}</p>}
         <p className="pk-note">{tr('Les rubis se gagnent avec les contrats, l’album et la semaine du Baron.', 'Rubies are earned with contracts, the album and the Baron’s week.')}</p>
+        </div>
       </div>
       {fete && (
         <Celebration
@@ -1692,7 +1704,7 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
           onFermer={() => setFete(null)}
         />
       )}
-    </Fenetre>
+    </div>
   );
 }
 
