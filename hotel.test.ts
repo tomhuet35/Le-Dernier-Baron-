@@ -65,9 +65,11 @@ describe('Grand Hôtel : l’heure de Paris', () => {
     expect(happyHour(paris(18, 21, 30))).toEqual({ debut: paris(18, 21), fin: paris(18, 22), enCours: true });
     const apres = happyHour(paris(18, 22, 5));
     expect(apres.enCours).toBe(false);
-    expect(apres.debut).toBe(paris(19, 21));
+    expect(apres.debut).toBe(paris(19, 11));
     // Été (UTC + 2) : toujours 21 h à Paris.
     expect(new Date(happyHour(Date.UTC(2026, 6, 10, 12)).debut).toISOString()).toBe('2026-07-10T19:00:00.000Z');
+    expect(happyHour(paris(18, 11, 30))).toEqual({ debut: paris(18, 11), fin: paris(18, 12), enCours: true });
+    expect(happyHour(paris(18, 9)).debut).toBe(paris(18, 11));
   });
 });
 
