@@ -300,7 +300,7 @@ export interface ServiceComptes {
   tournerRoulette(uid: string, jour: string, tirage: number): Promise<{ stats: StatsCompte; gain: GainRoulette; xpAvant: number } | 'deja' | null>;
   /** Récompense du classement de la semaine : ajoute l'XP ; « deja » si cette semaine a déjà été récompensée, null sans compte. */
   recompenserSemaine(uid: string, semaine: string, xp: number): Promise<{ stats: StatsCompte; xpAvant: number } | 'deja' | null>;
-  /** Salon privé : ouvre le casino du compte au premier passage (1 000 000 $) ; null sans compte. */
+  /** Salon privé : ouvre le casino du compte au premier passage (10 000 000 $) ; null sans compte. */
   entrerCasino(uid: string): Promise<StatsCompte | null>;
   /**
    * Un invité crée son compte (ou s'y connecte) : sa progression au casino passe sur le compte, d'un seul bloc.
