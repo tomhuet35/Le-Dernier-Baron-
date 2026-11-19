@@ -19,7 +19,7 @@ const dollars = (n: number) => formatDollars(n, EN);
 /** Montant court écrit sur un jeton : 25k, 1,5M… */
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
 /** Les jetons du Baron (communs au blackjack) ; au-delà de 500K (tables VIP), le 500K. */
-const imageJeton = (v: number) => (v >= 500_000 ? 'bj-500k' : v >= 100_000 ? 'bj-100k' : v >= 25_000 ? 'bj-25k' : v >= 5_000 ? 'bj-5k' : 'bj-1k');
+const imageJeton = (v: number) => (v >= 10_000_000 ? 'bj-10m' : v >= 1_000_000 ? 'bj-1m' : v >= 500_000 ? 'bj-500k' : v >= 100_000 ? 'bj-100k' : v >= 25_000 ? 'bj-25k' : v >= 5_000 ? 'bj-5k' : 'bj-1k');
 const COULEURS = { rouge: '#8e1c14', noir: '#141010', vert: '#0f6b3a' };
 
 // ---------------------------------------------------------------------------------------------------------------

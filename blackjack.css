@@ -115,3 +115,10 @@
 @keyframes bj2-pluie { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(130cqh) rotate(var(--r)); opacity: 0.4; } }
 .bj2-scene { container-type: size; }
 @media (prefers-reduced-motion: reduce) { .bj2-lampe, .bj2-croupiere > img, .bj2-pluie { animation: none !important; } }
+
+/* Sept jetons (jusqu'à 10 M) : ils passent sur deux lignes si l'écran est étroit. */
+.bj-jetons { flex-wrap: wrap; row-gap: 6px; }
+@media (max-width: 600px) {
+  .bj2-panneau .bj-jeton, .rl-commandes .bj-jeton { width: 46px !important; height: 46px !important; }
+  .rl-v .rl-commandes .bj-jetons { flex-wrap: wrap !important; }
+}

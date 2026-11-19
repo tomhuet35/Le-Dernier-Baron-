@@ -16,7 +16,7 @@ const dollars = (n: number) => formatDollars(n, EN);
 const COULEURS = ['♠', '♥', '♦', '♣'];
 const RANGS_FR = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R'];
 const RANGS_EN = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const JETON_IMAGE: Record<number, string> = { 1_000: 'jeton-bj-1k', 5_000: 'jeton-bj-5k', 25_000: 'jeton-bj-25k', 100_000: 'jeton-bj-100k' };
+const JETON_IMAGE: Record<number, string> = { 1_000: 'jeton-bj-1k', 5_000: 'jeton-bj-5k', 25_000: 'jeton-bj-25k', 100_000: 'jeton-bj-100k', 500_000: 'jeton-bj-500k', 1_000_000: 'jeton-bj-1m', 10_000_000: 'jeton-bj-10m' };
 
 /** Une carte, dessinée en code : fond crème, filet doré, rang et couleur dans les coins, grand motif au centre. */
 export function CarteJeu({ carte, petite, className, style }: { carte: CarteBJ | null; petite?: boolean; className?: string; style?: CSSProperties }) {
