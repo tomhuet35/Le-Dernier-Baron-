@@ -1399,8 +1399,8 @@ function FenetreTables({ jeu, vip, vue, appel, onTable, onVue, onFermer }: { jeu
             ? tr('Table VIP : mises de 10 000 à 2 500 000 $.', 'VIP table: bets from $10,000 to $2,500,000.')
             : tr('Table VIP : jetons de 10 000 à 5 000 000 $, 10 000 000 $ au plus par tour.', 'VIP table: chips from $10,000 to $5,000,000, $10,000,000 at most per spin.')
           : jeu === 'blackjack'
-          ? tr('Mises de 1 000 à 250 000 $. Tes amis créateurs voient ta table ici, et tu peux les inviter depuis la table.', 'Bets from $1,000 to $250,000. Your creator friends see your table here, and you can invite them from the table.')
-          : tr('Roulette européenne, un seul zéro. Jetons de 1 000 à 500 000 $, 1 000 000 $ au plus par tour. Invite tes amis créateurs depuis la table.', 'European roulette, single zero. Chips from $1,000 to $500,000, $1,000,000 at most per spin. Invite your creator friends from the table.')}
+          ? tr('Mises de 1 000 $ à 10 millions $ (100 millions en VIP). Tes amis créateurs voient ta table ici, et tu peux les inviter depuis la table.', 'Bets from $1,000 to $10 million ($100 million at VIP tables). Your creator friends see your table here, and you can invite them from the table.')
+          : tr('Roulette européenne, un seul zéro. Jetons de 1 000 $ à 10 millions $, 10 millions au plus par tour (100 millions en VIP). Invite tes amis créateurs depuis la table.', 'European roulette, single zero. Chips from $1,000 to $10 million, $10 million at most per spin ($100 million at VIP tables). Invite your creator friends from the table.')}
       </p>
       {erreur && <p className="cas-erreur">{erreur}</p>}
     </Fenetre>

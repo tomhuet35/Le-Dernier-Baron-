@@ -21,9 +21,9 @@ export const ROUGES = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27
 export const couleurNumero = (n: number): 'vert' | 'rouge' | 'noir' => (n === 0 ? 'vert' : ROUGES.has(n) ? 'rouge' : 'noir');
 
 /** Jetons (en dollars), limites d'une case et d'un tour. */
-export const JETONS_ROULETTE = [1_000, 5_000, 25_000, 100_000, 500_000];
-export const MAX_CASE_ROULETTE = 500_000;
-export const MAX_TOUR_ROULETTE = 1_000_000;
+export const JETONS_ROULETTE = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000, 10_000_000];
+export const MAX_CASE_ROULETTE = 10_000_000;
+export const MAX_TOUR_ROULETTE = 10_000_000;
 export const PLACES_ROULETTE = 5;
 
 /** Les mises simples (rouge/noir, pair/impair, manque/passe). */

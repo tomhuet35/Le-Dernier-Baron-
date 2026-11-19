@@ -17,11 +17,11 @@ export const NB_JEUX_BJ = 6;
 /** On remélange quand il reste moins de 25 % du sabot. */
 export const PART_COUPE_BJ = 0.25;
 export const MISE_MIN_BJ = 1_000;
-export const MISE_MAX_BJ = 250_000;
+export const MISE_MAX_BJ = 10_000_000;
 export const MAINS_MAX_BJ = 3;
 export const PLACES_BJ = 5;
 /** Jetons proposés pour miser. */
-export const JETONS_BJ = [1_000, 5_000, 25_000, 100_000];
+export const JETONS_BJ = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000, 10_000_000];
 
 export function totalMain(cartes: CarteBJ[]): { total: number; souple: boolean } {
   const t = cartes.reduce((s, c) => s + valeurCarte(c), 0);
