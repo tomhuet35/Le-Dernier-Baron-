@@ -1722,7 +1722,7 @@ export default function Casino({
   const [fete, setFete] = useState<FeteNiveau | null>(null);
   const [toastSocial, setToastSocial] = useState<{ texte: string; vers: 'amis' | 'defis'; id: number } | null>(null);
   const minuterieToast = useRef(0);
-  const moi = compte.utilisateur?.uid ?? '';
+  const moi = compte.uid ?? '';
   /** Chaque (re)entrée au salon : le serveur repart de zéro pour ce téléphone (position, présence). */
   const [entrees, setEntrees] = useState(0);
   const defisRef = useRef<VueDefi[]>([]);

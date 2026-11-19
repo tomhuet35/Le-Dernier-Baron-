@@ -1508,3 +1508,5 @@ html[data-espace='casino'], html[data-espace='casino'] body { background: #12020
 .porte-bouton { min-width: 230px; padding: 14px 26px; border-radius: 99px; border: 2px solid #ffd774; background: linear-gradient(180deg, #c8222f, #7a0d17); color: #fff4d6; font-family: 'Limelight', serif; font-size: 20px; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3); cursor: pointer; }
 .porte-lien { border: 0; background: none; color: #e7c27a; text-decoration: underline; font-size: 15px; cursor: pointer; }
 .porte-mention { margin-top: 18px; font-size: 12px; opacity: 0.6; }
+.porte-note { max-width: 320px; margin: 0; font-size: 13px; line-height: 1.4; color: #e9d9bb; opacity: 0.8; }
+.porte-liens { display: flex; align-items: center; gap: 10px; color: #e7c27a; }
