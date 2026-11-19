@@ -523,3 +523,17 @@ body > .voile { z-index: 200; }
   .ac-boutique-haut .ac-boutique-entrer { font-size: 13px; padding: 0.35em 1.1em; right: 10%; bottom: 15%; }
   .ac-page .ac-carte { height: min(100%, 58vh) !important; }
 }
+.ac-une-boutique { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; }
+.ac-une-boutique > span { display: grid; gap: 2px; }
+.ac-une-boutique small { font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; color: #e7c27a; }
+.ac-une-boutique strong { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: 24px; color: #ffd774; text-shadow: 0 2px 0 #4a2200; }
+.ac-une-boutique em { font-style: normal; font-size: 13px; opacity: 0.9; }
+@media (min-width: 601px) { .ac-une-carte .ac-une-boutique { flex-direction: column; text-align: center; } .ac-une-carte .ac-une-boutique strong { font-size: 34px; } }
+/* Le logo n'est pas une annonce : pas de fond ni de cadre. */
+.ac-une-contenu > .ac-une-logo { display: block !important; flex: none !important; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0 !important; height: auto !important; }
+@media (min-width: 601px) { .ac-une-carte .ac-une-contenu > .ac-une-logo { position: absolute !important; width: 40% !important; } }
+@media (max-width: 600px) {
+  .ac-une-boutique small { display: none; }
+  .ac-une-boutique em { font-size: 12px; }
+  .ac-une-boutique button { white-space: nowrap; min-height: 40px; padding: 6px 14px; }
+}
