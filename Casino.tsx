@@ -67,7 +67,7 @@ import './boutique.css';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
 import type { EtatCompte } from './Profil';
-import { ANGLE_ROUE, COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRoue } from './RouletteDuJour';
+import { COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRoue } from './RouletteDuJour';
 import { socket } from './socket';
 import { EN, tr } from './traduction';
 import { BoutonMusique, Celebration, Fenetre, Garde, jouerEffet, mouvementReduit, musiqueDuCasino, musiqueDuSalon, useCompteur } from './ui';
@@ -1626,7 +1626,7 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
         <p className="pk-intro">
           {tr('Lâche une bille : jusqu’à', 'Drop a ball: up to')} <strong>{dollarsCourt(mise * DOLLARS_PAR_RUBIS[mise] * MULTI_MAX_PLINKO)}</strong> !
         </p>
-        <svg className="pk-plateau" viewBox={`0 0 ${PL.largeur} ${PL.bas + 120}`} role="img" aria-label={tr('Plateau du Plinko', 'Plinko board')}>
+        <svg className="pk-plateau" viewBox={`-30 0 ${PL.largeur + 60} ${PL.bas + 100}`} role="img" aria-label={tr('Plateau du Plinko', 'Plinko board')}>
           <defs>
             <radialGradient id="pk-clou" cx="35%" cy="30%">
               <stop offset="0" stopColor="#fff6d0" />
@@ -1697,9 +1697,15 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
   );
 }
 
-function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => void; ouvrir: (f: () => void) => void; onRoue: () => void; onMarche: () => void; onTailleur: () => void; onCoffre: () => void }) {
+function FenetreBoutique(props: { rayon?: string; attenteRoue: string | null; onFermer: () => void; ouvrir: (f: () => void) => void; onRoue: () => void; onMarche: () => void; onTailleur: () => void; onCoffre: () => void }) {
   const { attenteRoue, ouvrir } = props;
-  const [rayon, setRayon] = useState('debutant');
+  const [rayon, setRayon] = useState(props.rayon && RAYONS_OFFRES.some((x) => x.id === props.rayon) ? props.rayon : 'debutant');
+  const offres = useRef<HTMLElement>(null);
+  // Ouverte sur un rayon précis : on y descend directement.
+  useEffect(() => {
+    if (props.rayon) window.setTimeout(() => offres.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [rotLuxe, setRotLuxe] = useState(0);
   // La roue de luxe tourne doucement, pour donner envie.
   useEffect(() => {
@@ -1752,7 +1758,7 @@ function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => vo
           </i>
         </button>
 
-        <nav className="bq-onglets" aria-label={tr('Rayons', 'Departments')}>
+        <nav className="bq-onglets" ref={offres} aria-label={tr('Rayons', 'Departments')}>
           {RAYONS_OFFRES.map((x) => (
             <button key={x.id} type="button" className={x.id === rayon ? 'actif' : ''} aria-pressed={x.id === rayon} onClick={() => setRayon(x.id)}>
               {tr(...x.titre)}
@@ -1894,7 +1900,8 @@ function Accueil({
   const finVentes = useAttente(vue.ventes?.fin);
   const [menu, setMenu] = useState(false);
   const [riches, setRiches] = useState(false);
-  const [boutique, setBoutique] = useState(false);
+  // La Boutique ouverte, et sur quel rayon (le « + » des rubis ou des dollars mène droit à leurs offres).
+  const [boutique, setBoutique] = useState<string | false>(false);
   const [coffreRubis, setCoffreRubis] = useState(false);
   const niveau = vue.hotel?.niveau ?? vue.profil?.niveau ?? 1;
   const c = vue.contrats;
@@ -1921,7 +1928,7 @@ function Accueil({
           <strong>{tr('La Boutique', 'The Shop')}</strong>
           <em>{tr('Roulette du jour, Marché noir, Tailleur…', 'Daily wheel, Black Market, Tailor…')}</em>
         </span>
-        <button type="button" className="principal" onClick={() => setBoutique(true)}>
+        <button type="button" className="principal" onClick={() => setBoutique('debutant')}>
           {tr('Entrer', 'Enter')} ›
         </button>
       </div>
@@ -1970,18 +1977,18 @@ function Accueil({
         <span className="ac-compteur ac-rubis">
           <img src="/cartes/rubis-icone.webp" alt={tr('Rubis', 'Rubies')} />
           <b>{(c?.rubis ?? 0).toLocaleString(tr('fr-FR', 'en-US'))}</b>
-          <button type="button" className="ac-plus" onClick={onContrats} aria-label={tr('Gagner des rubis : les contrats', 'Earn rubies: contracts')}>
+          <button type="button" className="ac-plus" onClick={() => setBoutique('rubis')} aria-label={tr('Obtenir des rubis', 'Get rubies')}>
             <img src="/cartes/bouton-plus.webp" alt="" />
           </button>
         </span>
         <span className="ac-compteur ac-dollars">
           <img src="/cartes/dollars-icone.webp" alt="$" />
           <b title={dollars(solde)}>{dollarsCourt(solde)}</b>
-          <button type="button" className="ac-plus" onClick={onRoue} aria-label={tr('Roulette du salon', 'Lounge wheel')}>
+          <button type="button" className="ac-plus" onClick={() => setBoutique('dollars')} aria-label={tr('Obtenir des dollars', 'Get dollars')}>
             <img src="/cartes/bouton-plus.webp" alt="" />
           </button>
         </span>
-        <button type="button" className="ac-boutique" onClick={() => setBoutique(true)} aria-label={tr('La boutique', 'The shop')}>
+        <button type="button" className="ac-boutique" onClick={() => setBoutique('debutant')} aria-label={tr('La boutique', 'The shop')}>
           <img src="/cartes/icone-boutique.webp" alt="" />
           <span>{tr('Boutique', 'Shop')}</span>
           {!attenteRoue && <span className="pastille-nombre">1</span>}
@@ -2114,6 +2121,7 @@ function Accueil({
       )}
       {boutique && (
         <FenetreBoutique
+          rayon={boutique}
           attenteRoue={attenteRoue}
           onFermer={() => setBoutique(false)}
           ouvrir={(f) => {

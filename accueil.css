@@ -236,7 +236,9 @@
 @media (min-width: 601px) { .ac-rubis b { margin-right: 12px; } }
 @media (max-width: 600px) {
   .ac-barre { padding-left: 26px; padding-right: 26px; gap: 6px; border-image-width: 0 48px; }
-  .ac-plus { display: none; }
+  /* Pas de place pour le « + » : tout le compteur devient le bouton (rubis ou dollars de la Boutique). */
+  .ac-plus { display: block; inset: 0; right: 0; top: 0; translate: none; width: auto !important; height: auto !important; }
+  .ac-plus img { display: none; }
   .ac-compteur { padding-right: 18px; }
   .ac-rubis { padding-right: 18px; margin-left: 6px; }
   .ac-dollars { margin-left: 6px; }
@@ -439,19 +441,8 @@ body > .voile { z-index: 200; }
 .ac-page .ac-carte { flex: none; scroll-snap-align: center; height: min(100%, 520px); width: auto !important; max-width: none; max-height: none; aspect-ratio: 475 / 720; }
 @media (max-width: 600px) { .ac-page .ac-carte { height: min(100%, 64vh); } }
 
-/* Les flammes au-dessus de la carte (Happy Hour, XP double). */
-.ac-flammes { position: absolute; left: 4%; right: 4%; top: -11%; height: 18%; z-index: 3; pointer-events: none; display: flex; justify-content: center; align-items: flex-end; }
-.ac-flammes::before { content: ''; position: absolute; left: -4%; right: -4%; bottom: -12%; height: 55%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 150, 40, 0.75), rgba(255, 80, 10, 0.25) 60%, transparent); filter: blur(4px); animation: ac-braise 1.6s ease-in-out infinite alternate; }
-@keyframes ac-braise { to { opacity: 0.65; transform: scaleX(0.94); } }
-.ac-flammes i { position: relative; width: 19%; margin: 0 -3.2%; height: 100%; filter: blur(1.2px); border-radius: 50% 50% 35% 35% / 70% 70% 30% 30%; background: radial-gradient(ellipse at 50% 85%, #fff6c8 0 18%, #ffd34a 32%, #ff8a1a 58%, rgba(220, 40, 10, 0.85) 78%, transparent 82%); transform-origin: 50% 100%; animation: ac-flamme calc(0.55s + var(--i) * 0.07s) ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.13s); mix-blend-mode: screen; }
-.ac-flammes i:nth-child(odd) { height: 72%; }
-.ac-flammes i:nth-child(3n) { height: 88%; width: 15%; }
-.ac-flammes i:nth-child(1), .ac-flammes i:nth-child(9) { height: 48%; }
-@keyframes ac-flamme { 0% { transform: scale(0.85, 0.75) skewX(-6deg); opacity: 0.85; } 50% { transform: scale(1.05, 1.08) skewX(4deg); } 100% { transform: scale(0.95, 1.18) skewX(-3deg); opacity: 1; } }
-.ac-flammes b { position: absolute; left: 50%; bottom: -26%; translate: -50% 0; padding: 2px 10px; border-radius: 99px; background: linear-gradient(180deg, #ff7a1a, #b11a08); border: 1px solid #ffd774; color: #fff4d6; font-size: clamp(10px, 1.6vh, 13px); font-weight: 900; letter-spacing: 0.04em; white-space: nowrap; box-shadow: 0 0 12px rgba(255, 120, 20, 0.8); }
 
-@media (prefers-reduced-motion: reduce) { .ac-flammes i { animation: none; } }
-
+@media (prefers-reduced-motion: reduce) { 
 /* Le défilement doit atteindre le premier jeu : la rangée part de la gauche (centrée seulement si elle tient). */
 .ac-page { justify-content: flex-start !important; margin-inline: auto; }
 /* Flèches pour faire défiler (tablette, ordinateur). */
@@ -466,15 +457,8 @@ body > .voile { z-index: 200; }
 .ac-page { padding: 22px clamp(18px, 5vw, 50px) 8px !important; }
 .ac-page .ac-carte { height: min(100%, 760px); }
 @media (max-width: 600px) { .ac-page .ac-carte { height: min(100%, 74vh); } }
-.ac-flammes { display: none !important; }
-.ac-carte.neon::before { content: ''; position: absolute; inset: -1.8%; z-index: -1; border-radius: 4.5% / 3%; padding: 3px; background: conic-gradient(from var(--neon-angle, 0deg), #ff2fd6, #ffe14a, #2fffd2, #3a7bff, #b44dff, #ff2fd6); filter: blur(7px) saturate(1.4); opacity: 0.95; animation: ac-neon 3s linear infinite, ac-neon-clignote 2.4s ease-in-out infinite; }
-.ac-carte.neon::after { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 0 18px rgba(255, 80, 220, 0.45), 0 0 34px rgba(60, 200, 255, 0.35); border-radius: 4%; }
-@property --neon-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-@keyframes ac-neon { to { --neon-angle: 360deg; } }
-@keyframes ac-neon-clignote { 0%, 100% { opacity: 0.95; } 45% { opacity: 0.7; } 50% { opacity: 1; } 55% { opacity: 0.8; } }
 .ac-neon-badge { position: absolute; left: 50%; top: -2.2%; z-index: 4; translate: -50% 0; padding: 3px 12px; border-radius: 99px; background: linear-gradient(90deg, #ff2fd6, #b44dff, #3a7bff); border: 1px solid #fff; color: #fff; font-size: clamp(11px, 1.7vh, 14px); font-weight: 900; letter-spacing: 0.05em; white-space: nowrap; box-shadow: 0 0 12px rgba(255, 60, 220, 0.9), 0 0 22px rgba(60, 140, 255, 0.7); text-shadow: 0 0 6px rgba(255, 255, 255, 0.8); }
-@media (prefers-reduced-motion: reduce) { .ac-carte.neon::before { animation: none; } }
-@media (min-width: 601px) { .ac-page .ac-une-carte { height: min(100%, 760px); } }
+@media (prefers-reduced-motion: reduce) { @media (min-width: 601px) { .ac-page .ac-une-carte { height: min(100%, 760px); } }
 
 /* ---------- « À la une » illustrée : le décor de l'événement, le logo du jeu, le cadre doré couronné ---------- */
 .ac-une-contenu.illustre { position: relative; overflow: hidden; border-radius: 14px; background: linear-gradient(180deg, rgba(10, 3, 3, 0.05) 30%, rgba(10, 3, 3, 0.82) 72%, rgba(10, 3, 3, 0.95)), var(--une-fond) center / cover no-repeat, #2a0609; box-shadow: 0 0 0 2px #c99a3e, 0 0 18px rgba(255, 200, 90, 0.45); }
@@ -496,7 +480,6 @@ body > .voile { z-index: 200; }
 }
 
 /* ---------- Jeux en XP double / Happy Hour : un halo doré (à la place des néons) ---------- */
-.ac-carte.neon::before { display: none; }
 .ac-carte.dore::before { content: ''; position: absolute; inset: -2.5%; z-index: -1; border-radius: 6% / 4%; background: radial-gradient(closest-side, rgba(255, 215, 116, 0.75), rgba(255, 170, 50, 0.35) 70%, transparent); filter: blur(10px); animation: ac-or 2.6s ease-in-out infinite; }
 .ac-carte.dore::after { filter: drop-shadow(0 0 10px rgba(255, 215, 116, 0.9)) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6)); }
 @keyframes ac-or { 50% { opacity: 0.6; transform: scale(0.985); } }
@@ -507,21 +490,9 @@ body > .voile { z-index: 200; }
 @media (prefers-reduced-motion: reduce) { .ac-carte.dore::before, .ac-carte.dore .ac-reflet::before, .ac-une-logo { animation: none; } }
 
 /* ---------- La Boutique, en grand en tête de la rangée ---------- */
-.ac-boutique-carte { position: relative; flex: none; scroll-snap-align: center; height: min(100%, 760px); aspect-ratio: 1672 / 941; padding: 0; border: 0; border-radius: 12px; background: none; cursor: pointer; filter: drop-shadow(0 0 16px rgba(255, 200, 90, 0.5)) drop-shadow(0 12px 22px rgba(0, 0, 0, 0.7)); animation: ac-or 2.6s ease-in-out infinite; }
-.ac-boutique-carte img { display: block; width: 100%; height: 100%; object-fit: contain; }
-.ac-boutique-entrer { position: absolute; right: 9%; bottom: 14%; padding: 0.5em 1.6em; border-radius: 99px; border: 2px solid #ffd774; background: linear-gradient(180deg, #c8222f, #7a0d17); color: #fff4d6; font-family: 'Limelight', var(--titre), serif; font-size: clamp(16px, 2.6vh, 26px); box-shadow: 0 0 16px rgba(255, 215, 116, 0.7), 0 6px 14px rgba(0, 0, 0, 0.6); animation: ac-entrer 1.8s ease-in-out infinite; }
-@keyframes ac-entrer { 50% { transform: scale(1.06); } }
-.ac-boutique-carte:hover img, .ac-boutique-carte:focus-visible img { transform: scale(1.01); transition: transform 0.2s; }
-@media (max-width: 600px) { .ac-boutique-carte { height: auto; width: 88vw; align-self: center; } }
-@media (prefers-reduced-motion: reduce) { .ac-boutique-carte, .ac-boutique-entrer { animation: none; } }
-/* Téléphone : la boutique en bandeau au-dessus des jeux (la rangée garde ses grandes affiches). */
-.ac-boutique-haut { display: none; }
+@media (max-width: 600px) { @media (prefers-reduced-motion: reduce) { /* Téléphone : la boutique en bandeau au-dessus des jeux (la rangée garde ses grandes affiches). */
 @media (max-width: 600px) {
-  .ac-page .ac-boutique-carte { display: none; }
-  .ac-boutique-haut { position: relative; display: block; flex: none; align-self: center; width: min(100%, 520px); aspect-ratio: 1672 / 941; max-height: 24vh; margin: 2px auto 0; padding: 0; border: 0; background: none; filter: drop-shadow(0 0 12px rgba(255, 200, 90, 0.45)); }
-  .ac-boutique-haut img { width: 100%; height: 100%; object-fit: contain; }
-  .ac-boutique-haut .ac-boutique-entrer { font-size: 13px; padding: 0.35em 1.1em; right: 10%; bottom: 15%; }
-  .ac-page .ac-carte { height: min(100%, 58vh) !important; }
+  .ac-page         .ac-page .ac-carte { height: min(100%, 58vh) !important; }
 }
 .ac-une-boutique { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; }
 .ac-une-boutique > span { display: grid; gap: 2px; }
