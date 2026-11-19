@@ -1744,7 +1744,7 @@ function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => vo
           <img src="/cartes/rubis-icone.webp" alt="" />
           <span>
             <b>{tr('Le Plinko du Baron', 'The Baron’s Plinko')}</b>
-            <small>{tr('Lâche une bille contre des rubis : jusqu’à ×1000, 50 milliards $ !', 'Drop a ball for rubies: up to ×1000, $50 billion!')}</small>
+            <small>{tr('Lâche une bille contre des rubis : jusqu’à ×1000, 20 milliards $ !', 'Drop a ball for rubies: up to ×1000, $20 billion!')}</small>
           </span>
           <i className="bq-bouton">
             <img src="/cartes/rubis-icone.webp" alt="" />5
