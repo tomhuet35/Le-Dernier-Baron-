@@ -1435,9 +1435,22 @@ function dollarsCourt(n: number): string {
 
 /** Un bouton du dock (en bas de l'accueil) : icône ronde, nom, pastille ou minuterie. */
 /** La boutique du salon (barre du haut) : la Roulette, le Marché noir et le Tailleur, réunis. */
+/**
+ * Les offres en argent réel de la Boutique : maquette, pas encore à vendre (aucun paiement branché). Jamais de rubis
+ * contre de l'argent réel : seulement des dollars du jeu, le Pass et des objets.
+ */
+const OFFRES_BOUTIQUE: { id: string; image: string; nom: [string, string]; detail: [string, string]; prix: string; ruban?: [string, string]; vedette?: boolean }[] = [
+  { id: 'bienvenue', image: 'coffre-jour7', nom: ['Pack de bienvenue', 'Welcome pack'], detail: ['50 M $ + tenue exclusive · une seule fois', '$50M + exclusive outfit · once only'], prix: '0,99 €', ruban: ['−80 %', '−80%'], vedette: true },
+  { id: 'liasse', image: 'butin-billet', nom: ['Liasse', 'Bundle'], detail: ['25 millions $', '$25 million'], prix: '1,99 €' },
+  { id: 'mallette', image: 'machine-coffre', nom: ['Coffre-fort', 'Safe'], detail: ['150 millions $', '$150 million'], prix: '4,99 €' },
+  { id: 'coffre', image: 'butin-lingot', nom: ['Lingot d’or', 'Gold bar'], detail: ['500 millions $ · +20 %', '$500 million · +20%'], prix: '9,99 €', ruban: ['Populaire', 'Popular'] },
+  { id: 'reserve', image: 'machine-diamant', nom: ['Diamant du Baron', 'Baron’s diamond'], detail: ['3 milliards $ · +50 %', '$3 billion · +50%'], prix: '49,99 €', ruban: ['Meilleur prix', 'Best value'] },
+  { id: 'pass', image: 'couronne', nom: ['Pass du Baron', 'Baron’s Pass'], detail: ['30 jours : 20 M $ par jour, XP +25 %, cadre doré', '30 days: $20M a day, XP +25%, golden frame'], prix: '7,99 € / mois', vedette: true },
+];
+
 function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => void; ouvrir: (f: () => void) => void; onRoue: () => void; onMarche: () => void; onTailleur: () => void }) {
   const { attenteRoue, ouvrir } = props;
-  const rayons: { image: string; nom: string; detail: string; pastille?: boolean; ouvrirRayon: () => void }[] = [
+  const rayons: { image: string; cle?: string; nom: string; detail: string; pastille?: boolean; ouvrirRayon: () => void }[] = [
     {
       image: 'icone-roulette',
       nom: tr('La Roulette', 'The Wheel'),
@@ -1445,7 +1458,7 @@ function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => vo
       pastille: !attenteRoue,
       ouvrirRayon: props.onRoue,
     },
-    { image: 'icone-boutique', nom: tr('Le Marché noir', 'The Black Market'), detail: tr('L’étal du jour, contre des rubis', 'Today’s stall, for rubies'), ouvrirRayon: props.onMarche },
+    { image: 'icone-tailleur', cle: 'marche', nom: tr('Le Marché noir', 'The Black Market'), detail: tr('L’étal du jour, contre des rubis', 'Today’s stall, for rubies'), ouvrirRayon: props.onMarche },
     { image: 'icone-tailleur', nom: tr('Le Tailleur', 'The Tailor'), detail: tr('Les tenues du salon', 'The lounge outfits'), ouvrirRayon: props.onTailleur },
   ];
   return (
@@ -1458,9 +1471,26 @@ function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => vo
             ✕
           </button>
         </header>
+        <h3 className="ac-offres-titre">{tr('Offres du Baron', 'The Baron’s offers')}</h3>
+        <div className="ac-offres">
+          {OFFRES_BOUTIQUE.map((o) => (
+            <div key={o.id} className={`ac-offre ${o.vedette ? 'vedette' : ''}`}>
+              {o.ruban && <span className="ac-offre-ruban">{tr(...o.ruban)}</span>}
+              <img src={`/cartes/${o.image}.webp`} alt="" draggable={false} />
+              <b>{tr(...o.nom)}</b>
+              <small>{tr(...o.detail)}</small>
+              <span className="ac-offre-prix" aria-disabled="true">
+                {o.prix}
+                <em>{tr('Bientôt', 'Soon')}</em>
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="ac-offres-note">{tr('Offres en préparation : les achats ne sont pas encore ouverts.', 'Offers in preparation: purchases are not open yet.')}</p>
+        <h3 className="ac-offres-titre">{tr('Les rayons', 'The departments')}</h3>
         <div className="ac-rayons">
           {rayons.map((r) => (
-            <button key={r.image} type="button" className="ac-rayon" onClick={() => ouvrir(r.ouvrirRayon)}>
+            <button key={r.cle ?? r.image} type="button" className="ac-rayon" onClick={() => ouvrir(r.ouvrirRayon)}>
               <img src={`/cartes/${r.image}.webp`} alt="" />
               <span>
                 <b>{r.nom}</b>
