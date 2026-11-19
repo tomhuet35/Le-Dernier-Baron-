@@ -1550,9 +1550,9 @@ function Offre({ o }: { o: OffreBoutique }) {
 }
 
 /** Le Plinko du Baron : la bille tombe de clou en clou jusqu'à une case de dollars. */
-const PL = { largeur: 1300, haut: 70, ecart: 92, pas: 100, bas: 0 };
-PL.bas = PL.haut + RANGEES_PLINKO * PL.ecart + 10;
-const xBille = (droites: number, rangees: number) => PL.largeur / 2 + (droites - rangees / 2) * PL.pas;
+/** Le plateau (pk-plateau.webp, 1216 × 1293) : les clous dans son triangle de marbre, les cases sur son velours. */
+const PL = { largeur: 1216, hauteur: 1293, centre: 608, haut: 395, ecart: 60, pas: 70, entonnoir: 290, cases: 1112 };
+const xBille = (droites: number, rangees: number) => PL.centre + (droites - rangees / 2) * PL.pas;
 function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
   const [mise, setMise] = useState<MisePlinko>(5);
   const [occupe, setOccupe] = useState(false);
@@ -1560,7 +1560,7 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
   const [resultat, setResultat] = useState<{ caseFinale: number; gain: number; multi: number; id: number } | null>(null);
   const [fete, setFete] = useState<{ gain: number; multi: number } | null>(null);
   const [clou, setClou] = useState<string | null>(null);
-  const bille = useRef<SVGCircleElement>(null);
+  const bille = useRef<SVGImageElement>(null);
   const anim = useRef(0);
   useEffect(() => () => cancelAnimationFrame(anim.current), []);
   const rubis = vue.contrats?.rubis ?? 0;
@@ -1580,13 +1580,13 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
     const nouvelle = r.casino;
     jouerEffet('jeton');
     // Les points de passage : le haut, puis chaque clou touché, puis la case.
-    const points: { x: number; y: number; clou?: string }[] = [{ x: PL.largeur / 2, y: 10 }];
+    const points: { x: number; y: number; clou?: string }[] = [{ x: PL.centre, y: PL.entonnoir }];
     let droites = 0;
     for (let k = 0; k < chemin.length; k++) {
-      points.push({ x: xBille(droites, k), y: PL.haut + k * PL.ecart - 26, clou: `${k}-${droites}` });
+      points.push({ x: xBille(droites, k), y: PL.haut + k * PL.ecart - 22, clou: `${k}-${droites}` });
       droites += chemin[k];
     }
-    points.push({ x: xBille(droites, RANGEES_PLINKO), y: PL.bas + 40 });
+    points.push({ x: xBille(droites, RANGEES_PLINKO), y: PL.cases + 46 });
     const dureeSegment = mouvementReduit() ? 1 : 170;
     const debut = performance.now();
     const fin = () => {
@@ -1605,9 +1605,9 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
       const b = points[i + 1];
       // Petit saut au-dessus du clou, puis la chute (parabole).
       const x = a.x + (b.x - a.x) * u;
-      const y = a.y + (b.y - a.y) * u * u - (i > 0 && i < points.length - 2 ? 34 * 4 * u * (1 - u) : 0);
-      bille.current?.setAttribute('cx', String(x));
-      bille.current?.setAttribute('cy', String(y));
+      const y = a.y + (b.y - a.y) * u * u - (i > 0 && i < points.length - 2 ? 26 * 4 * u * (1 - u) : 0);
+      bille.current?.setAttribute('x', String(x - 21));
+      bille.current?.setAttribute('y', String(y - 21));
       if (u < 0.15 && a.clou && a.clou !== clouCourant) {
         clouCourant = a.clou;
         setClou(a.clou);
@@ -1623,26 +1623,17 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
   return (
     <Fenetre titre={tr('Le Plinko du Baron', 'The Baron’s Plinko')} onFermer={occupe ? undefined : onFermer} large>
       <div className="pk">
+        <img className="pk-logo" src="/cartes/pk-logo.webp" alt={tr('Le Plinko du Baron', 'The Baron’s Plinko')} draggable={false} />
         <p className="pk-intro">
-          {tr('Lâche une bille : jusqu’à', 'Drop a ball: up to')} <strong>{dollarsCourt(mise * DOLLARS_PAR_RUBIS[mise] * MULTI_MAX_PLINKO)}</strong> !
+          {tr('Jusqu’à', 'Up to')} <strong>{dollarsCourt(mise * DOLLARS_PAR_RUBIS[mise] * MULTI_MAX_PLINKO)}</strong> !
         </p>
-        <svg className="pk-plateau" viewBox={`-30 0 ${PL.largeur + 60} ${PL.bas + 100}`} role="img" aria-label={tr('Plateau du Plinko', 'Plinko board')}>
-          <defs>
-            <radialGradient id="pk-clou" cx="35%" cy="30%">
-              <stop offset="0" stopColor="#fff6d0" />
-              <stop offset="0.5" stopColor="#e0a92e" />
-              <stop offset="1" stopColor="#6a4208" />
-            </radialGradient>
-            <radialGradient id="pk-bille" cx="35%" cy="30%">
-              <stop offset="0" stopColor="#ffffff" />
-              <stop offset="0.4" stopColor="#ff5a74" />
-              <stop offset="1" stopColor="#7a0016" />
-            </radialGradient>
-          </defs>
+        <svg className="pk-plateau" viewBox={`0 0 ${PL.largeur} ${PL.hauteur}`} role="img" aria-label={tr('Plateau du Plinko', 'Plinko board')}>
+          <image href="/cartes/pk-plateau.webp" x="0" y="0" width={PL.largeur} height={PL.hauteur} />
           {Array.from({ length: RANGEES_PLINKO }, (_, k) =>
             Array.from({ length: k + 3 }, (_, j) => {
-              const x = PL.largeur / 2 + (j - (k + 2) / 2) * PL.pas;
-              return <circle key={`${k}-${j}`} className={`pk-clou ${clou === `${k}-${j - 1}` || clou === `${k}-${j}` ? 'touche' : ''}`} cx={x} cy={PL.haut + k * PL.ecart} r="11" fill="url(#pk-clou)" />;
+              const x = PL.centre + (j - (k + 2) / 2) * PL.pas;
+              const touche = clou === `${k}-${j - 1}` || clou === `${k}-${j}`;
+              return <image key={`${k}-${j}`} className={`pk-clou ${touche ? 'touche' : ''}`} href="/cartes/pk-clou.webp" x={x - 13} y={PL.haut + k * PL.ecart - 13} width="26" height="26" />;
             }),
           )}
           {MULTIPLICATEURS_PLINKO.map((m, k) => {
@@ -1650,13 +1641,15 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
             const gagnante = resultat?.caseFinale === k;
             return (
               <g key={`${resultat?.id ?? 0}-${k}`} className={`pk-case m${m >= 100 ? 'max' : m >= 8 ? 'haut' : m >= 2 ? 'moyen' : 'bas'} ${gagnante ? 'gagnante' : ''}`}>
-                <rect x={x - 46} y={PL.bas + 12} width="92" height="70" rx="12" />
-                <text x={x} y={PL.bas + 57}>×{m}</text>
+                <image href="/cartes/pk-case.webp" x={x - 34} y={PL.cases + 6} width="68" height="86" preserveAspectRatio="none" />
+                <text x={x} y={PL.cases + 58}>{m >= 1000 ? '1K' : m}</text>
+                <text className="pk-x" x={x} y={PL.cases + 80}>×</text>
               </g>
             );
           })}
-          <circle ref={bille} className="pk-bille" cx={PL.largeur / 2} cy={-40} r="20" fill="url(#pk-bille)" />
+          <image ref={bille} className="pk-bille" href="/cartes/pk-bille.webp" x={PL.centre - 21} y={PL.entonnoir - 60} width="42" height="42" />
         </svg>
+        {resultat && resultat.multi >= 100 && <img key={resultat.id} className="pk-explosion" src="/cartes/pk-jackpot.webp" alt="" aria-hidden="true" />}
         <p className="pk-resultat" aria-live="polite">
           {resultat ? (
             <>
