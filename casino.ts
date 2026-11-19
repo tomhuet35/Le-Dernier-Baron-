@@ -143,7 +143,7 @@ export interface VueCasino {
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'defi';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'coffreRubis' | 'defi';
   /** Défi gagné : contre qui. */
   contre?: string;
   gain: number;

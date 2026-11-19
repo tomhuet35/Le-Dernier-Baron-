@@ -15,6 +15,7 @@
  *   niveaux et leurs bonus, statistiques par jeu, scores des défis). Amis du casino, envois d'argent entre amis, et
  *   défis 1 contre 1 (defisCasino.ts, gardés avec les réglages du serveur).
  */
+import { estMiseCoffreRubis, GROS_LOT_COFFRE_RUBIS, ouvrirCoffreRubis } from '../shared/coffreRubis';
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import {
@@ -1476,6 +1477,24 @@ export function creerCasino(options: OptionsCasino) {
       repondre(rappel, { ok: true, marche: vueMarche(id.uid, p), casino: vue(id.uid) });
     });
     // ----- Le Tailleur -----
+    // Le Coffre-fort aux rubis : des rubis contre un coffre, qui cache des dollars (jamais des rubis).
+    socket.on('casino_coffre_rubis', async (d: { mise?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      if (p.occupe) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      const mise = d?.mise;
+      if (!estMiseCoffreRubis(mise)) return repondre(rappel, { ok: false, erreur: L('Mise inconnue.', 'Unknown bet.') });
+      if (p.salonJ.rubis < mise) return repondre(rappel, { ok: false, erreur: L(`Il te faut ${mise} rubis.`, `You need ${mise} rubies.`) });
+      p.salonJ.rubis -= mise;
+      const r = ouvrirCoffreRubis(mise, () => randomInt(2 ** 40) / 2 ** 40);
+      mouvement(id.uid, p, r.gain);
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      if (r.gain >= GROS_LOT_COFFRE_RUBIS) annoncer({ nom: p.nom, jeu: 'coffreRubis', gain: r.gain });
+      repondre(rappel, { ok: true, gain: r.gain, autres: r.autres, casino: vue(id.uid) });
+    });
     socket.on('casino_tailleur_acheter', async (d: { n?: unknown } = {}, rappel?: Rappel) => {
       const id = await acces(rappel);
       if (!id) return;
