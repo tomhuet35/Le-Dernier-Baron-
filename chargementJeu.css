@@ -1,0 +1,13 @@
+/* L'écran de chargement d'un jeu : la vignette du jeu sous un projecteur, une barre dorée. */
+.chj { position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; overflow: hidden; text-align: center; color: #f3e7cf; background: radial-gradient(ellipse at 50% 38%, #5a0815 0%, #240407 55%, #0b0203 100%); animation: chj-entree 0.25s ease-out; }
+@keyframes chj-entree { from { opacity: 0; } }
+.chj-rayons { position: absolute; left: 50%; top: 40%; width: 160vmax; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(231, 194, 122, 0.12) 0 6deg, transparent 6deg 15deg); -webkit-mask: radial-gradient(closest-side, #000 15%, transparent 60%); mask: radial-gradient(closest-side, #000 15%, transparent 60%); animation: chj-tourne 30s linear infinite; pointer-events: none; }
+@keyframes chj-tourne { to { rotate: 360deg; } }
+.chj-vignette { position: relative; width: min(46vw, 230px); height: auto; filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.7)); animation: chj-flotte 3.2s ease-in-out infinite; }
+@keyframes chj-flotte { 50% { transform: translateY(-8px) rotate(-1deg); } }
+.chj-nom { position: relative; margin: 6px 0 0; font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: clamp(24px, 7vw, 36px); color: #ffd774; text-shadow: 0 3px 0 #4a2200, 0 0 18px rgba(255, 200, 90, 0.35); }
+.chj-barre { position: relative; width: min(78vw, 340px); height: 14px; padding: 2px; border-radius: 99px; border: 1px solid #c99a3e; background: rgba(0, 0, 0, 0.55); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6); }
+.chj-barre span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #a8761e, #ffd774, #e7b84a); box-shadow: 0 0 10px rgba(255, 215, 116, 0.6); transition: width 0.25s ease-out; }
+.chj-phrase { position: relative; margin: 0; min-height: 1.4em; font-size: 14px; opacity: 0.9; }
+.chj-phrase b { color: #ffd774; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .chj-rayons, .chj-vignette { animation: none; } }
