@@ -1413,6 +1413,47 @@ function dollarsCourt(n: number): string {
 }
 
 /** Un bouton du dock (en bas de l'accueil) : icône ronde, nom, pastille ou minuterie. */
+/** La boutique du salon (barre du haut) : la Roulette, le Marché noir et le Tailleur, réunis. */
+function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => void; ouvrir: (f: () => void) => void; onRoue: () => void; onMarche: () => void; onTailleur: () => void }) {
+  const { attenteRoue, ouvrir } = props;
+  const rayons: { image: string; nom: string; detail: string; pastille?: boolean; ouvrirRayon: () => void }[] = [
+    {
+      image: 'icone-roulette',
+      nom: tr('La Roulette', 'The Wheel'),
+      detail: attenteRoue ? tr(`Prochain tour dans ${attenteRoue}`, `Next spin in ${attenteRoue}`) : tr('Un tour gratuit t’attend !', 'A free spin awaits you!'),
+      pastille: !attenteRoue,
+      ouvrirRayon: props.onRoue,
+    },
+    { image: 'icone-boutique', nom: tr('Le Marché noir', 'The Black Market'), detail: tr('L’étal du jour, contre des rubis', 'Today’s stall, for rubies'), ouvrirRayon: props.onMarche },
+    { image: 'icone-tailleur', nom: tr('Le Tailleur', 'The Tailor'), detail: tr('Les tenues du salon', 'The lounge outfits'), ouvrirRayon: props.onTailleur },
+  ];
+  return (
+    <div className="voile" role="dialog" aria-modal="true" aria-label={tr('La boutique', 'The shop')} onClick={props.onFermer}>
+      <div className="ac-boutique-fenetre" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <img src="/cartes/icone-boutique.webp" alt="" />
+          <h2>{tr('La Boutique', 'The Shop')}</h2>
+          <button type="button" className="fermer" onClick={props.onFermer} aria-label={tr('Fermer', 'Close')}>
+            ✕
+          </button>
+        </header>
+        <div className="ac-rayons">
+          {rayons.map((r) => (
+            <button key={r.image} type="button" className="ac-rayon" onClick={() => ouvrir(r.ouvrirRayon)}>
+              <img src={`/cartes/${r.image}.webp`} alt="" />
+              <span>
+                <b>{r.nom}</b>
+                <small>{r.detail}</small>
+              </span>
+              {r.pastille && <span className="pastille-nombre">1</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BoutonDock({ icone, nom, pastille, info, onClick, rond = true }: { icone: ReactNode; nom: string; pastille?: number | string | null; info?: string | null; onClick: () => void; rond?: boolean }) {
   return (
     <button type="button" className="ac-dock-bouton" onClick={onClick}>
@@ -1515,6 +1556,7 @@ function Accueil({
   const finVentes = useAttente(vue.ventes?.fin);
   const [menu, setMenu] = useState(false);
   const [riches, setRiches] = useState(false);
+  const [boutique, setBoutique] = useState(false);
   const niveau = vue.hotel?.niveau ?? vue.profil?.niveau ?? 1;
   const c = vue.contrats;
   const e = etage(etageActif);
@@ -1558,6 +1600,11 @@ function Accueil({
             <img src="/cartes/bouton-plus.webp" alt="" />
           </button>
         </span>
+        <button type="button" className="ac-boutique" onClick={() => setBoutique(true)} aria-label={tr('La boutique', 'The shop')}>
+          <img src="/cartes/icone-boutique.webp" alt="" />
+          <span>{tr('Boutique', 'Shop')}</span>
+          {!attenteRoue && <span className="pastille-nombre">1</span>}
+        </button>
         <span className="ac-carte-membre" style={{ marginLeft: 'auto' }}>
           <CarteDeMembre vue={vue} />
         </span>
@@ -1626,7 +1673,6 @@ function Accueil({
 
       <nav className="ac-dock" aria-label={tr('Le salon', 'The lounge')}>
         <div className="ac-dock-defile">
-          <BoutonDock icone={<img src="/cartes/icone-roulette.webp" alt="" />} nom={tr('Roulette', 'Wheel')} pastille={attenteRoue ? null : 1} info={attenteRoue} onClick={onRoue} rond={false} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-semaine.webp" alt="" />} nom={tr('Semaine', 'Week')} pastille={vue.hotel?.semaine.cadeau ? 1 : null} info={vue.hotel ? `${vue.hotel.semaine.pris.length}/7` : null} onClick={onSemaine} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-contrats.webp" alt="" />} nom={tr('Contrats', 'Contracts')} pastille={restants || null} onClick={onContrats} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-album.webp" alt="" />} nom={tr('Album', 'Album')} info={`${pieces}/${JEUX_CASINO.length * MORCEAUX_PAGE}`} onClick={onAlbum} />
@@ -1634,8 +1680,6 @@ function Accueil({
           <BoutonDock rond={false} icone={<img src="/cartes/icone-bureau.webp" alt="" />} nom={tr('Bureau', 'Office')} info={c ? `${c.objets}/10` : null} onClick={onBureau} />
           <BoutonDock icone={<img src="/cartes/blason-lion.webp" alt="" />} nom={tr('Cercles', 'Circles')} onClick={onCercles} rond={false} />
           <BoutonDock icone={<img src="/cartes/telescripteur.webp" alt="" />} nom={tr('Bourse', 'Exchange')} onClick={onBourse} />
-          <BoutonDock icone={<img src="/cartes/icone-boutique.webp" alt="" />} nom={tr('Marché', 'Market')} onClick={onMarche} rond={false} />
-          <BoutonDock icone={<img src="/cartes/icone-tailleur.webp" alt="" />} nom={tr('Tailleur', 'Tailor')} onClick={onTailleur} rond={false} />
           <BoutonDock icone={<img src="/cartes/icone-amis-dock.webp" alt="" />} nom={tr('Amis', 'Friends')} pastille={vue.profil?.demandes || null} onClick={onAmis} rond={false} />
           <BoutonDock rond={false} icone={<img src="/cartes/icone-defis.webp" alt="" />} nom={tr('Défis', 'Challenges')} pastille={vue.profil?.invitations || null} info={vue.profil?.defi ? tr('En cours', 'Live') : null} onClick={onDefis} />
           <BoutonDock icone={<img src="/cartes/icone-riches.webp" alt="" />} nom={tr('Riches', 'Richest')} onClick={() => setRiches(true)} rond={false} />
@@ -1667,6 +1711,19 @@ function Accueil({
           </div>
           <p className="cas-mention">{tr('Argent fictif, sans aucune valeur réelle.', 'Play money, with no real value.')}</p>
         </Fenetre>
+      )}
+      {boutique && (
+        <FenetreBoutique
+          attenteRoue={attenteRoue}
+          onFermer={() => setBoutique(false)}
+          ouvrir={(f) => {
+            setBoutique(false);
+            f();
+          }}
+          onRoue={onRoue}
+          onMarche={onMarche}
+          onTailleur={onTailleur}
+        />
       )}
       {riches && (
         <Fenetre titre={tr('Les plus riches du salon', 'Richest in the lounge')} onFermer={() => setRiches(false)}>
