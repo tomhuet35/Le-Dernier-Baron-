@@ -32,7 +32,7 @@ export const estJeuCasino = (x: unknown): x is JeuCasino => JEUX_CASINO.includes
 
 /** 1 XP pour 1 000 $ misés. */
 export const DOLLARS_PAR_XP = 1_000;
-export const NIVEAU_MAX_CASINO = 100;
+export const NIVEAU_MAX_CASINO = 999;
 
 export const xpDeMises = (mise: number) => Math.max(0, Math.floor(mise / DOLLARS_PAR_XP));
 
@@ -68,10 +68,20 @@ export const TITRES_CASINO: [string, string][] = [
   ['Seigneur du casino', 'Casino lord'],
   ['Baron du casino', 'Casino baron'],
 ];
-export const titreCasino = (niveau: number): [string, string] => TITRES_CASINO[Math.min(TITRES_CASINO.length - 1, Math.floor(Math.max(1, niveau) / 10))];
+/** Au-delà du niveau 100, les grands titres (de plus en plus espacés, jusqu'au 999). */
+export const TITRES_HAUTS: { niveau: number; nom: [string, string] }[] = [
+  { niveau: 150, nom: ['Empereur du jeu', 'Emperor of games'] },
+  { niveau: 250, nom: ['Maître de Monte-Carlo', 'Master of Monte Carlo'] },
+  { niveau: 400, nom: ['Duc de la Fortune', 'Duke of Fortune'] },
+  { niveau: 600, nom: ['Prince des Mille Nuits', 'Prince of a Thousand Nights'] },
+  { niveau: 800, nom: ['Grand Maître du Salon', 'Grand Master of the Lounge'] },
+  { niveau: 999, nom: ['Le Dernier Baron', 'The Last Baron'] },
+];
+export const titreCasino = (niveau: number): [string, string] =>
+  [...TITRES_HAUTS].reverse().find((t) => niveau >= t.niveau)?.nom ?? TITRES_CASINO[Math.min(TITRES_CASINO.length - 1, Math.floor(Math.max(1, niveau) / 10))];
 
 /** Un cadre d'avatar tous les 10 niveaux. */
-export type CadreCasino = 'aucun' | 'bronze' | 'argent' | 'or' | 'rubis' | 'saphir' | 'emeraude' | 'amethyste' | 'perle' | 'flamme' | 'baron';
+export type CadreCasino = 'aucun' | 'bronze' | 'argent' | 'or' | 'rubis' | 'saphir' | 'emeraude' | 'amethyste' | 'perle' | 'flamme' | 'baron' | 'diamant' | 'obsidienne' | 'aurore' | 'legende';
 export const CADRES_CASINO: { id: CadreCasino; niveau: number; nom: [string, string] }[] = [
   { id: 'bronze', niveau: 10, nom: ['Bronze', 'Bronze'] },
   { id: 'argent', niveau: 20, nom: ['Argent', 'Silver'] },
@@ -83,6 +93,10 @@ export const CADRES_CASINO: { id: CadreCasino; niveau: number; nom: [string, str
   { id: 'perle', niveau: 80, nom: ['Perle', 'Pearl'] },
   { id: 'flamme', niveau: 90, nom: ['Flamme', 'Flame'] },
   { id: 'baron', niveau: 100, nom: ['Couronne du Baron', 'Baron’s crown'] },
+  { id: 'diamant', niveau: 200, nom: ['Diamant', 'Diamond'] },
+  { id: 'obsidienne', niveau: 400, nom: ['Obsidienne', 'Obsidian'] },
+  { id: 'aurore', niveau: 600, nom: ['Aurore', 'Aurora'] },
+  { id: 'legende', niveau: 999, nom: ['Légende du Baron', 'Baron’s legend'] },
 ];
 export const cadreCasino = (niveau: number): CadreCasino => [...CADRES_CASINO].reverse().find((c) => niveau >= c.niveau)?.id ?? 'aucun';
 

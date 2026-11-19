@@ -29,7 +29,17 @@
 .cs-avatar.cadre-flamme { --anneau: conic-gradient(from 0deg, #ff3d00, #ffd54f, #ff6d00, #ff1744, #ffd54f, #ff3d00); --lueur: rgba(255, 109, 0, 0.75); }
 .cs-avatar.cadre-baron { --anneau: conic-gradient(from 0deg, #a8742a, #fff1c4, #e9ad5b, #b3132f, #ffe9a8, #a8742a); --lueur: rgba(255, 214, 120, 0.85); }
 /* Les deux derniers cadres tournent (sauf mouvement réduit), et la couronne coiffe le dernier. */
-.cs-avatar.cadre-flamme::before, .cs-avatar.cadre-baron::before {
+.cs-avatar.cadre-diamant { --anneau: conic-gradient(from 0deg, #b9f2ff, #ffffff, #7fd8ff, #ffffff, #d8c8ff, #ffffff, #b9f2ff); --lueur: rgba(185, 242, 255, 0.85); }
+.cs-avatar.cadre-obsidienne { --anneau: conic-gradient(from 0deg, #0a0a0f, #6a2bd9, #111, #d4af37, #0a0a0f, #6a2bd9, #0a0a0f); --lueur: rgba(140, 70, 255, 0.8); }
+.cs-avatar.cadre-aurore { --anneau: conic-gradient(from 0deg, #ff4fa3, #ffd34a, #4dffb0, #4d8dff, #c77dff, #ff4fa3); --lueur: rgba(255, 140, 220, 0.85); }
+.cs-avatar.cadre-legende { --anneau: conic-gradient(from 0deg, #fff1c4, #ff1744, #ffd54f, #b9f2ff, #ffd54f, #b3132f, #fff1c4); --lueur: rgba(255, 220, 140, 1); }
+.cs-avatar.cadre-diamant::after, .cs-avatar.cadre-obsidienne::after, .cs-avatar.cadre-aurore::after, .cs-avatar.cadre-legende::after {
+  content: ''; position: absolute; top: calc(var(--taille) * -0.26); left: 50%; width: calc(var(--taille) * 0.46); height: calc(var(--taille) * 0.3); transform: translateX(-50%);
+  background: url('/cartes/couronne.webp') center / contain no-repeat; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7)) hue-rotate(var(--teinte-couronne, 0deg));
+}
+.cs-avatar.cadre-obsidienne { --teinte-couronne: 230deg; }
+.cs-avatar.cadre-diamant { --teinte-couronne: 170deg; }
+.cs-avatar.cadre-flamme::before, .cs-avatar.cadre-baron::before, .cs-avatar.cadre-diamant::before, .cs-avatar.cadre-obsidienne::before, .cs-avatar.cadre-aurore::before, .cs-avatar.cadre-legende::before {
   content: ''; position: absolute; inset: 0; border-radius: 50%; z-index: -1;
   background: inherit; filter: blur(calc(var(--taille) * 0.05)); animation: cs-tourne 4s linear infinite;
 }
