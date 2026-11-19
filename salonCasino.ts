@@ -446,7 +446,7 @@ export function creerCasino(options: OptionsCasino) {
           }
         }
       }
-      // Happy hour (21 h – 22 h à Paris) : les mises comptent double pour l'XP (une mise rendue est retirée aussi).
+      // Happy hour (11 h – 12 h et 21 h – 22 h à Paris) : les mises comptent double pour l'XP (une mise rendue est retirée aussi).
       if (misee && happyHour(horloge()).enCours) {
         const extra = misee > 0 ? misee : Math.max(misee, -p.bonusXp);
         p.bonusXp += extra;

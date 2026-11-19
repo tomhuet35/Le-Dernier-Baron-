@@ -336,6 +336,7 @@ export function FenetreSemaine({ vue, appel, onVue, onFermer }: { vue: VueCasino
 // La happy hour
 
 export function BandeauHappyHour({ vue }: { vue: VueCasino }) {
+  const heureHH = vue.hotel ? Number(new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false }).format(vue.hotel.happyHour.debut).replace(/\D/g, '')) : 21;
   const h = vue.hotel?.happyHour;
   const [maintenant, setMaintenant] = useState(() => Date.now());
   useEffect(() => {
@@ -352,7 +353,7 @@ export function BandeauHappyHour({ vue }: { vue: VueCasino }) {
       <span className="ht-happy-x2">×2</span>
       <span>
         <strong>{tr('Happy hour', 'Happy hour')}</strong>
-        <small>{enCours ? tr(`XP doublée sur toutes les mises · encore ${pendant}`, `Double XP on every bet · ${pendant} left`) : tr(`XP doublée de 21 h à 22 h · dans ${avant}`, `Double XP from 9 to 10 pm · in ${avant}`)}</small>
+        <small>{enCours ? tr(`XP doublée sur toutes les mises · encore ${pendant}`, `Double XP on every bet · ${pendant} left`) : tr(`XP doublée de ${heureHH} h à ${heureHH + 1} h · dans ${avant}`, `Double XP from ${heureHH}:00 to ${heureHH + 1}:00 · in ${avant}`)}</small>
       </span>
     </div>
   );

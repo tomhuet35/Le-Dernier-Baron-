@@ -9,7 +9,7 @@
  *   et la carte noire rend chaque lundi 5 % des pertes de la semaine passée (la Ristourne du Baron).
  * - Semaine du Baron : du lundi au dimanche (heure de Paris), un télégramme par jour de connexion ; le dimanche, le
  *   coffre (plus gros si les six autres jours ont été pris).
- * - Happy hour : chaque soir de 21 h à 22 h (heure de Paris), les mises comptent double pour l'XP.
+ * - Happy hour : chaque jour de 11 h à 12 h et de 21 h à 22 h (heure de Paris), les mises comptent double pour l'XP.
  */
 import { dollarsContrat, echelleNiveau } from './contrats';
 import { lendemainParis } from './roulette';
@@ -61,16 +61,20 @@ export function jourSemaineParis(t: number): number {
   return Math.max(0, JOURS.indexOf(wd));
 }
 
-/** La happy hour du soir (21 h – 22 h, heure de Paris) : en cours, ou la prochaine. */
+/** Les happy hours (heure de Paris) : 11 h – 12 h et 21 h – 22 h. En cours, ou la prochaine. */
 export const HEURE_HAPPY_HOUR = 21;
+export const HEURES_HAPPY_HOUR = [11, 21];
 export function happyHour(t: number): { debut: number; fin: number; enCours: boolean } {
   const minuit = lendemainParis(t);
-  // Aucun changement d'heure n'a lieu entre 21 h et minuit : 21 h est 3 heures avant le minuit suivant.
-  const debut = minuit - (24 - HEURE_HAPPY_HOUR) * 3_600_000;
-  const fin = debut + 3_600_000;
-  if (t < fin) return { debut, fin, enCours: t >= debut };
-  const demain = lendemainParis(minuit + 1) - (24 - HEURE_HAPPY_HOUR) * 3_600_000;
-  return { debut: demain, fin: demain + 3_600_000, enCours: false };
+  // Aucun changement d'heure n'a lieu entre 11 h et minuit : 11 h est 13 heures avant le minuit suivant.
+  const demain = lendemainParis(minuit + 1);
+  const creneaux = [...HEURES_HAPPY_HOUR.map((h) => minuit - (24 - h) * 3_600_000), ...HEURES_HAPPY_HOUR.map((h) => demain - (24 - h) * 3_600_000)];
+  for (const debut of creneaux) {
+    const fin = debut + 3_600_000;
+    if (t < fin) return { debut, fin, enCours: t >= debut };
+  }
+  const debut = creneaux[creneaux.length - 1];
+  return { debut, fin: debut + 3_600_000, enCours: false };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
