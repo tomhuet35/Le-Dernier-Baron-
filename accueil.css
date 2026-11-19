@@ -537,3 +537,20 @@ body > .voile { z-index: 200; }
   .ac-une-boutique em { font-size: 12px; }
   .ac-une-boutique button { white-space: nowrap; min-height: 40px; padding: 6px 14px; }
 }
+
+/* ---------- Boutique : offres (maquette) et rayons ---------- */
+.ac-boutique-fenetre { width: min(96vw, 720px); max-height: 88dvh; overflow-y: auto; }
+.ac-offres-titre { margin: 6px 0 8px; font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: 18px; color: #e7c27a; letter-spacing: 0.04em; }
+.ac-offres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 600px) { .ac-offres { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ac-offre { position: relative; display: grid; justify-items: center; gap: 3px; padding: 12px 8px 10px; border-radius: 14px; border: 1px solid rgba(231, 194, 122, 0.55); background: linear-gradient(180deg, rgba(90, 8, 21, 0.55), rgba(0, 0, 0, 0.55)); text-align: center; overflow: hidden; }
+.ac-offre.vedette { border: 2px solid #ffd774; box-shadow: 0 0 16px rgba(255, 215, 116, 0.45), inset 0 0 20px rgba(255, 215, 116, 0.12); }
+.ac-offre img { width: 74px; height: 74px; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6)); }
+.ac-offre b { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: 16px; color: #ffd774; }
+.ac-offre small { font-size: 11.5px; line-height: 1.3; opacity: 0.88; min-height: 2.6em; }
+.ac-offre-prix { display: grid; justify-items: center; width: 100%; margin-top: 4px; padding: 6px 8px; border-radius: 99px; background: linear-gradient(180deg, #3b7a3a, #1d4a1c); border: 1px solid #b9e6a8; color: #fff; font-weight: 900; font-size: 15px; opacity: 0.72; cursor: not-allowed; }
+.ac-offre-prix em { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+.ac-offre-ruban { position: absolute; top: 9px; right: -30px; width: 110px; rotate: 40deg; padding: 2px 0; background: linear-gradient(180deg, #e0a92e, #8a5a10); color: #2a1004; font-size: 10px; font-weight: 900; text-align: center; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+.ac-offres-note { margin: 8px 0 4px; font-size: 11.5px; text-align: center; opacity: 0.65; }
+/* La fenêtre de la Boutique passe devant la barre du bas. */
+body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-index: 220; }
