@@ -62,6 +62,7 @@ import { etage, etageDuJeu, etageOuvert, ETAGES, type CadeauSemaine, type Etage 
 import { MORCEAUX_PAGE, morceauxDe } from '../../shared/contrats';
 import { Depannage, VIGNETTES_ALBUM } from './CasinoContrats';
 import './accueil.css';
+import './boutique.css';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
 import type { EtatCompte } from './Profil';
@@ -96,16 +97,32 @@ export function Symbole({ s, className }: { s: SymboleMachine; className?: strin
 // ---------------------------------------------------------------------------------------------------------------
 // Roulette du salon
 
-const CASES_SALON: CaseRoue[] = CASES_ROUE_SALON.map((v, i) =>
-  i === CASE_VERTE_SALON
-    ? { fond: COULEURS_ROUE.vert, lignes: [String(v / 1_000_000), 'MILLIONS'] }
-    : {
-        fond: i % 2 ? COULEURS_ROUE.noir : COULEURS_ROUE.rouge,
-        // Les millions en court (« 1,5 M ») pour tenir dans la case.
-        lignes: v >= 1_000_000 ? [(v / 1_000_000).toLocaleString(EN ? 'en-US' : 'fr-FR'), 'M $'] : [v.toLocaleString(EN ? 'en-US' : 'fr-FR').replace(/\s/g, ' '), '$'],
-        petit: true,
-      },
-);
+
+/**
+ * La roue illustrée du salon (roue-jour.webp, ou roue-luxe.webp pour la roue de luxe) sur son support doré, avec sa
+ * flèche : 8 cases, la case `i` est à `POSITION_CASE[i] × 45°` (sens des aiguilles d'une montre, depuis le haut).
+ */
+const POSITION_CASE = [1, 2, 3, 4, 5, 6, 7, 0];
+export function RoueIllustree({ image, libelles, rotation, tourne, gagnante, petit }: { image: string; libelles: [string, string][]; rotation: number; tourne: boolean; gagnante: number | null; petit?: boolean }) {
+  return (
+    <div className={`rj ${tourne ? 'tourne' : ''} ${petit ? 'petit' : ''}`}>
+      <img className="rj-support" src="/cartes/roue-support.webp" alt="" draggable={false} />
+      <div className="rj-roue" style={{ transform: `rotate(${rotation}deg)`, transitionDuration: tourne ? `${DUREE_ROUE_MS}ms` : '0ms' }}>
+        <img src={`/cartes/${image}.webp`} alt="" draggable={false} />
+        {libelles.map(([a, b], i) => (
+          <span key={i} className={`rj-case ${gagnante === i ? 'gagnante' : ''}`} style={{ transform: `rotate(${POSITION_CASE[i] * 45}deg)` }}>
+            <b>{a}</b>
+            <small>{b}</small>
+          </span>
+        ))}
+      </div>
+      <img className="rj-fleche" src="/cartes/roue-fleche.webp" alt="" draggable={false} />
+    </div>
+  );
+}
+/** L'angle qui amène la case `i` sous la flèche (après quelques tours). */
+const angleRoue = (i: number) => 360 * 6 + (360 - POSITION_CASE[i] * 45) + (Math.random() - 0.5) * 45 * 0.6;
+const LIBELLES_JOUR: [string, string][] = CASES_ROUE_SALON.map((v) => (v >= 1_000_000 ? [(v / 1_000_000).toLocaleString(EN ? 'en-US' : 'fr-FR'), v === 1_000_000 ? 'MILLION' : 'MILLIONS'] : [(v / 1000).toLocaleString(EN ? 'en-US' : 'fr-FR'), EN ? 'THOUSAND $' : 'MILLE $']));
 
 function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
   const [rotation, setRotation] = useState(0);
@@ -123,7 +140,7 @@ function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; app
     if (!r.ok || !r.roue || !r.casino) return;
     const { case: i, gain } = r.roue;
     const nouvelle = r.casino;
-    const cible = 360 * 6 + (360 - (i * ANGLE_ROUE + ANGLE_ROUE / 2)) + (Math.random() - 0.5) * ANGLE_ROUE * 0.6;
+    const cible = angleRoue(i);
     const fin = () => {
       setTourne(false);
       setResultat({ case: i, gain });
@@ -146,7 +163,7 @@ function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; app
 
   return (
     <Fenetre titre={tr('Roulette du salon', 'Lounge wheel')} onFermer={tourne ? undefined : onFermer} large>
-      <Roue cases={CASES_SALON} rotation={rotation} tourne={tourne} gagnante={resultat?.case ?? null} pieces={!!resultat && resultat.gain < GROS_GAIN_ROUE} />
+      <RoueIllustree image="roue-jour" libelles={LIBELLES_JOUR} rotation={rotation} tourne={tourne} gagnante={resultat?.case ?? null} />
       {resultat ? (
         <div className="roulette-resultat" role="status">
           <div>
@@ -161,7 +178,7 @@ function FenetreRoueSalon({ vue, appel, onVue, onFermer }: { vue: VueCasino; app
       )}
       {fete && resultat && (
         <Celebration
-          titre={resultat.case === CASE_VERTE_SALON ? tr('Le million !', 'The million!') : tr('Gros gain !', 'Big win!')}
+          titre={resultat.case === CASE_VERTE_SALON ? tr('Le gros lot !', 'The jackpot!') : tr('Gros gain !', 'Big win!')}
           etiquette={tr(`Gain : ${dollars(resultat.gain)}`, `Win: ${dollars(resultat.gain)}`)}
           medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollars(resultat.gain)}</strong>}
           legende={tr('Ajouté à ton solde', 'Added to your balance')}
@@ -1436,69 +1453,168 @@ function dollarsCourt(n: number): string {
 /** Un bouton du dock (en bas de l'accueil) : icône ronde, nom, pastille ou minuterie. */
 /** La boutique du salon (barre du haut) : la Roulette, le Marché noir et le Tailleur, réunis. */
 /**
- * Les offres en argent réel de la Boutique : maquette, pas encore à vendre (aucun paiement branché). Jamais de rubis
- * contre de l'argent réel : seulement des dollars du jeu, le Pass et des objets.
+ * Les offres en argent réel de la Boutique : maquette, pas encore à vendre (aucun paiement branché).
+ * `image` : bq-<image>.webp ; `photo` : une illustration en largeur plutôt qu'un objet détouré.
  */
-const OFFRES_BOUTIQUE: { id: string; image: string; nom: [string, string]; detail: [string, string]; prix: string; ruban?: [string, string]; vedette?: boolean }[] = [
-  { id: 'bienvenue', image: 'coffre-jour7', nom: ['Pack de bienvenue', 'Welcome pack'], detail: ['50 M $ + tenue exclusive · une seule fois', '$50M + exclusive outfit · once only'], prix: '0,99 €', ruban: ['−80 %', '−80%'], vedette: true },
-  { id: 'liasse', image: 'butin-billet', nom: ['Liasse', 'Bundle'], detail: ['25 millions $', '$25 million'], prix: '1,99 €' },
-  { id: 'mallette', image: 'machine-coffre', nom: ['Coffre-fort', 'Safe'], detail: ['150 millions $', '$150 million'], prix: '4,99 €' },
-  { id: 'coffre', image: 'butin-lingot', nom: ['Lingot d’or', 'Gold bar'], detail: ['500 millions $ · +20 %', '$500 million · +20%'], prix: '9,99 €', ruban: ['Populaire', 'Popular'] },
-  { id: 'reserve', image: 'machine-diamant', nom: ['Diamant du Baron', 'Baron’s diamond'], detail: ['3 milliards $ · +50 %', '$3 billion · +50%'], prix: '49,99 €', ruban: ['Meilleur prix', 'Best value'] },
-  { id: 'pass', image: 'couronne', nom: ['Pass du Baron', 'Baron’s Pass'], detail: ['30 jours : 20 M $ par jour, XP +25 %, cadre doré', '30 days: $20M a day, XP +25%, golden frame'], prix: '7,99 € / mois', vedette: true },
+type OffreBoutique = { id: string; image: string; photo?: boolean; nom: [string, string]; contenu: [string, string][]; prix: string; ruban?: [string, string]; vedette?: boolean; avant?: string };
+const RAYONS_OFFRES: { id: string; titre: [string, string]; offres: OffreBoutique[] }[] = [
+  {
+    id: 'debutant',
+    titre: ['Packs débutant', 'Starter packs'],
+    offres: [
+      { id: 'coffret', image: 'coffret-debutant', photo: true, nom: ['Coffret du débutant', 'Starter box'], contenu: [['100 M $', '$100M'], ['50 rubis', '50 rubies'], ['Tenue « Rayures d’or »', '“Gold stripes” outfit']], prix: '0,99 €', avant: '4,99 €', ruban: ['Une seule fois', 'Once only'], vedette: true },
+      { id: 'contrebande', image: 'contrebande', photo: true, nom: ['Caisse de contrebande', 'Smuggler’s crate'], contenu: [['500 M $', '$500M'], ['150 rubis', '150 rubies'], ['Clé du Marché noir', 'Black Market key']], prix: '4,99 €', avant: '14,99 €', ruban: ['−66 %', '−66%'] },
+      { id: 'royal', image: 'coffre-royal', photo: true, nom: ['Trésor royal', 'Royal treasure'], contenu: [['5 Md $', '$5B'], ['600 rubis', '600 rubies'], ['Cape royale + cadre Couronne', 'Royal cape + Crown frame']], prix: '19,99 €', avant: '59,99 €', ruban: ['Meilleure offre', 'Best deal'] },
+    ],
+  },
+  {
+    id: 'combines',
+    titre: ['Rubis + dollars', 'Rubies + dollars'],
+    offres: [
+      { id: 'bourse', image: 'rubis-bourse', nom: ['Bourse du joueur', 'Player’s purse'], contenu: [['30 rubis', '30 rubies'], ['50 M $', '$50M']], prix: '1,99 €' },
+      { id: 'tenues', image: 'tenues-legendaires', photo: true, nom: ['Tenues légendaires', 'Legendary outfits'], contenu: [['2 tenues exclusives', '2 exclusive outfits'], ['200 rubis', '200 rubies'], ['300 M $', '$300M']], prix: '7,99 €', ruban: ['Exclusif', 'Exclusive'] },
+      { id: 'grand-coffre', image: 'rubis-tresor', nom: ['Coffre du Baron', 'Baron’s chest'], contenu: [['800 rubis', '800 rubies'], ['3 Md $', '$3B']], prix: '24,99 €', ruban: ['+40 %', '+40%'] },
+    ],
+  },
+  {
+    id: 'rubis',
+    titre: ['Rubis', 'Rubies'],
+    offres: [
+      { id: 'r1', image: 'rubis-poignee', nom: ['Poignée de rubis', 'Handful of rubies'], contenu: [['20 rubis', '20 rubies']], prix: '0,99 €' },
+      { id: 'r2', image: 'rubis-sac', nom: ['Sac de rubis', 'Bag of rubies'], contenu: [['60 rubis', '60 rubies']], prix: '2,49 €', ruban: ['+20 %', '+20%'] },
+      { id: 'r3', image: 'rubis-coffre', nom: ['Coffret de rubis', 'Ruby chest'], contenu: [['150 rubis', '150 rubies']], prix: '4,99 €', ruban: ['Populaire', 'Popular'], vedette: true },
+      { id: 'r4', image: 'rubis-grand-coffre', nom: ['Grand coffre', 'Great chest'], contenu: [['400 rubis', '400 rubies']], prix: '9,99 €', ruban: ['+60 %', '+60%'] },
+    ],
+  },
+  {
+    id: 'dollars',
+    titre: ['Dollars', 'Dollars'],
+    offres: [
+      { id: 'd1', image: 'dollars-liasse', nom: ['Liasse', 'Bundle'], contenu: [['50 M $', '$50M']], prix: '0,99 €' },
+      { id: 'd2', image: 'dollars-mallette', nom: ['Mallette', 'Briefcase'], contenu: [['300 M $', '$300M']], prix: '2,99 €' },
+      { id: 'd3', image: 'dollars-coffre-fort', photo: true, nom: ['Coffre-fort', 'Safe'], contenu: [['1 Md $', '$1B']], prix: '4,99 €', ruban: ['Populaire', 'Popular'] },
+      { id: 'd4', image: 'dollars-fourgon', photo: true, nom: ['Fourgon blindé', 'Armored truck'], contenu: [['3 Md $', '$3B']], prix: '9,99 €', ruban: ['+50 %', '+50%'] },
+      { id: 'd5', image: 'dollars-banque', photo: true, nom: ['La Banque', 'The Bank'], contenu: [['10 Md $', '$10B']], prix: '24,99 €', ruban: ['+100 %', '+100%'] },
+      { id: 'd6', image: 'dollars-salle-forte', photo: true, nom: ['Salle forte du Baron', 'Baron’s vault'], contenu: [['25 Md $', '$25B']], prix: '49,99 €', ruban: ['Meilleur prix', 'Best value'], vedette: true },
+    ],
+  },
+  {
+    id: 'pass',
+    titre: ['Abonnement', 'Subscription'],
+    offres: [
+      { id: 'premium', image: 'abonnement', photo: true, nom: ['Abonnement Premium', 'Premium subscription'], contenu: [['Chaque jour : 50 M $ + 5 rubis', 'Every day: $50M + 5 rubies'], ['XP +25 %, 2 tours de roue par jour', 'XP +25%, 2 wheel spins a day'], ['Cadre doré exclusif', 'Exclusive golden frame']], prix: '7,99 € / mois', vedette: true },
+    ],
+  },
 ];
+
+/** La roue de luxe (payante) : ses 8 cases, dont la case ×25 (qui multiplie par 25 le gros lot de la roue du jour). */
+const LIBELLES_LUXE: [string, string][] = [
+  ['×25', EN ? 'JACKPOT' : 'GROS LOT'],
+  ['100', EN ? 'RUBIES' : 'RUBIS'],
+  ['1', EN ? 'BILLION $' : 'MILLIARD $'],
+  [EN ? 'OUTFIT' : 'TENUE', EN ? 'LEGENDARY' : 'LÉGENDAIRE'],
+  ['500', EN ? 'MILLION $' : 'MILLIONS $'],
+  ['250', EN ? 'RUBIES' : 'RUBIS'],
+  ['×10', EN ? 'JACKPOT' : 'GROS LOT'],
+  ['2', EN ? 'BILLION $' : 'MILLIARDS $'],
+];
+
+function Offre({ o }: { o: OffreBoutique }) {
+  return (
+    <div className={`bq-offre ${o.photo ? 'photo' : ''} ${o.vedette ? 'vedette' : ''}`}>
+      {o.ruban && <span className="bq-ruban">{tr(...o.ruban)}</span>}
+      <div className="bq-visuel">
+        <img src={`/cartes/bq-${o.image}.webp`} alt="" draggable={false} />
+      </div>
+      <b>{tr(...o.nom)}</b>
+      <ul>
+        {o.contenu.map((c, k) => (
+          <li key={k}>{tr(...c)}</li>
+        ))}
+      </ul>
+      <span className="bq-prix" aria-disabled="true">
+        {o.avant && <s>{o.avant}</s>}
+        {o.prix}
+        <em>{tr('Bientôt', 'Soon')}</em>
+      </span>
+    </div>
+  );
+}
 
 function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => void; ouvrir: (f: () => void) => void; onRoue: () => void; onMarche: () => void; onTailleur: () => void }) {
   const { attenteRoue, ouvrir } = props;
-  const rayons: { image: string; cle?: string; nom: string; detail: string; pastille?: boolean; ouvrirRayon: () => void }[] = [
-    {
-      image: 'icone-roulette',
-      nom: tr('La Roulette', 'The Wheel'),
-      detail: attenteRoue ? tr(`Prochain tour dans ${attenteRoue}`, `Next spin in ${attenteRoue}`) : tr('Un tour gratuit t’attend !', 'A free spin awaits you!'),
-      pastille: !attenteRoue,
-      ouvrirRayon: props.onRoue,
-    },
-    { image: 'icone-tailleur', cle: 'marche', nom: tr('Le Marché noir', 'The Black Market'), detail: tr('L’étal du jour, contre des rubis', 'Today’s stall, for rubies'), ouvrirRayon: props.onMarche },
-    { image: 'icone-tailleur', nom: tr('Le Tailleur', 'The Tailor'), detail: tr('Les tenues du salon', 'The lounge outfits'), ouvrirRayon: props.onTailleur },
-  ];
+  const [rayon, setRayon] = useState('debutant');
+  const [rotLuxe, setRotLuxe] = useState(0);
+  // La roue de luxe tourne doucement, pour donner envie.
+  useEffect(() => {
+    const t = window.setInterval(() => setRotLuxe((r) => r + 45), 2600);
+    return () => window.clearInterval(t);
+  }, []);
+  const r = RAYONS_OFFRES.find((x) => x.id === rayon) ?? RAYONS_OFFRES[0];
   return (
-    <div className="voile" role="dialog" aria-modal="true" aria-label={tr('La boutique', 'The shop')} onClick={props.onFermer}>
-      <div className="ac-boutique-fenetre" onClick={(e) => e.stopPropagation()}>
-        <header>
+    <div className="voile bq-voile" role="dialog" aria-modal="true" aria-label={tr('La boutique', 'The shop')} onClick={props.onFermer}>
+      <div className="bq" onClick={(e) => e.stopPropagation()}>
+        <header className="bq-tete">
           <img src="/cartes/icone-boutique.webp" alt="" />
           <h2>{tr('La Boutique', 'The Shop')}</h2>
           <button type="button" className="fermer" onClick={props.onFermer} aria-label={tr('Fermer', 'Close')}>
             ✕
           </button>
         </header>
-        <h3 className="ac-offres-titre">{tr('Offres du Baron', 'The Baron’s offers')}</h3>
-        <div className="ac-offres">
-          {OFFRES_BOUTIQUE.map((o) => (
-            <div key={o.id} className={`ac-offre ${o.vedette ? 'vedette' : ''}`}>
-              {o.ruban && <span className="ac-offre-ruban">{tr(...o.ruban)}</span>}
-              <img src={`/cartes/${o.image}.webp`} alt="" draggable={false} />
-              <b>{tr(...o.nom)}</b>
-              <small>{tr(...o.detail)}</small>
-              <span className="ac-offre-prix" aria-disabled="true">
-                {o.prix}
-                <em>{tr('Bientôt', 'Soon')}</em>
-              </span>
-            </div>
-          ))}
-        </div>
-        <p className="ac-offres-note">{tr('Offres en préparation : les achats ne sont pas encore ouverts.', 'Offers in preparation: purchases are not open yet.')}</p>
-        <h3 className="ac-offres-titre">{tr('Les rayons', 'The departments')}</h3>
-        <div className="ac-rayons">
-          {rayons.map((r) => (
-            <button key={r.cle ?? r.image} type="button" className="ac-rayon" onClick={() => ouvrir(r.ouvrirRayon)}>
-              <img src={`/cartes/${r.image}.webp`} alt="" />
-              <span>
-                <b>{r.nom}</b>
-                <small>{r.detail}</small>
-              </span>
-              {r.pastille && <span className="pastille-nombre">1</span>}
+
+        <section className="bq-roues">
+          <button type="button" className="bq-roue" onClick={() => ouvrir(props.onRoue)}>
+            <RoueIllustree image="roue-jour" libelles={LIBELLES_JOUR} rotation={0} tourne={false} gagnante={null} petit />
+            <span className="bq-roue-texte">
+              <b>{tr('Roue du jour', 'Daily wheel')}</b>
+              <small>{attenteRoue ? tr(`Prochain tour dans ${attenteRoue}`, `Next spin in ${attenteRoue}`) : tr('Gratuite : un tour t’attend !', 'Free: a spin awaits you!')}</small>
+              <i className={`bq-bouton ${attenteRoue ? 'gris' : ''}`}>{attenteRoue ? tr('Revenir plus tard', 'Come back later') : tr('Tourner', 'Spin')}</i>
+            </span>
+            {!attenteRoue && <span className="pastille-nombre">1</span>}
+          </button>
+          <div className="bq-roue luxe">
+            <span className="bq-ruban">{tr('×25 le gros lot', '×25 jackpot')}</span>
+            <RoueIllustree image="roue-luxe" libelles={LIBELLES_LUXE} rotation={rotLuxe} tourne={false} gagnante={null} petit />
+            <span className="bq-roue-texte">
+              <b>{tr('Roue de luxe', 'Luxury wheel')}</b>
+              <small>{tr('Jusqu’à 25 fois le gros lot, des rubis, des tenues…', 'Up to 25× the jackpot, rubies, outfits…')}</small>
+              <i className="bq-bouton prix" aria-disabled="true">
+                2,99 € <em>{tr('Bientôt', 'Soon')}</em>
+              </i>
+            </span>
+          </div>
+        </section>
+
+        <nav className="bq-onglets" aria-label={tr('Rayons', 'Departments')}>
+          {RAYONS_OFFRES.map((x) => (
+            <button key={x.id} type="button" className={x.id === rayon ? 'actif' : ''} aria-pressed={x.id === rayon} onClick={() => setRayon(x.id)}>
+              {tr(...x.titre)}
             </button>
           ))}
+        </nav>
+        <div className={`bq-offres n${r.offres.length}`}>
+          {r.offres.map((o) => (
+            <Offre key={o.id} o={o} />
+          ))}
+        </div>
+        <p className="bq-note">{tr('Offres en préparation : les achats ne sont pas encore ouverts.', 'Offers in preparation: purchases are not open yet.')}</p>
+
+        <h3 className="bq-titre">{tr('Les boutiques du salon', 'The lounge shops')}</h3>
+        <div className="bq-rayons">
+          <button type="button" className="bq-rayon" onClick={() => ouvrir(props.onMarche)}>
+            <img src="/cartes/icone-tailleur.webp" alt="" />
+            <span>
+              <b>{tr('Le Marché noir', 'The Black Market')}</b>
+              <small>{tr('L’étal du jour, contre des rubis', 'Today’s stall, for rubies')}</small>
+            </span>
+          </button>
+          <button type="button" className="bq-rayon" onClick={() => ouvrir(props.onTailleur)}>
+            <img src="/cartes/icone-tailleur.webp" alt="" />
+            <span>
+              <b>{tr('Le Tailleur', 'The Tailor')}</b>
+              <small>{tr('Les tenues du salon', 'The lounge outfits')}</small>
+            </span>
+          </button>
         </div>
       </div>
     </div>
