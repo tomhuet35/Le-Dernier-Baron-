@@ -505,3 +505,21 @@ body > .voile { z-index: 200; }
 @keyframes ac-reflet { 0%, 55% { left: -60%; } 100% { left: 130%; } }
 .ac-neon-badge { background: linear-gradient(180deg, #fff1c4, #e0a92e 55%, #8a5a10) !important; border: 1px solid #fff4d6 !important; color: #3a1608 !important; text-shadow: none !important; box-shadow: 0 0 12px rgba(255, 215, 116, 0.9), 0 4px 10px rgba(0, 0, 0, 0.5) !important; }
 @media (prefers-reduced-motion: reduce) { .ac-carte.dore::before, .ac-carte.dore .ac-reflet::before, .ac-une-logo { animation: none; } }
+
+/* ---------- La Boutique, en grand en tête de la rangée ---------- */
+.ac-boutique-carte { position: relative; flex: none; scroll-snap-align: center; height: min(100%, 760px); aspect-ratio: 1672 / 941; padding: 0; border: 0; border-radius: 12px; background: none; cursor: pointer; filter: drop-shadow(0 0 16px rgba(255, 200, 90, 0.5)) drop-shadow(0 12px 22px rgba(0, 0, 0, 0.7)); animation: ac-or 2.6s ease-in-out infinite; }
+.ac-boutique-carte img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ac-boutique-entrer { position: absolute; right: 9%; bottom: 14%; padding: 0.5em 1.6em; border-radius: 99px; border: 2px solid #ffd774; background: linear-gradient(180deg, #c8222f, #7a0d17); color: #fff4d6; font-family: 'Limelight', var(--titre), serif; font-size: clamp(16px, 2.6vh, 26px); box-shadow: 0 0 16px rgba(255, 215, 116, 0.7), 0 6px 14px rgba(0, 0, 0, 0.6); animation: ac-entrer 1.8s ease-in-out infinite; }
+@keyframes ac-entrer { 50% { transform: scale(1.06); } }
+.ac-boutique-carte:hover img, .ac-boutique-carte:focus-visible img { transform: scale(1.01); transition: transform 0.2s; }
+@media (max-width: 600px) { .ac-boutique-carte { height: auto; width: 88vw; align-self: center; } }
+@media (prefers-reduced-motion: reduce) { .ac-boutique-carte, .ac-boutique-entrer { animation: none; } }
+/* Téléphone : la boutique en bandeau au-dessus des jeux (la rangée garde ses grandes affiches). */
+.ac-boutique-haut { display: none; }
+@media (max-width: 600px) {
+  .ac-page .ac-boutique-carte { display: none; }
+  .ac-boutique-haut { position: relative; display: block; flex: none; align-self: center; width: min(100%, 520px); aspect-ratio: 1672 / 941; max-height: 24vh; margin: 2px auto 0; padding: 0; border: 0; background: none; filter: drop-shadow(0 0 12px rgba(255, 200, 90, 0.45)); }
+  .ac-boutique-haut img { width: 100%; height: 100%; object-fit: contain; }
+  .ac-boutique-haut .ac-boutique-entrer { font-size: 13px; padding: 0.35em 1.1em; right: 10%; bottom: 15%; }
+  .ac-page .ac-carte { height: min(100%, 58vh) !important; }
+}
