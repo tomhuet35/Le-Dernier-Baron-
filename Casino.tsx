@@ -1624,7 +1624,7 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
     <Fenetre titre={tr('Le Plinko du Baron', 'The Baron’s Plinko')} onFermer={occupe ? undefined : onFermer} large>
       <div className="pk">
         <p className="pk-intro">
-          {tr('Lâche une bille : jusqu’à', 'Drop a ball: up to')} <strong>{dollarsCourt(mise * DOLLARS_PAR_RUBIS * MULTI_MAX_PLINKO)}</strong> !
+          {tr('Lâche une bille : jusqu’à', 'Drop a ball: up to')} <strong>{dollarsCourt(mise * DOLLARS_PAR_RUBIS[mise] * MULTI_MAX_PLINKO)}</strong> !
         </p>
         <svg className="pk-plateau" viewBox={`0 0 ${PL.largeur} ${PL.bas + 120}`} role="img" aria-label={tr('Plateau du Plinko', 'Plinko board')}>
           <defs>
@@ -1671,6 +1671,7 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
             <button key={x} type="button" role="radio" aria-checked={x === mise} className={x === mise ? 'actif' : ''} disabled={occupe} onClick={() => setMise(x)}>
               <img src="/cartes/rubis-icone.webp" alt="" />
               {x}
+              {x > 5 && <small className="pk-bonus">+{Math.round((DOLLARS_PAR_RUBIS[x] / DOLLARS_PAR_RUBIS[5] - 1) * 100)} %</small>}
             </button>
           ))}
         </div>
@@ -1744,7 +1745,7 @@ function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => vo
           <img src="/cartes/rubis-icone.webp" alt="" />
           <span>
             <b>{tr('Le Plinko du Baron', 'The Baron’s Plinko')}</b>
-            <small>{tr('Lâche une bille contre des rubis : jusqu’à ×1000, 20 milliards $ !', 'Drop a ball for rubies: up to ×1000, $20 billion!')}</small>
+            <small>{tr('Lâche une bille contre des rubis : jusqu’à ×1000, 25 milliards $ !', 'Drop a ball for rubies: up to ×1000, $25 billion!')}</small>
           </span>
           <i className="bq-bouton">
             <img src="/cartes/rubis-icone.webp" alt="" />5
