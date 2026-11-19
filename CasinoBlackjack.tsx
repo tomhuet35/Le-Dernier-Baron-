@@ -211,12 +211,12 @@ function CarteTable({ carte, quand }: { carte: CarteBJ | null; quand?: number })
         // La carte glisse du sabot sur le feutre : elle part vite, tourne, frôle la table et se pose avec un léger rebond.
         e.animate(
           [
-            { transform: `translate(${dx}px, ${dy}px) rotate(-38deg) scale(0.62)`, opacity: 0, filter: 'blur(1.5px)' },
-            { transform: `translate(${dx * 0.55}px, ${dy * 0.55}px) rotate(-18deg) scale(0.82)`, opacity: 1, filter: 'blur(1px)', offset: 0.3 },
-            { transform: `translate(${-dx * 0.03}px, ${-dy * 0.03}px) rotate(3deg) scale(1.03)`, filter: 'blur(0)', offset: 0.82 },
-            { transform: 'translate(0, 0) rotate(0deg) scale(1)', opacity: 1, filter: 'blur(0)' },
+            { transform: `translate3d(${dx}px, ${dy}px, 0) rotate(-38deg) scale(0.62)`, opacity: 0 },
+            { transform: `translate3d(${dx * 0.55}px, ${dy * 0.55}px, 0) rotate(-18deg) scale(0.82)`, opacity: 1, offset: 0.3 },
+            { transform: `translate3d(${-dx * 0.03}px, ${-dy * 0.03}px, 0) rotate(3deg) scale(1.03)`, offset: 0.82 },
+            { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)', opacity: 1 },
           ],
-          { duration: 560, delay: delai, easing: 'cubic-bezier(0.25, 0.8, 0.3, 1)', fill: 'backwards' },
+          { duration: 520, delay: delai, easing: 'cubic-bezier(0.25, 0.8, 0.3, 1)', fill: 'backwards' },
         );
         e.classList.add('arrive');
         window.setTimeout(() => e.classList.remove('arrive'), delai + 700);
@@ -430,7 +430,7 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
 
   // ----- La donne : les cartes partent une à une, dans l'ordre d'un vrai croupier (de sa gauche à sa droite, puis
   // elle-même), deux tours. -----
-  const ECART_DONNE = 420;
+  const ECART_DONNE = 450;
   const donne = useRef<{ numero: number; ordre: Map<string, number>; fin: number } | null>(null);
   if (donne.current?.numero !== v.numero && v.croupier.length) {
     const ordre = new Map<string, number>();
@@ -445,6 +445,8 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
       }
     }
     donne.current = { numero: v.numero, ordre, fin: initiale ? debut + k * ECART_DONNE + 400 : 0 };
+    // Les cartes suivantes (tirer, doubler, la croupière) attendent la fin de la donne.
+    if (initiale) prochaineDonne = Math.max(prochaineDonne, debut + k * ECART_DONNE);
   }
   const quandCarte = (id: string) => (i: number) => donne.current?.ordre.get(`${id}:${i}`);
   // Pendant la donne, les boutons attendent que les cartes soient posées.

@@ -60,8 +60,10 @@ export interface DelaisTables {
   croupier: number;
   pause: number;
   absence: number;
+  /** La donne : le temps de poser chaque carte à l'écran (le jeu attend que tout soit distribué). */
+  carte: number;
 }
-const DELAIS: DelaisTables = { mises: 15_000, decision: 20_000, assurance: 8_000, bot: 1_100, croupier: 750, pause: 4_500, absence: 60_000 };
+const DELAIS: DelaisTables = { mises: 15_000, decision: 20_000, assurance: 8_000, bot: 1_100, croupier: 750, pause: 4_500, absence: 60_000, carte: 450 };
 
 interface Siege {
   id: string;
@@ -91,6 +93,8 @@ interface Table {
   paye: boolean;
   /** Table VIP du Penthouse : mises multipliées par FACTEUR_VIP. */
   vip: boolean;
+  /** Les cartes sont en train d'être distribuées à l'écran : personne ne joue encore. */
+  distribue?: boolean;
 }
 
 const LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -100,7 +104,8 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
   const { io, banque } = options;
   const horloge = options.horloge ?? Date.now;
   const hasard = options.hasard ?? ((n: number) => randomInt(n));
-  const D = { ...DELAIS, ...options.delais };
+  // Délais imposés (tests) : sans pause de donne, sauf si elle est donnée.
+  const D = { ...DELAIS, ...(options.delais ? { carte: 0 } : {}), ...options.delais };
   const fabriquerSabot = options.sabot ?? (() => nouveauSabot(hasard));
   const tables = new Map<string, Table>();
   /** Téléphone → table et place. */
@@ -141,8 +146,8 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
       }),
       croupier: d ? d.croupier.map((c, i) => (i === 1 && !d.revele ? null : c)) : [],
       tour: enCours && d?.tour ? { place: enCours.place.id, main: d.tour.main } : null,
-      actions: enCours && enCours.place.id === siegeId && moi && !moi.bot ? actionsPossibles(d!) : [],
-      assurance: !!(d?.phase === 'assurance' && maPlace && !maPlace.assuranceRepondue),
+      actions: !t.distribue && enCours && enCours.place.id === siegeId && moi && !moi.bot ? actionsPossibles(d!) : [],
+      assurance: !!(!t.distribue && d?.phase === 'assurance' && maPlace && !maPlace.assuranceRepondue),
       sabot: t.sabot.length,
       melange: t.melange,
       hote: t.hote === siegeId,
@@ -226,6 +231,17 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
     t.numero += 1;
     t.etape = 'donne';
     t.donne = commencerDonne(t.sabot, mises);
+    // Les cartes partent une à une à l'écran (deux par joueur, deux pour la croupière) : on laisse le temps de la
+    // donne avant le premier tour.
+    const pause = D.carte * (mises.length + 1) * 2;
+    if (pause > 0) {
+      t.distribue = true;
+      planifier(t, pause + 300, () => {
+        t.distribue = false;
+        suite(t);
+      }, false);
+      return diffuser(t);
+    }
     suite(t);
   }
 
@@ -452,6 +468,7 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
       const en = d ? mainEnCours(d) : null;
       if (!m || !d || !en || en.place.id !== m.s.id) return erreur(rappel, 'Ce n’est pas ton tour.', 'It is not your turn.');
       const action = String(data?.type) as ActionBJ;
+      if (m.t.distribue) return erreur(rappel, 'Patiente, les cartes sont distribuées.', 'Wait, the cards are being dealt.');
       if (!actionsPossibles(d).includes(action)) return erreur(rappel, 'Action impossible.', 'Action not allowed.');
       const cout = coutAction(d, action);
       if (cout && !banque.debiter(id.uid, cout)) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
@@ -466,7 +483,7 @@ export function creerTablesBlackjack(options: { io: Server; banque: BanqueCasino
       const m = maTable();
       const d = m?.t.donne;
       const p = d?.places.find((x) => x.id === m?.s.id);
-      if (!m || !d || d.phase !== 'assurance' || !p || p.assuranceRepondue) return erreur(rappel, 'Trop tard pour l’assurance.', 'Too late for insurance.');
+      if (!m || !d || d.phase !== 'assurance' || !p || p.assuranceRepondue || m.t.distribue) return erreur(rappel, 'Trop tard pour l’assurance.', 'Too late for insurance.');
       const cout = Math.floor(p.mains[0].mise / 2);
       const oui = !!data?.oui && banque.solde(id.uid) >= cout;
       const r = repondreAssurance(d, p.id, oui);
