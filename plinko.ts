@@ -3,14 +3,15 @@
  * des 13 cases du bas. Les cases des bords sont rares et énormes. Les gains sont en dollars, jamais en rubis (règle du
  * salon : les rubis ne viennent jamais du jeu).
  *
- * Gain = mise (en rubis) × 1 000 000 $ × le multiplicateur de la case.
+ * Gain = mise (en rubis) × 400 000 $ × le multiplicateur de la case : un rubis rapporte en moyenne ~1,8 M $, moins
+ * que 1 rubis acheté en dollars (20 rubis ou 50 M $ pour 0,99 €) — acheter des dollars reste toujours plus sûr.
  */
 export const RANGEES_PLINKO = 12;
 export const MISES_PLINKO = [5, 15, 50] as const;
 export type MisePlinko = (typeof MISES_PLINKO)[number];
 export const estMisePlinko = (x: unknown): x is MisePlinko => MISES_PLINKO.includes(x as MisePlinko);
 /** Dollars par rubis misé, pour un multiplicateur de 1. */
-export const DOLLARS_PAR_RUBIS = 1_000_000;
+export const DOLLARS_PAR_RUBIS = 400_000;
 /** Les 13 cases, de gauche à droite. */
 export const MULTIPLICATEURS_PLINKO = [1000, 100, 20, 8, 4, 2, 1, 2, 4, 8, 20, 100, 1000];
 export const MULTI_MAX_PLINKO = 1000;
