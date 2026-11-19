@@ -26,7 +26,7 @@ describe('Profil du casino : les niveaux', () => {
     expect(niveauCasino(0)).toBe(1);
     expect(niveauCasino(-5)).toBe(1);
     expect(niveauCasino(Number.NaN)).toBe(1);
-    expect(niveauCasino(1e15)).toBe(100);
+    expect(niveauCasino(1e15)).toBe(999);
   });
 
   it('verse les bons bonus, et donne un titre et un cadre tous les 10 niveaux', () => {
@@ -34,7 +34,7 @@ describe('Profil du casino : les niveaux', () => {
     expect([1, 9, 10, 19, 20, 99, 100].map((n) => titreCasino(n)[0])).toEqual(['Novice', 'Novice', 'Habitué', 'Habitué', 'Flambeur', 'Seigneur du casino', 'Baron du casino']);
     expect([9, 10, 29, 30, 55, 100].map(cadreCasino)).toEqual(['aucun', 'bronze', 'argent', 'or', 'saphir', 'baron']);
     expect(progressionCasino(1_500_000)).toEqual({ xp: 1_500, niveau: 2, xpNiveau: 1_000, xpSuivant: 3_000, bonusSuivant: 300_000 });
-    expect(progressionCasino(1e13)).toMatchObject({ niveau: 100, xpSuivant: null, bonusSuivant: null });
+    expect(progressionCasino(1e13)).toMatchObject({ niveau: 999, xpSuivant: null, bonusSuivant: null });
   });
 });
 
