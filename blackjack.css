@@ -1,0 +1,77 @@
+/* Blackjack : la table en perspective (images bj-table-*), les cartes distribuées, les piles de jetons, le panneau. */
+
+.cas-ecran.bj2-ecran { position: relative; width: 100vw; max-width: none; min-height: 100dvh; margin: 0 0 0 calc(50% - 50vw); padding: max(8px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); gap: 8px; grid-template-rows: auto auto auto; align-content: start; }
+.bj2-ecran::before { content: ''; position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8, 2, 2, 0.55), rgba(8, 2, 2, 0.75)), url('/cartes/bj-salle.webp') center / cover no-repeat, #120304; }
+
+/* La table : une image à son format, tout est placé en % dessus. */
+.bj2-zone { position: relative; display: grid; justify-items: center; width: 100%; }
+.bj2-scene { position: relative; container-type: inline-size; width: 100%; aspect-ratio: var(--ratio); background: center / 100% 100% no-repeat; border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6); transition: transform 0.6s cubic-bezier(0.3, 0.8, 0.3, 1); }
+.bj2-scene.zoom-tel { transform-origin: var(--ox) var(--oy); transform: scale(1.75); }
+.bj2-zone:has(.zoom-tel) { overflow: hidden; border-radius: 14px; }
+@media (min-aspect-ratio: 1 / 1) {
+  .bj2-scene { width: min(100%, calc((100dvh - 64px) * var(--ratio))); }
+  .cas-ecran.bj2-ecran { padding-bottom: 0; }
+}
+@media (max-aspect-ratio: 1 / 1) {
+  /* Téléphone : le panneau vient se poser sur la moquette du bas de l'image. */
+  .bj2-zone { margin-bottom: -28vw; }
+  .bj2-scene { border-radius: 0; box-shadow: none; }
+}
+
+.bj2-rack, .bj2-sabot { position: absolute; translate: -50% -50%; height: auto; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55)); }
+.bj2-sabot { z-index: 2; }
+.bj2-sabot.melange { animation: bj2-melange 0.9s ease-in-out 2; }
+@keyframes bj2-melange { 25% { rotate: -4deg; } 75% { rotate: 4deg; } }
+.bj2-croupier { position: absolute; z-index: 3; translate: -50% -50%; }
+
+/* Les cartes : en éventail, elles arrivent du sabot (animation en JS). */
+.bj2-cartes { display: flex; align-items: flex-end; }
+.bj2-carte { flex: none; width: var(--carte); transform-style: preserve-3d; }
+.bj2-carte + .bj2-carte { margin-left: calc(var(--carte) * -0.58); margin-bottom: calc(var(--carte) * 0.08); }
+.bj2-carte .bj-carte { width: 100%; animation: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)); }
+.bj2-main { position: relative; display: grid; justify-items: center; gap: 3px; }
+.bj2-main.active .bj2-cartes { filter: drop-shadow(0 0 8px rgba(255, 215, 120, 0.95)); }
+.bj2-main .bj-total { font-size: max(11px, calc(var(--carte) * 0.24)); }
+.bj2-main .bj-issue { font-size: max(10px, calc(var(--carte) * 0.22)); }
+.bj2-croupier .bj2-main { grid-auto-flow: column; align-items: center; gap: 6px; }
+
+/* Une place : ancrée au centre de son cercle de mise. */
+.bj2-place { position: absolute; z-index: 4; width: 0; height: 0; }
+.bj2-halo { position: absolute; left: 0; top: 0; width: calc(var(--jeton) * 2.1); aspect-ratio: 1.25; translate: -50% -50%; border-radius: 50%; opacity: 0; pointer-events: none; transition: opacity 0.3s; box-shadow: 0 0 18px 6px rgba(255, 215, 120, 0.75), inset 0 0 14px 4px rgba(255, 215, 120, 0.5); }
+.bj2-place.joue .bj2-halo { opacity: 1; animation: bj2-halo 1.4s ease-in-out infinite; }
+@keyframes bj2-halo { 50% { opacity: 0.45; } }
+.bj2-place.absent { opacity: 0.55; }
+
+/* Les jetons : une pile vue de dessus, chaque jeton un peu plus haut que le précédent. */
+.bj2-pile { position: absolute; left: 0; top: 0; width: var(--jeton); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; }
+.bj2-pile img { position: absolute; left: 0; bottom: calc(var(--k) * var(--jeton) * 0.1); width: 100%; height: auto; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6)); }
+.bj2-pile.gain { left: calc(var(--jeton) * 0.85); }
+
+/* Les mains d'une place : au-dessus de son cercle (vers la croupière). */
+.bj2-mains { position: absolute; left: 0; bottom: calc(var(--jeton) * 0.35); translate: -50% 0; display: flex; gap: calc(var(--carte) * 0.3); }
+.bj2-bilan { position: absolute; left: 0; top: calc(var(--jeton) * 0.6); translate: -50% 0; padding: 1px 8px; border-radius: 99px; background: #3a3f47; color: #fff; font-size: max(11px, calc(var(--carte) * 0.24)); font-weight: 800; white-space: nowrap; animation: bj-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bj2-bilan.gagne { background: #0f6b3a; }
+.bj2-bilan.perdu { background: #6e1610; }
+
+/* Le joueur : sous son cercle, sur le bord de la table. */
+.bj2-joueur { position: absolute; left: 0; top: calc(var(--jeton) * 0.62 + 18px); translate: -50% 0; display: flex; align-items: center; gap: 5px; padding: 2px 9px 2px 2px; border-radius: 99px; background: rgba(10, 4, 3, 0.78); border: 1px solid rgba(231, 194, 122, 0.45); white-space: nowrap; font-size: max(10px, calc(var(--carte) * 0.22)); color: #f3e7cf; }
+.bj2-joueur img { width: max(22px, calc(var(--carte) * 0.55)); height: auto; aspect-ratio: 1; border-radius: 50%; object-fit: cover; }
+.bj2-joueur span { display: grid; line-height: 1.1; }
+.bj2-joueur small { font-size: 0.8em; opacity: 0.7; }
+.bj2-place.moi .bj2-joueur { border-color: #ffd774; box-shadow: 0 0 10px rgba(255, 215, 116, 0.5); }
+.bj2-pret { color: #7fe0a0; }
+
+/* Bascule entre la vue d'ensemble et la vue zoomée. */
+.bj2-vue { position: absolute; right: 12px; top: 10px; z-index: 6; min-height: 34px; padding: 4px 12px; border-radius: 99px; border: 1px solid #c99a3e; background: rgba(10, 4, 3, 0.8); color: #ffe3a3; font-size: 13px; }
+.bj2-vue.actif { background: #7a0d17; }
+
+/* Le panneau des choix. */
+.bj2-panneau { position: relative; z-index: 5; display: grid; gap: 8px; width: min(100%, 720px); justify-self: center; }
+@media (min-aspect-ratio: 1 / 1) {
+  .bj2-panneau { position: fixed; left: 50%; bottom: max(8px, env(safe-area-inset-bottom)); translate: -50% 0; width: min(96vw, 980px); grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: end; }
+  .bj2-panneau .bj-commandes { grid-row: span 2; }
+  .bj2-panneau .bj-chat ul { max-height: 64px; overflow: hidden; }
+}
+.bj2-panneau .bj-commandes { background: rgba(14, 6, 5, 0.86); backdrop-filter: blur(4px); }
+.bj2-panneau .bj-jeton { width: 56px; height: 56px; }
+.bj2-panneau .bj-jeton span { display: none; }
