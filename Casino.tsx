@@ -1594,7 +1594,7 @@ function Accueil({
   if (c?.depannage) une.push({ cle: 'depannage', fond: 'depannage', logo: '/cartes/logo-appli-casino.webp', contenu: <Depannage c={c} appel={appel} onVue={onVue} /> });
   // En tête : l'Happy Hour (toujours annoncée) et le jeu en XP double.
   const hh = vue.hotel?.happyHour;
-  if (hh) une.unshift({ cle: 'happy', fond: 'happy-hour', logo: '/cartes/logo-appli-casino.webp', contenu: <BandeauHappyHour vue={vue} /> });
+  if (hh?.enCours) une.unshift({ cle: 'happy', fond: 'happy-hour', logo: '/cartes/logo-appli-casino.webp', contenu: <BandeauHappyHour vue={vue} /> });
   if (vue.affiche) une.splice(hh?.enCours ? 1 : 0, 0, { cle: `affiche-${vue.affiche.debut}`, fond: 'affiche', logo: logoJeu(vue.affiche.jeu), contenu: <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} /> });
   if (vue.baronWheel?.ouverture) une.push({ cle: 'ouverture-bw', fond: 'ouverture-bw', logo: logoJeu('baronWheel'), contenu: <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} /> });
   if (vue.folleNuit?.enDirect && etageOuvert(niveau, 'scene')) une.push({ cle: 'folle-nuit', fond: 'folle-nuit', logo: logoJeu('folleNuit'), contenu: <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} /> });
@@ -1663,10 +1663,6 @@ function Accueil({
 
       {/* Tous les jeux, en grille de 3 × 2 (pages qu'on fait glisser) ; chacun s'ouvre à son niveau. */}
       <section className="ac-scene ac-grille-zone">
-        <button type="button" className="ac-boutique-haut" onClick={() => setBoutique(true)} aria-label={tr('Entrer dans la boutique', 'Enter the shop')}>
-          <img src="/cartes/banniere-boutique.webp" alt="" draggable={false} />
-          <span className="ac-boutique-entrer">{tr('Entrer', 'Enter')} ›</span>
-        </button>
         <button type="button" className="ac-fleche gauche" disabled={!defile.gauche} onClick={() => grille.current?.scrollBy({ left: -grille.current.clientWidth * 0.8, behavior: 'smooth' })} aria-label={tr('Jeux précédents', 'Previous games')}>
           ‹
         </button>
@@ -1684,12 +1680,6 @@ function Accueil({
         >
           {pages.map((liste, k) => (
             <div key={k} className="ac-page">
-              {k === 0 && (
-                <button type="button" className="ac-boutique-carte" onClick={() => setBoutique(true)} aria-label={tr('Entrer dans la boutique', 'Enter the shop')}>
-                  <img src="/cartes/banniere-boutique.webp" alt="" draggable={false} />
-                  <span className="ac-boutique-entrer">{tr('Entrer', 'Enter')} ›</span>
-                </button>
-              )}
               {k === 0 && une.length > 0 && (
                 <div className="ac-une-carte">
                   <ALaUne elements={une} />
