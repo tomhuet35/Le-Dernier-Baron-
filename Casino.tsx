@@ -1604,7 +1604,8 @@ function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel;
       if (multi >= 20) setFete({ gain, multi });
     };
     const pas = (t: number) => {
-      const e = (t - debut) / dureeSegment;
+      // La première image peut porter une heure un peu antérieure à « debut » : on part de 0.
+      const e = Math.max(0, (t - debut) / dureeSegment);
       const i = Math.min(points.length - 2, Math.floor(e));
       const u = Math.min(1, e - i);
       const a = points[i];
