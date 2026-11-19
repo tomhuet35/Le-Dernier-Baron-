@@ -90,6 +90,9 @@ interface InfosDecor {
   rack: { x: number; y: number; w: number };
   sabot: { x: number; y: number; w: number };
   croupier: { x: number; y: number };
+  /** La croupière (portrait) et les lampes de la table (halos qui vacillent). */
+  croupiere: { x: number; y: number; w: number };
+  lampes: [number, number][];
   /** Largeur d'une carte (% de la largeur de la table). */
   carte: number;
   jeton: number;
@@ -109,6 +112,11 @@ const DECORS: Record<Decor, InfosDecor> = {
     rack: { x: 50, y: 12.4, w: 34 },
     sabot: { x: 80, y: 12, w: 11 },
     croupier: { x: 50, y: 25 },
+    croupiere: { x: 24, y: 12, w: 8.5 },
+    lampes: [
+      [5.5, 4],
+      [94.5, 4],
+    ],
     carte: 5.2,
     jeton: 5.2,
   },
@@ -126,6 +134,11 @@ const DECORS: Record<Decor, InfosDecor> = {
     rack: { x: 49.8, y: 9.8, w: 52 },
     sabot: { x: 86, y: 9, w: 14 },
     croupier: { x: 50, y: 23 },
+    croupiere: { x: 15, y: 13, w: 11 },
+    lampes: [
+      [4, 2],
+      [96, 2],
+    ],
     carte: 9.5,
     jeton: 10,
   },
@@ -143,6 +156,11 @@ const DECORS: Record<Decor, InfosDecor> = {
     rack: { x: 50, y: 25.6, w: 58 },
     sabot: { x: 88, y: 23.2, w: 17 },
     croupier: { x: 50, y: 34.5 },
+    croupiere: { x: 50, y: 10.5, w: 25 },
+    lampes: [
+      [7, 13],
+      [93, 13],
+    ],
     carte: 9.6,
     jeton: 10,
   },
@@ -174,7 +192,7 @@ function centre(el: Element | null | undefined): { x: number; y: number } | null
 }
 
 /** Une carte posée sur la table : elle arrive du sabot (en tournant), et se retourne si elle était cachée. */
-function CarteTable({ carte }: { carte: CarteBJ | null }) {
+function CarteTable({ carte, quand }: { carte: CarteBJ | null; quand?: number }) {
   const el = useRef<HTMLDivElement>(null);
   const avant = useRef<CarteBJ | null | undefined>(undefined);
   useLayoutEffect(() => {
@@ -186,16 +204,22 @@ function CarteTable({ carte }: { carte: CarteBJ | null }) {
       const c = centre(e);
       if (s && c && !mouvementReduit()) {
         const t = performance.now();
-        const delai = Math.max(0, prochaineDonne - t);
-        prochaineDonne = t + delai + 150;
+        const delai = quand !== undefined ? Math.max(0, quand - t) : Math.max(0, prochaineDonne - t);
+        if (quand === undefined) prochaineDonne = t + delai + 260;
+        const dx = s.x - c.x;
+        const dy = s.y - c.y;
+        // La carte glisse du sabot sur le feutre : elle part vite, tourne, frôle la table et se pose avec un léger rebond.
         e.animate(
           [
-            { transform: `translate(${s.x - c.x}px, ${s.y - c.y}px) rotate(-35deg) scale(0.55)`, opacity: 0.2 },
-            { opacity: 1, offset: 0.2 },
-            { transform: 'translate(0, 0) rotate(0deg) scale(1)', opacity: 1 },
+            { transform: `translate(${dx}px, ${dy}px) rotate(-38deg) scale(0.62)`, opacity: 0, filter: 'blur(1.5px)' },
+            { transform: `translate(${dx * 0.55}px, ${dy * 0.55}px) rotate(-18deg) scale(0.82)`, opacity: 1, filter: 'blur(1px)', offset: 0.3 },
+            { transform: `translate(${-dx * 0.03}px, ${-dy * 0.03}px) rotate(3deg) scale(1.03)`, filter: 'blur(0)', offset: 0.82 },
+            { transform: 'translate(0, 0) rotate(0deg) scale(1)', opacity: 1, filter: 'blur(0)' },
           ],
-          { duration: 480, delay: delai, easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)', fill: 'backwards' },
+          { duration: 560, delay: delai, easing: 'cubic-bezier(0.25, 0.8, 0.3, 1)', fill: 'backwards' },
         );
+        e.classList.add('arrive');
+        window.setTimeout(() => e.classList.remove('arrive'), delai + 700);
         window.setTimeout(() => jouerEffet('bj_carte', { vitesse: 0.92 + Math.random() * 0.16 }), delai);
       }
     } else if (avant.current === null && carte !== null && !mouvementReduit()) {
@@ -211,7 +235,7 @@ function CarteTable({ carte }: { carte: CarteBJ | null }) {
   );
 }
 
-function Main({ main, active, croupier }: { main: { cartes: (CarteBJ | null)[] } & Omit<Partial<MainVueBJ>, 'cartes'>; active?: boolean; croupier?: boolean }) {
+function Main({ main, active, croupier, quand }: { main: { cartes: (CarteBJ | null)[] } & Omit<Partial<MainVueBJ>, 'cartes'>; active?: boolean; croupier?: boolean; quand?: (i: number) => number | undefined }) {
   const visibles = main.cartes.filter((c): c is CarteBJ => c !== null);
   const t = visibles.length ? totalMain(visibles) : null;
   const cache = main.cartes.some((c) => c === null);
@@ -219,7 +243,7 @@ function Main({ main, active, croupier }: { main: { cartes: (CarteBJ | null)[] }
     <div className={`bj-main bj2-main ${active ? 'active' : ''} ${main.issue ? `issue-${main.issue}` : ''}`}>
       <div className="bj2-cartes">
         {main.cartes.map((c, i) => (
-          <CarteTable key={i} carte={c} />
+          <CarteTable key={i} carte={c} quand={quand?.(i)} />
         ))}
       </div>
       {t && (
@@ -278,13 +302,13 @@ function Pile({ montant, f, depuis, vers, className }: { montant: number; f: num
   return (
     <div className={`bj2-pile ${className ?? ''}`} ref={el} aria-label={dollars(montant)}>
       {jetons.map((j, k) => (
-        <img key={k} src={`/cartes/${JETON_IMAGE[j]}.webp`} alt="" draggable={false} style={{ '--k': k } as CSSProperties} />
+        <img key={k} className="pose" src={`/cartes/${JETON_IMAGE[j]}.webp`} alt="" draggable={false} style={{ '--k': k } as CSSProperties} />
       ))}
     </div>
   );
 }
 
-function Place({ place, pos, tour, phase, f, decor }: { place: PlaceVueBJ; pos: [number, number]; tour: VueTableBJ['tour']; phase: VueTableBJ['phase']; f: number; decor: InfosDecor }) {
+function Place({ place, pos, tour, phase, f, decor, miseLocale, quand }: { place: PlaceVueBJ; pos: [number, number]; tour: VueTableBJ['tour']; phase: VueTableBJ['phase']; f: number; decor: InfosDecor; miseLocale?: number; quand?: (i: number) => number | undefined }) {
   const [x, y] = pos;
   const joue = tour?.place === place.id;
   const mise = place.mains.length ? place.mains.reduce((s, m) => s + m.mise, 0) : place.mise;
@@ -298,10 +322,11 @@ function Place({ place, pos, tour, phase, f, decor }: { place: PlaceVueBJ; pos: 
     >
       <span className="bj2-halo" aria-hidden="true" />
       {mise > 0 && (place.pret || place.mains.length > 0) && <Pile key={`mise-${place.mains.length ? 'donne' : 'mise'}`} montant={mise} f={f} depuis={place.mains.length ? undefined : 'joueur'} vers={perdu ? 'rack' : undefined} className="mise" />}
+      {!!miseLocale && !place.pret && !place.mains.length && <Pile key="locale" montant={miseLocale} f={f} className="mise locale" />}
       {gagne && <Pile key="gain" montant={place.gainTotal! - mise} f={f} depuis="rack" className="gain" />}
       <div className="bj2-mains">
         {place.mains.map((m, k) => (
-          <Main key={k} main={m} active={joue && tour?.main === k} />
+          <Main key={k} main={m} active={joue && tour?.main === k} quand={k === 0 ? quand : undefined} />
         ))}
       </div>
       {fin && (
@@ -317,6 +342,38 @@ function Place({ place, pos, tour, phase, f, decor }: { place: PlaceVueBJ; pos: 
         </span>
         {!place.mains.length && phase === 'mises' && place.pret && place.mise > 0 && <b className="bj2-pret">✓</b>}
       </span>
+    </div>
+  );
+}
+
+/** La croupière : son portrait au bout de la table, et ce qu'elle annonce (bulle). */
+function Croupiere({ decor, phrase, distribue }: { decor: InfosDecor; phrase: { texte: string; id: number } | null; distribue: boolean }) {
+  const c = decor.croupiere;
+  return (
+    <div className={`bj2-croupiere ${phrase ? 'parle' : ''} ${distribue ? 'distribue' : ''}`} style={{ left: `${c.x}%`, top: `${c.y}%`, width: `${c.w}%` }}>
+      <img src="/cartes/croupiere-blackjack.webp" alt={tr('Margaux, la croupière', 'Margaux, the dealer')} draggable={false} />
+      <span className="bj2-croupiere-nom">Margaux</span>
+      {phrase && (
+        <span key={phrase.id} className="bj2-bulle" role="status">
+          {phrase.texte}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Ma fin de donne, en grand sur la table : Blackjack (pluie d'or), gain, égalité. */
+function Banniere({ type, texte }: { type: 'blackjack' | 'gagne' | 'egalite' | 'perdu'; texte: string }) {
+  return (
+    <div className={`bj2-banniere ${type}`} aria-hidden="true">
+      {type === 'blackjack' && (
+        <span className="bj2-pluie">
+          {Array.from({ length: 22 }, (_, k) => (
+            <i key={k} style={{ '--x': `${(k * 37) % 100}%`, '--d': `${(k % 7) * 0.12}s`, '--r': `${(k * 53) % 360}deg` } as CSSProperties} />
+          ))}
+        </span>
+      )}
+      <strong>{texte}</strong>
     </div>
   );
 }
@@ -370,6 +427,52 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
       return !z;
     });
   const monIndex = v.places.findIndex((p) => p.moi);
+
+  // ----- La donne : les cartes partent une à une, dans l'ordre d'un vrai croupier (de sa gauche à sa droite, puis
+  // elle-même), deux tours. -----
+  const ECART_DONNE = 420;
+  const donne = useRef<{ numero: number; ordre: Map<string, number>; fin: number } | null>(null);
+  if (donne.current?.numero !== v.numero && v.croupier.length) {
+    const ordre = new Map<string, number>();
+    const debut = performance.now() + 120;
+    const initiale = v.croupier.length === 2 && v.places.every((p) => !p.mains.length || (p.mains.length === 1 && p.mains[0].cartes.length === 2));
+    let k = 0;
+    if (initiale) {
+      const joueurs = [...v.places].reverse().filter((p) => p.mains.length);
+      for (let tour = 0; tour < 2; tour++) {
+        for (const p of joueurs) ordre.set(`${p.id}:${tour}`, debut + k++ * ECART_DONNE);
+        ordre.set(`croupier:${tour}`, debut + k++ * ECART_DONNE);
+      }
+    }
+    donne.current = { numero: v.numero, ordre, fin: initiale ? debut + k * ECART_DONNE + 400 : 0 };
+  }
+  const quandCarte = (id: string) => (i: number) => donne.current?.ordre.get(`${id}:${i}`);
+  // Pendant la donne, les boutons attendent que les cartes soient posées.
+  const [distribue, setDistribue] = useState(false);
+  const finDonne = donne.current?.fin ?? 0;
+  useEffect(() => {
+    const reste = finDonne - performance.now();
+    if (reste <= 0) return setDistribue(false);
+    setDistribue(true);
+    const t = window.setTimeout(() => setDistribue(false), reste);
+    return () => window.clearTimeout(t);
+  }, [finDonne]);
+
+  // ----- La croupière parle -----
+  const [phrase, setPhrase] = useState<{ texte: string; id: number } | null>(null);
+  const dire = (fr: string, en: string) => setPhrase({ texte: tr(fr, en), id: Date.now() + Math.random() });
+  useEffect(() => {
+    if (!phrase) return;
+    const t = window.setTimeout(() => setPhrase(null), 3400);
+    return () => window.clearTimeout(t);
+  }, [phrase]);
+  const [banniere, setBanniere] = useState<{ type: 'blackjack' | 'gagne' | 'egalite' | 'perdu'; texte: string; id: number } | null>(null);
+  useEffect(() => {
+    if (!banniere) return;
+    const t = window.setTimeout(() => setBanniere(null), banniere.type === 'blackjack' ? 3600 : 2600);
+    return () => window.clearTimeout(t);
+  }, [banniere]);
+  const annonces = useRef<{ numero: number; derniere: boolean } | null>(null);
   // Paysage : la vue zoomée a sa propre image (ma place au centre, mes voisins sur les côtés) ; téléphone : on
   // s'approche de ma place sur la même table.
   const decorId: Decor = orientation === 'portrait' ? 'portrait' : zoom && monIndex >= 0 ? 'zoom' : 'ensemble';
@@ -380,19 +483,65 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
     .map((p, i) => ({ p, pos: (decorId === 'zoom' ? DECORS.zoom.places[i - monIndex + 2] : d.places[i]) as [number, number] | undefined }))
     .filter((x): x is { p: PlaceVueBJ; pos: [number, number] } => !!x.pos && x.pos[0] > -10 && x.pos[0] < 110);
 
-  // Sons : cartes distribuées, sabot remélangé, mon tour, résultat de ma donne.
+  // Sons et paroles de la croupière : nouvelle donne, mises, cartes, tours, résultat.
   useEffect(() => {
     const p = precedente.current;
     precedente.current = v;
-    if (!p) return;
-    if (v.melange && !p.melange) jouerEffet('melange');
-    if (v.actions.length && !p.actions.length) jouerEffet('bj_tour');
-    if (v.phase === 'fin' && p.phase !== 'fin' && moi?.gainTotal !== null && moi) {
-      const engage = moi.mains.reduce((s, m) => s + m.mise, 0) + moi.assurance;
-      if (moi.gainTotal! > engage) jouerEffet(moi.mains.some((m) => m.issue === 'blackjack') ? 'bj_blackjack' : 'bj_gain');
-      else if (moi.gainTotal! < engage && engage > 0) jouerEffet('bj_perdu');
+    const nom = (id: string | undefined) => v.places.find((x) => x.id === id)?.nom || tr('joueur', 'player');
+    if (!p) {
+      if (v.phase === 'mises') dire('Bienvenue à ma table ! Faites vos jeux.', 'Welcome to my table! Place your bets.');
+      return;
     }
-    if (v.phase === 'mises' && p.phase !== 'mises') setMise(0);
+    if (v.melange && !p.melange) {
+      jouerEffet('melange');
+      dire('Je mélange le sabot…', 'Shuffling the shoe…');
+    }
+    if (v.phase === 'mises' && p.phase !== 'mises') {
+      setMise(0);
+      dire('Faites vos jeux !', 'Place your bets!');
+    }
+    if (v.phase === 'mises' && v.reste !== null && v.reste < 4500 && annonces.current?.numero !== v.numero) {
+      annonces.current = { numero: v.numero, derniere: true };
+      dire('Dernières mises…', 'Last bets…');
+    }
+    if (p.phase === 'mises' && v.phase !== 'mises') dire('Les jeux sont faits, rien ne va plus.', 'Bets are closed, no more bets.');
+    if (v.assurance && !p.assurance) dire('J’ai un As… Assurance ?', 'I show an Ace… Insurance?');
+    if (v.actions.length && !p.actions.length) jouerEffet('bj_tour');
+    if (v.tour && (v.tour.place !== p.tour?.place || v.tour.main !== p.tour?.main) && v.phase === 'joueurs') {
+      const t = v.places.find((x) => x.id === v.tour!.place);
+      if (t?.moi) dire(`À vous, ${t.nom || tr('cher joueur', 'dear player')}. Carte ?`, `Your turn, ${t.nom || 'dear player'}. Card?`);
+      else if (t) dire(`${nom(t.id)}, à vous.`, `${nom(t.id)}, your turn.`);
+    }
+    // Une main qui saute ou un blackjack, pendant le jeu des joueurs.
+    for (const pl of v.places) {
+      const avant = p.places.find((x) => x.id === pl.id);
+      pl.mains.forEach((m, k) => {
+        const a = avant?.mains[k];
+        if (!a || a.cartes.length === m.cartes.length || p.numero !== v.numero) return;
+        const t = totalMain(m.cartes);
+        if (t.total > 21) dire(pl.moi ? 'Oh… vous sautez.' : `${nom(pl.id)} saute.`, pl.moi ? 'Oh… you bust.' : `${nom(pl.id)} busts.`);
+        else if (t.total === 21) dire('Vingt-et-un !', 'Twenty-one!');
+      });
+    }
+    if (v.phase === 'croupier' && p.phase !== 'croupier') dire('Je retourne ma carte…', 'I turn my card…');
+    if (v.phase === 'fin' && p.phase !== 'fin') {
+      const cartes = v.croupier.filter((c): c is CarteBJ => c !== null);
+      const t = cartes.length ? totalMain(cartes).total : 0;
+      if (t > 21) dire('La banque saute ! Je paie tout le monde.', 'The bank busts! I pay everyone.');
+      else if (t) dire(`La banque fait ${t}.`, `The bank has ${t}.`);
+      if (moi && moi.gainTotal !== null) {
+        const engageFin = moi.mains.reduce((s, m) => s + m.mise, 0) + moi.assurance;
+        const bj = moi.mains.some((m) => m.issue === 'blackjack');
+        if (moi.gainTotal > engageFin) {
+          jouerEffet(bj ? 'bj_blackjack' : 'bj_gain');
+          setBanniere({ type: bj ? 'blackjack' : 'gagne', texte: bj ? tr('BLACKJACK !', 'BLACKJACK!') : `+${dollars(moi.gainTotal - engageFin)}`, id: Date.now() });
+          if (bj) window.setTimeout(() => dire(`Blackjack ! Félicitations, ${moi.nom} !`, `Blackjack! Congratulations, ${moi.nom}!`), 1500);
+        } else if (moi.gainTotal < engageFin && engageFin > 0) {
+          jouerEffet('bj_perdu');
+        } else if (engageFin > 0) setBanniere({ type: 'egalite', texte: tr('Égalité', 'Push'), id: Date.now() });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [v, moi]);
 
   const envoyer = async (evt: string, data?: unknown) => {
@@ -458,12 +607,17 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
             draggable={false}
             style={{ left: `${d.sabot.x}%`, top: `${d.sabot.y}%`, width: `${d.sabot.w}%` }}
           />
+          {d.lampes.map(([x, y], k) => (
+            <span key={k} className="bj2-lampe" style={{ left: `${x}%`, top: `${y}%`, '--d': `${k * 1.7}s` } as CSSProperties} aria-hidden="true" />
+          ))}
+          <Croupiere decor={d} phrase={phrase} distribue={distribue} />
           <div className="bj2-croupier" style={{ left: `${d.croupier.x}%`, top: `${d.croupier.y}%` }}>
-            {v.croupier.length > 0 && <Main key={v.numero} main={{ cartes: v.croupier }} croupier />}
+            {v.croupier.length > 0 && <Main key={v.numero} main={{ cartes: v.croupier }} croupier quand={quandCarte('croupier')} />}
           </div>
           {placesVisibles.map(({ p, pos }) => (
-            <Place key={`${p.id}-${v.numero}`} place={p} pos={pos} tour={v.tour} phase={v.phase} f={f} decor={d} />
+            <Place key={`${p.id}-${v.numero}`} place={p} pos={pos} tour={v.tour} phase={v.phase} f={f} decor={d} miseLocale={p.moi && v.phase === 'mises' ? mise : undefined} quand={quandCarte(p.id)} />
           ))}
+          {banniere && <Banniere key={banniere.id} type={banniere.type} texte={banniere.texte} />}
         </div>
         {orientation === 'paysage' || moi ? (
           <button type="button" className={`bj2-vue ${zoom ? 'actif' : ''}`} onClick={() => basculerZoom()} aria-pressed={zoom}>
@@ -525,7 +679,8 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
             </div>
           </div>
         )}
-        {v.actions.length > 0 && (
+        {distribue && v.phase !== 'mises' && <p className="bj-attente">{tr('Margaux distribue les cartes…', 'Margaux is dealing…')}</p>}
+        {v.actions.length > 0 && !distribue && (
           <div className="bj-actions">
             {(['tirer', 'rester', 'doubler', 'separer'] as ActionBJ[]).map((a) => (
               <button
