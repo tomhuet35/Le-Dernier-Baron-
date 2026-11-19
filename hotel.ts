@@ -95,6 +95,9 @@ export function cadeauSemaine(jour: number, niveau: number, pris: readonly numbe
   return { dollars: base * c.dollars, rubis: c.rubis };
 }
 
+/** Cadeau de bienvenue des membres : offert une fois, à la première entrée au salon avec un compte (pas en invité). */
+export const CADEAU_COMPTE: CadeauSemaine = { dollars: 500_000, rubis: 15 };
+
 /** Le champagne du Penthouse : une fois par jour, pour les membres du Penthouse. */
 export const champagnePenthouse = (niveau: number): CadeauSemaine => ({ dollars: 1_000_000 * echelleNiveau(niveau), rubis: 3 });
 

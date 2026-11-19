@@ -60,7 +60,7 @@ import { creerBourse } from './bourseCasino';
 import { avatarCasino, tenue as tenueDe } from '../shared/tailleur';
 import { etal, PRIX_RELANCE, rafraichirMarche, RELANCES_MAX, valeurObjetMarche, type VueMarche } from '../shared/marche';
 import { ACTIONS_MAX, acheter, devisAchat, estAction, MONTANTS_ACHAT, produitVente, vendre, type VueBourse } from '../shared/bourse';
-import { cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type VueHotel } from '../shared/hotel';
+import { CADEAU_COMPTE, cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type VueHotel } from '../shared/hotel';
 import {
   ajouterObjet,
   cadreSpecial,
@@ -990,7 +990,17 @@ export function creerCasino(options: OptionsCasino) {
         const lancees = portes.get(id.uid)?.ecrituresLancees;
         const stats = await comptes.entrerCasino(id.uid);
         if (!stats) return repondre(rappel, INTROUVABLE);
-        porteDe(id, stats, lancees);
+        const p = porteDe(id, stats, lancees);
+        // Cadeau de bienvenue : une fois par compte (un invité le recevra en créant le sien).
+        let bienvenue = null;
+        if (!id.uid.startsWith('invite-') && !p.salonJ.bienvenue) {
+          p.salonJ.bienvenue = true;
+          p.salonJ.rubis = Math.min(RUBIS_MAX, p.salonJ.rubis + CADEAU_COMPTE.rubis);
+          mouvement(id.uid, p, CADEAU_COMPTE.dollars);
+          p.salonAEcrire = true;
+          planifier(id.uid, p);
+          bienvenue = CADEAU_COMPTE;
+        }
         sauverSalon();
         void socket.join(SALLE);
         dans = true;
@@ -998,7 +1008,7 @@ export function creerCasino(options: OptionsCasino) {
         monUid = id.uid;
         presents.set(id.uid, (presents.get(id.uid) ?? new Set()).add(socket.id));
         if (!positions.has(id.uid)) positions.set(id.uid, { ecran: 'salon', sid: socket.id });
-        repondre(rappel, { ok: true, casino: vue(id.uid) });
+        repondre(rappel, { ok: true, casino: vue(id.uid), ...(bienvenue ? { bienvenue } : {}) });
       } catch (e) {
         console.error('Casino : entrée impossible :', e);
         repondre(rappel, { ok: false, erreur: L('Le salon est indisponible pour le moment.', 'The lounge is unavailable right now.') });

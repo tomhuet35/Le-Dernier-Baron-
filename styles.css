@@ -1498,7 +1498,7 @@ button.bouton-regarder:hover:not(:disabled) { background: rgba(231, 194, 122, 0.
 }
 
 /* Site du casino (Baron's Fortune) : la porte d'entrée, avant le salon. */
-html[data-espace='casino'], html[data-espace='casino'] body { background: #120204; }
+html[data-espace='casino'] { background: #120204; }
 .porte-casino { position: fixed; inset: 0; overflow-y: auto; padding: max(32px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; background: radial-gradient(ellipse at 50% 30%, #6a0b1b 0%, #2a0609 60%, #120204 100%); color: #f3e7cf; }
 .porte-logo { width: min(52vw, 220px); height: auto; filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.7)); animation: porte-lueur 3s ease-in-out infinite alternate; }
 @keyframes porte-lueur { to { filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 22px rgba(255, 207, 107, 0.45)); } }
@@ -1510,3 +1510,4 @@ html[data-espace='casino'], html[data-espace='casino'] body { background: #12020
 .porte-mention { margin-top: 18px; font-size: 12px; opacity: 0.6; }
 .porte-note { max-width: 320px; margin: 0; font-size: 13px; line-height: 1.4; color: #e9d9bb; opacity: 0.8; }
 .porte-liens { display: flex; align-items: center; gap: 10px; color: #e7c27a; }
+.porte-cadeau { max-width: 330px; margin: 2px 0 0; padding: 10px 14px; border: 1px solid rgba(255, 215, 116, 0.55); border-radius: 12px; background: rgba(0, 0, 0, 0.35); color: #ffe3a3; font-size: 13.5px; line-height: 1.4; }
