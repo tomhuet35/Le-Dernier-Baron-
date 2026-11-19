@@ -60,7 +60,7 @@ import { cadreSpecial, type VueVentes } from '../../shared/ventes';
 import { AccueilGroom, AnnoncesHotel, CadeauBienvenue, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, Penthouse } from './CasinoHotel';
 import { etage, etageDuJeu, etageOuvert, ETAGES, type CadeauSemaine, type Etage } from '../../shared/hotel';
 import { MORCEAUX_PAGE, morceauxDe } from '../../shared/contrats';
-import { Depannage } from './CasinoContrats';
+import { Depannage, VIGNETTES_ALBUM } from './CasinoContrats';
 import './accueil.css';
 import { TableRoulette } from './CasinoRoulette';
 import type { VueTableRoulette } from '../../shared/rouletteCasino';
@@ -1487,7 +1487,10 @@ function BoutonDock({ icone, nom, pastille, info, onClick, rond = true }: { icon
 }
 
 /** « À la une » : une seule annonce à la fois (cadeau, dépannage, jeu à l'affiche, spectacle en direct…), qui tourne. */
-function ALaUne({ elements }: { elements: { cle: string; contenu: ReactNode }[] }) {
+/** Un élément « À la une » : son illustration de fond et le logo du jeu concerné. */
+type ElementUne = { cle: string; contenu: ReactNode; fond?: string; logo?: string };
+
+function ALaUne({ elements }: { elements: ElementUne[] }) {
   const [i, setI] = useState(0);
   const [pause, setPause] = useState(false);
   const n = elements.length;
@@ -1500,7 +1503,8 @@ function ALaUne({ elements }: { elements: { cle: string; contenu: ReactNode }[] 
   const k = i % n;
   return (
     <section className="ac-une" onPointerDown={() => setPause(true)}>
-      <div key={elements[k].cle} className="ac-une-contenu">
+      <div key={elements[k].cle} className={`ac-une-contenu ${elements[k].fond ? 'illustre' : ''}`} style={elements[k].fond ? ({ '--une-fond': `url('/cartes/une-${elements[k].fond}.webp')` } as CSSProperties) : undefined}>
+        {elements[k].logo && <img className="ac-une-logo" src={elements[k].logo} alt="" draggable={false} />}
         {elements[k].contenu}
       </div>
       {n > 1 && (
@@ -1584,15 +1588,16 @@ function Accueil({
   const ouvert = etageOuvert(niveau, etageActif);
 
   // À la une : seulement ce qui compte maintenant.
-  const une: { cle: string; contenu: ReactNode }[] = [];
-  if (vue.cadeau) une.push({ cle: `cadeau-${vue.cadeau.fin}`, contenu: <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} /> });
-  if (c?.depannage) une.push({ cle: 'depannage', contenu: <Depannage c={c} appel={appel} onVue={onVue} /> });
+  const une: ElementUne[] = [];
+  const logoJeu = (j: JeuCasino) => `/cartes/vignette-${VIGNETTES_ALBUM[j]}.webp`;
+  if (vue.cadeau) une.push({ cle: `cadeau-${vue.cadeau.fin}`, fond: 'cadeau', logo: '/cartes/logo-appli-casino.webp', contenu: <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} /> });
+  if (c?.depannage) une.push({ cle: 'depannage', fond: 'depannage', logo: '/cartes/logo-appli-casino.webp', contenu: <Depannage c={c} appel={appel} onVue={onVue} /> });
   // En tête : l'Happy Hour (toujours annoncée) et le jeu en XP double.
   const hh = vue.hotel?.happyHour;
-  if (hh) une.unshift({ cle: 'happy', contenu: <BandeauHappyHour vue={vue} /> });
-  if (vue.affiche) une.splice(hh?.enCours ? 1 : 0, 0, { cle: `affiche-${vue.affiche.debut}`, contenu: <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} /> });
-  if (vue.baronWheel?.ouverture) une.push({ cle: 'ouverture-bw', contenu: <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} /> });
-  if (vue.folleNuit?.enDirect && etageOuvert(niveau, 'scene')) une.push({ cle: 'folle-nuit', contenu: <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} /> });
+  if (hh) une.unshift({ cle: 'happy', fond: 'happy-hour', logo: '/cartes/logo-appli-casino.webp', contenu: <BandeauHappyHour vue={vue} /> });
+  if (vue.affiche) une.splice(hh?.enCours ? 1 : 0, 0, { cle: `affiche-${vue.affiche.debut}`, fond: 'affiche', logo: logoJeu(vue.affiche.jeu), contenu: <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} /> });
+  if (vue.baronWheel?.ouverture) une.push({ cle: 'ouverture-bw', fond: 'ouverture-bw', logo: logoJeu('baronWheel'), contenu: <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} /> });
+  if (vue.folleNuit?.enDirect && etageOuvert(niveau, 'scene')) une.push({ cle: 'folle-nuit', fond: 'folle-nuit', logo: logoJeu('folleNuit'), contenu: <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} /> });
 
   const restants = c ? c.jour.filter((x) => !x.fait).length : 0;
   const pieces = c ? JEUX_CASINO.reduce((s, j) => s + morceauxDe(c.album[j]), 0) : 0;
@@ -1684,7 +1689,10 @@ function Accueil({
                 const nv = niveauDuJeu(j.id);
                 const o = niveau >= nv;
                 return (
-                  <div key={j.id} className={`ac-carte ${o ? '' : 'fermee'} ${o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) ? 'neon' : ''}`}>
+                  <div key={j.id} className={`ac-carte ${o ? '' : 'fermee'} ${o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) ? 'dore' : ''}`}>
+                    {o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) && (
+                      <span className="ac-reflet" aria-hidden="true" />
+                    )}
                     {o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) && (
                       <b className="ac-neon-badge">{!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id ? tr('XP ×2', 'XP ×2') : 'Happy Hour'}</b>
                     )}
