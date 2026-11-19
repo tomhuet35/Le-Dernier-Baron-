@@ -3,7 +3,7 @@
  * Étape 1 : le salon (solde, plus riches, annonces), la roulette du salon (une par jour) et la machine à sous
  * « Le Bandit du Baron ». Tout l'argent est fictif et tenu par le serveur.
  */
-import { echelleCoffreRubis, GROS_LOT_COFFRE_RUBIS, MISES_COFFRE_RUBIS, type MiseCoffreRubis } from '../../shared/coffreRubis';
+import { DOLLARS_PAR_RUBIS, MISES_PLINKO, MULTI_MAX_PLINKO, MULTIPLICATEURS_PLINKO, RANGEES_PLINKO, type MisePlinko } from '../../shared/plinko';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   CASE_VERTE_SALON,
@@ -1285,8 +1285,8 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
         ? tr(`${annonce.nom} a récupéré ${dollars(annonce.gain)} au Vol de la Couronne !`, `${annonce.nom} cashed out ${dollars(annonce.gain)} on the Flight of the Crown!`)
       : annonce.jeu === 'chute'
         ? tr(`${annonce.nom} a fait tomber ${dollars(annonce.gain)} à la Chute des Écus !`, `${annonce.nom} dropped ${dollars(annonce.gain)} on the Falling Crowns!`)
-      : annonce.jeu === 'coffreRubis'
-        ? tr(`${annonce.nom} a ouvert le gros lot du Coffre-fort aux rubis : ${dollars(annonce.gain)} !`, `${annonce.nom} opened the Ruby Safe jackpot: ${dollars(annonce.gain)}!`)
+      : annonce.jeu === 'plinko'
+        ? tr(`${annonce.nom} a fait ×1000 au Plinko du Baron : ${dollars(annonce.gain)} !`, `${annonce.nom} hit ×1000 on the Baron’s Plinko: ${dollars(annonce.gain)}!`)
       : annonce.jeu === 'tickets'
         ? tr(`${annonce.nom} a gratté ${dollars(annonce.gain)} aux Tickets du Baron !`, `${annonce.nom} scratched ${dollars(annonce.gain)} on the Baron’s Tickets!`)
       : annonce.jeu === 'baronWheel'
@@ -1549,84 +1549,147 @@ function Offre({ o }: { o: OffreBoutique }) {
   );
 }
 
-/** Le Coffre-fort aux rubis : trois coffres, un seul à ouvrir, des dollars jusqu'au gros lot. */
-function CoffreRubis({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
-  const [mise, setMise] = useState<MiseCoffreRubis>(5);
-  const [ouvert, setOuvert] = useState<{ choix: number; gain: number; autres: [number, number] } | null>(null);
+/** Le Plinko du Baron : la bille tombe de clou en clou jusqu'à une case de dollars. */
+const PL = { largeur: 1300, haut: 70, ecart: 92, pas: 100, bas: 0 };
+PL.bas = PL.haut + RANGEES_PLINKO * PL.ecart + 10;
+const xBille = (droites: number, rangees: number) => PL.largeur / 2 + (droites - rangees / 2) * PL.pas;
+function Plinko({ vue, appel, onVue, onFermer }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onFermer: () => void }) {
+  const [mise, setMise] = useState<MisePlinko>(5);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [fete, setFete] = useState(false);
+  const [resultat, setResultat] = useState<{ caseFinale: number; gain: number; multi: number; id: number } | null>(null);
+  const [fete, setFete] = useState<{ gain: number; multi: number } | null>(null);
+  const [clou, setClou] = useState<string | null>(null);
+  const bille = useRef<SVGCircleElement>(null);
+  const anim = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(anim.current), []);
   const rubis = vue.contrats?.rubis ?? 0;
-  const k = echelleCoffreRubis(mise);
-  const ouvrir = async (choix: number) => {
-    if (occupe || ouvert) return;
+
+  const lacher = async () => {
+    if (occupe) return;
     if (rubis < mise) return setErreur(tr(`Il te faut ${mise} rubis : gagne-les avec les contrats et l’album.`, `You need ${mise} rubies: earn them with contracts and the album.`));
     setOccupe(true);
     setErreur(null);
-    jouerEffet('jeton');
-    const r = (await appel('casino_coffre_rubis', { mise })) as { ok: boolean; erreur?: string; gain?: number; autres?: [number, number]; casino?: VueCasino };
-    if (!r.ok || r.gain === undefined || !r.autres || !r.casino) {
+    setResultat(null);
+    const r = (await appel('casino_plinko', { mise })) as { ok: boolean; erreur?: string; chemin?: number[]; caseFinale?: number; multi?: number; gain?: number; casino?: VueCasino };
+    if (!r.ok || !r.chemin || r.caseFinale === undefined || !r.casino || r.gain === undefined || r.multi === undefined) {
       setOccupe(false);
-      return setErreur(r.erreur ?? tr('Le coffre est bloqué, réessaie.', 'The safe is stuck, try again.'));
+      return setErreur(r.erreur ?? tr('La bille est coincée, réessaie.', 'The ball is stuck, try again.'));
     }
+    const { chemin, caseFinale, gain, multi } = r;
     const nouvelle = r.casino;
-    const gain = r.gain;
-    setOuvert({ choix, gain, autres: r.autres });
-    window.setTimeout(() => {
+    jouerEffet('jeton');
+    // Les points de passage : le haut, puis chaque clou touché, puis la case.
+    const points: { x: number; y: number; clou?: string }[] = [{ x: PL.largeur / 2, y: 10 }];
+    let droites = 0;
+    for (let k = 0; k < chemin.length; k++) {
+      points.push({ x: xBille(droites, k), y: PL.haut + k * PL.ecart - 26, clou: `${k}-${droites}` });
+      droites += chemin[k];
+    }
+    points.push({ x: xBille(droites, RANGEES_PLINKO), y: PL.bas + 40 });
+    const dureeSegment = mouvementReduit() ? 1 : 170;
+    const debut = performance.now();
+    const fin = () => {
+      setClou(null);
+      setResultat({ caseFinale, gain, multi, id: Date.now() });
       onVue(nouvelle);
       setOccupe(false);
-      const gros = gain >= 50_000_000 * k;
-      jouerEffet(gros ? 'roulette_gros_lot' : 'machine_pieces');
-      if (gros) setFete(true);
-    }, 900);
+      jouerEffet(multi >= 20 ? 'roulette_gros_lot' : 'machine_pieces');
+      if (multi >= 20) setFete({ gain, multi });
+    };
+    const pas = (t: number) => {
+      const e = (t - debut) / dureeSegment;
+      const i = Math.min(points.length - 2, Math.floor(e));
+      const u = Math.min(1, e - i);
+      const a = points[i];
+      const b = points[i + 1];
+      // Petit saut au-dessus du clou, puis la chute (parabole).
+      const x = a.x + (b.x - a.x) * u;
+      const y = a.y + (b.y - a.y) * u * u - (i > 0 && i < points.length - 2 ? 34 * 4 * u * (1 - u) : 0);
+      bille.current?.setAttribute('cx', String(x));
+      bille.current?.setAttribute('cy', String(y));
+      if (u < 0.15 && a.clou && a.clou !== clouCourant) {
+        clouCourant = a.clou;
+        setClou(a.clou);
+        jouerEffet('bj_carte', { vitesse: 1.4 + Math.random() * 0.4, volume: 0.35 });
+      }
+      if (e >= points.length - 1) return fin();
+      anim.current = requestAnimationFrame(pas);
+    };
+    let clouCourant = '';
+    anim.current = requestAnimationFrame(pas);
   };
-  const montant = (i: number) => (!ouvert ? null : i === ouvert.choix ? ouvert.gain : ouvert.autres[i < ouvert.choix ? i : i - 1]);
+
   return (
-    <Fenetre titre={tr('Le Coffre-fort aux rubis', 'The Ruby Safe')} onFermer={occupe ? undefined : onFermer} large>
-      <div className="cr">
-        <p className="cr-intro">{tr('Choisis un coffre : il cache des dollars, jusqu’au gros lot !', 'Pick a safe: it hides dollars, up to the jackpot!')}</p>
-        <p className="cr-gros-lot">
-          {tr('Gros lot', 'Jackpot')} <strong>{dollars(GROS_LOT_COFFRE_RUBIS * k)}</strong>
+    <Fenetre titre={tr('Le Plinko du Baron', 'The Baron’s Plinko')} onFermer={occupe ? undefined : onFermer} large>
+      <div className="pk">
+        <p className="pk-intro">
+          {tr('Lâche une bille : jusqu’à', 'Drop a ball: up to')} <strong>{dollarsCourt(mise * DOLLARS_PAR_RUBIS * MULTI_MAX_PLINKO)}</strong> !
         </p>
-        <div className="cr-coffres">
-          {[0, 1, 2].map((i) => {
-            const m = montant(i);
-            const choisi = ouvert?.choix === i;
+        <svg className="pk-plateau" viewBox={`0 0 ${PL.largeur} ${PL.bas + 120}`} role="img" aria-label={tr('Plateau du Plinko', 'Plinko board')}>
+          <defs>
+            <radialGradient id="pk-clou" cx="35%" cy="30%">
+              <stop offset="0" stopColor="#fff6d0" />
+              <stop offset="0.5" stopColor="#e0a92e" />
+              <stop offset="1" stopColor="#6a4208" />
+            </radialGradient>
+            <radialGradient id="pk-bille" cx="35%" cy="30%">
+              <stop offset="0" stopColor="#ffffff" />
+              <stop offset="0.4" stopColor="#ff5a74" />
+              <stop offset="1" stopColor="#7a0016" />
+            </radialGradient>
+          </defs>
+          {Array.from({ length: RANGEES_PLINKO }, (_, k) =>
+            Array.from({ length: k + 3 }, (_, j) => {
+              const x = PL.largeur / 2 + (j - (k + 2) / 2) * PL.pas;
+              return <circle key={`${k}-${j}`} className={`pk-clou ${clou === `${k}-${j - 1}` || clou === `${k}-${j}` ? 'touche' : ''}`} cx={x} cy={PL.haut + k * PL.ecart} r="11" fill="url(#pk-clou)" />;
+            }),
+          )}
+          {MULTIPLICATEURS_PLINKO.map((m, k) => {
+            const x = xBille(k, RANGEES_PLINKO);
+            const gagnante = resultat?.caseFinale === k;
             return (
-              <button key={i} type="button" className={`cr-coffre ${ouvert ? (choisi ? 'choisi' : 'autre') : ''}`} disabled={occupe || !!ouvert} onClick={() => void ouvrir(i)}>
-                <img src="/cartes/machine-coffre.webp" alt="" draggable={false} />
-                {m !== null && <span className={`cr-gain ${m >= GROS_LOT_COFFRE_RUBIS * k ? 'gros' : ''}`}>{dollarsCourt(m)}</span>}
-              </button>
+              <g key={`${resultat?.id ?? 0}-${k}`} className={`pk-case m${m >= 100 ? 'max' : m >= 8 ? 'haut' : m >= 2 ? 'moyen' : 'bas'} ${gagnante ? 'gagnante' : ''}`}>
+                <rect x={x - 46} y={PL.bas + 12} width="92" height="70" rx="12" />
+                <text x={x} y={PL.bas + 57}>×{m}</text>
+              </g>
             );
           })}
+          <circle ref={bille} className="pk-bille" cx={PL.largeur / 2} cy={-40} r="20" fill="url(#pk-bille)" />
+        </svg>
+        <p className="pk-resultat" aria-live="polite">
+          {resultat ? (
+            <>
+              ×{resultat.multi} · <strong>+{dollars(resultat.gain)}</strong>
+            </>
+          ) : (
+            ' '
+          )}
+        </p>
+        <div className="pk-mises" role="radiogroup" aria-label={tr('Mise', 'Bet')}>
+          {MISES_PLINKO.map((x) => (
+            <button key={x} type="button" role="radio" aria-checked={x === mise} className={x === mise ? 'actif' : ''} disabled={occupe} onClick={() => setMise(x)}>
+              <img src="/cartes/rubis-icone.webp" alt="" />
+              {x}
+            </button>
+          ))}
         </div>
-        {ouvert ? (
-          <button type="button" className="principal large" disabled={occupe} onClick={() => setOuvert(null)}>
-            {tr('Rejouer', 'Play again')}
-          </button>
-        ) : (
-          <div className="cr-mises" role="radiogroup" aria-label={tr('Mise', 'Bet')}>
-            {MISES_COFFRE_RUBIS.map((x) => (
-              <button key={x} type="button" role="radio" aria-checked={x === mise} className={x === mise ? 'actif' : ''} onClick={() => setMise(x)}>
-                <img src="/cartes/rubis-icone.webp" alt="" />
-                {x}
-              </button>
-            ))}
-          </div>
-        )}
-        <p className="cr-solde">
+        <button type="button" className="principal large pk-lacher" disabled={occupe} onClick={() => void lacher()}>
+          {occupe ? tr('La bille tombe…', 'The ball is falling…') : tr(`Lâcher la bille · ${mise} rubis`, `Drop the ball · ${mise} rubies`)}
+        </button>
+        <p className="pk-solde">
           <img src="/cartes/rubis-icone.webp" alt="" /> {tr(`${rubis} rubis`, `${rubis} rubies`)}
         </p>
         {erreur && <p className="cas-erreur">{erreur}</p>}
-        <p className="cr-note">{tr('Les rubis se gagnent avec les contrats, l’album et la semaine du Baron.', 'Rubies are earned with contracts, the album and the Baron’s week.')}</p>
+        <p className="pk-note">{tr('Les rubis se gagnent avec les contrats, l’album et la semaine du Baron.', 'Rubies are earned with contracts, the album and the Baron’s week.')}</p>
       </div>
-      {fete && ouvert && (
+      {fete && (
         <Celebration
-          titre={ouvert.gain >= GROS_LOT_COFFRE_RUBIS * k ? tr('LE GROS LOT !', 'THE JACKPOT!') : tr('Gros gain !', 'Big win!')}
-          etiquette={tr(`Gain : ${dollars(ouvert.gain)}`, `Win: ${dollars(ouvert.gain)}`)}
-          medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollarsCourt(ouvert.gain)}</strong>}
+          titre={fete.multi >= MULTI_MAX_PLINKO ? tr('LE GROS LOT !', 'THE JACKPOT!') : tr(`×${fete.multi} !`, `×${fete.multi}!`)}
+          etiquette={tr(`Gain : ${dollars(fete.gain)}`, `Win: ${dollars(fete.gain)}`)}
+          medaillon={<strong className="celebration-xp cas-medaillon-gain">{dollarsCourt(fete.gain)}</strong>}
           legende={tr('Ajouté à ton solde', 'Added to your balance')}
-          onFermer={() => setFete(false)}
+          onFermer={() => setFete(null)}
         />
       )}
     </Fenetre>
@@ -1678,10 +1741,10 @@ function FenetreBoutique(props: { attenteRoue: string | null; onFermer: () => vo
         </section>
 
         <button type="button" className="bq-coffre-rubis" onClick={() => ouvrir(props.onCoffre)}>
-          <img src="/cartes/machine-coffre.webp" alt="" />
+          <img src="/cartes/rubis-icone.webp" alt="" />
           <span>
-            <b>{tr('Le Coffre-fort aux rubis', 'The Ruby Safe')}</b>
-            <small>{tr('Paie en rubis, ouvre un coffre : jusqu’à 10 milliards $ !', 'Pay in rubies, open a safe: up to $10 billion!')}</small>
+            <b>{tr('Le Plinko du Baron', 'The Baron’s Plinko')}</b>
+            <small>{tr('Lâche une bille contre des rubis : jusqu’à ×1000, 50 milliards $ !', 'Drop a ball for rubies: up to ×1000, $50 billion!')}</small>
           </span>
           <i className="bq-bouton">
             <img src="/cartes/rubis-icone.webp" alt="" />5
@@ -2062,7 +2125,7 @@ function Accueil({
           onCoffre={() => setCoffreRubis(true)}
         />
       )}
-      {coffreRubis && <CoffreRubis vue={vue} appel={appel} onVue={onVue} onFermer={() => setCoffreRubis(false)} />}
+      {coffreRubis && <Plinko vue={vue} appel={appel} onVue={onVue} onFermer={() => setCoffreRubis(false)} />}
       {riches && (
         <Fenetre titre={tr('Les plus riches du salon', 'Richest in the lounge')} onFermer={() => setRiches(false)}>
           <section className="cas-riches ac-riches">
