@@ -261,8 +261,10 @@
 .bw-route:not(:disabled):hover { transform: translateY(-4px); }
 .bw-route.choisie { box-shadow: 0 0 0 3px #fff1c4, 0 0 22px rgba(255, 215, 110, 0.8); transform: translateY(-4px); }
 /* La poursuite : la rue défile, les voitures restent à leur place (le Baron rebondit, la police gagne ou perd du terrain). */
-.bw-route-fond { position: absolute; top: 0; bottom: 0; left: 0; display: flex; animation: bw-defile 3.2s linear infinite; }
-.bw-route-fond img { height: 100%; width: auto; max-width: none; flex: none; }
+.bw-defile { background: #05060c var(--fond-route) left center / auto 100% repeat-x; }
+/* Safari (iPad/iPhone) ne sait pas dimensionner des images en height:100 % dans un conteneur flex sans largeur : la bande a donc une taille explicite (deux images 3000 × 500 côte à côte). */
+.bw-route-fond { position: absolute; top: 0; bottom: 0; left: 0; display: flex; aspect-ratio: 12 / 1; animation: bw-defile 3.2s linear infinite; will-change: transform; }
+.bw-route-fond img { display: block; width: 50%; height: 100%; max-width: none; flex: none; object-fit: cover; }
 @keyframes bw-defile { to { transform: translateX(-50%); } }
 .bw-defile .bw-voiture.baron { left: 50%; width: 44%; animation: bw-rebond 0.38s ease-in-out infinite alternate; }
 .bw-defile .bw-voiture.police { left: -4%; width: 38%; animation: bw-rebond 0.33s ease-in-out infinite alternate; }

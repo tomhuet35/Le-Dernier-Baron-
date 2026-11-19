@@ -586,7 +586,7 @@ function BonusEvasion({ b, nom, ouvert, choisir, v }: PropsBonus) {
   return (
     <div className={`bw-scene bw-evasion ${nom} ${enRoute ? route : ''} ${issue ? (issue.evade ? 'evade' : 'arrete') : ''}`} style={enRoute ? ({ '--duree': `${v.duree ?? 9000}ms` } as CSSProperties) : undefined}>
       {enRoute ? (
-        <div className="bw-defile" aria-hidden="true">
+        <div className="bw-defile" aria-hidden="true" style={{ '--fond-route': `url(/cartes/bw-route-${route}.webp)` } as CSSProperties}>
           <div className="bw-route-fond">
             <img src={`/cartes/bw-route-${route}.webp`} alt="" draggable={false} />
             <img src={`/cartes/bw-route-${route}.webp`} alt="" draggable={false} />
