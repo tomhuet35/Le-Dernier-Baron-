@@ -461,3 +461,17 @@ body > .voile { z-index: 200; }
 .ac-fleche.droite { right: 6px; }
 .ac-fleche:disabled { opacity: 0; pointer-events: none; }
 @media (max-width: 600px) { .ac-fleche { display: none; } }
+
+/* ---------- Affiches plus grandes ; néons multicolores autour des jeux en XP double / Happy Hour ---------- */
+.ac-page { padding: 22px clamp(18px, 5vw, 50px) 8px !important; }
+.ac-page .ac-carte { height: min(100%, 760px); }
+@media (max-width: 600px) { .ac-page .ac-carte { height: min(100%, 74vh); } }
+.ac-flammes { display: none !important; }
+.ac-carte.neon::before { content: ''; position: absolute; inset: -1.8%; z-index: -1; border-radius: 4.5% / 3%; padding: 3px; background: conic-gradient(from var(--neon-angle, 0deg), #ff2fd6, #ffe14a, #2fffd2, #3a7bff, #b44dff, #ff2fd6); filter: blur(7px) saturate(1.4); opacity: 0.95; animation: ac-neon 3s linear infinite, ac-neon-clignote 2.4s ease-in-out infinite; }
+.ac-carte.neon::after { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 0 18px rgba(255, 80, 220, 0.45), 0 0 34px rgba(60, 200, 255, 0.35); border-radius: 4%; }
+@property --neon-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes ac-neon { to { --neon-angle: 360deg; } }
+@keyframes ac-neon-clignote { 0%, 100% { opacity: 0.95; } 45% { opacity: 0.7; } 50% { opacity: 1; } 55% { opacity: 0.8; } }
+.ac-neon-badge { position: absolute; left: 50%; top: -2.2%; z-index: 4; translate: -50% 0; padding: 3px 12px; border-radius: 99px; background: linear-gradient(90deg, #ff2fd6, #b44dff, #3a7bff); border: 1px solid #fff; color: #fff; font-size: clamp(11px, 1.7vh, 14px); font-weight: 900; letter-spacing: 0.05em; white-space: nowrap; box-shadow: 0 0 12px rgba(255, 60, 220, 0.9), 0 0 22px rgba(60, 140, 255, 0.7); text-shadow: 0 0 6px rgba(255, 255, 255, 0.8); }
+@media (prefers-reduced-motion: reduce) { .ac-carte.neon::before { animation: none; } }
+@media (min-width: 601px) { .ac-page .ac-une-carte { height: min(100%, 760px); } }

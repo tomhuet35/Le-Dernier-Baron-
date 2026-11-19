@@ -1587,9 +1587,10 @@ function Accueil({
   const une: { cle: string; contenu: ReactNode }[] = [];
   if (vue.cadeau) une.push({ cle: `cadeau-${vue.cadeau.fin}`, contenu: <BandeauCadeau key={vue.cadeau.fin} cadeau={vue.cadeau} onRecuperer={onCadeau} onFini={onCadeauFini} /> });
   if (c?.depannage) une.push({ cle: 'depannage', contenu: <Depannage c={c} appel={appel} onVue={onVue} /> });
-  if (vue.affiche) une.push({ cle: `affiche-${vue.affiche.debut}`, contenu: <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} /> });
+  // En tête : l'Happy Hour (toujours annoncée) et le jeu en XP double.
   const hh = vue.hotel?.happyHour;
-  if (hh && (hh.enCours || hh.debut - Date.now() < 3 * 3_600_000)) une.push({ cle: 'happy', contenu: <BandeauHappyHour vue={vue} /> });
+  if (hh) une.unshift({ cle: 'happy', contenu: <BandeauHappyHour vue={vue} /> });
+  if (vue.affiche) une.splice(hh?.enCours ? 1 : 0, 0, { cle: `affiche-${vue.affiche.debut}`, contenu: <BandeauAffiche affiche={vue.affiche} onOuvrir={onAffiche} onFin={onRafraichir} /> });
   if (vue.baronWheel?.ouverture) une.push({ cle: 'ouverture-bw', contenu: <BandeauOuvertureBW vue={vue} onOuvrir={onBaronWheel} /> });
   if (vue.folleNuit?.enDirect && etageOuvert(niveau, 'scene')) une.push({ cle: 'folle-nuit', contenu: <BandeauFolleNuit vue={vue} onOuvrir={onFolleNuit} /> });
 
@@ -1674,18 +1675,18 @@ function Accueil({
         >
           {pages.map((liste, k) => (
             <div key={k} className="ac-page">
+              {k === 0 && une.length > 0 && (
+                <div className="ac-une-carte">
+                  <ALaUne elements={une} />
+                </div>
+              )}
               {liste.map((j) => {
                 const nv = niveauDuJeu(j.id);
                 const o = niveau >= nv;
                 return (
-                  <div key={j.id} className={`ac-carte ${o ? '' : 'fermee'}`}>
+                  <div key={j.id} className={`ac-carte ${o ? '' : 'fermee'} ${o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) ? 'neon' : ''}`}>
                     {o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) && (
-                      <span className="ac-flammes" aria-hidden="true">
-                        {Array.from({ length: 9 }, (_, i) => (
-                          <i key={i} style={{ '--i': i } as CSSProperties} />
-                        ))}
-                        <b>{!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id ? tr('XP ×2', 'XP ×2') : 'Happy Hour'}</b>
-                      </span>
+                      <b className="ac-neon-badge">{!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id ? tr('XP ×2', 'XP ×2') : 'Happy Hour'}</b>
                     )}
                     <Vignette
                       jeu={j}
