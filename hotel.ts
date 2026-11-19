@@ -20,7 +20,7 @@ import type { JeuCasino } from './profilCasino';
 
 export type Etage = 'bar' | 'tables' | 'scene' | 'penthouse';
 export const ETAGES: { id: Etage; nom: [string, string]; numero: [string, string]; niveau: number; jeux: JeuCasino[]; image: string }[] = [
-  { id: 'bar', nom: ['Le Bar', 'The Bar'], numero: ['Rez-de-chaussée', 'Ground floor'], niveau: 1, jeux: ['machine', 'nuits', 'coffres'], image: '/cartes/etage-bar.webp' },
+  { id: 'bar', nom: ['Le Bar', 'The Bar'], numero: ['Rez-de-chaussée', 'Ground floor'], niveau: 1, jeux: ['machine', 'nuits', 'coffres', 'tickets'], image: '/cartes/etage-bar.webp' },
   { id: 'tables', nom: ['Les Tables', 'The Tables'], numero: ['1er étage', '1st floor'], niveau: 5, jeux: ['blackjack', 'roulette'], image: '/cartes/etage-tables.webp' },
   { id: 'scene', nom: ['La Scène', 'The Stage'], numero: ['2e étage', '2nd floor'], niveau: 15, jeux: ['folleNuit', 'baronWheel', 'course', 'couronne', 'chute'], image: '/cartes/etage-scene.webp' },
   { id: 'penthouse', nom: ['Le Penthouse', 'The Penthouse'], numero: ['Dernier étage', 'Top floor'], niveau: 40, jeux: [], image: '/cartes/etage-penthouse.webp' },

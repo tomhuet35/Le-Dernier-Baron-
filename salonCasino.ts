@@ -102,6 +102,7 @@ import { creerShowFolleNuit, type TirageImpose } from './showFolleNuit';
 import { creerCoffres } from './festinCasino';
 import { creerVolCouronne } from './couronneCasino';
 import { creerChute } from './chuteCasino';
+import { creerTickets } from './ticketsCasino';
 import { creerCourse } from './courseCasino';
 import { creerBaronWheel } from './baronWheelCasino';
 import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, type BoostBW, type DureesBW } from '../shared/baronWheel';
@@ -794,6 +795,7 @@ export function creerCasino(options: OptionsCasino) {
     return { cours: e.cours, ouverture: e.ouverture, historique: e.historique, nouvelles: e.nouvelles, prochaine: bourse.prochaine(), portefeuille: p.salonJ.portefeuille };
   };
 
+  const tickets = creerTickets({ banque: banqueDe('tickets'), horloge, annoncer: (a) => annoncer(a) });
   const chute = creerChute({ banque: banqueDe('chute'), horloge, hasard: options.hasardChute, chemin: options.cheminChute, delaiAnnonce: options.delaiAnnonceChute, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
@@ -977,6 +979,7 @@ export function creerCasino(options: OptionsCasino) {
     coffres.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     couronne.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     chute.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
+    tickets.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     course.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     roueBW.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
 
@@ -1613,6 +1616,7 @@ export function creerCasino(options: OptionsCasino) {
     course.fermer();
     roueBW.fermer();
     chute.fermer();
+    tickets.fermer();
     defis.fermer();
     ventes.fermer();
     bourse.fermer();

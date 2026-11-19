@@ -1088,7 +1088,7 @@ export function musiqueDuSalon(actif: boolean) {
 }
 
 /** Où l'on est dans le Salon privé : le salon lui-même, ou l'un de ses jeux. */
-export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'express';
+export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'express';
 
 /** Chaque jeu du salon a sa musique (boucle d'environ une minute), le salon garde son jazz de cabaret. */
 const MUSIQUES_CASINO: Record<LieuCasino, string> = {
@@ -1103,6 +1103,8 @@ const MUSIQUES_CASINO: Record<LieuCasino, string> = {
   chute: '/cartes/musique-chute.mp3',
   course: '/cartes/musique-course.mp3',
   baronWheel: '/cartes/musique-baron-wheel.mp3',
+  // Les tickets se grattent au Bar : le jazz du salon.
+  tickets: '/cartes/musique-casino.mp3',
   express: '/cartes/musique-express.mp3',
 };
 /** Les sons propres à chaque jeu, préparés en entrant dans le jeu. */
@@ -1117,6 +1119,7 @@ const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
   couronne: ['cv_tic', 'cv_envol', 'cv_pie', 'cv_perdu', 'cv_encaisse', 'cv_gros'],
   chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
   baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi', 'ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee'],
+  tickets: ['jeton', 'machine_pieces', 'lingots_pluie'],
   express: ['ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee'],
   course: ['course_appel', 'course_depart', 'course_sabots', 'course_foule', 'course_gain', 'course_gros', 'course_perdu'],
 };
