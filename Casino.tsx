@@ -1602,7 +1602,10 @@ function Accueil({
     .map((x) => x.j);
   ordre.push(...JEUX.filter((j) => j.id === 'poker'));
   const pages: (typeof JEUX)[number][][] = [];
-  for (let k = 0; k < ordre.length; k += 6) pages.push(ordre.slice(k, k + 6));
+  // Une seule rangée qu'on fait défiler : des cartes plus grandes.
+  pages.push(ordre);
+  // Happy Hour (tous les jeux) et jeu à l'affiche (XP double) : des flammes au-dessus de la carte.
+  const happy = !!vue.hotel?.happyHour.enCours;
   const grille = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
 
@@ -1657,6 +1660,14 @@ function Accueil({
                 const o = niveau >= nv;
                 return (
                   <div key={j.id} className={`ac-carte ${o ? '' : 'fermee'}`}>
+                    {o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) && (
+                      <span className="ac-flammes" aria-hidden="true">
+                        {Array.from({ length: 9 }, (_, i) => (
+                          <i key={i} style={{ '--i': i } as CSSProperties} />
+                        ))}
+                        <b>{!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id ? tr('XP ×2', 'XP ×2') : 'Happy Hour'}</b>
+                      </span>
+                    )}
                     <Vignette
                       jeu={j}
                       affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id}
