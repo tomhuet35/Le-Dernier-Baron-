@@ -126,6 +126,8 @@ export interface OptionsCasino {
   hasardCasse?: (n: number) => number;
   /** Regroupement des écritures du solde, en millisecondes. */
   delaiEcriture?: number;
+  /** Casino ouvert à tous (son propre site) : tout compte, invités compris, entre ; sinon badge Créateur seulement. */
+  ouvert?: boolean;
   /** Les cadeaux du Baron (remplaçables pour les tests). */
   cadeaux?: CadeauSalon[];
   /** Blackjack : délais et sabot (remplaçables pour les tests). */
@@ -310,7 +312,7 @@ export function creerCasino(options: OptionsCasino) {
     const c = createurs.get(uid);
     if (c && horloge() - c.t < 60_000) return c.ok;
     const stats = await comptes.lire(uid).catch(() => null);
-    const ok = stats?.createur === true;
+    const ok = options.ouvert ? !!stats : stats?.createur === true;
     createurs.set(uid, { ok, t: horloge() });
     return ok;
   }
@@ -1833,5 +1835,26 @@ export function creerCasino(options: OptionsCasino) {
     });
   }
 
-  return { brancher, vider, estCreateur, tableDe, tableComplete };
+  /**
+   * Un invité passe sur son compte : ce qui attend est écrit, puis sa progression au casino est déplacée d'un bloc.
+   * Les deux portes sont oubliées (relues au prochain passage).
+   */
+  async function transfererInvite(de: string, vers: string): Promise<'fait' | 'deja' | 'vide'> {
+    if (portes.has(de)) await ecrire(de);
+    const p = portes.get(de);
+    if (p?.occupe || p?.ecrituresEnVol || p?.enAttente) return 'vide';
+    const r = await comptes.transfererCasino(de, vers);
+    if (r === 'fait') {
+      for (const uid of [de, vers]) {
+        const porte = portes.get(uid);
+        if (porte?.minuterie) clearTimeout(porte.minuterie);
+        portes.delete(uid);
+        createurs.delete(uid);
+      }
+      riches.delete(de);
+    }
+    return r;
+  }
+
+  return { brancher, vider, estCreateur, tableDe, tableComplete, transfererInvite };
 }

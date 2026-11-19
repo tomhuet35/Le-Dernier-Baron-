@@ -1,5 +1,5 @@
 import express from 'express';
-import { randomBytes, randomInt } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -164,6 +164,16 @@ export interface OptionsServeur {
   espace?: 'tout' | 'baron' | 'casino';
 }
 
+/** Invité du casino : la clé secrète gardée sur son appareil donne toujours le même compte (jamais la clé elle-même). */
+export function uidInvite(cle: string): string {
+  return `invite-${createHash('sha256').update(cle).digest('hex').slice(0, 24)}`;
+}
+/** Nom de départ d'un invité (« Invité 4821 »), tiré de son identifiant. */
+export function nomInvite(uid: string): string {
+  return `Invité ${1000 + (parseInt(uid.slice(-4), 16) % 9000)}`;
+}
+const cleInviteValide = (v: unknown): string => (typeof v === 'string' && /^[A-Za-z0-9_-]{32,128}$/.test(v) ? v : '');
+
 /** La page du casino : même code que le jeu, mais son nom, son icône et sa fiche d'installation à lui. */
 export function pageCasino(html: string): string {
   return html
@@ -196,7 +206,9 @@ export function demarrerServeur(options: OptionsServeur = {}) {
   const io = new Server(http, { cors: { origin: '*' } });
   // Salon privé du casino (comptes Créateur) : seulement avec les comptes joueurs.
   const espace = options.espace ?? 'tout';
-  const casino = comptes && espace !== 'baron' ? creerCasino({ io, comptes, horloge: options.horloge, ...options.casino }) : null;
+  // Sur son propre site, le casino est ouvert à tous (invités compris) ; ailleurs, réservé au badge Créateur.
+  const casinoOuvert = espace === 'casino';
+  const casino = comptes && espace !== 'baron' ? creerCasino({ io, comptes, horloge: options.horloge, ouvert: casinoOuvert, ...options.casino }) : null;
   const salons = new Map<string, Salon>();
   const socketsVersJoueur = new Map<string, { code: string; joueurId: string }>();
   /** Téléphones qui regardent une partie : code du salon regardé. */
@@ -1092,10 +1104,12 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       diffuser(salon);
     }
 
-    socket.on('identifier', async (data: { jeton?: string } = {}, rappel?: Rappel) => {
+    socket.on('identifier', async (data: { jeton?: string; invite?: string } = {}, rappel?: Rappel) => {
       if (!comptes) return repondre(rappel, { ok: false, erreur: L('Les comptes ne sont pas activés sur ce serveur.', 'Accounts are not enabled on this server.') });
       const jeton = typeof data?.jeton === 'string' ? data.jeton : '';
-      if (!jeton) {
+      // Casino ouvert à tous : un joueur sans compte joue « invité », reconnu par la clé gardée sur son appareil.
+      const cleInvite = casinoOuvert ? cleInviteValide(data?.invite) : '';
+      if (!jeton && !cleInvite) {
         // Déconnexion du compte : la place d'un salon pas encore lancé redevient « invité ».
         oublierPresence();
         identite = null;
@@ -1112,11 +1126,21 @@ export function demarrerServeur(options: OptionsServeur = {}) {
       const maintenant = Date.now();
       if (maintenant - derniereIdentification < 800) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
       derniereIdentification = maintenant;
-      const id = await comptes.verifier(jeton).catch(() => null);
+      const invite = !jeton;
+      const id = invite ? { uid: uidInvite(cleInvite), nom: null, email: null } : await comptes.verifier(jeton).catch(() => null);
       if (!id) return repondre(rappel, { ok: false, erreur: L('Session expirée : reconnecte-toi à ton compte.', 'Session expired: please sign in again.') });
       let stats: StatsCompte | null;
+      // Un invité qui se connecte à son compte : sa progression au casino le suit (une seule fois, compte neuf).
+      let transfert: 'fait' | 'deja' | 'vide' | null = null;
       try {
-        stats = await comptes.preparer(id.uid, id.nom, id.email ? id.email.split('@')[0] : '');
+        stats = await comptes.preparer(id.uid, id.nom, invite ? nomInvite(id.uid) : id.email ? id.email.split('@')[0] : '');
+        if (!invite && cleInvite && casino) {
+          transfert = await casino.transfererInvite(uidInvite(cleInvite), id.uid).catch((e) => {
+            console.error('Casino : passage invité → compte impossible :', e);
+            return null;
+          });
+          if (transfert === 'fait') stats = (await comptes.lire(id.uid)) ?? stats;
+        }
       } catch (e) {
         console.error('Lecture du compte impossible :', e);
         return repondre(rappel, { ok: false, erreur: L('Ton profil est indisponible pour le moment. Tu peux jouer en invité.', 'Your profile is unavailable right now. You can play as a guest.') });
@@ -1134,7 +1158,13 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         lierCompte(c.salon, c.joueur);
         diffuser(c.salon);
       }
-      repondre(rappel, { ok: true, profil: profilComplet(id, stats), ...(recu.recompense ? { recompense: recu.recompense } : {}) });
+      repondre(rappel, {
+        ok: true,
+        profil: profilComplet(id, stats),
+        ...(invite ? { invite: true, uid: id.uid } : {}),
+        ...(transfert ? { transfert } : {}),
+        ...(recu.recompense ? { recompense: recu.recompense } : {}),
+      });
     });
 
     socket.on('profil', async (_data: unknown, rappel?: Rappel) => {
@@ -1920,7 +1950,7 @@ export function demarrerServeur(options: OptionsServeur = {}) {
         const lus = await comptes.lirePlusieurs([...new Set([...(moi?.amis ?? []), ...(moi?.casino?.amis ?? [])])]);
         const rang: Record<StatutAmi, number> = { en_ligne: 0, en_partie: 1, hors_ligne: 2 };
         const amis = Object.entries(lus)
-          .filter(([, st]) => st?.createur && st.codeAmi)
+          .filter(([, st]) => (casinoOuvert || st?.createur) && st?.codeAmi)
           .map(([uid, st]) => ({ code: st!.codeAmi!, nom: st!.nom || 'Joueur', avatar: st!.avatar, statut: statutDe(uid) }))
           .sort((x, y) => rang[x.statut] - rang[y.statut] || x.nom.localeCompare(y.nom));
         repondre(rappel, { ok: true, amis });

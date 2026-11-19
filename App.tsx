@@ -76,6 +76,11 @@ type Reponse = {
   roulette?: { case: number; gain: GainRoulette; niveauAvant: number; niveau: number };
   recompense?: RecompenseSemaine;
   classe?: VueClasse;
+  /** Casino : identité d'invité confirmée (et son identifiant). */
+  invite?: boolean;
+  uid?: string;
+  /** Casino : passage de la progression d'invité sur le compte. */
+  transfert?: 'fait' | 'deja' | 'vide';
 };
 export type Appel = (evenement: string, data?: unknown) => Promise<Reponse>;
 export type EnLigne = { joueurs: number; enAttente: number; baron?: MeneurSemaine | null };
@@ -99,6 +104,15 @@ function demander(evenement: string, data?: unknown): Promise<Reponse> {
 
 const CLE_SESSION = 'ldb-session';
 const CLE_NOM = 'ldb-nom';
+/** Casino : la clé secrète de l'invité (sa progression, sans compte, est rattachée à cet appareil). */
+const CLE_INVITE = 'bf-invite';
+/** Casino : le joueur a déjà été prévenu que son compte gardait sa propre progression. */
+const CLE_INVITE_PREVENU = 'bf-invite-prevenu';
+function nouvelleCleInvite(): string {
+  const octets = new Uint8Array(32);
+  crypto.getRandomValues(octets);
+  return btoa(String.fromCharCode(...octets)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 function lire(cle: string): string | null {
   try {
     return localStorage.getItem(cle);
@@ -279,27 +293,58 @@ export function App() {
   const [chargement, setChargement] = useState(false);
   const moduleRef = useRef<ModuleConnexion | null>(null);
   const utilisateurRef = useRef<Utilisateur | null>(null);
+  // Casino : identité d'invité (sans compte) confirmée par le serveur.
+  const [uidInvite, setUidInvite] = useState<string | null>(null);
+  const uidInviteRef = useRef<string | null>(null);
+  uidInviteRef.current = uidInvite;
 
   /** Présente le compte connecté au serveur (à chaque connexion du téléphone ou changement de compte). */
   const identifier = useCallback(async () => {
     const m = moduleRef.current;
     if (!m || !socket.connected) return;
+    const cleInvite = ESPACE === 'casino' ? lire(CLE_INVITE) : null;
     if (!utilisateurRef.current) {
+      if (cleInvite) {
+        // Casino sans compte : l'appareil se présente avec sa clé d'invité.
+        setChargement(true);
+        const r = await demander('identifier', { invite: cleInvite });
+        setChargement(false);
+        if (r.ok && r.invite) {
+          setUidInvite(typeof r.uid === 'string' ? r.uid : null);
+          setProfil((r.profil as ProfilCompte | null | undefined) ?? null);
+        } else if (!r.ok && r.erreur && r.erreur !== 'Patiente une seconde.' && r.erreur !== 'Wait a second.') setMessage(r.erreur);
+        return;
+      }
+      setUidInvite(null);
       setProfil(null);
       await demander('identifier', { jeton: '' });
       return;
     }
     setChargement(true);
     const jeton = await m.jeton().catch(() => null);
-    const r = jeton ? await demander('identifier', { jeton }) : { ok: false, erreur: tr('Session expirée : reconnecte-toi à ton compte.', 'Session expired: please sign in again.') };
+    const r = jeton
+      ? await demander('identifier', cleInvite ? { jeton, invite: cleInvite } : { jeton })
+      : { ok: false, erreur: tr('Session expirée : reconnecte-toi à ton compte.', 'Session expired: please sign in again.') };
     setChargement(false);
-    if (r.ok) setProfil((r.profil as ProfilCompte | null | undefined) ?? null);
+    if (r.ok) {
+      setUidInvite(null);
+      setProfil((r.profil as ProfilCompte | null | undefined) ?? null);
+      // Invité qui se connecte : sa progression au casino a suivi (ou son compte avait déjà la sienne).
+      if (r.transfert === 'fait') {
+        ecrire(CLE_INVITE, null);
+        setInfo(tr('Ta progression d’invité a rejoint ton compte !', 'Your guest progress has moved to your account!'));
+      } else if (r.transfert === 'vide') ecrire(CLE_INVITE, null);
+      else if (r.transfert === 'deja' && !lire(CLE_INVITE_PREVENU)) {
+        ecrire(CLE_INVITE_PREVENU, '1');
+        setMessage(tr('Ton compte avait déjà sa progression au casino : il la garde. Celle d’invité reste sur cet appareil.', 'Your account already had casino progress: it keeps it. Your guest progress stays on this device.'));
+      }
+    }
     if (r.ok && r.recompense) setRecompense(r.recompense);
     else if (!r.ok && r.erreur && r.erreur !== 'Patiente une seconde.' && r.erreur !== 'Wait a second.') setMessage(r.erreur);
   }, []);
 
   const rafraichir = useCallback(async () => {
-    if (!utilisateurRef.current) return;
+    if (!utilisateurRef.current && !uidInviteRef.current) return;
     const r = await demander('profil');
     if (r.ok && r.profil) setProfil(r.profil as ProfilCompte);
     if (r.ok && r.recompense) setRecompense(r.recompense);
@@ -463,13 +508,19 @@ export function App() {
       pret,
       module,
       utilisateur,
+      uid: utilisateur?.uid ?? uidInvite,
+      invite: !utilisateur && !!uidInvite,
+      jouerInvite: () => {
+        if (!lire(CLE_INVITE)) ecrire(CLE_INVITE, nouvelleCleInvite());
+        void identifier();
+      },
       profil,
       chargement,
       rafraichir: () => void rafraichir(),
       apresInscription: () => window.setTimeout(() => void identifier(), 900),
       majProfil: setProfil,
     }),
-    [module, pret, utilisateur, profil, chargement, rafraichir, identifier],
+    [module, pret, utilisateur, uidInvite, profil, chargement, rafraichir, identifier],
   );
 
   const finInvitationCasino = useCallback(() => setCasinoInvitation(null), []);
@@ -496,7 +547,7 @@ export function App() {
 
   let ecran;
   if (ESPACE === 'casino') {
-    if (casinoOuvert && profil?.createur)
+    if (casinoOuvert && profil)
       ecran = (
         <EntreeCasino
           module={chargerCasino}
@@ -576,35 +627,48 @@ export function App() {
 function PorteCasino({ compte, entrer }: { compte: EtatCompte; entrer: () => void }) {
   const [fenetre, setFenetre] = useState<'connexion' | 'inscription' | null>(null);
   const { profil } = compte;
+  const liensCompte = (
+    <div className="porte-liens">
+      <button type="button" className="porte-lien" onClick={() => setFenetre('inscription')}>
+        {tr('Créer un compte', 'Create an account')}
+      </button>
+      <span aria-hidden="true">·</span>
+      <button type="button" className="porte-lien" onClick={() => setFenetre('connexion')}>
+        {tr('Se connecter', 'Sign in')}
+      </button>
+    </div>
+  );
   let contenu;
   if (!compte.pret || compte.chargement || (compte.utilisateur && !profil)) contenu = <p className="porte-info">{tr('Ouverture des portes…', 'Opening the doors…')}</p>;
   else if (!compte.actif) contenu = <p className="porte-info">{tr('Le casino est fermé pour le moment.', 'The casino is closed for now.')}</p>;
-  else if (!compte.utilisateur)
+  else if (!profil)
     contenu = (
       <>
-        <p className="porte-info">{tr('Connecte-toi pour entrer au casino.', 'Sign in to enter the casino.')}</p>
-        <button type="button" className="porte-bouton" onClick={() => setFenetre('connexion')}>
-          {tr('Se connecter', 'Sign in')}
+        <button type="button" className="porte-bouton" onClick={compte.jouerInvite}>
+          {tr('Jouer sans compte', 'Play without an account')}
         </button>
-        <button type="button" className="porte-lien" onClick={() => setFenetre('inscription')}>
-          {tr('Créer un compte', 'Create an account')}
-        </button>
-      </>
-    );
-  else if (!profil?.createur)
-    contenu = (
-      <>
-        <p className="porte-info">{tr('Le casino est encore réservé aux membres du Salon privé. Les portes s’ouvriront bientôt à tous.', 'The casino is still members-only. The doors will open to everyone soon.')}</p>
-        <button type="button" className="porte-lien" onClick={() => void compte.module?.deconnecter()}>
-          {tr('Changer de compte', 'Switch account')}
-        </button>
+        <p className="porte-note">{tr('Ta progression est gardée sur cet appareil.', 'Your progress is kept on this device.')}</p>
+        {liensCompte}
+        <p className="porte-note">{tr('Avec un compte, tu la retrouves sur tous tes appareils.', 'With an account, you get it back on all your devices.')}</p>
       </>
     );
   else
     contenu = (
-      <button type="button" className="porte-bouton" onClick={entrer}>
-        {tr('Entrer dans le salon', 'Enter the lounge')}
-      </button>
+      <>
+        <button type="button" className="porte-bouton" onClick={entrer}>
+          {tr('Entrer dans le salon', 'Enter the lounge')}
+        </button>
+        {compte.invite ? (
+          <>
+            <p className="porte-note">{tr('Tu joues en invité : ta progression est gardée sur cet appareil. Crée un compte pour l’emporter partout.', 'You are playing as a guest: your progress is kept on this device. Create an account to take it everywhere.')}</p>
+            {liensCompte}
+          </>
+        ) : (
+          <button type="button" className="porte-lien" onClick={() => void compte.module?.deconnecter()}>
+            {tr('Se déconnecter', 'Sign out')}
+          </button>
+        )}
+      </>
     );
   return (
     <main className="porte-casino">

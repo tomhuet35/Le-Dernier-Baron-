@@ -302,6 +302,11 @@ export interface ServiceComptes {
   recompenserSemaine(uid: string, semaine: string, xp: number): Promise<{ stats: StatsCompte; xpAvant: number } | 'deja' | null>;
   /** Salon privé : ouvre le casino du compte au premier passage (1 000 000 $) ; null sans compte. */
   entrerCasino(uid: string): Promise<StatsCompte | null>;
+  /**
+   * Un invité crée son compte (ou s'y connecte) : sa progression au casino passe sur le compte, d'un seul bloc.
+   * « deja » : le compte avait déjà joué au casino (rien ne bouge) ; « vide » : l'invité n'avait rien.
+   */
+  transfererCasino(de: string, vers: string): Promise<'fait' | 'deja' | 'vide'>;
   /** Ajoute (ou retire) de l'argent au casino du compte, sans jamais passer sous zéro ; null sans casino. */
   mouvementCasino(uid: string, delta: number, plusGrosGain?: number, extra?: ExtraCasino): Promise<StatsCompte | null>;
   /** Amis du casino : demande, acceptation, refus, retrait (les deux comptes ensemble). */
@@ -626,6 +631,26 @@ export function creerServiceComptes(parties: {
         return base.casino ? base : { ...base, casino: { solde: SOLDE_DEPART, depuis: Date.now() } };
       });
     },
+    transfererCasino: async (de, vers) => {
+      if (de === vers) return 'vide';
+      let resultat: 'fait' | 'deja' | 'vide' = 'vide';
+      await stockage.modifierPlusieurs([de, vers], (avant) => {
+        const invite = avant[de];
+        const compte = avant[vers];
+        resultat = 'vide';
+        if (!invite?.casino || !compte) return {};
+        if (casinoEntame(compte.casino)) {
+          resultat = 'deja';
+          return {};
+        }
+        resultat = 'fait';
+        // Les liens d'amitié pointaient vers l'invité : ils ne suivent pas (à refaire depuis le compte).
+        const { amis: _a, demandesRecues: _r, demandesEnvoyees: _e, ...casino } = invite.casino;
+        const { casino: _c, ...resteInvite } = invite;
+        return { [vers]: { ...compte, casino }, [de]: resteInvite };
+      });
+      return resultat;
+    },
     mouvementCasino: async (uid, delta, plusGrosGain, extra) => {
       const actuel = await stockage.lire(uid);
       if (!actuel?.casino) return null;
@@ -824,6 +849,12 @@ export function authentificationTest(jetons: Record<string, Identite>): Authenti
  * Lit la configuration web Firebase. Accepte le JSON ou le bloc JavaScript copié tel quel depuis la console
  * (« const firebaseConfig = { apiKey: "…", … }; »).
  */
+/** Le casino de ce compte a-t-il déjà servi (une partie jouée, un niveau passé ou des rubis gagnés) ? */
+export function casinoEntame(c: StatsCompte['casino']): boolean {
+  if (!c) return false;
+  return Object.keys(c.jeux ?? {}).length > 0 || (c.niveauPaye ?? 1) > 1 || (c.bonusXp ?? 0) > 0 || (c.gagne ?? 0) > 0;
+}
+
 export function lireConfigWeb(texte: string | undefined): ConfigWeb | null {
   if (!texte) return null;
   const v: Record<string, string> = {};

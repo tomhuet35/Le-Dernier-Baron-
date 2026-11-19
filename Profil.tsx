@@ -21,6 +21,12 @@ export interface EtatCompte {
   pret: boolean;
   module: ModuleConnexion | null;
   utilisateur: Utilisateur | null;
+  /** Identifiant du joueur au serveur : son compte, ou son identité d'invité au casino (null sinon). */
+  uid: string | null;
+  /** Casino : joue sans compte (progression gardée par la clé de cet appareil). */
+  invite: boolean;
+  /** Casino : commence (ou reprend) une partie en invité sur cet appareil. */
+  jouerInvite: () => void;
   /** Profil confirmé par le serveur (null tant qu'il n'a pas répondu). */
   profil: ProfilCompte | null;
   chargement: boolean;
