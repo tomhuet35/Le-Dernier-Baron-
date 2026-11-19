@@ -1663,6 +1663,10 @@ function Accueil({
 
       {/* Tous les jeux, en grille de 3 × 2 (pages qu'on fait glisser) ; chacun s'ouvre à son niveau. */}
       <section className="ac-scene ac-grille-zone">
+        <button type="button" className="ac-boutique-haut" onClick={() => setBoutique(true)} aria-label={tr('Entrer dans la boutique', 'Enter the shop')}>
+          <img src="/cartes/banniere-boutique.webp" alt="" draggable={false} />
+          <span className="ac-boutique-entrer">{tr('Entrer', 'Enter')} ›</span>
+        </button>
         <button type="button" className="ac-fleche gauche" disabled={!defile.gauche} onClick={() => grille.current?.scrollBy({ left: -grille.current.clientWidth * 0.8, behavior: 'smooth' })} aria-label={tr('Jeux précédents', 'Previous games')}>
           ‹
         </button>
@@ -1680,6 +1684,12 @@ function Accueil({
         >
           {pages.map((liste, k) => (
             <div key={k} className="ac-page">
+              {k === 0 && (
+                <button type="button" className="ac-boutique-carte" onClick={() => setBoutique(true)} aria-label={tr('Entrer dans la boutique', 'Enter the shop')}>
+                  <img src="/cartes/banniere-boutique.webp" alt="" draggable={false} />
+                  <span className="ac-boutique-entrer">{tr('Entrer', 'Enter')} ›</span>
+                </button>
+              )}
               {k === 0 && une.length > 0 && (
                 <div className="ac-une-carte">
                   <ALaUne elements={une} />
