@@ -1407,6 +1407,15 @@ function FenetreTables({ jeu, vip, vue, appel, onTable, onVue, onFermer }: { jeu
   );
 }
 
+/** L'étage (donc le niveau) d'une vignette du salon. */
+function etageDeVignette(id: (typeof JEUX)[number]['id']): Etage {
+  if (id === 'poker') return 'tables';
+  return (Object.keys(JEUX_ETAGE) as Etage[]).find((e) => JEUX_ETAGE[e].includes(id)) ?? 'bar';
+}
+const niveauDuJeu = (id: (typeof JEUX)[number]['id']) => etage(etageDeVignette(id)).niveau;
+/** L'ordre des jeux de même niveau dans la grille. */
+const ORDRE_JEUX: (typeof JEUX)[number]['id'][] = ['machines', 'tickets', 'festin', 'blackjack', 'roulette', 'baronWheel', 'folleNuit', 'course', 'couronne', 'chute'];
+
 /** Les jeux de chaque étage de l'hôtel (cartes de l'accueil). La Folle Nuit a sa propre carte, sur la scène. */
 const JEUX_ETAGE: Record<Etage, (typeof JEUX)[number]['id'][]> = {
   bar: ['machines', 'festin', 'tickets'],
@@ -1586,10 +1595,19 @@ function Accueil({
 
   const restants = c ? c.jour.filter((x) => !x.fait).length : 0;
   const pieces = c ? JEUX_CASINO.reduce((s, j) => s + morceauxDe(c.album[j]), 0) : 0;
-  const cartes = JEUX.filter((j) => JEUX_ETAGE[etageActif].includes(j.id));
+  // Les jeux, du premier ouvert au dernier (le poker « bientôt » à la fin), par pages de 6.
+  const ordre = JEUX.filter((j) => j.id !== 'poker')
+    .map((j, i) => ({ j, i }))
+    .sort((x, y) => niveauDuJeu(x.j.id) - niveauDuJeu(y.j.id) || ORDRE_JEUX.indexOf(x.j.id) - ORDRE_JEUX.indexOf(y.j.id) || x.i - y.i)
+    .map((x) => x.j);
+  ordre.push(...JEUX.filter((j) => j.id === 'poker'));
+  const pages: (typeof JEUX)[number][][] = [];
+  for (let k = 0; k < ordre.length; k += 6) pages.push(ordre.slice(k, k + 6));
+  const grille = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(0);
 
   return (
-    <div className="ac" style={{ '--fond-etage': `url(${e.image})` } as CSSProperties}>
+    <div className="ac ac-sans-etages">
       <header className="ac-barre">
         <button type="button" className="ac-moi" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
           <CadreAvatar avatar={vue.avatar} niveau={niveau} taille={58} special={cadreSpecial(c?.cadres, c?.cadreChoisi)} sansNiveau />
@@ -1629,53 +1647,47 @@ function Accueil({
         <ALaUne elements={une} />
       </div>
 
-      <nav className="ac-etages" aria-label={tr('Les étages de l’hôtel', 'Hotel floors')}>
-        {ETAGES.map((x) => {
-          const o = etageOuvert(niveau, x.id);
-          return (
-            <button key={x.id} type="button" className={`ac-etage ${x.id === etageActif ? 'actif' : ''} ${o ? '' : 'fermee'}`} onClick={() => onEtage(x.id)} aria-pressed={x.id === etageActif}>
-              <img src={`/cartes/etage-onglet-${x.id}.webp`} alt="" />
-              <span>{x.id === 'penthouse' ? 'Penthouse' : tr(...x.nom)}</span>
-              {!o && <small>🔒 {x.niveau}</small>}
-            </button>
-          );
-        })}
-      </nav>
-
-      <section className={`ac-scene ${ouvert ? '' : 'fermee'}`}>
-        <p className="ac-scene-titre">
-          <small>{tr(...e.numero)}</small> {tr(...e.nom)}
-          {!ouvert && <b> · {tr(`ouvre au niveau ${e.niveau}`, `opens at level ${e.niveau}`)}</b>}
-        </p>
-        {etageActif === 'penthouse' && ouvert ? (
-          <Penthouse vue={vue} appel={appel} onVue={onVue} onVip={onVip} />
-        ) : (
-          <div className="ac-cartes">
-            {une.length > 0 && (
-              <div className="ac-une-carte">
-                <ALaUne elements={une} />
-              </div>
-            )}
-            {cartes.map((j) => (
-              <div key={j.id} className="ac-carte">
-                <Vignette
-                  jeu={j}
-                  affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id}
-                  onOuvrir={j.id === 'poker' ? undefined : ouvert ? () => onVignette(j.id) : () => onEtage(etageActif)}
-                  ruban={ouvert ? rubanJeu(j.id, vue) : undefined}
-                />
-                {ouvert && j.id !== 'poker' && <img className="ac-jouer" src="/cartes/bouton-jouer.webp" alt="" aria-hidden="true" />}
-                {!ouvert && <span className="ac-cadenas">🔒</span>}
-              </div>
+      {/* Tous les jeux, en grille de 3 × 2 (pages qu'on fait glisser) ; chacun s'ouvre à son niveau. */}
+      <section className="ac-scene ac-grille-zone">
+        <div className="ac-grille" ref={grille} onScroll={(ev) => setPage(Math.round(ev.currentTarget.scrollLeft / Math.max(1, ev.currentTarget.clientWidth)))}>
+          {pages.map((liste, k) => (
+            <div key={k} className="ac-page">
+              {liste.map((j) => {
+                const nv = niveauDuJeu(j.id);
+                const o = niveau >= nv;
+                return (
+                  <div key={j.id} className={`ac-carte ${o ? '' : 'fermee'}`}>
+                    <Vignette
+                      jeu={j}
+                      affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id}
+                      onOuvrir={j.id === 'poker' ? undefined : o ? () => onVignette(j.id) : () => onEtage(etageDeVignette(j.id))}
+                      ruban={o ? rubanJeu(j.id, vue) : undefined}
+                    />
+                    {o && j.id !== 'poker' && <img className="ac-jouer" src="/cartes/bouton-jouer.webp" alt="" aria-hidden="true" />}
+                    {!o && (
+                      <span className="ac-cadenas">
+                        🔒<small>{tr(`Niveau ${nv}`, `Level ${nv}`)}</small>
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        {pages.length > 1 && (
+          <div className="ac-points" role="tablist" aria-label={tr('Pages des jeux', 'Game pages')}>
+            {pages.map((_, k) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={k === page}
+                aria-label={tr(`Page ${k + 1}`, `Page ${k + 1}`)}
+                className={k === page ? 'actif' : ''}
+                onClick={() => grille.current?.scrollTo({ left: k * grille.current.clientWidth, behavior: 'smooth' })}
+              />
             ))}
-            {etageActif === 'penthouse' && (
-              <div className="ac-carte ac-carte-penthouse">
-                <button type="button" onClick={() => onEtage('penthouse')}>
-                  <img src="/cartes/etage-penthouse.webp" alt="" />
-                  <span className="ac-cadenas">🔒</span>
-                </button>
-              </div>
-            )}
           </div>
         )}
         <p className="cas-gros-lot ac-gros-lot">

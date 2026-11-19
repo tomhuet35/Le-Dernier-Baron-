@@ -411,3 +411,24 @@ body > .voile { z-index: 200; }
   .ac-boutique > img { width: 40px; height: 40px; }
   .ac-boutique > span:not(.pastille-nombre) { margin-top: -4px; font-size: 9.5px; }
 }
+
+/* ---------- Accueil sans étages : tous les jeux en grille 3 × 2, par pages qu'on fait glisser ---------- */
+.ac.ac-sans-etages { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: auto auto minmax(0, 1fr) !important; grid-template-areas: 'barre' 'une' 'scene' !important; }
+.ac.ac-sans-etages::before { background-image: linear-gradient(180deg, rgba(8, 4, 3, 0.25), rgba(8, 4, 3, 0.6)), url('/cartes/fond-accueil-portrait.webp'); }
+@media (min-aspect-ratio: 1 / 1) { .ac.ac-sans-etages::before { background-image: linear-gradient(180deg, rgba(8, 4, 3, 0.25), rgba(8, 4, 3, 0.6)), url('/cartes/fond-accueil.webp'); } }
+.ac-sans-etages .ac-etages { display: none !important; }
+.ac-grille-zone { grid-area: scene; display: flex; flex-direction: column; min-height: 0; padding: 4px 0 6px !important; }
+.ac-grille { flex: 1 1 auto; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.ac-grille::-webkit-scrollbar { display: none; }
+.ac-page { flex: 0 0 100%; scroll-snap-align: start; display: grid; grid-template-columns: repeat(3, minmax(0, max-content)); justify-content: center; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 2.2vw, 22px); padding: 6px clamp(6px, 2vw, 24px); justify-items: center; align-items: center; min-height: 0; }
+.ac-page .ac-carte { height: auto; width: auto; max-width: 100%; max-height: 100%; aspect-ratio: 475 / 720; }
+/* La carte remplit sa case sans déborder : la plus grande qui tient en largeur et en hauteur. */
+.ac-page .ac-carte { width: min(100%, calc((100dvh - var(--dock) - 230px) / 2 * 475 / 720)); }
+.ac-page .ac-carte.fermee { filter: grayscale(0.55) brightness(0.62); }
+.ac-page .ac-cadenas { display: grid; justify-items: center; gap: 2px; }
+.ac-page .ac-cadenas small { padding: 2px 8px; border-radius: 99px; background: rgba(10, 4, 3, 0.85); border: 1px solid #c99a3e; color: #ffe3a3; font-size: 12px; font-weight: 700; }
+.ac-points { display: flex; justify-content: center; gap: 8px; padding: 4px 0 2px; }
+.ac-points button { width: 10px; height: 10px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid #e7c27a; background: transparent; }
+.ac-points button.actif { width: 26px; border-radius: 99px; background: #e7c27a; }
+.ac-grille-zone .ac-gros-lot { margin: 2px 0 0; }
+@media (max-width: 600px) { .ac-page .ac-carte { width: min(100%, calc((100dvh - var(--dock) - 250px) / 2 * 475 / 720)); } }
