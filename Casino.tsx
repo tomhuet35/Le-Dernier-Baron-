@@ -71,7 +71,7 @@ import { COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRoue } from '.
 import { socket } from './socket';
 import { EN, tr } from './traduction';
 import { BoutonMusique, Celebration, Fenetre, Garde, jouerEffet, mouvementReduit, musiqueDuCasino, musiqueDuSalon, useCompteur } from './ui';
-import { dollars, GainDefilant, Jeton, LINGOTS_PALIER, OptionsMachine, palierDe, PluieLingots, useSoldeAnime, useToursAuto, type Palier } from './casinoOutils';
+import { dollars, dollarsCourt, GainDefilant, Jeton, LINGOTS_PALIER, OptionsMachine, palierDe, PluieLingots, useSoldeAnime, useToursAuto, type Palier } from './casinoOutils';
 import './casino.css';
 
 
@@ -1449,14 +1449,6 @@ const JEUX_ETAGE: Record<Etage, (typeof JEUX)[number]['id'][]> = {
   penthouse: [],
 };
 
-/** Le solde en bref pour la barre du haut : 1,52 Md $, 48,3 M $ (en entier sous le million). */
-function dollarsCourt(n: number): string {
-  const f = (x: number, u: string, uEn: string) => tr(`${x.toLocaleString('fr-FR', { maximumFractionDigits: x < 10 ? 2 : 1 })} ${u} $`, `$${x.toLocaleString('en-US', { maximumFractionDigits: x < 10 ? 2 : 1 })}${uEn}`);
-  if (n >= 1e12) return f(n / 1e12, 'Bn', 'T');
-  if (n >= 1e9) return f(n / 1e9, 'Md', 'B');
-  if (n >= 1e6) return f(n / 1e6, 'M', 'M');
-  return dollars(n);
-}
 
 /** Un bouton du dock (en bas de l'accueil) : icône ronde, nom, pastille ou minuterie. */
 /** La boutique du salon (barre du haut) : la Roulette, le Marché noir et le Tailleur, réunis. */
