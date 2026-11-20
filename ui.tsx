@@ -667,6 +667,7 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'ex_cadran'
   | 'br_moteur'
   | 'br_meule'
+  | 'br_meule_long'
   | 'br_percee'
   | 'br_alarme'
   | 'br_sifflet';
@@ -816,6 +817,7 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   // Le Braquage : le moteur de la perceuse, la mèche qui meule une dalle, la percée, l'alarme, les sifflets.
   br_moteur: { fichier: '/cartes/son-br-moteur.mp3', volume: 0.6, baisserMusique: false, aLaDemande: true },
   br_meule: { fichier: '/cartes/son-br-meule.mp3', volume: 0.55, baisserMusique: false, aLaDemande: true },
+  br_meule_long: { fichier: '/cartes/son-br-meule-long.mp3', volume: 0.62, baisserMusique: false, aLaDemande: true },
   br_percee: { fichier: '/cartes/son-br-percee.mp3', volume: 0.85, baisserMusique: false, aLaDemande: true },
   br_alarme: { fichier: '/cartes/son-br-alarme.mp3', volume: 0.6, baisserMusique: true, aLaDemande: true },
   br_sifflet: { fichier: '/cartes/son-br-sifflet.mp3', volume: 0.42, baisserMusique: false, aLaDemande: true },
@@ -1144,7 +1146,7 @@ const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
   coffres: ['cf_ouvre', 'cf_butin', 'cf_police', 'cf_encaisse', 'cf_gros', 'cf_perdu'],
   couronne: ['cv_tic', 'cv_envol', 'cv_pie', 'cv_perdu', 'cv_encaisse', 'cv_gros'],
   chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
-  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi', 'ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'br_moteur', 'br_meule', 'br_percee', 'br_alarme', 'br_sifflet', 'lingots_pluie'],
+  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi', 'ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'br_moteur', 'br_meule', 'br_meule_long', 'br_percee', 'br_alarme', 'br_sifflet', 'lingots_pluie'],
   tickets: ['jeton', 'machine_pieces', 'lingots_pluie'],
   express: ['ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'bw_menottes', 'bw_coffre', 'bw_multi', 'lingots_pluie'],
   course: ['course_appel', 'course_depart', 'course_sabots', 'course_foule', 'course_gain', 'course_gros', 'course_perdu'],

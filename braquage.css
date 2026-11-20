@@ -20,6 +20,7 @@
 .brq-meche { z-index: 2; background-repeat: repeat-y; clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--bw) * 0.95), 50% 100%, 0 calc(100% - var(--bw) * 0.95)); }
 .brq-meche.meule { filter: brightness(1.18) drop-shadow(0 0 10px rgba(255, 160, 70, 0.85)); }
 .brq-machine { z-index: 2; height: auto; max-width: none; filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.7)); }
+.brq-chaleur { z-index: 4; border-radius: 50%; opacity: 0; pointer-events: none; mix-blend-mode: screen; background: radial-gradient(closest-side, rgba(255, 252, 228, 0.95), rgba(255, 196, 90, 0.8) 28%, rgba(255, 96, 24, 0.5) 58%, rgba(170, 24, 0, 0) 100%); filter: blur(2px); }
 .brq-etincelles { z-index: 5; height: auto; max-width: none; opacity: 0; mix-blend-mode: screen; pointer-events: none; }
 .brq-debris { z-index: 4; height: auto; max-width: none; opacity: 0; pointer-events: none; }
 .brq-poussiere { z-index: 4; border-radius: 50%; opacity: 0; pointer-events: none; background: radial-gradient(closest-side, rgba(214, 196, 170, 0.75), rgba(150, 128, 104, 0.45) 45%, rgba(90, 76, 62, 0) 100%); filter: blur(4px); }

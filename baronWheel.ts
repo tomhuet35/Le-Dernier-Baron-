@@ -224,7 +224,7 @@ export const JACKPOTS_BRAQUAGE: TableBW<JackpotBW> = [
  * acquis `acquis` ms plus tard. Arrêtée au sous-sol k : l'alarme sonne `alarme` ms après sa percée, puis la fuite dure
  * `fuite` ms. Au Coffre du Siècle, la porte s'ouvre et la fête dure `siecle` ms.
  */
-export const CASSE_BW = { premiere: 2200, etage: 2600, acquis: 500, alarme: 2000, fuite: 4400, siecle: 5600 };
+export const CASSE_BW = { premiere: 5000, etage: 5000, acquis: 500, alarme: 3700, fuite: 8000, siecle: 10000 };
 export const perceeCasseBW = (k: number) => CASSE_BW.premiere + (k - 1) * CASSE_BW.etage;
 /** La durée de la descente quand la perceuse s'arrête au sous-sol `etage` (au calendrier réel). */
 export const descenteCasseBW = (etage: number) => perceeCasseBW(etage) + (etage >= ETAGES_BRAQUAGE.length ? CASSE_BW.siecle : CASSE_BW.alarme + CASSE_BW.fuite);
@@ -394,6 +394,8 @@ export interface DureesBW {
   revele: number;
   /** L'Express : présentation, une gare (arrêt, coffres, départ), une embuscade (Alpes, Balkans), l'arrivée (traversee : inutilisé). */
   introExpress: number;
+  /** L'intro du Braquage : l'affiche et l'échelle des butins, le temps de les lire. */
+  introBraquage: number;
   gare: number;
   tunnel: number;
   traversee: number;
@@ -412,6 +414,7 @@ export const DUREES_BW: DureesBW = {
   poursuite: 9_000,
   revele: 5_500,
   introExpress: 7_000,
+  introBraquage: 7_000,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
   tunnel: 12_000,
@@ -436,7 +439,7 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
     case 'braquage': {
       const etage = t?.type === 'braquage' ? t.etage : ETAGES_BRAQUAGE.length;
       const descente = Math.round((d.descente * descenteCasseBW(etage)) / descenteCasseBW(ETAGES_BRAQUAGE.length));
-      return [e('intro', d.intro), e('descente', descente), e('revele', d.revele)];
+      return [e('intro', d.introBraquage), e('descente', descente), e('revele', d.revele)];
     }
     case 'express':
       return [
