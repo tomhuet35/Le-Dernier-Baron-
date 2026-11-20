@@ -556,3 +556,22 @@ body > .voile { z-index: 200; }
 .ac-offres-note { margin: 8px 0 4px; font-size: 11.5px; text-align: center; opacity: 0.65; }
 /* La fenêtre de la Boutique passe devant la barre du bas. */
 body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-index: 220; }
+
+/* Téléphone : rubis et billets bien dans leur pastille, sans rectangle sombre derrière le nombre. */
+@media (max-width: 600px) {
+  .ac-compteur { gap: 5px; padding: 0 12px 0 5px !important; overflow: hidden; }
+  .ac-compteur > img:first-child { width: 26px !important; height: 26px !important; margin: 0 !important; object-position: center; }
+  /* La lueur du nombre était coupée par son cadre (overflow) et dessinait un rectangle : on la retire ici. */
+  .ac-compteur b { text-shadow: none !important; }
+  .ac-compteur .ac-plus, .ac-compteur .ac-plus:hover, .ac-compteur .ac-plus:active { background: transparent !important; box-shadow: none !important; border: 0 !important; border-radius: inherit; }
+}
+
+/* Téléphone : toutes les affiches « À la une » ont la même hauteur, pour que les cartes des jeux ne bougent plus. */
+@media (max-width: 600px) {
+  .ac-une-haut .ac-une-contenu { height: 124px; display: flex; overflow: hidden; border-radius: 14px; }
+  .ac-une-haut .ac-une-contenu > *:not(.ac-une-logo) { flex: 1; min-width: 0; height: 100%; box-sizing: border-box; overflow: hidden; }
+  .ac-une-haut .fn-bandeau-affiche { aspect-ratio: auto !important; }
+  .ac-une-haut .fn-bandeau-affiche img { height: 100%; object-fit: cover; }
+  .ac-une-haut .cas-cadeau { align-content: center; gap: 4px !important; }
+  .ac-une-haut .cas-cadeau .cas-cadeau-bouton, .ac-une-haut .cas-cadeau .principal { min-height: 36px !important; padding-block: 4px !important; }
+}

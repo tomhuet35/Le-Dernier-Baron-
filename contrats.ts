@@ -79,20 +79,25 @@ export interface ModeleContrat {
 }
 
 const fixe = (n: number) => () => n;
+/** Objectifs « nombre de tours » : un peu plus longs à mesure que le joueur monte (×1 au début, jusqu'à ×4). */
+const tours = (n: number) => (niveau: number) => n * Math.min(4, 1 + Math.floor(Math.max(1, niveau) / 30));
+/** Les jeux ouverts au joueur (selon son niveau) ; par défaut tous. */
+export type JeuxOuverts = (jeu: JeuCasino) => boolean;
+const tousOuverts: JeuxOuverts = () => true;
 const nomJeu = (j: JeuCasino) => NOMS_JEUX_CASINO[j];
 
 export const CONTRATS_DU_JOUR: ModeleContrat[] = [
-  { id: 'bandit-tours', jeu: 'machine', mesure: 'tours', cible: fixe(20), texte: [`Jouer {n} tours au Bandit du Baron`, `Play {n} spins on ${nomJeu('machine')[1]}`] },
+  { id: 'bandit-tours', jeu: 'machine', mesure: 'tours', cible: tours(20), texte: [`Jouer {n} tours au Bandit du Baron`, `Play {n} spins on ${nomJeu('machine')[1]}`] },
   { id: 'bandit-bonus', jeu: 'machine', mesure: 'evenement', evenement: 'bonusMachine', cible: fixe(1), texte: [`Déclencher un bonus au Bandit du Baron`, `Trigger a bonus on ${nomJeu('machine')[1]}`] },
-  { id: 'nuits-tours', jeu: 'nuits', mesure: 'tours', cible: fixe(20), texte: [`Jouer {n} tours aux Nuits du Baron`, `Play {n} spins on ${nomJeu('nuits')[1]}`] },
+  { id: 'nuits-tours', jeu: 'nuits', mesure: 'tours', cible: tours(20), texte: [`Jouer {n} tours aux Nuits du Baron`, `Play {n} spins on ${nomJeu('nuits')[1]}`] },
   { id: 'blackjack-victoires', jeu: 'blackjack', mesure: 'victoires', cible: fixe(3), texte: ['Gagner {n} mains au blackjack', 'Win {n} hands of blackjack'] },
   { id: 'roulette-victoires', jeu: 'roulette', mesure: 'victoires', cible: fixe(3), texte: ['Gagner {n} paris à la roulette', 'Win {n} bets at roulette'] },
-  { id: 'folle-nuit-tours', jeu: 'folleNuit', mesure: 'tours', cible: fixe(5), texte: [`Placer {n} mises à la Folle Nuit`, `Place {n} bets on ${nomJeu('folleNuit')[1]}`] },
-  { id: 'coffres-tours', jeu: 'coffres', mesure: 'tours', cible: fixe(5), texte: [`Jouer {n} parties aux Coffres du Baron`, `Play {n} rounds of ${nomJeu('coffres')[1]}`] },
+  { id: 'folle-nuit-tours', jeu: 'folleNuit', mesure: 'tours', cible: tours(5), texte: [`Placer {n} mises à la Folle Nuit`, `Place {n} bets on ${nomJeu('folleNuit')[1]}`] },
+  { id: 'coffres-tours', jeu: 'coffres', mesure: 'tours', cible: tours(5), texte: [`Jouer {n} parties aux Coffres du Baron`, `Play {n} rounds of ${nomJeu('coffres')[1]}`] },
   { id: 'couronne-gros', jeu: 'couronne', mesure: 'gros', x: 5, cible: fixe(1), texte: [`Encaisser à ×5 ou plus au Vol de la Couronne`, `Cash out at ×5 or more on ${nomJeu('couronne')[1]}`] },
-  { id: 'chute-tours', jeu: 'chute', mesure: 'tours', cible: fixe(20), texte: [`Lâcher {n} écus à la Chute des Écus`, `Drop {n} crowns on ${nomJeu('chute')[1]}`] },
+  { id: 'chute-tours', jeu: 'chute', mesure: 'tours', cible: tours(20), texte: [`Lâcher {n} écus à la Chute des Écus`, `Drop {n} crowns on ${nomJeu('chute')[1]}`] },
   { id: 'course-victoires', jeu: 'course', mesure: 'victoires', cible: fixe(1), texte: [`Parier sur le gagnant à la Course des Écuries`, `Back the winner at ${nomJeu('course')[1]}`] },
-  { id: 'roue-tours', jeu: 'baronWheel', mesure: 'tours', cible: fixe(5), texte: [`Placer {n} mises à The Baron’s Wheel`, `Place {n} bets on ${nomJeu('baronWheel')[1]}`] },
+  { id: 'roue-tours', jeu: 'baronWheel', mesure: 'tours', cible: tours(5), texte: [`Placer {n} mises à The Baron’s Wheel`, `Place {n} bets on ${nomJeu('baronWheel')[1]}`] },
   { id: 'mise-totale', jeu: null, mesure: 'mise', cible: (n) => 2_000_000 * echelleNiveau(n), texte: ['Miser {n} dans le salon', 'Bet {n} in the lounge'] },
   { id: 'gain-total', jeu: null, mesure: 'gain', cible: (n) => 1_000_000 * echelleNiveau(n), texte: ['Gagner {n} dans le salon', 'Win {n} in the lounge'] },
   { id: 'trois-jeux', jeu: null, mesure: 'jeux', cible: fixe(3), texte: ['Jouer à {n} jeux différents', 'Play {n} different games'] },
@@ -185,9 +190,10 @@ export function hasardGraine(graine: string): (n: number) => number {
 }
 
 /** Tire n contrats différents (et pas deux sur le même jeu), sans ceux de la liste « exclus ». */
-export function tirerContrats(hasard: (n: number) => number, n: number, niveau: number, exclus: string[] = []): Contrat[] {
+export function tirerContrats(hasard: (n: number) => number, n: number, niveau: number, exclus: string[] = [], ouvert: JeuxOuverts = tousOuverts): Contrat[] {
   const pris: ModeleContrat[] = [];
-  const reste = CONTRATS_DU_JOUR.filter((m) => !exclus.includes(m.id));
+  // Seulement des jeux que le joueur a déjà débloqués.
+  const reste = CONTRATS_DU_JOUR.filter((m) => !exclus.includes(m.id) && (!m.jeu || ouvert(m.jeu)));
   while (pris.length < n && reste.length) {
     const m = reste.splice(hasard(reste.length), 1)[0];
     if (m.jeu && pris.some((p) => p.jeu === m.jeu)) continue;
@@ -196,7 +202,10 @@ export function tirerContrats(hasard: (n: number) => number, n: number, niveau: 
   return pris.map((m) => ({ id: m.id, cible: m.cible(niveau), progres: 0, fait: false }));
 }
 
-const grosCoupsNeufs = (niveau: number): Contrat[] => GROS_COUPS.map((m) => ({ id: m.id, cible: m.cible(niveau), progres: 0, fait: false }));
+/** « Jouer à N jeux différents » : jamais plus que le nombre de jeux ouverts au joueur. */
+const jeuxPossibles = (ouvert: JeuxOuverts) => Math.max(1, JEUX_CASINO.filter(ouvert).length);
+const cibleGrosCoup = (m: ModeleContrat, niveau: number, ouvert: JeuxOuverts) => (m.mesure === 'jeux' ? Math.min(m.cible(niveau), jeuxPossibles(ouvert)) : m.cible(niveau));
+const grosCoupsNeufs = (niveau: number, ouvert: JeuxOuverts): Contrat[] => GROS_COUPS.map((m) => ({ id: m.id, cible: cibleGrosCoup(m, niveau, ouvert), progres: 0, fait: false }));
 
 export function etatSalonVide(): EtatSalonJoueur {
   return {
@@ -218,15 +227,39 @@ export function etatSalonVide(): EtatSalonJoueur {
 }
 
 /** Nouveau jour, nouvelle semaine : les contrats repartent (le reste ne bouge pas). Renvoie true si quelque chose a changé. */
-export function rafraichirContrats(e: EtatSalonJoueur, uid: string, jour: string, semaine: string, niveau: number): boolean {
+export function rafraichirContrats(e: EtatSalonJoueur, uid: string, jour: string, semaine: string, niveau: number, ouvert: JeuxOuverts = tousOuverts): boolean {
   const c = e.contrats;
   let change = false;
   if (c.jour !== jour) {
-    e.contrats = { ...c, jour, liste: tirerContrats(hasardGraine(`${uid}|${jour}`), CONTRATS_PAR_JOUR, niveau), change: false, tous: false, jeux: [], victoires: [] };
+    e.contrats = { ...c, jour, liste: tirerContrats(hasardGraine(`${uid}|${jour}`), CONTRATS_PAR_JOUR, niveau, [], ouvert), change: false, tous: false, jeux: [], victoires: [] };
+    change = true;
+  }
+  // Un contrat (pas encore commencé) sur un jeu encore fermé au joueur : on le remplace par un jeu qu'il peut jouer.
+  const ferme = (x: Contrat) => {
+    const j = modeleContrat(x.id)?.jeu;
+    return !x.fait && x.progres === 0 && !!j && !ouvert(j);
+  };
+  if (e.contrats.liste.some(ferme)) {
+    const hasard = hasardGraine(`${uid}|${jour}|niveau`);
+    const liste = [...e.contrats.liste];
+    for (let i = 0; i < liste.length; i++) {
+      if (!ferme(liste[i])) continue;
+      const jeuxPris = liste.filter((_, k) => k !== i).map((x) => modeleContrat(x.id)?.jeu).filter((j): j is JeuCasino => !!j);
+      const exclus = [...liste.map((x) => x.id), ...CONTRATS_DU_JOUR.filter((m) => m.jeu && jeuxPris.includes(m.jeu)).map((m) => m.id)];
+      const [nouveau] = tirerContrats(hasard, 1, niveau, exclus, ouvert);
+      if (nouveau) liste[i] = nouveau;
+    }
+    e.contrats = { ...e.contrats, liste };
     change = true;
   }
   if (e.contrats.semaine !== semaine) {
-    e.contrats = { ...e.contrats, semaine, grosCoups: grosCoupsNeufs(niveau), jeuxSemaine: [] };
+    e.contrats = { ...e.contrats, semaine, grosCoups: grosCoupsNeufs(niveau, ouvert), jeuxSemaine: [] };
+    change = true;
+  }
+  // « Jouer à 5 jeux différents » alors que le joueur n'en a que 4 d'ouverts : l'objectif s'adapte.
+  const max = jeuxPossibles(ouvert);
+  if (e.contrats.grosCoups.some((g) => !g.fait && modeleContrat(g.id)?.mesure === 'jeux' && g.cible > max)) {
+    e.contrats = { ...e.contrats, grosCoups: e.contrats.grosCoups.map((g) => (!g.fait && modeleContrat(g.id)?.mesure === 'jeux' && g.cible > max ? { ...g, cible: max, fait: g.progres >= max } : g)) };
     change = true;
   }
   if (e.semaineBaron.semaine !== semaine) {
@@ -237,7 +270,7 @@ export function rafraichirContrats(e: EtatSalonJoueur, uid: string, jour: string
 }
 
 /** Change un contrat du jour pas encore rempli (une fois par jour) ; le nouveau n'est ni un contrat du jour ni sur le même jeu qu'eux. */
-export function changerContrat(e: EtatSalonJoueur, index: number, niveau: number, hasard: (n: number) => number): 'ok' | 'deja' | 'fait' | 'rubis' | 'introuvable' {
+export function changerContrat(e: EtatSalonJoueur, index: number, niveau: number, hasard: (n: number) => number, ouvert: JeuxOuverts = tousOuverts): 'ok' | 'deja' | 'fait' | 'rubis' | 'introuvable' {
   const c = e.contrats;
   const ancien = c.liste[index];
   if (!ancien) return 'introuvable';
@@ -247,7 +280,7 @@ export function changerContrat(e: EtatSalonJoueur, index: number, niveau: number
   const autres = c.liste.filter((_, i) => i !== index);
   const jeuxPris = autres.map((x) => modeleContrat(x.id)?.jeu).filter((j): j is JeuCasino => !!j);
   const exclus = [...c.liste.map((x) => x.id), ...CONTRATS_DU_JOUR.filter((m) => m.jeu && jeuxPris.includes(m.jeu)).map((m) => m.id)];
-  const [nouveau] = tirerContrats(hasard, 1, niveau, exclus);
+  const [nouveau] = tirerContrats(hasard, 1, niveau, exclus, ouvert);
   if (!nouveau) return 'introuvable';
   e.rubis -= PRIX_CHANGER_CONTRAT;
   e.contrats = { ...c, change: true, liste: c.liste.map((x, i) => (i === index ? nouveau : x)) };
