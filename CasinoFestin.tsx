@@ -11,7 +11,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { MULTIPLE_GROS_GAIN, type VueCasino } from '../../shared/casino';
 import { BADGES_MAX, BADGES_MIN, BADGES_RAPIDES, COFFRES, echelleCoffres, MISES_COFFRES, type ContenuCoffre, type VueCoffres } from '../../shared/festin';
 import type { Appel } from './App';
-import { BUTIN_PLUIE, dollars, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
+import { BUTIN_PLUIE, dollars, dollarsCourt, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
 import { tr } from './traduction';
 import { jouerEffet, mouvementReduit, useCompteur } from './ui';
 import './festin.css';
@@ -344,7 +344,7 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
                 <Jeton valeur={reglages.mise} />
                 <span>
                   <small>{tr('Mise', 'Bet')}</small>
-                  <strong>{dollars(reglages.mise)}</strong>
+                  <strong>{dollarsCourt(reglages.mise)}</strong>
                 </span>
               </span>
               <button type="button" onClick={() => changerMise(1)} disabled={reglages.mise === MISES_COFFRES[MISES_COFFRES.length - 1]} aria-label={tr('Augmenter la mise', 'Raise the bet')}>

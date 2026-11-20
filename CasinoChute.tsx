@@ -13,7 +13,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { VueCasino } from '../../shared/casino';
 import { estRisqueChute, MISES_CHUTE, multiplicateursChute, NOMS_RISQUES_CHUTE, RANGEES_MAX, RANGEES_MIN, RISQUES_CHUTE, type ResultatChute, type RisqueChute } from '../../shared/chute';
 import type { Appel } from './App';
-import { BUTIN_PLUIE, dollars, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
+import { BUTIN_PLUIE, dollars, dollarsCourt, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
 import { tr } from './traduction';
 import { jouerEffet, mouvementReduit, useCompteur } from './ui';
 import './chute.css';
@@ -610,7 +610,7 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
             <Jeton valeur={reglages.mise} />
             <span>
               <small>{tr('Mise par écu', 'Bet per coin')}</small>
-              <strong>{dollars(reglages.mise)}</strong>
+              <strong>{dollarsCourt(reglages.mise)}</strong>
             </span>
           </span>
           <button type="button" onClick={() => changerMise(1)} disabled={reglages.mise === MISES_CHUTE[MISES_CHUTE.length - 1] || auto.actif} aria-label={tr('Augmenter la mise', 'Raise the bet')}>
