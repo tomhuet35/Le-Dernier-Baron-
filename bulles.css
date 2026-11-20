@@ -181,3 +181,16 @@
   .bl-mise b { font-size: calc(var(--s) * 0.035) !important; }
   .bl-socle .bl-resultat > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(var(--s) * 0.74); }
 }
+/* Socle : tout le contenu sur le velours (sous la rangée d'ampoules, au-dessus de l'éventail), quelle que soit la police. */
+.bl-socle { padding: calc(var(--s) * 0.115) calc(var(--s) * 0.13) calc(var(--s) * 0.17) !important; gap: 0; align-content: center; }
+.bl-socle .bl-resultat { line-height: 1.05; }
+.bl-socle .bl-gain { font-size: calc(var(--s) * 0.048) !important; white-space: nowrap; }
+.bl-socle .bl-resultat span { font-size: calc(var(--s) * 0.022) !important; }
+.bl-commandes .bl-tourner { width: calc(var(--s) * 0.3) !important; height: calc(var(--s) * 0.3 * 181 / 520) !important; }
+.bl-tourner span { font-size: calc(var(--s) * 0.026) !important; letter-spacing: 0.03em !important; margin-top: 1%; white-space: nowrap; }
+.bl-mise b { font-size: calc(var(--s) * 0.032) !important; }
+.bl-pas { width: calc(var(--s) * 0.075) !important; height: calc(var(--s) * 0.075) !important; }
+/* Le ruban des tours gratuits : taille et texte suivent la machine. */
+.bl-gratuits { width: calc(var(--m) * 0.46); top: -4%; }
+.bl-gratuits span { font-size: calc(var(--m) * 0.026) !important; margin-top: 1.5%; max-width: 70%; overflow: hidden; text-overflow: ellipsis; }
+@media (min-aspect-ratio: 1 / 1) and (min-width: 700px) { .bl-gratuits { top: -9%; } }
