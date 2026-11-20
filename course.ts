@@ -48,10 +48,10 @@ export const NOMS_CHEVAUX = [
 
 export type TypeMiseCourse = 'gagnant' | 'place';
 export const TYPES_MISE_COURSE: TypeMiseCourse[] = ['gagnant', 'place'];
-export const JETONS_COURSE = [1_000, 5_000, 25_000, 100_000, 500_000];
-/** 1 000 000 $ au plus sur une même mise (un cheval, gagnant ou placé), 4 000 000 $ au plus par course. */
-export const MAX_MISE_COURSE = 1_000_000;
-export const MAX_COURSE = 4_000_000;
+export const JETONS_COURSE = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000, 5_000_000];
+/** 10 000 000 $ au plus sur une même mise (un cheval, gagnant ou placé), comme pour toute la course. */
+export const MAX_MISE_COURSE = 10_000_000;
+export const MAX_COURSE = 10_000_000;
 /** Ce que le jeu rend en moyenne. */
 export const RTP_COURSE = 0.95;
 /** Longueur de la course (affichage). */

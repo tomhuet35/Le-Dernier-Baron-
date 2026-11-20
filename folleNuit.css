@@ -305,3 +305,11 @@
 @media (prefers-reduced-motion: reduce) {
   .fn-chargement, .fn-chargement *, .fn-gain, .fn-presentateur, .fn-happy-pastille, .fn-direct::before, .fn-bandeau-roue, .fn-topslot.touche, .fn-topslot.touche::before, .fn-case.sortie, .fn-case-boost, .fn-case-gagnante, .fn-bras-x { animation: none; }
 }
+
+/* Huit jetons (jusqu'à 10 M) sur une seule ligne : ils rétrécissent avec la place. */
+.fn-commandes .bj-jetons { flex-wrap: nowrap; gap: 6px; }
+.fn-commandes .bj-jeton { flex: 0 1 56px; width: auto; height: auto; min-width: 0; aspect-ratio: 1; }
+@media (max-width: 420px) {
+  .fn-commandes .bj-jetons { gap: 4px; }
+  .fn-commandes .bj-jeton span { padding: 0 4px; font-size: 10px; }
+}

@@ -40,7 +40,7 @@ import { jouerEffet, mouvementReduit, useCompteur } from './ui';
 import './folleNuit.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
-const imageJeton = (v: number) => (v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
+const imageJeton = (v: number) => (v >= 10_000_000 ? 'or' : v >= 5_000_000 ? 'argent' : v >= 1_000_000 ? 'bleu' : v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
 
 /** Les cases du tapis et de la roue : nom, libellé court et couleur. */
 export const CASES: Record<CaseFN, { nom: [string, string]; court: string; couleur: string; texte: string }> = {
@@ -1329,7 +1329,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
           </div>
         </form>
         <p className="cas-mention">
-          {tr('1 paie 1 pour 1 · 2 paie 2 · 5 paie 5 · 10 paie 10 · les bonus paient leur multiplicateur. Le Top Slot multiplie une case à chaque manche (×2 à ×50). Jetons de 1 000 à 500 000 $ : 1 000 000 $ au plus par case, 4 000 000 $ au plus par manche.', '1 pays 1 to 1 · 2 pays 2 · 5 pays 5 · 10 pays 10 · bonuses pay their multiplier. The Top Slot boosts one spot every round (×2 to ×50). Chips from $1,000 to $500,000: $1,000,000 at most per spot, $4,000,000 at most per round.')}
+          {tr('1 paie 1 pour 1 · 2 paie 2 · 5 paie 5 · 10 paie 10 · les bonus paient leur multiplicateur. Le Top Slot multiplie une case à chaque manche (×2 à ×50). Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.', '1 pays 1 to 1 · 2 pays 2 · 5 pays 5 · 10 pays 10 · bonuses pay their multiplier. The Top Slot boosts one spot every round (×2 to ×50). Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.')}
         </p>
       </section>
 

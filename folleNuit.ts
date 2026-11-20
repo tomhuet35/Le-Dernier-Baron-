@@ -23,10 +23,10 @@ export const estCaseFN = (c: unknown): c is CaseFN => typeof c === 'string' && (
 /** Une case chiffrée paie son chiffre pour 1. */
 export const PAIEMENT_NOMBRE: Record<NombreFN, number> = { '1': 1, '2': 2, '5': 5, '10': 10 };
 
-/** Jetons, et plafonds : 1 000 000 $ au plus sur une case, 4 000 000 $ au plus pour toute la manche. */
-export const JETONS_FN = [1_000, 5_000, 25_000, 100_000, 500_000];
-export const MAX_CASE_FN = 1_000_000;
-export const MAX_MANCHE_FN = 4_000_000;
+/** Jetons (jusqu'à 10 000 000 $), et plafonds : 30 000 000 $ au plus sur une case comme pour toute la manche. */
+export const JETONS_FN = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000];
+export const MAX_CASE_FN = 30_000_000;
+export const MAX_MANCHE_FN = 30_000_000;
 /** Multiplicateur le plus haut d'un bonus (Top Slot compris). */
 export const X_MAX_FN = 25_000;
 

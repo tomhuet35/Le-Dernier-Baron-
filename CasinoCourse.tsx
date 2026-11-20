@@ -34,7 +34,7 @@ import { jouerEffet, mouvementReduit } from './ui';
 import './course.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
-const imageJeton = (v: number) => (v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
+const imageJeton = (v: number) => (v >= 5_000_000 ? 'argent' : v >= 1_000_000 ? 'bleu' : v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
 const cote = (x: number, decimales: number) => `×${x.toLocaleString(EN ? 'en-US' : 'fr-FR', { minimumFractionDigits: decimales, maximumFractionDigits: decimales })}`;
 const CLE_JETON = 'ldb-course-jeton';
 /** « Casaque bleue », « Blue silks ». */
@@ -597,7 +597,7 @@ export function JeuCourse({ vue, appel, onRetour }: { vue: VueCasino; appel: App
         </div>
         <p className="bj-mise-encours crs-mise">
           {tr('Ta mise', 'Your bet')} <strong>{dollars(maMise)}</strong>
-          <small>{tr(`Au plus ${court(MAX_MISE_COURSE)} par mise, ${court(MAX_COURSE)} par course`, `At most ${court(MAX_MISE_COURSE)} per bet, ${court(MAX_COURSE)} per race`)}</small>
+          <small>{MAX_MISE_COURSE === MAX_COURSE ? tr(`Au plus ${court(MAX_COURSE)} par course`, `At most ${court(MAX_COURSE)} per race`) : tr(`Au plus ${court(MAX_MISE_COURSE)} par mise, ${court(MAX_COURSE)} par course`, `At most ${court(MAX_MISE_COURSE)} per bet, ${court(MAX_COURSE)} per race`)}</small>
         </p>
         <div className="bj-boutons">
           <button type="button" onClick={() => void envoyer('casino_course_annuler')} disabled={!ouvertes || !maMise}>
@@ -637,8 +637,8 @@ export function JeuCourse({ vue, appel, onRetour }: { vue: VueCasino; appel: App
         )}
         <p className="cas-mention">
           {tr(
-            'Une course toutes les 45 secondes environ, six chevaux. Les cotes suivent la forme du jour de chaque cheval ; le jeu rend 95 % des mises en moyenne. De 1 000 à 1 000 000 $ par mise, 4 000 000 $ au plus par course.',
-            'A race about every 45 seconds, six horses. Odds follow each horse’s form of the day; the game returns 95% of bets on average. $1,000 to $1,000,000 per bet, $4,000,000 at most per race.',
+            'Une course toutes les 45 secondes environ, six chevaux. Les cotes suivent la forme du jour de chaque cheval ; le jeu rend 95 % des mises en moyenne. De 1 000 à 10 000 000 $ par mise, 10 000 000 $ au plus par course.',
+            'A race about every 45 seconds, six horses. Odds follow each horse’s form of the day; the game returns 95% of bets on average. $1,000 to $10,000,000 per bet, $10,000,000 at most per race.',
           )}
         </p>
       </aside>

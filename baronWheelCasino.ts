@@ -407,8 +407,8 @@ export function creerBaronWheel(options: {
     const poser = (m: { id: Identite; j: Joueur }, ajout: { c: CaseBW; montant: number }[], rappel: unknown) => {
       const apres = { ...m.j.mises };
       for (const x of ajout) apres[x.c] = (apres[x.c] ?? 0) + x.montant;
-      if (Object.values(apres).some((v) => (v ?? 0) > MAX_CASE_BW)) return erreur(rappel, 'Pas plus de 10 000 000 $ sur une même case.', 'No more than $10,000,000 on one spot.');
-      if (totalMises(apres) > MAX_MANCHE_BW) return erreur(rappel, 'Pas plus de 10 000 000 $ par manche.', 'No more than $10,000,000 per round.');
+      if (Object.values(apres).some((v) => (v ?? 0) > MAX_CASE_BW)) return erreur(rappel, 'Pas plus de 30 000 000 $ sur une même case.', 'No more than $30,000,000 on one spot.');
+      if (totalMises(apres) > MAX_MANCHE_BW) return erreur(rappel, 'Pas plus de 30 000 000 $ par manche.', 'No more than $30,000,000 per round.');
       const total = ajout.reduce((s, x) => s + x.montant, 0);
       if (!banque.debiter(m.id.uid, total)) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
       m.j.mises = apres;

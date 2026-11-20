@@ -167,10 +167,14 @@
   .crs-podium { gap: 8px; padding: 9px 12px 9px 8px; }
   .crs-podium li { font-size: 12.5px; }
   .crs-bilan { font-size: 12.5px; }
-  .crs-commandes .bj-jetons { gap: 6px; }
-  .crs-commandes .bj-jeton { width: 52px; height: 52px; }
+  .crs-commandes .bj-jetons { gap: 5px; }
+  .crs-commandes .bj-jeton span { padding: 0 4px; font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .crs-ecran *, .crs-flash { animation: none !important; }
   .crs-flash, .crs-parti { display: none; }
 }
+
+/* Sept jetons (jusqu'à 5 M) sur une seule ligne : ils rétrécissent avec la place. */
+.crs-commandes .bj-jetons { flex-wrap: nowrap; gap: 6px; }
+.crs-commandes .bj-jeton { flex: 0 1 56px; width: auto; height: auto; min-width: 0; aspect-ratio: 1; }
