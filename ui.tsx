@@ -657,7 +657,14 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'ex_tunnel'
   | 'ex_police'
   | 'ex_decroche'
-  | 'ex_arrivee';
+  | 'ex_arrivee'
+  | 'ex_vapeur'
+  | 'ex_vent'
+  | 'ex_tonnerre'
+  | 'ex_galop'
+  | 'ex_foule'
+  | 'ex_feux'
+  | 'ex_cadran';
 export interface OptionsEffet {
   /** Vitesse de lecture : plus aigu au-dessus de 1, plus grave en dessous. */
   vitesse?: number;
@@ -792,6 +799,14 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   ex_police: { fichier: '/cartes/son-ex-police.mp3', volume: 0.85, baisserMusique: false, aLaDemande: true },
   ex_decroche: { fichier: '/cartes/son-ex-decroche.mp3', volume: 0.77, baisserMusique: false, aLaDemande: true },
   ex_arrivee: { fichier: '/cartes/son-ex-arrivee.mp3', volume: 0.77, baisserMusique: true, aLaDemande: true },
+  // La nouvelle mise en scène : vapeur, vent des Alpes, tonnerre des Balkans, galop de la police, foule et feu d'artifice d'Istanbul.
+  ex_vapeur: { fichier: '/cartes/son-ex-vapeur.mp3', volume: 0.5, baisserMusique: false, aLaDemande: true },
+  ex_vent: { fichier: '/cartes/son-ex-vent.mp3', volume: 0.5, baisserMusique: false, aLaDemande: true },
+  ex_tonnerre: { fichier: '/cartes/son-ex-tonnerre.mp3', volume: 0.85, baisserMusique: false, aLaDemande: true },
+  ex_galop: { fichier: '/cartes/son-course-sabots.mp3', volume: 0.75, baisserMusique: false, aLaDemande: true },
+  ex_foule: { fichier: '/cartes/son-course-foule.mp3', volume: 0.6, baisserMusique: false, aLaDemande: true },
+  ex_feux: { fichier: '/cartes/son-ex-feux.mp3', volume: 0.6, baisserMusique: false, aLaDemande: true },
+  ex_cadran: { fichier: '/cartes/son-bw-cadran.mp3', volume: 0.71, baisserMusique: false, aLaDemande: true },
   bw_multi: { fichier: '/cartes/son-bw-multi.mp3', volume: 0.79, baisserMusique: false, aLaDemande: true },
   course_perdu: { fichier: '/cartes/son-course-perdu.mp3', volume: 0.52, baisserMusique: false, aLaDemande: true },
   tic: { fichier: '/cartes/son-tic.mp3', volume: 0.22, baisserMusique: false },
@@ -1118,9 +1133,9 @@ const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
   coffres: ['cf_ouvre', 'cf_butin', 'cf_police', 'cf_encaisse', 'cf_gros', 'cf_perdu'],
   couronne: ['cv_tic', 'cv_envol', 'cv_pie', 'cv_perdu', 'cv_encaisse', 'cv_gros'],
   chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
-  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi', 'ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee'],
+  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi', 'ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran'],
   tickets: ['jeton', 'machine_pieces', 'lingots_pluie'],
-  express: ['ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee'],
+  express: ['ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'bw_menottes', 'bw_coffre', 'bw_multi', 'lingots_pluie'],
   course: ['course_appel', 'course_depart', 'course_sabots', 'course_foule', 'course_gain', 'course_gros', 'course_perdu'],
 };
 

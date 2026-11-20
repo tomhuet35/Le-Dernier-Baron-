@@ -515,3 +515,13 @@
 .bw-case.express > img { grid-row: 1 / 3; width: clamp(40px, 10vw, 52px); }
 .bw-case.express .bw-case-nom { align-self: end; justify-self: start; font-family: var(--titre); font-size: clamp(15px, 4vw, 19px); color: #ffd774; }
 .bw-case-sous { align-self: start; justify-self: start; font-size: 11px; font-weight: 800; color: #bfeccf; }
+
+/* Le multiplicateur de la roue compris dès le début des bonus. */
+.bw-route em .bw-route-multi { display: block; flex-basis: 100%; margin-top: 1px; font-family: system-ui, sans-serif; font-size: 10.5px; font-weight: 800; color: #ff9a8a; letter-spacing: 0.02em; }
+.bw-serrures li.multi-roue b { color: #ff9a8a; }
+.bw-serrures li.total { border-color: #ffd774; animation: bw-boost 0.75s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.bw-serrures li.total b { color: #fff1c4; text-shadow: 0 0 10px #ffd774, 0 0 20px rgba(255, 140, 60, 0.9); }
+/* Les gains tiennent dans leur cadre : la fourchette d'une route passe sur deux lignes, le nombre d'une carte se règle sur sa largeur. */
+.bw-route em { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 0 0.3em; }
+.bw-carte-face { container-type: inline-size; }
+.bw-carte-face .bw-valeur { font-size: min(1em, calc(86cqw / (var(--n, 4) * 0.62))); }
