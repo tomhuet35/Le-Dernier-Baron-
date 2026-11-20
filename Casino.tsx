@@ -1823,25 +1823,58 @@ type ElementUne = { cle: string; contenu: ReactNode; fond?: string; logo?: strin
 
 function ALaUne({ elements }: { elements: ElementUne[] }) {
   const [i, setI] = useState(0);
-  const [pause, setPause] = useState(false);
+  // Défilement automatique ; dès qu'on touche (flèche, point, glissé), il s'arrête 15 s puis reprend tout seul.
+  const touche = useRef(0);
+  const depart = useRef<{ x: number; y: number } | null>(null);
   const n = elements.length;
   useEffect(() => {
-    if (n < 2 || pause) return;
-    const t = window.setInterval(() => setI((x) => (x + 1) % n), 6500);
+    if (n < 2) return;
+    const t = window.setInterval(() => {
+      if (Date.now() - touche.current > 15_000) setI((x) => (x + 1) % n);
+    }, 6500);
     return () => window.clearInterval(t);
-  }, [n, pause]);
+  }, [n]);
   if (!n) return null;
   const k = i % n;
+  const aller = (j: number) => {
+    touche.current = Date.now();
+    setI(((j % n) + n) % n);
+  };
   return (
-    <section className="ac-une" onPointerDown={() => setPause(true)}>
-      <div key={elements[k].cle} className={`ac-une-contenu ${elements[k].fond ? 'illustre' : ''}`} style={elements[k].fond ? ({ '--une-fond': `url('/cartes/une-${elements[k].fond}.webp')` } as CSSProperties) : undefined}>
-        {elements[k].logo && <img className="ac-une-logo" src={elements[k].logo} alt="" draggable={false} />}
-        {elements[k].contenu}
+    <section
+      className="ac-une"
+      onPointerDown={(e) => {
+        touche.current = Date.now();
+        depart.current = { x: e.clientX, y: e.clientY };
+      }}
+      onPointerUp={(e) => {
+        const d = depart.current;
+        depart.current = null;
+        if (!d || n < 2) return;
+        const dx = e.clientX - d.x;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(e.clientY - d.y)) aller(k + (dx < 0 ? 1 : -1));
+      }}
+    >
+      <div className="ac-une-cadre">
+        <div key={elements[k].cle} className={`ac-une-contenu ${elements[k].fond ? 'illustre' : ''}`} style={elements[k].fond ? ({ '--une-fond': `url('/cartes/une-${elements[k].fond}.webp')` } as CSSProperties) : undefined}>
+          {elements[k].logo && <img className="ac-une-logo" src={elements[k].logo} alt="" draggable={false} />}
+          {elements[k].contenu}
+        </div>
+        {n > 1 && (
+          <>
+            <button type="button" className="ac-une-fleche gauche" onClick={() => aller(k - 1)} aria-label={tr('Affiche précédente', 'Previous')}>
+              ‹
+            </button>
+            <button type="button" className="ac-une-fleche droite" onClick={() => aller(k + 1)} aria-label={tr('Affiche suivante', 'Next')}>
+              ›
+            </button>
+          </>
+        )}
       </div>
       {n > 1 && (
         <div className="ac-une-points" role="tablist">
           {elements.map((e, j) => (
-            <button key={e.cle} type="button" role="tab" aria-selected={j === k} aria-label={String(j + 1)} className={j === k ? 'actif' : ''} onClick={() => (setI(j), setPause(true))} />
+            <button key={e.cle} type="button" role="tab" aria-selected={j === k} aria-label={String(j + 1)} className={j === k ? 'actif' : ''} onClick={() => aller(j)} />
           ))}
         </div>
       )}

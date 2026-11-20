@@ -575,3 +575,17 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
   .ac-une-haut .cas-cadeau { align-content: center; gap: 4px !important; }
   .ac-une-haut .cas-cadeau .cas-cadeau-bouton, .ac-une-haut .cas-cadeau .principal { min-height: 36px !important; padding-block: 4px !important; }
 }
+
+/* « À la une » : flèches pour passer d'une affiche à l'autre (on peut aussi glisser du doigt ou toucher un point). */
+.ac-une-cadre { position: relative; min-width: 0; min-height: 0; display: grid; }
+.ac-une-carte .ac-une-cadre { display: flex; flex: 1; min-height: 0; }
+.ac-une-carte .ac-une-cadre > .ac-une-contenu { flex: 1; min-width: 0; }
+.ac-une { touch-action: pan-y; }
+.ac-une-fleche { position: absolute; top: 50%; translate: 0 -50%; z-index: 4; width: 30px; height: 30px; min-height: 0; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgba(231, 194, 122, 0.85); background: rgba(20, 4, 6, 0.72); color: #ffe7a8; font-size: 22px; line-height: 1; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); opacity: 0.85; }
+.ac-une-fleche.gauche { left: 4px; } .ac-une-fleche.droite { right: 4px; }
+.ac-une-fleche:active { opacity: 1; transform: scale(0.94); }
+/* Des points plus faciles à toucher (zone invisible autour). */
+.ac-une-points { gap: 10px; }
+.ac-une-points button { position: relative; }
+.ac-une-points button::after { content: ''; position: absolute; inset: -10px -6px; }
+@media (max-width: 600px) { .ac-une-fleche { width: 24px; height: 24px; font-size: 18px; opacity: 0.7; } .ac-une-fleche.gauche { left: 2px; } .ac-une-fleche.droite { right: 2px; } }
