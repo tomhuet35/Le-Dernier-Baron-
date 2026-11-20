@@ -385,7 +385,7 @@ export interface DureesBW {
   vol: number;
   poursuite: number;
   revele: number;
-  /** L'Express : présentation, une gare (arrêt, coffres, départ), un tunnel, la traversée des Alpes, l'arrivée. */
+  /** L'Express : présentation, une gare (arrêt, coffres, départ), une embuscade (Alpes, Balkans), l'arrivée (traversee : inutilisé). */
   introExpress: number;
   gare: number;
   tunnel: number;
@@ -405,11 +405,12 @@ export const DUREES_BW: DureesBW = {
   vol: 6_500,
   poursuite: 9_000,
   revele: 5_500,
-  introExpress: 6_000,
+  introExpress: 7_000,
   gare: 11_000,
-  tunnel: 6_500,
+  // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
+  tunnel: 12_000,
   traversee: 3_500,
-  arrivee: 11_000,
+  arrivee: 13_000,
 };
 
 export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW): EtapeBonusBW[] {
@@ -433,7 +434,6 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW): EtapeBonusBW[] {
         e('wagons', d.choix, NB_WAGONS),
         e('paris', d.gare),
         e('tunnel1', d.tunnel),
-        e('alpes', d.traversee),
         e('venise', d.gare),
         e('tunnel2', d.tunnel),
         e('istanbul', d.arrivee),

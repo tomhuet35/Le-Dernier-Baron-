@@ -40,7 +40,7 @@ import { BUTIN_PLUIE, CHOIX_AUTO, dollars, PluieLingots, useSoldeAnime } from '.
 import { socket } from './socket';
 import { EN, tr } from './traduction';
 import { jouerEffet, mouvementReduit, musiqueDuCasino } from './ui';
-import { BonusExpress } from './CasinoBaronExpress';
+import { BonusExpress, IMAGES_EXPRESS_NOMS, ValeurMultipliee } from './CasinoBaronExpress';
 import './baronWheel.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
@@ -363,24 +363,7 @@ const IMAGES_BONUS_BW: Record<BonusBW, string[]> = Object.fromEntries(
     pickpocket: ['bw-sym-pickpocket', 'bw-scene-pickpocket', 'bw-pickpocket', 'bw-mallette', 'bw-mallette-ouverte'],
     evasion: ['bw-sym-evasion', 'bw-depart', 'bw-voiture-baron', 'bw-voiture-police', 'bw-route-boulevard', 'bw-route-ruelles', 'bw-route-souterrains', 'bw-obstacle-1', 'bw-obstacle-2', 'bw-obstacle-3', 'bw-obstacle-4', 'bw-baron-evade', 'bw-gendarme'],
     braquage: ['bw-sym-braquage', 'bw-salle-coffres', 'bw-porte-coffre', 'bw-cadran', 'bw-compartiment', 'bw-compartiment-ouvert', ...plaques],
-    express: [
-      'bw-sym-express',
-      'bw-ex-gare-depart',
-      'bw-ex-baron',
-      ...[1, 2, 3, 4, 5].map((k) => `bw-ex-wagon-${k}`),
-      'bw-ex-loco',
-      'bw-ex-paris',
-      'bw-ex-gare',
-      'bw-ex-coffre',
-      'bw-ex-coffre-ouvert',
-      'bw-ex-tunnel',
-      'bw-ex-gendarme',
-      'bw-ex-alpes',
-      'bw-ex-venise',
-      'bw-ex-istanbul',
-      'bw-ex-arrivee',
-      ...[1, 2, 3, 4, 5, 6].map((k) => `bw-ex-fumee-${k}`),
-    ],
+    express: ['bw-sym-express', ...IMAGES_EXPRESS_NOMS],
   }).map(([t, noms]) => [t, noms.map((n) => `/cartes/${n}.webp`)]),
 ) as Record<BonusBW, string[]>;
 
@@ -501,7 +484,7 @@ function BonusBaron({ b, nom, ouvert, choisir }: PropsBonus) {
                 {r && (
                   <b>
                     {r.jackpot && <small>JACKPOT</small>}
-                    {etiquetteRecompense(r)}
+                    {r.jackpot ? etiquetteRecompense(r) : <ValeurMultipliee x={r.x} m={b.multiplicateur} son={choix === k} />}
                     {r.jackpot && <small>{fx(r.x)}</small>}
                   </b>
                 )}
@@ -525,7 +508,9 @@ function BonusPickpocket({ b, nom, ouvert, choisir }: PropsBonus) {
       {b.butin != null && !revele && (
         <div className="bw-butin" aria-live="polite">
           <small>{tr('Il vole', 'He steals')}</small>
-          <strong>{fx(b.butin)}</strong>
+          <strong>
+            <ValeurMultipliee x={b.butin} m={b.multiplicateur} son />
+          </strong>
         </div>
       )}
       <div className={`bw-mallettes ${nom === 'vol' ? 'melange' : ''}`}>
@@ -538,7 +523,7 @@ function BonusPickpocket({ b, nom, ouvert, choisir }: PropsBonus) {
               {revele && x !== null && (
                 <b>
                   {estButin && <small>{tr('Le butin', 'The loot')}</small>}
-                  {fx(x)}
+                  <ValeurMultipliee x={x} m={b.multiplicateur} son={choix === k} />
                 </b>
               )}
               {b.choixSalon[0]?.[k] ? <i className="bw-nb-choix">{b.choixSalon[0][k]}</i> : null}
@@ -615,7 +600,8 @@ function BonusEvasion({ b, nom, ouvert, choisir, v }: PropsBonus) {
                   {tr(...NOMS_ROUTES[r].risque)} · {tr(`arrestation ${Math.round(it.arrestation * 100)} %`, `${Math.round(it.arrestation * 100)}% arrest`)}
                 </small>
                 <em>
-                  {fx(Math.min(...gains))} → {fx(Math.max(...gains))}
+                  <ValeurMultipliee x={Math.min(...gains)} m={b.multiplicateur} /> → <ValeurMultipliee x={Math.max(...gains)} m={b.multiplicateur} />
+                  {b.multiplicateur > 1 && <small className="bw-route-multi">{tr(`roue ×${b.multiplicateur} incluse`, `wheel ×${b.multiplicateur} included`)}</small>}
                 </em>
                 {b.choixSalon[0]?.[k] ? <i className="bw-nb-choix">{b.choixSalon[0][k]}</i> : null}
               </button>
@@ -635,7 +621,7 @@ function BonusEvasion({ b, nom, ouvert, choisir, v }: PropsBonus) {
             return (
               <li key={r} className={`${x?.evade ? 'evade' : 'arrete'} ${choix === k ? 'mien' : ''}`}>
                 <span>{tr(...NOMS_ROUTES[r].nom)}</span>
-                <strong>{x?.evade ? fx(x.x) : tr('arrêté', 'caught')}</strong>
+                <strong>{x?.evade ? <ValeurMultipliee x={x.x} m={b.multiplicateur} son={choix === k} /> : tr('arrêté', 'caught')}</strong>
               </li>
             );
           })}
@@ -720,6 +706,10 @@ function BonusBraquage(p: PropsBonus) {
   const { b, nom, ouvert, choisir, v } = p;
   const codes = useMemo(() => combinaisons(v.numero), [v.numero]);
   const ouvertCoffre = nom === 'coffre' || nom === 'revele';
+  // Le multiplicateur qui grimpe dès le début : la roue, puis le code, puis le mécanisme ; le coffre le reçoit tout entier.
+  const monCode = b.mesChoix[0] !== null && b.code?.[b.mesChoix[0]] ? b.code[b.mesChoix[0]] : null;
+  const maMeca = b.mesChoix[1] !== null && b.meca?.[b.mesChoix[1]] ? b.meca[b.mesChoix[1]] : null;
+  const chaine = b.multiplicateur * (monCode ?? 1) * (maMeca ?? 1);
   return (
     <div className={`bw-scene bw-braquage ${nom}`}>
       <img className={`bw-porte ${ouvertCoffre ? 'ouverte' : ''}`} src="/cartes/bw-porte-coffre.webp" alt="" draggable={false} />
@@ -744,13 +734,18 @@ function BonusBraquage(p: PropsBonus) {
             return (
               <button key={k} type="button" className={`bw-compartiment ${b.mesChoix[2] === k ? 'choisie' : ''} ${r ? 'ouvert' : ''} ${r?.jackpot ? 'jackpot' : ''}`} onClick={() => choisir(k)} disabled={!ouvert || b.mesChoix[2] !== null}>
                 <img src={r ? '/cartes/bw-compartiment-ouvert.webp' : '/cartes/bw-compartiment.webp'} alt="" draggable={false} />
-                {r && <b>{etiquetteRecompense(r)}</b>}
+                {r && <b>{r.jackpot ? etiquetteRecompense(r) : <ValeurMultipliee x={r.x} m={chaine} son={b.mesChoix[2] === k} />}</b>}
               </button>
             );
           })}
         </div>
       )}
       <ol className="bw-serrures" aria-label={tr('Les trois serrures', 'The three locks')}>
+        {b.multiplicateur > 1 && (
+          <li className="faite multi-roue">
+            {tr('Roue', 'Wheel')} <b>×{b.multiplicateur}</b>
+          </li>
+        )}
         <li className={b.code?.some((x) => x !== null) ? 'faite' : nom === 'code' ? 'en-cours' : ''}>
           {tr('Code', 'Code')} {b.mesChoix[0] !== null && b.code?.[b.mesChoix[0]] ? <b>×{b.code[b.mesChoix[0]]}</b> : null}
         </li>
@@ -758,6 +753,11 @@ function BonusBraquage(p: PropsBonus) {
           {tr('Mécanisme', 'Mechanism')} {b.mesChoix[1] !== null && b.meca?.[b.mesChoix[1]] ? <b>×{b.meca[b.mesChoix[1]]}</b> : null}
         </li>
         <li className={b.coffre?.some((x) => x !== null) ? 'faite' : nom === 'coffre' ? 'en-cours' : ''}>{tr('Coffre', 'Vault')}</li>
+        {chaine > 1 && (
+          <li className="total" key={chaine}>
+            = <b>×{chaine.toLocaleString(EN ? 'en-US' : 'fr-FR')}</b>
+          </li>
+        )}
       </ol>
     </div>
   );
