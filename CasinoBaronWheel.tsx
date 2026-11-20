@@ -44,7 +44,7 @@ import { BonusExpress, IMAGES_EXPRESS_NOMS, ValeurMultipliee } from './CasinoBar
 import './baronWheel.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
-const imageJeton = (v: number) => (v >= 5_000_000 ? 'argent' : v >= 1_000_000 ? 'bleu' : v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
+const imageJeton = (v: number) => (v >= 10_000_000 ? 'or' : v >= 5_000_000 ? 'argent' : v >= 1_000_000 ? 'bleu' : v >= 500_000 ? 'violet' : v >= 100_000 ? 'noir' : v >= 25_000 ? 'vert' : v >= 5_000 ? 'rouge' : 'ivoire');
 const fx = (x: number) => `×${x.toLocaleString(EN ? 'en-US' : 'fr-FR', { maximumFractionDigits: 2 })}`;
 const CLE_JETON = 'ldb-bw-jeton';
 
@@ -213,7 +213,7 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
         </svg>
       </div>
       <img className="bw-cerclage" src="/cartes/bw-cerclage.webp" alt="" draggable={false} />
-      <img className="bw-centre" src="/cartes/bw-centre.webp" alt="" draggable={false} />
+      <img className="bw-centre" src="/cartes/bw-centre-express.webp" alt="" draggable={false} />
       <img className="bw-aiguille" src="/cartes/bw-aiguille.webp" alt="" draggable={false} />
     </div>
   );
@@ -1172,7 +1172,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         </div>
         <p className="bj-mise-encours bw-mise">
           {tr('Ta mise', 'Your bet')} <strong>{dollars(maMise)}</strong>
-          <small>{tr(`Au plus ${court(MAX_CASE_BW)} par case, ${court(MAX_MANCHE_BW)} par manche`, `At most ${court(MAX_CASE_BW)} per spot, ${court(MAX_MANCHE_BW)} per round`)}</small>
+          <small>{MAX_CASE_BW === MAX_MANCHE_BW ? tr(`Au plus ${court(MAX_MANCHE_BW)} par case et par manche`, `At most ${court(MAX_MANCHE_BW)} per spot and per round`) : tr(`Au plus ${court(MAX_CASE_BW)} par case, ${court(MAX_MANCHE_BW)} par manche`, `At most ${court(MAX_CASE_BW)} per spot, ${court(MAX_MANCHE_BW)} per round`)}</small>
         </p>
         {choixAuto && !auto.actif ? (
           <div className="bj-boutons bw-auto-choix" role="group" aria-label={tr('Mode automatique', 'Auto play')}>
@@ -1248,7 +1248,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2), Braquage (3), qui paient de ×5 à ×500, et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et le Braquage. Jetons de 1 000 à 5 000 000 $ : 10 000 000 $ au plus par case et par manche.',
+            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2), Braquage (3), qui paient de ×5 à ×500, et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et le Braquage. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
             '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2), Big Heist (3), paying ×5 to ×500, and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Big Heist. Chips from $1,000 to $5,000,000: $10,000,000 at most per spot and per round.',
           )}
         </p>

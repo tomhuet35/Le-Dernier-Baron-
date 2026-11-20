@@ -226,8 +226,8 @@ export function creerCourse(options: {
     const poser = (m: { id: Identite; j: Joueur }, ajout: MiseCourse[], rappel: unknown) => {
       const parMise = new Map<string, number>();
       for (const x of [...m.j.mises, ...ajout]) parMise.set(`${x.cheval}-${x.type}`, (parMise.get(`${x.cheval}-${x.type}`) ?? 0) + x.montant);
-      if ([...parMise.values()].some((v) => v > MAX_MISE_COURSE)) return erreur(rappel, 'Pas plus de 1 000 000 $ sur une même mise.', 'No more than $1,000,000 on one bet.');
-      if (total(m.j.mises) + total(ajout) > MAX_COURSE) return erreur(rappel, 'Pas plus de 4 000 000 $ par course.', 'No more than $4,000,000 per race.');
+      if ([...parMise.values()].some((v) => v > MAX_MISE_COURSE)) return erreur(rappel, 'Pas plus de 10 000 000 $ sur une même mise.', 'No more than $10,000,000 on one bet.');
+      if (total(m.j.mises) + total(ajout) > MAX_COURSE) return erreur(rappel, 'Pas plus de 10 000 000 $ par course.', 'No more than $10,000,000 per race.');
       if (!banque.debiter(m.id.uid, total(ajout))) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
       m.j.mises.push(...ajout);
       diffuser();

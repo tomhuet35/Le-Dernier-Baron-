@@ -60,10 +60,10 @@ export const ROUE_BW: CaseBW[] = (() => {
 /** Ce que paie une case chiffre (mise comprise) : ×2,7 pour 1 000 $ misés sur le 1X, 2 700 $ reçus. */
 export const GAINS_CHIFFRES_BW: Record<ChiffreBW, number> = { x1: 2.7, x2: 3.3, x5: 5, x10: 10 };
 
-/** Les mises : jetons, plafond par case et par manche. */
-export const JETONS_BW = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000, 5_000_000];
-export const MAX_CASE_BW = 10_000_000;
-export const MAX_MANCHE_BW = 10_000_000;
+/** Les mises : jetons (jusqu'à 10 000 000 $), plafond par case et par manche (30 000 000 $). */
+export const JETONS_BW = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000];
+export const MAX_CASE_BW = 30_000_000;
+export const MAX_MANCHE_BW = 30_000_000;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Les multiplicateurs : 3 à 8 cases de la roue, tirées une fois les mises fermées

@@ -204,17 +204,17 @@ describe('La Course des Écuries en direct', () => {
     expect((await emettre(a, 'casino_course_miser', { cheval: 2, type: 'gagnant', montant: 1234 })).erreur).toMatch(/Jeton/);
     expect((await emettre(a, 'casino_course_miser', { cheval: 6, type: 'gagnant', montant: 1000 })).erreur).toMatch(/introuvable/);
     expect((await emettre(a, 'casino_course_miser', { cheval: 1, type: 'trio', montant: 1000 })).erreur).toMatch(/introuvable/);
-    // Plafond par mise : 1 000 000 $ sur un même cheval, même type.
-    expect((await emettre(a, 'casino_course_miser', { cheval: 4, type: 'gagnant', montant: 500_000 })).ok).toBe(true);
-    expect((await emettre(a, 'casino_course_miser', { cheval: 4, type: 'gagnant', montant: 500_000 })).ok).toBe(true);
-    expect((await emettre(a, 'casino_course_miser', { cheval: 4, type: 'gagnant', montant: 1_000 })).erreur).toMatch(/1 000 000/);
+    // Plafond par mise : 10 000 000 $ sur un même cheval, même type.
+    expect((await emettre(a, 'casino_course_miser', { cheval: 4, type: 'gagnant', montant: 5_000_000 })).ok).toBe(true);
+    expect((await emettre(a, 'casino_course_miser', { cheval: 4, type: 'gagnant', montant: 5_000_000 })).ok).toBe(true);
+    expect((await emettre(a, 'casino_course_miser', { cheval: 4, type: 'gagnant', montant: 1_000 })).erreur).toMatch(/10 000 000/);
     // Annuler la dernière, puis tout.
     await emettre(a, 'casino_course_annuler');
     await emettre(a, 'casino_course_annuler', { tout: true });
-    // Tout est rendu (le million misé a pu faire passer un niveau du salon : son bonus reste acquis).
+    // Tout est rendu (les 10 millions misés ont pu faire passer des niveaux du salon : leurs bonus restent acquis).
     const base = (await emettre(a, 'casino_vue')).casino.solde;
     expect(base - SOLDE_DEPART - 9_000_000).toBeGreaterThanOrEqual(0);
-    expect(base - SOLDE_DEPART - 9_000_000).toBeLessThan(1_000_000);
+    expect(base - SOLDE_DEPART - 9_000_000).toBeLessThan(2_000_000);
     // Lucas : 100 000 $ gagnant sur le 3 (couloir 2) et 5 000 $ gagnant sur le 1. Léa : 25 000 $ placé sur le 1.
     await emettre(a, 'casino_course_miser', { cheval: 2, type: 'gagnant', montant: 100_000 });
     await emettre(a, 'casino_course_miser', { cheval: 0, type: 'gagnant', montant: 5_000 });
