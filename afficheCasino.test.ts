@@ -27,7 +27,7 @@ describe('Le jeu à l’affiche : le roulement', () => {
   });
 
   it('montre huit jeux par jour, les dix en trois jours, et chaque jeu à chaque heure en dix jours', () => {
-    expect([...ORDRE_AFFICHE].sort()).toEqual([...JEUX_CASINO].sort());
+    expect([...ORDRE_AFFICHE].sort()).toEqual(JEUX_CASINO.filter((j) => j !== 'nuits').sort());
     expect(ORDRE_AFFICHE).toHaveLength(10);
     const parCreneau = Array.from({ length: 8 }, () => new Set<string>());
     const parJour: Set<string>[] = [];

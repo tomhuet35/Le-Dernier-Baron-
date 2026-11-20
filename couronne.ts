@@ -15,7 +15,7 @@ export const RTP_COURONNE = 0.97;
 export const X_MAX_COURONNE = 10_000;
 /** Vitesse de montée : le multiplicateur vaut e^(k·t), t en millisecondes depuis l'envol (×2 en 7,7 s, ×10 en 25,6 s). */
 export const K_COURONNE = 0.00009;
-export const MISES_COURONNE = [1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
+export const MISES_COURONNE = [1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000];
 /** Deux mises par manche au plus. */
 export const MISES_PAR_MANCHE = 2;
 /** Récupération automatique : de ×1,01 au plafond ; paliers proposés par les boutons − / +. */

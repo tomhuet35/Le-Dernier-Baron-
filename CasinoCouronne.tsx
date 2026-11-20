@@ -774,8 +774,8 @@ export function JeuCouronne({ vue, appel, onVue, onRetour }: { vue: VueCasino; a
         )}
         <p className="cas-mention">
           {tr(
-            'La couronne s’envole, le multiplicateur monte : récupère ta mise avant que la pie ne la vole. Deux mises par envol, de 1 000 à 500 000 $, jusqu’à ×10 000. Le jeu rend 97 % des mises en moyenne.',
-            'The crown takes off and the multiplier climbs: cash out before the magpie steals it. Two bets per flight, $1,000 to $500,000, up to ×10,000. The game returns 97% of bets on average.',
+            'La couronne s’envole, le multiplicateur monte : récupère ta mise avant que la pie ne la vole. Deux mises par envol, de 1 000 à 10 000 000 $, jusqu’à ×10 000. Le jeu rend 97 % des mises en moyenne.',
+            'The crown takes off and the multiplier climbs: cash out before the magpie steals it. Two bets per flight, $1,000 to $10,000,000, up to ×10,000. The game returns 97% of bets on average.',
           )}
         </p>
       </aside>
