@@ -796,6 +796,8 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
   // Rouleaux déjà arrêtés pendant le tour (pour savoir lequel est en suspense).
   const [arretes, setArretes] = useState(5);
   const [tour, setTour] = useState<TourMachine | null>(null);
+  /** La soirée du joueur sur cette machine (depuis qu'il est entré). */
+  const [soiree, setSoiree] = useState({ tours: 0, mise: 0, gain: 0, meilleur: 0, bonus: 0, derniers: [] as { gain: number; x: number }[] });
   const [enCours, setEnCours] = useState(false);
   const [soldeAffiche, setSoldeAffiche] = useState(vue.solde);
   const [fetes, setFetes] = useState<FeteMachine[]>([]);
@@ -851,6 +853,14 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
     const t = horairesArrets(p);
 
     const fin = () => {
+      setSoiree((x) => ({
+        tours: x.tours + 1,
+        mise: x.mise + (m.gratuit ? 0 : m.mise),
+        gain: x.gain + m.gain,
+        meilleur: Math.max(x.meilleur, m.gain),
+        bonus: x.bonus + (m.casse || m.roue || m.freeGames ? 1 : 0),
+        derniers: m.gain > 0 ? [{ gain: m.gain, x: Math.round((m.gain / m.mise) * 10) / 10 }, ...x.derniers].slice(0, 6) : x.derniers,
+      }));
       setDefile(false);
       setBandes(null);
       setPlan(null);
@@ -1079,6 +1089,69 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
           {!peutJouer && !enCours && gratuits === 0 && !vue.bonus && <p className="cas-erreur">{tr('Solde insuffisant : baisse la mise ou tourne la roulette du salon.', 'Not enough money: lower the bet or spin the lounge wheel.')}</p>}
         </div>
       </div>
+      {/* Grand écran : la carte des gains à gauche, la soirée du joueur à droite. */}
+      <aside className="gh-panneau gh-carte" aria-label={tr('Carte des gains', 'Pay card')}>
+        <h2>{tr('La Carte des Gains', 'The Pay Card')}</h2>
+        <p className="gh-aide">{tr(`Par ligne, à ta mise de ${dollarsCourt(mise)} (10 lignes)`, `Per line, at your ${dollarsCourt(mise)} bet (10 lines)`)}</p>
+        <div className="gh-ligne gh-tete">
+          <span />
+          <span>×3</span>
+          <span>×4</span>
+          <span>×5</span>
+        </div>
+        {(Object.keys(GAINS_LIGNE) as (keyof typeof GAINS_LIGNE)[]).map((sy) => (
+          <div key={sy} className="gh-ligne">
+            <img src={`/cartes/machine-${sy}.webp`} alt={nomSymbole(sy)} />
+            {GAINS_LIGNE[sy].map((g, k) => (
+              <span key={k}>{dollarsCourt(Math.round((g * mise) / NB_LIGNES))}</span>
+            ))}
+          </div>
+        ))}
+        <div className="gh-ligne">
+          <img src="/cartes/machine-coffre.webp" alt={nomSymbole('coffre')} />
+          {[3, 4, 5].map((n) => (
+            <span key={n}>{dollarsCourt(GAINS_COFFRES[n] * mise)}</span>
+          ))}
+        </div>
+        <p className="gh-special">
+          <img src="/cartes/machine-couronne.webp" alt="" /> {tr('remplace tout sauf le Coffre', 'replaces all but the Safe')}
+        </p>
+        <p className="gh-special">
+          <img src="/cartes/machine-coffre.webp" alt="" /> {tr('× 3 : le Casse du coffre · × 5 en ligne : gros lot', '× 3: Safe Heist · × 5 on a line: jackpot')}
+        </p>
+        <p className="gh-special">
+          <img src="/cartes/machine-jeton.webp" alt="" /> {tr('× 3 / 4 / 5 : 10, 15 ou 25 free games', '× 3 / 4 / 5: 10, 15 or 25 free games')}
+        </p>
+      </aside>
+      <aside className="gh-panneau gh-soiree" aria-label={tr('Ta soirée', 'Your evening')}>
+        <h2>{tr('Ta Soirée', 'Your Evening')}</h2>
+        <dl>
+          <dt>{tr('Tours', 'Spins')}</dt>
+          <dd>{soiree.tours}</dd>
+          <dt>{tr('Misé', 'Bet')}</dt>
+          <dd>{dollarsCourt(soiree.mise)}</dd>
+          <dt>{tr('Gagné', 'Won')}</dt>
+          <dd className="or">{dollarsCourt(soiree.gain)}</dd>
+          <dt>{tr('Meilleur gain', 'Best win')}</dt>
+          <dd>{dollarsCourt(soiree.meilleur)}</dd>
+          <dt>{tr('Bonus déclenchés', 'Bonuses triggered')}</dt>
+          <dd>{soiree.bonus}</dd>
+          <dt>{tr('Gros lot', 'Jackpot')}</dt>
+          <dd className="or">{dollarsCourt(vue.grosLot)}</dd>
+        </dl>
+        <h3>{tr('Derniers gains', 'Latest wins')}</h3>
+        {soiree.derniers.length ? (
+          <ul>
+            {soiree.derniers.map((d, k) => (
+              <li key={`${soiree.tours}-${k}`}>
+                <b>+{dollarsCourt(d.gain)}</b> <small>×{d.x}</small>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="gh-aide">{tr('Lance les rouleaux !', 'Spin the reels!')}</p>
+        )}
+      </aside>
       {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} />}
       {gains && <TableDesGains onFermer={() => setGains(false)} />}
       {bonus &&
