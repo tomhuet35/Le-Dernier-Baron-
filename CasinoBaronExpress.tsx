@@ -44,7 +44,7 @@ const IMG = (n: string) => `/cartes/bw-ex2-${n}.webp`;
 /** Toutes les images de l'Express (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_EXPRESS_NOMS = [
   'bw-ex-gare-depart',
-  ...['affiche', 'baron', 'chef', 'loco', 'terminus', 'gare-paris', 'gare-venise', 'gare-istanbul'].map((n) => `bw-ex2-${n}`),
+  ...['affiche', 'baron', 'chef', 'loco', 'terminus', 'tunnel', 'gare-paris', 'gare-venise', 'gare-istanbul'].map((n) => `bw-ex2-${n}`),
   ...[1, 2, 3, 4, 5].map((k) => `bw-ex2-wagon-${k}`),
   ...(['paris', 'alpes', 'venise', 'balkans', 'istanbul'] as Decor[]).flatMap((d) => [`bw-ex2-${d}`, `bw-ex2-${d}-voie`]),
   'bw-ex-coffre',
@@ -89,12 +89,14 @@ const FREIN: Record<string, number> = { venise: 2600, istanbul: 3200 };
 const COFFRES: Record<'paris' | 'venise', number> = { paris: 900, venise: 3100 };
 const LECTURE = 900;
 /** L'embuscade : la police apparaît, puis chaque wagon visé est dévié (« CLAC ») l'un après l'autre. */
-const EMBUSCADE = { alerte: 2300, captures: [5200, 8400], approche: 2700, deviation: 3200, fin: 1500 };
+const EMBUSCADE = { alerte: 3000, captures: [5400, 8400], approche: 2700, deviation: 3200, fin: 1500 };
 const instantCapture = (i: number) => EMBUSCADE.captures[i] ?? EMBUSCADE.captures[0] + i * 3200;
 /** Istanbul : le panneau Terminus, le Coffre du Baron qui arrive et tremble, qui s'ouvre, puis son butin qui monte. */
 const ISTANBUL = { terminus: 3300, coffre: 5000, ouverture: 6700, compte: 1900 };
 /** Entre deux décors, le train passe un tunnel : l'obscurité monte, les lampes défilent, puis le nouveau décor apparaît. */
-const TUNNEL = { duree: 1900, sortie: 1000 };
+const TUNNEL = { duree: 2800, sortie: 1750 };
+/** L'image du tunnel (une tuile de 1627 × 724 qui se répète) : son rail avant est à la rangée 655, comme celui des décors. */
+const TUNNEL_IMG = { tuile: 1627, rail: 655 };
 /** Les éclairs de l'orage des Balkans (deux tombent juste avant les « CLAC »). */
 const ECLAIRS = [700, 3400, 5100, 8300, 10_700];
 
@@ -311,6 +313,7 @@ interface RefsScene {
   voies: RefObject<HTMLDivElement>[];
   panneau: RefObject<HTMLDivElement>;
   gare: RefObject<HTMLImageElement>;
+  tunnel: RefObject<HTMLDivElement>;
   loco: RefObject<HTMLDivElement>;
   wagons: RefObject<HTMLDivElement>[];
   fumees: RefObject<HTMLImageElement>[];
@@ -522,6 +525,19 @@ function useSceneTrain(donnees: { current: DonneesScene | null }, refs: RefsScen
         }
       });
 
+      // Le tunnel : ses murs défilent au pas du train, son rail calé sur celui de la voie.
+      const tunnelEl = refs.tunnel.current;
+      if (tunnelEl) {
+        dimensionner(tunnelEl, 'tunnel', () => {
+          tunnelEl.style.top = `${g.yRail - TUNNEL_IMG.rail * g.ech}px`;
+          tunnelEl.style.height = `${DECOR.h * g.ech}px`;
+          tunnelEl.style.backgroundSize = `auto ${DECOR.h * g.ech}px`;
+        });
+        const tuile = TUNNEL_IMG.tuile * g.ech;
+        const u = st.off + C - g.W / 2;
+        tunnelEl.style.backgroundPosition = `${-(((u % tuile) + tuile) % tuile)}px 0`;
+      }
+
       // La gare : elle arrive avec le train, s'arrête derrière la locomotive et les premiers wagons, repart. Son quai
       // se pose sur le bord arrière de la voie.
       const gareEl = refs.gare.current;
@@ -706,6 +722,8 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
   const decorAvant = ordre.indexOf(nom) > 0 ? (DECOR_ETAPE[ordre[ordre.indexOf(nom) - 1]] ?? null) : null;
   const tunnel = !!decor && !!decorAvant && decorAvant !== decor;
   const dansTunnel = tunnel && tau < TUNNEL.sortie + 150;
+  /** Le tunnel encore à l'écran : la gare, son panneau et la météo attendent qu'il s'efface. */
+  const tunnelVisible = tunnel && tau < TUNNEL.duree - 250;
   const donnees = useRef<DonneesScene | null>(null);
   donnees.current = { b, nom, cle: cleEtape, debut: horloge.current.debut, duree: D, focus, ordre, decor, couches: [...couches.couches], actif: couches.actif };
   const refsScene = useRef<RefsScene | null>(null);
@@ -716,6 +734,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
       voies: [nouvelleRef(), nouvelleRef()],
       panneau: nouvelleRef(),
       gare: nouvelleRef(),
+      tunnel: nouvelleRef(),
       loco: nouvelleRef(),
       wagons: Array.from({ length: NB_WAGONS }, () => nouvelleRef<HTMLDivElement>()),
       fumees: Array.from({ length: 12 }, () => nouvelleRef<HTMLImageElement>()),
@@ -869,7 +888,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
     <div className={`bwx ${nom} ${decor ?? ''}`} ref={refs.scene}>
       {(nom === 'intro' || nom === 'wagons') && <div className="bwx-depart" />}
 
-      <div className={`bwx-monde ${secousse ? 'secousse' : ''} ${dansTunnel ? 'dans-tunnel' : ''}`}>
+      <div className={`bwx-monde ${secousse ? 'secousse' : ''} ${tunnelVisible ? 'dans-tunnel' : ''}`}>
         {decor &&
           couches.couches.map((dc, i) =>
             dc ? (
@@ -883,7 +902,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         {decor === 'balkans' && <div className="bwx-pluie loin" aria-hidden="true" />}
         {tunnel && tau < TUNNEL.duree && (
           <div className="bwx-tunnel" key={`tunnel-${nom}`} aria-hidden="true">
-            <i />
+            <div className="bwx-tunnel-murs" ref={refs.tunnel} style={{ backgroundImage: `url(${IMG('tunnel')})` }} />
           </div>
         )}
 
@@ -1013,10 +1032,15 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         <div className="bwx-arrivee">
           <div className="bwx-terminus">
             <img src={IMG('terminus')} alt="" draggable={false} />
-            <span className="bwx-terminus-texte">
-              <strong>Terminus</strong>
-              <small>Istanbul · Sirkeci</small>
-            </span>
+            {/* Le texte est tracé à la mesure de la plaque rouge : il y tient quelle que soit la police de l'appareil. */}
+            <svg className="bwx-terminus-texte" viewBox="0 0 1100 367" role="img" aria-label="Terminus · Istanbul · Sirkeci">
+              <text className="grand" x="550" y="222" textAnchor="middle" textLength="520" lengthAdjust="spacingAndGlyphs">
+                TERMINUS
+              </text>
+              <text className="petit" x="550" y="257" textAnchor="middle" textLength="300" lengthAdjust="spacingAndGlyphs">
+                ISTANBUL · SIRKECI
+              </text>
+            </svg>
           </div>
           {gagnant !== null && !(coffreVisible && nom === 'istanbul') && (
             <p className="bwx-gagnant" style={{ '--couleur': WAGONS_EXPRESS[gagnant].couleur, '--texte': WAGONS_EXPRESS[gagnant].texte } as CSSProperties}>
