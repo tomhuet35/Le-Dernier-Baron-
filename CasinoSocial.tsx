@@ -24,7 +24,10 @@ import {
   type VueAmisCasino,
   type VueDefi,
 } from '../../shared/profilCasino';
+import { CADEAU_COMPTE } from '../../shared/hotel';
+import { TENUES } from '../../shared/tailleur';
 import type { Appel } from './App';
+import { FenetreConnexion, type EtatCompte } from './Profil';
 import { dollars } from './casinoOutils';
 import { socket } from './socket';
 import { tr } from './traduction';
@@ -167,6 +170,8 @@ function ligneJournal(e: EntreeJournalCasino): { texte: string; montant: number 
 
 export function EcranProfil({
   uid,
+  compte,
+  onTailleur,
   appel,
   vue,
   onVue,
@@ -176,6 +181,10 @@ export function EcranProfil({
   onBureau,
 }: {
   uid: string | null;
+  /** Le compte du joueur : un invité peut créer le sien depuis son profil. */
+  compte?: EtatCompte;
+  /** Le Tailleur, pour acheter d'autres tenues. */
+  onTailleur?: () => void;
   appel: Appel;
   vue: VueCasino;
   onVue: (v: VueCasino) => void;
@@ -188,6 +197,8 @@ export function EcranProfil({
   const [p, setP] = useState<ProfilCasino | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
+  const [connexion, setConnexion] = useState<'connexion' | 'inscription' | null>(null);
+  const [habille, setHabille] = useState(false);
   const charger = useCallback(async () => {
     const r = (await appel('casino_profil', uid ? { uid } : {})) as Rep<{ profil: ProfilCasino }>;
     if (r.ok && r.profil) setP(r.profil);
@@ -213,6 +224,20 @@ export function EcranProfil({
   };
 
   const moi = p?.relation === 'moi';
+  // La garde-robe : le personnage habituel, puis les tenues achetées chez le Tailleur.
+  const tenues = vue.contrats?.tenues ?? [];
+  const portee = vue.contrats?.tenue ?? null;
+  const porter = async (n: number | null) => {
+    if (habille || n === portee) return;
+    setHabille(true);
+    setErreur(null);
+    const r = (await appel('casino_tailleur_porter', { n })) as Rep<object>;
+    setHabille(false);
+    if (r.casino) onVue(r.casino);
+    if (!r.ok) return setErreur(r.erreur ?? tr('Impossible de changer de tenue.', 'Could not change outfit.'));
+    jouerEffet('selection');
+    void charger();
+  };
   const jeux = p ? JEUX_CASINO.filter((j) => (p.jeux[j]?.mise ?? 0) > 0).sort((a, b) => (p.jeux[b]?.mise ?? 0) - (p.jeux[a]?.mise ?? 0)) : [];
   const maxMise = p && jeux.length ? (p.jeux[jeux[0]]?.mise ?? 1) : 1;
   const prochainCadre = p ? CADRES_CASINO.find((c) => c.niveau > p.niveau) : undefined;
@@ -239,6 +264,70 @@ export function EcranProfil({
               <p className="discret">{tr(`Au salon depuis le ${new Date(p.depuis).toLocaleDateString('fr-FR')}`, `In the lounge since ${new Date(p.depuis).toLocaleDateString('en-GB')}`)}</p>
             </div>
           </section>
+
+          {/* Un invité garde sa progression sur cet appareil : il peut créer son compte d'ici, sa progression le suit. */}
+          {moi && compte?.invite && compte.module && (
+            <section className="cs-bloc cs-invite">
+              <h3>{tr('Tu joues en invité', 'You are playing as a guest')}</h3>
+              <p>
+                {tr(
+                  'Ta progression n’est gardée que sur cet appareil. Crée ton compte : tout ce que tu as gagné ici le suit, et tu le retrouves sur tous tes appareils.',
+                  'Your progress is only kept on this device. Create your account: everything you have won here comes with you, on all your devices.',
+                )}
+              </p>
+              <p className="cs-invite-cadeau">
+                🎁{' '}
+                {tr(
+                  `En cadeau : ${dollars(CADEAU_COMPTE.dollars)} et ${CADEAU_COMPTE.rubis} rubis.`,
+                  `Gift: ${dollars(CADEAU_COMPTE.dollars)} and ${CADEAU_COMPTE.rubis} rubies.`,
+                )}
+              </p>
+              <div className="cs-invite-boutons">
+                <button type="button" className="principal" onClick={() => setConnexion('inscription')}>
+                  {tr('Créer mon compte', 'Create my account')}
+                </button>
+                <button type="button" onClick={() => setConnexion('connexion')}>
+                  {tr('J’ai déjà un compte', 'I already have an account')}
+                </button>
+              </div>
+            </section>
+          )}
+          {connexion && compte?.module && (
+            <FenetreConnexion module={compte.module} modeInitial={connexion} pseudoInitial={p.nom} onFermer={() => setConnexion(null)} onInscrit={compte.apresInscription} />
+          )}
+
+          {/* Ma garde-robe : porter une tenue achetée chez le Tailleur, ou reprendre son personnage habituel. */}
+          {moi && (
+            <section className="cs-bloc cs-garde-robe">
+              <h3>
+                {tr('Ma garde-robe', 'My wardrobe')} <small>{tr('touche une tenue pour la porter', 'tap an outfit to wear it')}</small>
+              </h3>
+              <ul>
+                <li>
+                  <button type="button" className={portee === null ? 'portee' : ''} disabled={habille} onClick={() => void porter(null)} aria-pressed={portee === null}>
+                    <img src={`/cartes/avatar-${vue.avatarCompte ?? vue.avatar}.webp`} alt="" />
+                    <strong>{tr('Mon personnage', 'My character')}</strong>
+                    {portee === null && <span>{tr('Porté', 'Worn')}</span>}
+                  </button>
+                </li>
+                {TENUES.filter((t) => tenues.includes(t.n)).map((t) => (
+                  <li key={t.n}>
+                    <button type="button" className={portee === t.n ? 'portee' : ''} disabled={habille} onClick={() => void porter(t.n)} aria-pressed={portee === t.n}>
+                      <img src={`/cartes/avatar-${t.n}.webp`} alt="" />
+                      <strong>{tr(...t.nom)}</strong>
+                      {portee === t.n && <span>{tr('Portée', 'Worn')}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {!tenues.length && <p className="discret">{tr('Pas encore de tenue : le Tailleur en a douze, en dollars et en rubis.', 'No outfit yet: the Tailor has twelve, for dollars and rubies.')}</p>}
+              {onTailleur && tenues.length < TENUES.length && (
+                <button type="button" className="cs-garde-robe-tailleur" onClick={onTailleur}>
+                  <img src="/cartes/icone-tailleur.webp" alt="" /> {tr('Le Tailleur', 'The Tailor')}
+                </button>
+              )}
+            </section>
+          )}
 
           <section className="cs-progression">
             <div className="cs-progression-tete">

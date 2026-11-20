@@ -196,3 +196,22 @@
 button.cas-tresor { width: 100%; min-height: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 button.cas-tresor:active { transform: scale(0.99); }
 .cs-toast { cursor: pointer; border: 1px solid #ffcf6b; font: inherit; }
+
+/* Le profil d'un invité : créer son compte d'ici. */
+.cs-invite { border-color: rgba(214, 168, 75, 0.7); background: radial-gradient(120% 140% at 50% 0%, rgba(103, 29, 43, 0.92), rgba(22, 10, 10, 0.92)); }
+.cs-invite p { margin: 0; color: var(--creme); font-size: 14px; line-height: 1.4; }
+.cs-invite .cs-invite-cadeau { font-weight: 800; color: #ffd774; }
+.cs-invite-boutons { display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-invite-boutons button { flex: 1 1 160px; }
+
+/* Ma garde-robe : le personnage habituel et les tenues du Tailleur. */
+.cs-garde-robe ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cs-garde-robe li button { position: relative; display: grid; justify-items: center; gap: 4px; width: 100%; height: 100%; padding: 8px 4px 10px; border-radius: 14px; border: 1.5px solid rgba(214, 168, 75, 0.45); background: rgba(40, 26, 16, 0.85); color: var(--creme); cursor: pointer; transition: transform 0.12s, border-color 0.2s, box-shadow 0.2s; }
+.cs-garde-robe li button:active { transform: scale(0.96); }
+.cs-garde-robe li button img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(214, 168, 75, 0.6); background: #1a120c; }
+.cs-garde-robe li button strong { font-size: 12px; font-weight: 800; line-height: 1.2; text-align: center; }
+.cs-garde-robe li button span { position: absolute; top: 4px; right: 4px; padding: 0 6px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #c9921c); color: #2a1704; font-size: 10px; font-weight: 900; }
+.cs-garde-robe li button.portee { border-color: #ffd774; box-shadow: 0 0 14px rgba(255, 210, 110, 0.55); background: rgba(80, 52, 14, 0.9); }
+.cs-garde-robe li button.portee img { border-color: #ffd774; }
+.cs-garde-robe-tailleur { justify-self: start; display: inline-flex; align-items: center; gap: 8px; }
+.cs-garde-robe-tailleur img { width: 26px; height: 26px; }

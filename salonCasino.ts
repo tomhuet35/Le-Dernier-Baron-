@@ -810,6 +810,7 @@ export function creerCasino(options: OptionsCasino) {
     return {
       nom: p?.nom ?? '',
       avatar: p?.avatar ?? 1,
+      avatarCompte: p?.avatarCompte ?? 1,
       solde: p?.solde ?? 0,
       roueProchaine: p?.roue === jourParis(t) ? lendemainParis(t) : null,
       grosLot,
