@@ -21,7 +21,7 @@ import type { Appel } from './App';
 import { CadreAvatar } from './CasinoSocial';
 import { Rubis } from './CasinoContrats';
 import { NOMS_CADRES } from '../../shared/marche';
-import { dollars } from './casinoOutils';
+import { dollars, dollarsCourt } from './casinoOutils';
 import { useAttente } from './RouletteDuJour';
 import { socket } from './socket';
 import { tr } from './traduction';
@@ -33,8 +33,9 @@ const nomObjet = (o: IdObjet) => tr(...OBJETS[o].nom);
 const rarete = (o: IdObjet) => tr(...NOMS_RARETE[OBJETS[o].rarete]);
 
 /** Un montant dans sa monnaie (dollars, ou rubis avec leur icône). */
-function Montant({ m, n, taille = 16 }: { m: Monnaie; n: number; taille?: number }) {
-  return m === 'rubis' ? <Rubis n={n} taille={taille} /> : <span className="bv-dollars">{dollars(n)}</span>;
+function Montant({ m, n, taille = 16, court }: { m: Monnaie; n: number; taille?: number; court?: boolean }) {
+  // « court » : 10 Md $ au lieu de 10 000 000 000 $ (les gros montants ne débordent plus de la carte).
+  return m === 'rubis' ? <Rubis n={n} taille={taille} /> : <span className="bv-dollars" title={dollars(n)}>{court && n >= 1_000_000 ? dollarsCourt(n) : dollars(n)}</span>;
 }
 
 /** Dans le salon : la Salle des ventes (fin des enchères) et le Bureau (objets de la collection). */
@@ -87,11 +88,11 @@ function CarteLot({ l, moi, solde, rubis, onEncherir }: { l: VueLot; moi: string
           <span className="bv-meilleure">
             <img src={`/cartes/avatar-${l.meilleure.avatar}.webp`} alt="" />
             <span>{enTete ? tr('Toi', 'You') : l.meilleure.nom || tr('Créateur', 'Creator')}</span>
-            <Montant m={l.monnaie} n={l.meilleure.montant} />
+            <Montant m={l.monnaie} n={l.meilleure.montant} court />
           </span>
         ) : (
           <span className="bv-depart">
-            {tr('Mise de départ', 'Starting bid')} : <Montant m={l.monnaie} n={l.prixDepart} />
+            {tr('Mise de départ', 'Starting bid')} : <Montant m={l.monnaie} n={l.prixDepart} court />
           </span>
         )}
         <small className="discret">{l.encheres ? tr(`${l.encheres} enchère${l.encheres > 1 ? 's' : ''}`, `${l.encheres} bid${l.encheres > 1 ? 's' : ''}`) : tr('Aucune enchère', 'No bids yet')}</small>
@@ -99,7 +100,8 @@ function CarteLot({ l, moi, solde, rubis, onEncherir }: { l: VueLot; moi: string
           <span className="bv-tete">{tr('Tu es en tête !', 'You’re in the lead!')}</span>
         ) : (
           <button type="button" className="principal bv-encherir" disabled={!peut} onClick={() => onEncherir(l)}>
-            {tr('Enchérir', 'Bid')} · <Montant m={l.monnaie} n={l.minimum} taille={15} />
+            <span className="bv-encherir-mot">{tr('Enchérir', 'Bid')}</span>
+            <Montant m={l.monnaie} n={l.minimum} taille={15} court />
           </button>
         )}
       </div>

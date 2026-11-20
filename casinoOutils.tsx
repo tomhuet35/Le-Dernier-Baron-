@@ -8,6 +8,15 @@ import { EN, tr } from './traduction';
 import { jouerEffet, useCompteur } from './ui';
 
 export const dollars = (n: number) => formatDollars(n, EN);
+/** Le solde en bref pour la barre du haut : 1,52 Md $, 48,3 M $ (en entier sous le million). */
+export function dollarsCourt(n: number): string {
+  const f = (x: number, u: string, uEn: string) => tr(`${x.toLocaleString('fr-FR', { maximumFractionDigits: x < 10 ? 2 : 1 })} ${u} $`, `$${x.toLocaleString('en-US', { maximumFractionDigits: x < 10 ? 2 : 1 })}${uEn}`);
+  if (n >= 1e12) return f(n / 1e12, 'Bn', 'T');
+  if (n >= 1e9) return f(n / 1e9, 'Md', 'B');
+  if (n >= 1e6) return f(n / 1e6, 'M', 'M');
+  return dollars(n);
+}
+
 
 /** Le solde défile jusqu'à sa nouvelle valeur. */
 export function useSoldeAnime(solde: number): number {

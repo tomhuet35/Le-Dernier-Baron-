@@ -83,3 +83,11 @@
 @keyframes bv-flotte { 50% { transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .bv-lot, .bv-vitrine, .bv-socle img { animation: none; } }
 @media (min-width: 560px) { .bv-vitrines { grid-template-columns: repeat(5, 1fr); } }
+
+/* Le bouton Enchérir : « Enchérir » puis le montant (court), centrés et toujours dans la carte. */
+.bv-infos > * { max-width: 100%; }
+.bv-encherir { justify-self: stretch; width: 100%; box-sizing: border-box; min-width: 0; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 8px; padding-inline: 10px; text-align: center; white-space: normal; }
+.bv-encherir-mot { white-space: nowrap; }
+.bv-encherir .bv-dollars { white-space: nowrap; }
+.bv-depart { overflow-wrap: anywhere; }
+@media (max-width: 600px) { .bv-lot { grid-template-columns: 34% minmax(0, 1fr); gap: 10px; } }
