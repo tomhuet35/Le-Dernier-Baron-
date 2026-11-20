@@ -1,0 +1,66 @@
+/* Les Bulles du Baron : salle de champagne, grille 6 × 5 en cascade. */
+.cas-ecran.bl-ecran { position: relative; width: 100%; max-width: none; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto; justify-items: center; gap: 6px; padding: 6px 10px max(10px, env(safe-area-inset-bottom)); isolation: isolate; }
+.bl-ecran::before { content: ''; position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(10, 2, 4, 0.35), rgba(10, 2, 4, 0.75)), url('/cartes/bl-fond-portrait.webp') center / cover no-repeat, #120604; }
+@media (min-aspect-ratio: 1 / 1) { .bl-ecran::before { background: linear-gradient(180deg, rgba(10, 2, 4, 0.2), rgba(10, 2, 4, 0.65)), url('/cartes/bl-fond-paysage.webp') center / cover no-repeat, #120604; } }
+.bl-ecran .cas-barre { width: min(100%, 900px); }
+.bl-logo { height: clamp(44px, 8dvh, 84px); width: auto; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7)); }
+
+.bl-scene { width: 100%; min-height: 0; display: grid; place-items: center; }
+/* Portrait : la grille dans un écrin doré, cases carrées et grandes. */
+.bl-machine { position: relative; width: min(100%, 520px, calc((100dvh - 400px) * 1.2)); }
+.bl-cadre { display: none; }
+.bl-fenetre { position: relative; padding: 8px; border-radius: 18px; border: 2px solid #e7c27a; background: radial-gradient(120% 90% at 50% 0%, rgba(120, 20, 30, 0.75), rgba(20, 3, 6, 0.92)); box-shadow: 0 0 0 4px rgba(90, 10, 18, 0.9), 0 0 0 6px #b8862f, 0 16px 40px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(255, 200, 90, 0.15); }
+.bl-grille { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(5, 1fr); aspect-ratio: 6 / 5; gap: 2px; overflow: hidden; }
+
+/* Paysage (tablette, ordinateur) : la vraie machine dorée, la grille dans sa fenêtre. */
+@media (min-aspect-ratio: 1 / 1) and (min-width: 700px) {
+  .bl-machine { width: min(100%, 900px, calc((100dvh - 330px) * 1000 / 917)); }
+  .bl-cadre { display: block; width: 100%; height: auto; pointer-events: none; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.7)); }
+  .bl-fenetre { position: absolute; left: 15.6%; top: 30.7%; width: 65.8%; height: 40.5%; padding: 0; border: 0; border-radius: 6px; box-shadow: none; background: radial-gradient(120% 90% at 50% 0%, rgba(120, 20, 30, 0.6), rgba(20, 3, 6, 0.9)); }
+  .bl-grille { aspect-ratio: auto; height: 100%; }
+}
+
+.bl-case { position: relative; display: grid; place-items: center; min-width: 0; min-height: 0; animation: bl-chute 0.42s cubic-bezier(0.3, 0.9, 0.4, 1.15) both; animation-delay: calc(var(--col) * 0.03s); }
+.bl-case > img:first-child { width: 92%; height: 92%; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)); }
+.bl-case.speciale > img:first-child { animation: bl-flotte 2.4s ease-in-out infinite; }
+@keyframes bl-chute { from { transform: translateY(calc(-100% * var(--chute))); } to { transform: none; } }
+@keyframes bl-flotte { 50% { transform: translateY(-4%) scale(1.04); } }
+.bl-case.eclate > img:first-child { animation: bl-eclate 0.75s ease-in forwards; }
+@keyframes bl-eclate { 0% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 0 #ffd774); } 35% { transform: scale(1.22); filter: brightness(1.6) drop-shadow(0 0 12px #ffd774); } 100% { transform: scale(0.2); opacity: 0; } }
+.bl-eclat { position: absolute; inset: -30%; width: 160%; height: 160%; object-fit: contain; pointer-events: none; z-index: 2; animation: bl-pop 0.8s ease-out 0.25s both; }
+@keyframes bl-pop { from { transform: scale(0.3); opacity: 0; } 30% { opacity: 1; } to { transform: scale(1.1); opacity: 0; } }
+
+/* Le multiplicateur, en médaillon au coin de la grille. */
+.bl-multi { position: absolute; right: -14px; top: -18px; width: clamp(54px, 15%, 92px); z-index: 3; display: grid; place-items: center; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)); }
+.bl-multi img { width: 100%; height: auto; grid-area: 1 / 1; }
+.bl-multi b { grid-area: 1 / 1; margin-top: -12%; font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: clamp(16px, 2.6dvh, 26px); color: #ffe7a8; text-shadow: 0 2px 4px #000; animation: bl-multi 0.5s ease-out; }
+@keyframes bl-multi { from { transform: scale(1.8); color: #fff; } }
+@media (min-aspect-ratio: 1 / 1) and (min-width: 700px) { .bl-multi { right: -11%; top: -6%; } }
+.bl-gratuits { position: absolute; left: 50%; top: -14px; translate: -50% 0; z-index: 3; padding: 3px 14px; border-radius: 99px; border: 1px solid #e7c27a; background: linear-gradient(180deg, #8c1426, #4a0610); color: #ffe7a8; font-weight: 800; font-size: 13px; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6); }
+
+.bl-bandeau { margin: 0; min-height: 1.4em; text-align: center; font-size: 14px; color: #f3e2bd; text-shadow: 0 1px 3px #000; }
+.bl-bandeau b { color: #ffd774; }
+.bl-commandes { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: nowrap; width: min(100%, 560px); }
+.bl-pas { width: 42px; height: 42px; min-height: 0; padding: 0; border-radius: 50%; font-size: 24px; line-height: 1; }
+.bl-mise { display: grid; justify-items: center; min-width: 74px; line-height: 1.1; }
+.bl-mise small { font-size: 11px; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.08em; }
+.bl-mise b { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: 20px; color: #ffd774; }
+.bl-tourner { min-width: 140px; min-height: 50px; font-size: 19px; }
+.bl-table-bouton { min-height: 0; width: 42px; height: 42px; padding: 0; border-radius: 50%; font-weight: 800; font-size: 18px; font-style: italic; font-family: Georgia, serif; }
+@media (max-width: 400px) { .bl-tourner { min-width: 110px; } .bl-mise { min-width: 64px; } }
+
+.bl-table ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
+.bl-table li { display: grid; grid-template-columns: 44px repeat(3, 1fr); align-items: center; gap: 6px; text-align: center; }
+.bl-table li img { width: 40px; height: 40px; object-fit: contain; }
+.bl-mini { width: 24px; height: 24px; vertical-align: middle; object-fit: contain; }
+
+.bl-fete { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; pointer-events: none; background: radial-gradient(circle, rgba(60, 10, 0, 0.55), transparent 70%); animation: bl-fete 3.2s ease-out both; }
+.bl-fete img { grid-area: 1 / 1; width: min(92vw, 720px); height: auto; animation: bl-fete-img 3.2s ease-out both; }
+.bl-fete strong { grid-area: 1 / 1; align-self: end; margin-bottom: 18dvh; font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: clamp(30px, 7vw, 64px); color: #ffe7a8; text-shadow: 0 0 20px rgba(255, 200, 90, 0.9), 0 3px 6px #000; }
+@keyframes bl-fete { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes bl-fete-img { from { transform: scale(0.4) rotate(-10deg); opacity: 0; } 25% { transform: scale(1.05); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bl-case, .bl-case > img:first-child, .bl-eclat, .bl-fete, .bl-fete img { animation-duration: 0.01s !important; } }
+/* Le jeu occupe la hauteur sous la barre du haut (sans défilement) : la machine au centre, les commandes en bas. */
+.cas-ecran.bl-ecran { min-height: calc(100dvh - 60px); }
+@media (min-width: 601px) { .cas-ecran.bl-ecran { min-height: calc(100dvh - 80px); } }
+.bl-scene { align-self: center; }

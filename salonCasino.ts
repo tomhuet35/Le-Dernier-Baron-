@@ -35,6 +35,7 @@ import {
   type VueBonusMachine,
   type VueCasino,
 } from '../shared/casino';
+import { jouerBulles, MISES_BULLES } from '../shared/bulles';
 import { gainCasse, MISES_MACHINE, nouveauCasse, ouvrirCasse, ROUE_BARON, TOURS_GRATUITS_MAX, tirerMachine, type EtatCasse } from '../shared/machineASous';
 import { jourParis, lendemainParis } from '../shared/roulette';
 import {
@@ -1152,6 +1153,42 @@ export function creerCasino(options: OptionsCasino) {
         if (gainGrosLot) evenementContrat(id.uid, 'jackpot');
         sauverSalon();
         repondre(rappel, { ok: true, machine: { ...r, gain, gainGrosLot, gratuit, mise }, casino: vue(id.uid) });
+      } finally {
+        p.occupe = false;
+      }
+    });
+
+    // Les Bulles du Baron : un tour en cascade (et ses tours gratuits, joués d'un coup si le bonus tombe).
+    socket.on('casino_bulles', async (data: { mise?: unknown } = {}, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      const t = horloge();
+      if (p.occupe || t - p.dernierTour < ECART_TOURS_MS) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
+      const mise = Number(data?.mise);
+      if (!jeuOuvert(niveauDe(p), 'machine')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
+      if (!MISES_BULLES.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
+      if (p.solde < mise) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant pour cette mise.', 'Not enough money for this bet.') });
+      p.occupe = true;
+      p.dernierTour = t;
+      try {
+        mouvement(id.uid, p, -mise);
+        suivre(id.uid, 'machine', mise, 0);
+        const r = jouerBulles(mise, () => randomInt(1_000_000_000) / 1_000_000_000);
+        if (r.gain > 0) {
+          mouvement(id.uid, p, r.gain);
+          p.record = Math.max(p.record, r.gain);
+          suivre(id.uid, 'machine', 0, r.gain);
+        }
+        if (r.gratuits.length) evenementContrat(id.uid, 'bonusMachine');
+        if (r.gain >= MULTIPLE_GROS_GAIN * mise) {
+          const nom = p.nom;
+          // Annoncé après l'animation des cascades.
+          setTimeout(() => annoncer({ nom, jeu: 'bulles', gain: r.gain }), 4000 + r.gratuits.length * 2500);
+        }
+        sauverSalon();
+        repondre(rappel, { ok: true, bulles: { ...r, mise }, casino: vue(id.uid) });
       } finally {
         p.occupe = false;
       }

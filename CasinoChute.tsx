@@ -681,8 +681,8 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
         {erreur && <p className="cas-erreur">{erreur}</p>}
         <p className="cas-mention">
           {tr(
-            'L’écu rebondit au hasard à chaque clou et tombe dans une case : ta mise × son multiplicateur. Le milieu, où il tombe le plus souvent, rend moins que la mise ; seuls les côtés font gagner. Plus de risque : des bords plus riches (jusqu’à ×1 000) et un milieu plus maigre (×0,2). Mise de 1 000 à 500 000 $ par écu.',
-            'The coin bounces at random off each peg and lands in a slot: your bet × its multiplier. The middle, where it lands most often, pays back less than the bet; only the sides win. More risk: richer edges (up to ×1,000) and a leaner middle (×0.2). Bets from $1,000 to $500,000 per coin.',
+            'L’écu rebondit au hasard à chaque clou et tombe dans une case : ta mise × son multiplicateur. Le milieu, où il tombe le plus souvent, rend moins que la mise ; seuls les côtés font gagner. Plus de risque : des bords plus riches (jusqu’à ×1 000) et un milieu plus maigre (×0,2). Mise de 1 000 à 10 000 000 $ par écu.',
+            'The coin bounces at random off each peg and lands in a slot: your bet × its multiplier. The middle, where it lands most often, pays back less than the bet; only the sides win. More risk: richer edges (up to ×1,000) and a leaner middle (×0.2). Bets from $1,000 to $10,000,000 per coin.',
           )}
         </p>
       </section>

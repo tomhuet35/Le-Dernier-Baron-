@@ -20,7 +20,7 @@ import type { JeuCasino } from './profilCasino';
 
 export type Etage = 'bar' | 'tables' | 'scene' | 'penthouse';
 export const ETAGES: { id: Etage; nom: [string, string]; numero: [string, string]; niveau: number; jeux: JeuCasino[]; image: string }[] = [
-  { id: 'bar', nom: ['Le Bar', 'The Bar'], numero: ['Rez-de-chaussée', 'Ground floor'], niveau: 1, jeux: ['machine', 'nuits', 'coffres', 'tickets'], image: '/cartes/etage-bar.webp' },
+  { id: 'bar', nom: ['Le Bar', 'The Bar'], numero: ['Rez-de-chaussée', 'Ground floor'], niveau: 1, jeux: ['machine', 'coffres', 'tickets'], image: '/cartes/etage-bar.webp' },
   { id: 'tables', nom: ['Les Tables', 'The Tables'], numero: ['1er étage', '1st floor'], niveau: 5, jeux: ['blackjack', 'roulette'], image: '/cartes/etage-tables.webp' },
   { id: 'scene', nom: ['La Scène', 'The Stage'], numero: ['2e étage', '2nd floor'], niveau: 15, jeux: ['folleNuit', 'baronWheel', 'course', 'couronne', 'chute'], image: '/cartes/etage-scene.webp' },
   { id: 'penthouse', nom: ['Le Penthouse', 'The Penthouse'], numero: ['Dernier étage', 'Top floor'], niveau: 40, jeux: [], image: '/cartes/etage-penthouse.webp' },
@@ -30,7 +30,9 @@ export const etageDuJeu = (jeu: JeuCasino): Etage => ETAGES.find((e) => e.jeux.i
 export const etageOuvert = (niveau: number, id: Etage) => niveau >= etage(id).niveau;
 /** Les tables VIP du Penthouse : mises et jetons multipliés par 10. */
 export const FACTEUR_VIP = 10;
-export const jeuOuvert = (niveau: number, jeu: JeuCasino) => etageOuvert(niveau, etageDuJeu(jeu));
+/** Jeux retirés du casino (plus d'accès, plus de contrats) : les Nuits du Baron, remplacées par les Bulles du Baron. */
+export const JEUX_RETIRES: JeuCasino[] = ['nuits'];
+export const jeuOuvert = (niveau: number, jeu: JeuCasino) => !JEUX_RETIRES.includes(jeu) && etageOuvert(niveau, etageDuJeu(jeu));
 
 // ---------------------------------------------------------------------------------------------------------------
 // La carte de membre

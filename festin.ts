@@ -16,7 +16,7 @@ export const BADGES_MIN = 1;
 export const BADGES_MAX = 24;
 /** Nombres de badges proposés d'un geste (on peut aussi choisir n'importe quel nombre de 1 à 24). */
 export const BADGES_RAPIDES = [1, 3, 5, 10, 24];
-export const MISES_COFFRES = [1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
+export const MISES_COFFRES = [1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000];
 /** Ce que le jeu rend en moyenne. */
 export const RTP_COFFRES = 0.97;
 /** Multiplicateur le plus haut : atteint, la partie s'encaisse d'elle-même. */

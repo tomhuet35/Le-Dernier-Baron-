@@ -379,8 +379,8 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         {erreur && <p className="cas-erreur">{erreur}</p>}
         <p className="cas-mention">
           {tr(
-            '25 coffres, de 1 à 24 badges de police. Chaque butin fait monter le multiplicateur ; la police, et la mise est saisie. Mise de 1 000 à 500 000 $, jusqu’à ×25 000.',
-            '25 safes, 1 to 24 police badges. Each loot raises the multiplier; the police, and the bet is seized. Bets from $1,000 to $500,000, up to ×25,000.',
+            '25 coffres, de 1 à 24 badges de police. Chaque butin fait monter le multiplicateur ; la police, et la mise est saisie. Mise de 1 000 à 10 000 000 $, jusqu’à ×25 000.',
+            '25 safes, 1 to 24 police badges. Each loot raises the multiplier; the police, and the bet is seized. Bets from $1,000 to $10,000,000, up to ×25,000.',
           )}
         </p>
       </section>

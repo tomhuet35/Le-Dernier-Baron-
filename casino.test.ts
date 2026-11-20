@@ -240,7 +240,7 @@ describe('Salon privé de bout en bout', () => {
     expect((await emettre(s, 'casino_machine', { mise: 1234 })).ok).toBe(false);
     expect((await emettre(s, 'casino_machine', { mise: -100_000 })).ok).toBe(false);
     expect((await emettre(s, 'casino_machine', { mise: 500_000 })).ok).toBe(false);
-    expect(MISES_MACHINE.at(-1)).toBe(200_000); // mise maximale des machines à sous
+    expect(MISES_MACHINE.at(-1)).toBe(10_000_000); // mise maximale des machines à sous
     // Deux appuis en même temps : un seul tour.
     const [a, b] = await Promise.all([emettre(s, 'casino_machine', { mise: 100_000 }), emettre(s, 'casino_machine', { mise: 100_000 })]);
     expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);

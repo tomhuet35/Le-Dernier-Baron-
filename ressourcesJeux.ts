@@ -2,7 +2,7 @@
  * Ce que chaque jeu du casino charge avant d'ouvrir (écran de chargement du jeu) : images, musique et sons.
  * Fichier généré à partir du code des jeux : relancer le générateur après avoir ajouté des images à un jeu.
  */
-export type JeuACharger = 'machine' | 'nuits' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'blackjack' | 'roulette';
+export type JeuACharger = 'machine' | 'nuits' | 'bulles' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'blackjack' | 'roulette';
 export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
   machine: [
     '/cartes/machine-bas.webp',
@@ -364,6 +364,26 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/son-ex-sifflet.mp3',
     '/cartes/son-ex-tchou.mp3',
     '/cartes/son-ex-tunnel.mp3',
+  ],
+  bulles: [
+    '/cartes/bl-badge.webp',
+    '/cartes/bl-bonus.webp',
+    '/cartes/bl-bouchon.webp',
+    '/cartes/bl-bouteille.webp',
+    '/cartes/bl-cadre.webp',
+    '/cartes/bl-coupe.webp',
+    '/cartes/bl-couronne.webp',
+    '/cartes/bl-eclat.webp',
+    '/cartes/bl-fond-paysage.webp',
+    '/cartes/bl-fond-portrait.webp',
+    '/cartes/bl-fraise.webp',
+    '/cartes/bl-jackpot.webp',
+    '/cartes/bl-joker.webp',
+    '/cartes/bl-logo.webp',
+    '/cartes/bl-perle.webp',
+    '/cartes/bl-rubis.webp',
+    '/cartes/musique-bandit.mp3',
+    '/cartes/son-bandit-gain.mp3',
   ],
   tickets: [
     '/cartes/musique-casino.mp3',

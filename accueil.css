@@ -647,3 +647,16 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
   .cas:has(.ac-barre-jeu) .cas-machine-ecran { --w: max(300px, min(calc(100vw - 16px), 700px, calc((100dvh - 254px) / 1.213))); padding-top: 4px; }
   .cas:has(.ac-barre-jeu) .cas-machine-ecran.nuits { --w: max(300px, min(calc(100vw - 16px), 700px, calc((100dvh - 254px) / 1.235))); }
 }
+
+/* Barre du haut dans un jeu : bouton Salon à gauche, menu tout à droite, et les compteurs à la bonne taille. */
+.ac-salon { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 0; height: 40px; padding: 0 14px; border-radius: 99px; border: 1px solid rgba(231, 194, 122, 0.8); background: linear-gradient(180deg, rgba(60, 10, 16, 0.9), rgba(20, 3, 6, 0.9)); color: #ffe7a8; font-weight: 700; font-size: 16px; }
+.ac-barre.en-jeu { display: flex; align-items: center; gap: 12px; }
+.ac-barre.en-jeu .ac-menu { margin-left: auto; }
+.ac-barre.en-jeu .ac-compteur.ac-dollars { flex: 0 1 260px; }
+@media (max-width: 600px) {
+  .ac-barre.en-jeu { gap: 6px; }
+  .ac-salon { height: 34px; padding: 0 9px; font-size: 14px; }
+  .ac-salon span { display: none; }
+  .ac-barre.en-jeu .ac-moi { display: none; }
+  .ac-barre.en-jeu .ac-compteur.ac-dollars { flex: 1 1 auto; }
+}

@@ -21,7 +21,8 @@ const paris = (j: number, h: number, min = 0) => Date.UTC(2026, 10, j, h - 1, mi
 
 describe('Grand Hôtel : les étages', () => {
   it('place chaque jeu à un étage, et ouvre les étages par niveau', () => {
-    for (const j of JEUX_CASINO) expect(ETAGES.some((e) => e.jeux.includes(j))).toBe(true);
+    for (const j of JEUX_CASINO) if (j !== 'nuits') expect(ETAGES.some((e) => e.jeux.includes(j))).toBe(true);
+    expect(jeuOuvert(999, 'nuits')).toBe(false); // retiré
     expect(etageDuJeu('machine')).toBe('bar');
     expect(etageDuJeu('blackjack')).toBe('tables');
     expect(etageDuJeu('baronWheel')).toBe('scene');

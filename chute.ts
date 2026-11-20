@@ -21,7 +21,7 @@ export const RISQUES_CHUTE: RisqueChute[] = ['faible', 'moyen', 'eleve'];
 export const NOMS_RISQUES_CHUTE: Record<RisqueChute, [string, string]> = { faible: ['Faible', 'Low'], moyen: ['Moyen', 'Medium'], eleve: ['Élevé', 'High'] };
 export const RANGEES_MIN = 8;
 export const RANGEES_MAX = 16;
-export const MISES_CHUTE = [1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
+export const MISES_CHUTE = [1_000, 2_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000];
 /** Lâchers acceptés par seconde et par joueur (on peut lâcher plusieurs écus à la suite, pas mitrailler). */
 export const LACHERS_PAR_SECONDE = 8;
 
