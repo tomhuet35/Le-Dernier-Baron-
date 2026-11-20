@@ -81,7 +81,7 @@ describe('Contrats du salon : tirage', () => {
 
   it('écrit le texte avec l’objectif', () => {
     const f = (n: number, en: boolean) => (en ? `$${n}` : `${n} $`);
-    expect(texteContrat({ id: 'bandit-tours', cible: 20 }, f)).toEqual(['Jouer 20 tours au Bandit du Baron', 'Play 20 spins on The Baron’s Bandit']);
+    expect(texteContrat({ id: 'bandit-tours', cible: 20 }, f)).toEqual(['Jouer 20 tours à The Golden Heist', 'Play 20 spins on The Golden Heist']);
     expect(texteContrat({ id: 'mise-totale', cible: 2_000_000 }, f)).toEqual(['Miser 2000000 $ dans le salon', 'Bet $2000000 in the lounge']);
   });
 });

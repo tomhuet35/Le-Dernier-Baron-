@@ -87,8 +87,8 @@ const tousOuverts: JeuxOuverts = () => true;
 const nomJeu = (j: JeuCasino) => NOMS_JEUX_CASINO[j];
 
 export const CONTRATS_DU_JOUR: ModeleContrat[] = [
-  { id: 'bandit-tours', jeu: 'machine', mesure: 'tours', cible: tours(20), texte: [`Jouer {n} tours au Bandit du Baron`, `Play {n} spins on ${nomJeu('machine')[1]}`] },
-  { id: 'bandit-bonus', jeu: 'machine', mesure: 'evenement', evenement: 'bonusMachine', cible: fixe(1), texte: [`Déclencher un bonus au Bandit du Baron`, `Trigger a bonus on ${nomJeu('machine')[1]}`] },
+  { id: 'bandit-tours', jeu: 'machine', mesure: 'tours', cible: tours(20), texte: [`Jouer {n} tours à The Golden Heist`, `Play {n} spins on ${nomJeu('machine')[1]}`] },
+  { id: 'bandit-bonus', jeu: 'machine', mesure: 'evenement', evenement: 'bonusMachine', cible: fixe(1), texte: [`Déclencher un bonus à The Golden Heist`, `Trigger a bonus on ${nomJeu('machine')[1]}`] },
   { id: 'nuits-tours', jeu: 'nuits', mesure: 'tours', cible: tours(20), texte: [`Jouer {n} tours aux Nuits du Baron`, `Play {n} spins on ${nomJeu('nuits')[1]}`] },
   { id: 'blackjack-victoires', jeu: 'blackjack', mesure: 'victoires', cible: fixe(3), texte: ['Gagner {n} mains au blackjack', 'Win {n} hands of blackjack'] },
   { id: 'roulette-victoires', jeu: 'roulette', mesure: 'victoires', cible: fixe(3), texte: ['Gagner {n} paris à la roulette', 'Win {n} bets at roulette'] },
@@ -106,7 +106,7 @@ export const CONTRATS_DU_JOUR: ModeleContrat[] = [
 
 export const GROS_COUPS: ModeleContrat[] = [
   { id: 'defis-gagnes', jeu: null, mesure: 'evenement', evenement: 'defiGagne', cible: fixe(3), texte: ['Gagner {n} défis contre des amis', 'Win {n} challenges against friends'] },
-  { id: 'jackpot', jeu: null, mesure: 'evenement', evenement: 'jackpot', cible: fixe(1), texte: ['Toucher un jackpot (gros lot du Bandit ou jackpot des Nuits)', 'Hit a jackpot (Bandit jackpot or Nights jackpot)'] },
+  { id: 'jackpot', jeu: null, mesure: 'evenement', evenement: 'jackpot', cible: fixe(1), texte: ['Toucher le gros lot de The Golden Heist', 'Hit The Golden Heist jackpot'] },
   { id: 'cinq-jeux', jeu: null, mesure: 'jeux', cible: fixe(5), texte: ['Jouer à {n} jeux différents dans la semaine', 'Play {n} different games this week'] },
 ];
 

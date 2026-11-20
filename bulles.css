@@ -173,3 +173,11 @@
 @media (min-aspect-ratio: 1 / 1) and (min-width: 1280px) {
   .bl-ecran { --m: min(860px, calc(100vw - 640px), calc((100dvh - 180px) / 1.58)); }
 }
+/* Téléphone : le bouton TOURNER garde son texte dans son cadre, l'aide tient sur une ligne. */
+@media (max-width: 600px) {
+  .bl-commandes .bl-tourner { width: calc(var(--s) * 0.33); height: calc(var(--s) * 0.33 * 181 / 520); }
+  .bl-tourner span { font-size: calc(var(--s) * 0.032) !important; letter-spacing: 0.04em; margin-top: 2%; }
+  .bl-mise { min-width: calc(var(--s) * 0.17) !important; }
+  .bl-mise b { font-size: calc(var(--s) * 0.035) !important; }
+  .bl-socle .bl-resultat > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(var(--s) * 0.74); }
+}

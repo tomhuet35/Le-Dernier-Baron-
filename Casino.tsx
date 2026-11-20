@@ -962,7 +962,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
           </span>
           <span className="cab-lanterne gauche" aria-hidden="true" />
           <span className="cab-lanterne droite" aria-hidden="true" />
-          <h2 className="cab-titre">{tr('Le Bandit du Baron', 'The Baron’s Bandit')}</h2>
+          <h2 className="cab-titre">{'The Golden Heist'}</h2>
           <p className="cab-gros-lot">
             {tr('Gros lot', 'Jackpot')} <strong>{dollars(vue.grosLot)}</strong>
           </p>
@@ -1156,13 +1156,13 @@ const JEUX: { id: 'baronWheel' | 'folleNuit' | 'machines' | 'roulette' | 'blackj
 const MACHINES: { id: 'machine' | 'bulles'; nom: [string, string]; image: string; texte: [string, string] }[] = [
   {
     id: 'machine',
-    nom: ['Le Bandit du Baron', 'The Baron’s Bandit'],
+    nom: ['The Golden Heist', 'The Golden Heist'],
     image: '/cartes/casino-machine.webp',
     texte: ['5 rouleaux, 10 lignes. Casse du coffre, Roue du Baron et free games.', '5 reels, 10 lines. Safe Heist, Baron’s Wheel and free games.'],
   },
   {
     id: 'bulles',
-    nom: ['Les Bulles du Baron', 'The Baron’s Bubbles'],
+    nom: ['The Baron’s Bubbles', 'The Baron’s Bubbles'],
     image: '/cartes/casino-bulles.webp',
     texte: ['Cascades sur 6 × 5 : les gagnants éclatent, le multiplicateur grimpe. 4 Bulles Bonus : tours gratuits.', 'Cascades on 6 × 5: winners pop, the multiplier climbs. 4 Bonus Bubbles: free spins.'],
   },
@@ -1285,7 +1285,7 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
       : annonce.jeu === 'chute'
         ? tr(`${annonce.nom} a fait tomber ${dollars(annonce.gain)} à la Chute des Écus !`, `${annonce.nom} dropped ${dollars(annonce.gain)} on the Falling Crowns!`)
       : annonce.jeu === 'bulles'
-        ? tr(`${annonce.nom} a fait sauter ${dollars(annonce.gain)} aux Bulles du Baron !`, `${annonce.nom} popped ${dollars(annonce.gain)} on the Baron’s Bubbles!`)
+        ? tr(`${annonce.nom} a fait sauter ${dollars(annonce.gain)} à The Baron’s Bubbles !`, `${annonce.nom} popped ${dollars(annonce.gain)} on the Baron’s Bubbles!`)
       : annonce.jeu === 'plinko'
         ? tr(`${annonce.nom} a fait ×1000 au Plinko du Baron : ${dollars(annonce.gain)} !`, `${annonce.nom} hit ×1000 on the Baron’s Plinko: ${dollars(annonce.gain)}!`)
       : annonce.jeu === 'tickets'
@@ -2138,7 +2138,7 @@ function Accueil({
           </div>
         )}
         <p className="cas-gros-lot ac-gros-lot">
-          {tr('Gros lot du Bandit', 'Bandit jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
+          {tr('Gros lot de The Golden Heist', 'The Golden Heist jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
         </p>
       </section>
 
