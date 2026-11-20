@@ -107,7 +107,7 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
     if (!r.ok || !r.bulles) {
       setOccupe(false);
       if (r.casino) onVue(r.casino);
-      return setErreur(r.erreur ?? tr('Tour impossible.', 'Spin failed.'));
+      return setErreur(r.erreur ?? tr('Pas de réponse de la machine : vérifie ta connexion et réessaie.', 'No answer from the machine: check your connection and try again.'));
     }
     const b = r.bulles;
     // Le solde affiché : mise retirée tout de suite, gain montré à la fin.
@@ -166,7 +166,7 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         <button type="button" className="cas-retour" onClick={onRetour} disabled={occupe}>
           ‹ {tr('Machines', 'Slots')}
         </button>
-        <img className="bl-logo" src="/cartes/bl-logo.webp" alt={tr('Les Bulles du Baron', 'The Baron’s Bubbles')} draggable={false} />
+        <img className="bl-logo" src="/cartes/bl-logo.webp" alt={'The Baron’s Bubbles'} draggable={false} />
         <span className="cas-solde-petit">{dollars(solde)}</span>
       </header>
 
@@ -291,7 +291,7 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
               <span>{tr('Pas de chance cette fois.', 'No luck this time.')}</span>
             )
           ) : (
-            <span>{tr(`${MIN_GROUPE} symboles identiques ou plus, n'importe où : ils éclatent !`, `${MIN_GROUPE}+ matching symbols anywhere pop!`)}</span>
+            <span>{tr(`${MIN_GROUPE} symboles identiques : ils éclatent !`, `${MIN_GROUPE}+ matching symbols pop!`)}</span>
           )}
         </div>
         <div className="bl-commandes">

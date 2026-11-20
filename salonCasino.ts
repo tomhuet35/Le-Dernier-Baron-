@@ -1189,6 +1189,10 @@ export function creerCasino(options: OptionsCasino) {
         }
         sauverSalon();
         repondre(rappel, { ok: true, bulles: { ...r, mise }, casino: vue(id.uid) });
+      } catch (e) {
+        // Jamais de tour muet : on répond toujours (et la trace aide à corriger).
+        console.error('casino_bulles', e);
+        repondre(rappel, { ok: false, erreur: L('La machine a eu un hoquet, réessaie.', 'The machine hiccuped, try again.'), casino: vue(id.uid) });
       } finally {
         p.occupe = false;
       }

@@ -105,7 +105,7 @@ export function ChargementJeu({ jeu, children }: { jeu: JeuACharger; children: R
     <div className="chj" role="status" aria-live="polite" style={bulles ? { background: "linear-gradient(180deg, rgba(10,2,4,.4), rgba(10,2,4,.85)), url('/cartes/bl-chargement.webp') center / cover no-repeat" } : undefined}>
       <div className="chj-rayons" aria-hidden="true" />
       <img className="chj-vignette" src={bulles ? '/cartes/vignette-bulles.webp' : `/cartes/vignette-${VIGNETTES_ALBUM[id]}.webp`} alt="" draggable={false} />
-      <h1 className="chj-nom">{bulles ? tr('Les Bulles du Baron', 'The Baron’s Bubbles') : tr(...NOMS_JEUX_CASINO[id])}</h1>
+      <h1 className="chj-nom">{bulles ? 'The Baron’s Bubbles' : tr(...NOMS_JEUX_CASINO[id])}</h1>
       <div className="chj-barre" aria-label={tr(`Chargement : ${part} %`, `Loading: ${part}%`)}>
         <span style={{ width: `${part}%` }} />
       </div>

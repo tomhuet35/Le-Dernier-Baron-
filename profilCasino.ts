@@ -13,7 +13,7 @@
 export type JeuCasino = 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets';
 export const JEUX_CASINO: JeuCasino[] = ['machine', 'nuits', 'blackjack', 'roulette', 'folleNuit', 'coffres', 'couronne', 'chute', 'course', 'baronWheel', 'tickets'];
 export const NOMS_JEUX_CASINO: Record<JeuCasino, [string, string]> = {
-  machine: ['Le Bandit du Baron', 'The Baron’s Bandit'],
+  machine: ['The Golden Heist', 'The Golden Heist'],
   nuits: ['Les Nuits du Baron', 'The Baron’s Nights'],
   blackjack: ['Blackjack', 'Blackjack'],
   roulette: ['Roulette', 'Roulette'],
