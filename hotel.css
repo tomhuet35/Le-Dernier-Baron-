@@ -101,3 +101,14 @@
 .ht-vip-table { position: relative; display: grid; padding: 0; overflow: hidden; border-radius: 12px; border: 2px solid var(--or-vif); aspect-ratio: 4 / 3; box-shadow: 0 0 16px rgba(231, 194, 122, 0.35); }
 .ht-vip-table img { width: 100%; height: 100%; object-fit: cover; }
 .ht-vip-table span { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 6px 6px; background: linear-gradient(transparent, rgba(10, 5, 3, 0.95) 55%); font-family: var(--titre); color: var(--or-vif); text-align: center; }
+
+/* Le Groom passe au-dessus de la barre du bas, et sur téléphone la bulle se met au-dessus de lui, en pleine largeur. */
+.voile.ht-groom-voile { z-index: 70; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+@media (max-width: 600px) {
+  .ht-groom { grid-template-columns: 1fr; width: 100%; justify-items: center; }
+  .ht-bulle { order: -1; width: 100%; box-sizing: border-box; margin: 0 0 6px; }
+  .ht-bulle::before { left: 22%; bottom: -10px; border: 10px solid transparent; border-top-color: #ecd9b4; border-bottom: 0; }
+  .ht-bulle strong { font-size: 20px; line-height: 1.15; }
+  .ht-bulle p { font-size: 15px; }
+  .ht-groom-image { width: auto; max-width: 70%; max-height: 38dvh; justify-self: start; margin-left: 6%; }
+}
