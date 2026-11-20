@@ -497,7 +497,7 @@ export function creerCasino(options: OptionsCasino) {
       }
       planifier(uid, p);
     }
-    if (rafraichirContrats(p.salonJ, uid, jourParis(t), semaine, niveauDe(p))) {
+    if (rafraichirContrats(p.salonJ, uid, jourParis(t), semaine, niveauDe(p), (j) => jeuOuvert(niveauDe(p), j))) {
       p.salonAEcrire = true;
       planifier(uid, p);
     }
@@ -1271,7 +1271,7 @@ export function creerCasino(options: OptionsCasino) {
       const p = portes.get(id.uid);
       if (!p || !dans) return repondre(rappel, INTROUVABLE);
       rafraichirSalon(id.uid, p);
-      const r = changerContrat(p.salonJ, Number(data?.index), niveauDe(p), (n) => randomInt(Math.max(1, n)));
+      const r = changerContrat(p.salonJ, Number(data?.index), niveauDe(p), (n) => randomInt(Math.max(1, n)), (j) => jeuOuvert(niveauDe(p), j));
       if (r !== 'ok') {
         const msg: Record<typeof r, [string, string]> = {
           deja: ['Tu as déjà changé un contrat aujourd’hui.', 'You have already swapped a contract today.'],

@@ -200,3 +200,31 @@ describe('Relecture', () => {
     expect(CONTRATS_DU_JOUR.length).toBeGreaterThanOrEqual(CONTRATS_PAR_JOUR * 2);
   });
 });
+
+describe('contrats selon le niveau', () => {
+  const barSeul = (j: string) => ['machine', 'nuits', 'coffres', 'tickets'].includes(j);
+  it('au niveau 1, aucun contrat sur un jeu pas encore débloqué', () => {
+    for (let k = 0; k < 200; k++) {
+      const e = etatSalonVide();
+      rafraichirContrats(e, `u${k}`, '2026-11-20', '2026-S47', 1, barSeul as never);
+      for (const c of e.contrats.liste) {
+        const j = modeleContrat(c.id)?.jeu;
+        expect(!j || barSeul(j)).toBe(true);
+      }
+      const cinq = e.contrats.grosCoups.find((g) => g.id === 'cinq-jeux');
+      expect(cinq!.cible <= 4).toBe(true);
+    }
+  });
+  it('remplace un contrat déjà tiré sur un jeu fermé', () => {
+    const e = etatSalonVide();
+    rafraichirContrats(e, 'u1', '2026-11-20', '2026-S47', 1);
+    e.contrats.liste[0] = { id: 'folle-nuit-tours', cible: 5, progres: 0, fait: false };
+    expect(rafraichirContrats(e, 'u1', '2026-11-20', '2026-S47', 1, barSeul as never)).toBe(true);
+    expect(e.contrats.liste.some((c) => c.id === 'folle-nuit-tours')).toBe(false);
+  });
+  it('les contrats diffèrent d’un joueur à l’autre', () => {
+    const vus = new Set<string>();
+    for (let k = 0; k < 30; k++) { const e = etatSalonVide(); rafraichirContrats(e, `j${k}`, '2026-11-20', '2026-S47', 30); vus.add(e.contrats.liste.map((c) => c.id).sort().join()); }
+    expect(vus.size > 10).toBe(true);
+  });
+});
