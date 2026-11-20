@@ -660,3 +660,21 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
   .ac-barre.en-jeu .ac-moi { display: none; }
   .ac-barre.en-jeu .ac-compteur.ac-dollars { flex: 1 1 auto; }
 }
+
+/* Barre du haut dans les jeux (tablette, ordinateur) : éléments répartis sur toute la largeur, tous à la même hauteur. */
+@media (min-width: 601px) {
+  .ac-barre.en-jeu { justify-content: space-between; gap: 10px; padding-inline: clamp(70px, 7vw, 110px); min-height: 72px; }
+  .ac-barre.en-jeu > * { flex: none; margin: 0 !important; }
+  .ac-barre.en-jeu .ac-menu { margin-left: 0 !important; }
+  .ac-barre.en-jeu .ac-salon { height: 44px; }
+  .ac-barre.en-jeu .ac-moi { display: flex; align-items: center; gap: 8px; }
+  .ac-barre.en-jeu .ac-moi .cs-avatar { --taille: 46px !important; width: 46px !important; height: 46px !important; }
+  .ac-barre.en-jeu .ac-compteur { height: 46px !important; flex: 0 1 auto !important; min-width: 0; }
+  .ac-barre.en-jeu .ac-compteur.ac-rubis { width: clamp(120px, 13vw, 170px); }
+  .ac-barre.en-jeu .ac-compteur.ac-dollars { width: clamp(190px, 22vw, 300px); }
+  .ac-barre.en-jeu .ac-compteur > img:first-child { width: 40px !important; height: 40px !important; }
+  .ac-barre.en-jeu .ac-boutique { position: relative; width: 52px; height: 52px; padding: 0; }
+  .ac-barre.en-jeu .ac-boutique > img { width: 52px !important; height: 52px !important; }
+  .ac-barre.en-jeu .ac-boutique > span:not(.pastille-nombre) { display: none; }
+  .ac-barre.en-jeu .ac-menu, .ac-barre.en-jeu .ac-menu img { width: 50px !important; height: 50px !important; }
+}

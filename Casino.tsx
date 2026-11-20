@@ -1041,7 +1041,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
               <span>
                 <strong>{tr(`${gratuits} free games`, `${gratuits} free games`)}</strong>
                 <small>
-                  {tr(`Gains ×${MULTIPLICATEUR_GRATUIT} · mise ${dollars(vue.miseGratuite)}`, `Wins ×${MULTIPLICATEUR_GRATUIT} · bet ${dollars(vue.miseGratuite)}`)}
+                  {tr(`Gains ×${MULTIPLICATEUR_GRATUIT} · mise ${dollarsCourt(vue.miseGratuite)}`, `Wins ×${MULTIPLICATEUR_GRATUIT} · bet ${dollars(vue.miseGratuite)}`)}
                 </small>
               </span>
             </div>
@@ -1054,7 +1054,7 @@ function Machine({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel
                 <Jeton valeur={mise} />
                 <span>
                   <small>{tr('Mise', 'Bet')}</small>
-                  <strong>{dollars(mise)}</strong>
+                  <strong>{dollarsCourt(mise)}</strong>
                 </span>
               </span>
               <button type="button" onClick={() => changerMise(1)} disabled={enCours || mise === MISES_MACHINE[MISES_MACHINE.length - 1]} aria-label={tr('Augmenter la mise', 'Raise the bet')}>

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { COLONNES_BULLES, LIGNES_BULLES, MISES_BULLES, MIN_GROUPE, GAINS_BULLES, type EtapeBulles, type GrilleBulles, type ResultatBulles, type SymboleBulles } from '../../shared/bulles';
 import type { VueCasino } from '../../shared/casino';
 import type { Appel } from './App';
-import { dollars, dollarsCourt } from './casinoOutils';
+import { dollars, dollarsCourt, Jeton } from './casinoOutils';
 import { tr } from './traduction';
 import { jouerEffet } from './ui';
 import './bulles.css';
@@ -49,6 +49,9 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
   const [gratuit, setGratuit] = useState<{ n: number; total: number } | null>(null);
   const [fete, setFete] = useState<number | null>(null);
   const [table, setTable] = useState(false);
+  /** Le gain d'une cascade, qui s'envole au-dessus de la grille. */
+  const [flottant, setFlottant] = useState<{ cle: number; texte: string } | null>(null);
+  const [fini, setFini] = useState<number | null>(null);
   /** Ce que le tour a crédité, pas encore montré au solde (on le montre à la fin de l'animation). */
   const [masque, setMasque] = useState(0);
   const vueRef = useRef(vue);
@@ -77,7 +80,8 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
       jouerEffet('machine_pieces');
       cumul.v += e.gain;
       setGainTour(cumul.v);
-      setBandeau(`×${e.multi} · +${dollarsCourt(e.gain)}`);
+      setBandeau(tr(`Cascade ×${e.multi}`, `Cascade ×${e.multi}`));
+      setFlottant({ cle: cle.current++, texte: `+${dollarsCourt(e.gain)}` });
       await pause(900);
       avant = e;
     }
@@ -91,6 +95,8 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
     setGainTour(0);
     setBandeau(null);
     setGratuit(null);
+    setFini(null);
+    setFlottant(null);
     jouerEffet('machine_levier');
     const r = (await appel('casino_bulles', { mise })) as { ok: boolean; erreur?: string; bulles?: ResultatBulles & { mise: number }; casino?: VueCasino };
     if (!r.ok || !r.bulles) {
@@ -117,7 +123,8 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
     if (!vivant.current) return;
     setGainTour(b.gain);
     setMasque(0);
-    setBandeau(b.gain > 0 ? tr(`Gain : ${dollars(b.gain)}`, `Win: ${dollars(b.gain)}`) : null);
+    setBandeau(null);
+    setFini(b.gain);
     if (b.gain >= 20 * b.mise) {
       setFete(b.gain);
       jouerEffet('lingots_pluie');
@@ -163,6 +170,11 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
               <img src="/cartes/bl-badge.webp" alt="" draggable={false} />
               <b key={ecran.multi}>×{ecran.multi}</b>
             </div>
+            {flottant && (
+              <strong key={flottant.cle} className="bl-flottant" aria-hidden="true">
+                {flottant.texte}
+              </strong>
+            )}
             {gratuit && (
               <div className="bl-gratuits">
                 {tr('Tour gratuit', 'Free spin')} {gratuit.n}/{gratuit.total}
@@ -172,28 +184,52 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         </div>
       </section>
 
-      <p className="bl-bandeau" aria-live="polite">
-        {bandeau ?? tr(`Au moins ${MIN_GROUPE} symboles identiques, n'importe où : ils éclatent et d'autres tombent !`, `${MIN_GROUPE}+ matching symbols anywhere pop, and new ones fall!`)}
-        {gainTour > 0 && occupe && <b> · {dollars(gainTour)}</b>}
-      </p>
-
-      <div className="bl-commandes">
-        <button type="button" className="bl-pas" onClick={() => setMise(MISES_BULLES[Math.max(0, i - 1)])} disabled={occupe || i <= 0} aria-label={tr('Baisser la mise', 'Lower the bet')}>
-          −
-        </button>
-        <div className="bl-mise">
-          <small>{tr('Mise', 'Bet')}</small>
-          <b>{dollarsCourt(mise)}</b>
+      {/* Le socle de la machine (même habillage que le Bandit) : le résultat, la mise et le bouton. */}
+      <div className="bl-socle">
+        <div className="bl-resultat" aria-live="polite">
+          {occupe ? (
+            gainTour > 0 ? (
+              <>
+                <strong className="bl-gain">+{dollars(gainTour)}</strong>
+                {bandeau && <span>{bandeau}</span>}
+              </>
+            ) : (
+              <span>{bandeau ?? tr('Les bulles montent…', 'Bubbles rising…')}</span>
+            )
+          ) : fini !== null ? (
+            fini > 0 ? (
+              <>
+                <strong className="bl-gain">+{dollars(fini)}</strong>
+                <span>{tr(`soit ×${Math.round((fini / mise) * 10) / 10} la mise`, `that's ×${Math.round((fini / mise) * 10) / 10} the bet`)}</span>
+              </>
+            ) : (
+              <span>{tr('Pas de chance cette fois.', 'No luck this time.')}</span>
+            )
+          ) : (
+            <span>{tr(`${MIN_GROUPE} symboles identiques ou plus, n'importe où : ils éclatent !`, `${MIN_GROUPE}+ matching symbols anywhere pop!`)}</span>
+          )}
         </div>
-        <button type="button" className="bl-pas" onClick={() => setMise(MISES_BULLES[Math.min(MISES_BULLES.length - 1, i + 1)])} disabled={occupe || i >= MISES_BULLES.length - 1} aria-label={tr('Monter la mise', 'Raise the bet')}>
-          +
-        </button>
-        <button type="button" className="bl-tourner principal" onClick={() => void tourner()} disabled={occupe}>
-          {occupe ? '…' : tr('Tourner', 'Spin')}
-        </button>
-        <button type="button" className="bl-table-bouton" onClick={() => setTable((x) => !x)} aria-label={tr('Table des gains', 'Pay table')}>
-          i
-        </button>
+        <div className="bl-commandes">
+          <button type="button" className="bl-pas" onClick={() => setMise(MISES_BULLES[Math.max(0, i - 1)])} disabled={occupe || i <= 0} aria-label={tr('Baisser la mise', 'Lower the bet')}>
+            −
+          </button>
+          <div className="bl-mise">
+            <Jeton valeur={mise} />
+            <span>
+              <small>{tr('Mise', 'Bet')}</small>
+              <b>{dollarsCourt(mise)}</b>
+            </span>
+          </div>
+          <button type="button" className="bl-pas" onClick={() => setMise(MISES_BULLES[Math.min(MISES_BULLES.length - 1, i + 1)])} disabled={occupe || i >= MISES_BULLES.length - 1} aria-label={tr('Monter la mise', 'Raise the bet')}>
+            +
+          </button>
+          <button type="button" className="bl-tourner" onClick={() => void tourner()} disabled={occupe}>
+            <span>{tr('Tourner', 'Spin')}</span>
+          </button>
+          <button type="button" className="bl-table-bouton" onClick={() => setTable((x) => !x)} aria-label={tr('Table des gains', 'Pay table')}>
+            i
+          </button>
+        </div>
       </div>
       {erreur && <p className="erreur">{erreur}</p>}
 

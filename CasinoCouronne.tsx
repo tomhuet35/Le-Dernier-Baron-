@@ -24,7 +24,7 @@ import {
   type VueCouronne,
 } from '../../shared/couronne';
 import type { Appel } from './App';
-import { BUTIN_PLUIE, dollars, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
+import { BUTIN_PLUIE, dollars, dollarsCourt, Jeton, LINGOTS_PALIER, PluieLingots, useSoldeAnime } from './casinoOutils';
 import { socket } from './socket';
 import { tr } from './traduction';
 import { jouerEffet, mouvementReduit, useCompteur } from './ui';
@@ -434,7 +434,7 @@ function PanneauMise({
           <Jeton valeur={reglage.mise} />
           <span>
             <small>{tr(`Mise ${i + 1}`, `Bet ${i + 1}`)}</small>
-            <strong>{dollars(reglage.mise)}</strong>
+            <strong>{dollarsCourt(reglage.mise)}</strong>
           </span>
         </span>
         <button type="button" onClick={() => onReglage({ mise: MISES_COURONNE[indexMise + 1] })} disabled={bloque || indexMise >= MISES_COURONNE.length - 1} aria-label={tr('Augmenter la mise', 'Raise the bet')}>
