@@ -402,6 +402,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bw-br-evade.webp',
     '/cartes/son-br-moteur.mp3',
     '/cartes/son-br-meule.mp3',
+    '/cartes/son-br-meule-long.mp3',
     '/cartes/son-br-percee.mp3',
     '/cartes/son-br-alarme.mp3',
     '/cartes/son-br-sifflet.mp3',

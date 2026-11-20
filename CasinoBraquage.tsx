@@ -89,8 +89,12 @@ const JAUGE = { ratio: 292 / 1100, alveoles: [0.2409, 0.3436, 0.4445, 0.5486, 0.
 // ---------------------------------------------------------------------------------------------------------------
 // Le calendrier de la descente (millisecondes depuis son début, voir CASSE_BW)
 
-/** La mèche meule une dalle pendant GRIND ms, puis la perceuse descend à travers le sous-sol pendant DESC ms. */
-const GRIND = 1100;
+/**
+ * Au départ, la grue descend la perceuse sur la rue (elle s'y pose à ATTERRIT ms). Puis, à chaque dalle, la mèche la
+ * meule pendant GRIND ms, et la perceuse descend à travers le sous-sol percé pendant DESC ms, le temps de le voir.
+ */
+const ATTERRIT = 1700;
+const GRIND = 2800;
 const DESC = CASSE_BW.etage - GRIND;
 /** La percée de la dalle k (au-dessus du sous-sol k + 1), et le début de son meulage. */
 const percee = (k: number) => perceeCasseBW(k + 1);
@@ -98,14 +102,16 @@ const meule = (k: number) => percee(k) - GRIND;
 /** Arrêtée au sous-sol F (< 5) : l'alarme sonne pendant qu'elle meule la dalle F. */
 const alarmeA = (F: number) => perceeCasseBW(F) + CASSE_BW.alarme;
 /** Après l'alarme : la sirène, les gendarmes (qui déboulent pendant `course`), la bande qui file. */
-const ALARME = { sirene: 300, gendarmes: 700, course: 1300, fuite: 2000 };
+const ALARME = { sirene: 300, gendarmes: 900, course: 1900, fuite: 3800 };
 /** Au Coffre du Siècle (depuis la percée de la dernière dalle) : la porte, qui tremble, s'ouvre ; le trésor ; le jackpot. */
-const SIECLE = { porte: 1200, ouvre: 2000, tresor: 2400, jackpot: 3000 };
+const SIECLE = { porte: 2300, ouvre: 3900, tresor: 4500, jackpot: 5500 };
 
 const lisse = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
 const sortie = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : 1 - (1 - u) ** 3);
-/** L'avance de la mèche dans la dalle : par à-coups. */
-const avance = (u: number) => Math.min(1, Math.max(0, u + 0.035 * Math.sin(u * Math.PI * 6)));
+/** L'avance de la mèche dans la dalle : par à-coups (cinq, toujours vers le bas). */
+const avance = (u: number) => Math.min(1, Math.max(0, u + 0.03 * Math.sin(u * Math.PI * 10)));
+/** La part de la dalle k déjà meulée à l'instant t (0 à 1). */
+const partMeulee = (t: number, k: number) => Math.max(0, Math.min(1, (t - meule(k)) / GRIND));
 
 interface Geo {
   W: number;
@@ -121,6 +127,8 @@ interface Geo {
   Bw: number;
   Lb: number;
   cx: number;
+  /** Au-dessus de la perceuse posée sur la rue : de quoi la voir sous le titre du bonus. */
+  marge: number;
   /** Le bas du Coffre du Siècle, le roc dessous (de quoi y centrer la porte), le centre de la porte. */
   total: number;
   roc: number;
@@ -134,8 +142,8 @@ const salleHaut = (g: Geo, k: number) => g.Hs + (k - 1) * (g.S + g.R) + g.S;
 /** La pointe de la mèche (y du monde) à l'instant t de la descente, la perceuse s'arrêtant au sous-sol F. */
 function pointe(t: number, F: number, g: Geo): number {
   const tt = F < NB ? Math.min(t, alarmeA(F)) : t;
-  const appro = 0.035 * g.W;
-  if (tt < meule(0)) return dalleHaut(g, 0) - appro * (1 - lisse(Math.max(0, tt) / meule(0)));
+  const appro = g.marge + 0.5 * g.Mh;
+  if (tt < meule(0)) return dalleHaut(g, 0) - appro * (1 - sortie(Math.max(0, tt) / ATTERRIT));
   for (let k = 0; k < NB; k++) {
     if (tt < percee(k)) return dalleHaut(g, k) + g.S * avance((tt - meule(k)) / GRIND);
     if (k === NB - 1) return dalleHaut(g, k) + g.S + g.R * 0.1 * sortie((tt - percee(k)) / 700);
@@ -180,6 +188,7 @@ interface RefsScene {
   machine: RefObject<HTMLImageElement>;
   meche: RefObject<HTMLDivElement>;
   etincelles: RefObject<HTMLImageElement>;
+  chaleur: RefObject<HTMLDivElement>;
   debris: RefObject<HTMLImageElement>;
   poussieres: RefObject<HTMLDivElement>[];
   gendarmes: RefObject<HTMLImageElement>;
@@ -194,7 +203,7 @@ function useSceneCasse(donnees: { current: DonneesScene | null }, refs: RefsScen
   useEffect(() => {
     const scene = refs.scene.current;
     if (!scene) return;
-    const g: Geo = { W: 0, H: 0, portrait: false, R: 0, S: 0, Hs: 0, Mw: 0, Mh: 0, Bw: 0, Lb: 0, cx: 0, total: 0, roc: 0, yPorte: 0, version: 0 };
+    const g: Geo = { W: 0, H: 0, portrait: false, R: 0, S: 0, Hs: 0, Mw: 0, Mh: 0, Bw: 0, Lb: 0, cx: 0, marge: 0, total: 0, roc: 0, yPorte: 0, version: 0 };
     const st = { cam: Number.NaN, cle: '', tourne: 0, dernier: performance.now(), percees: [false, false, false, false, false] };
 
     const mesurer = () => {
@@ -211,8 +220,9 @@ function useSceneCasse(donnees: { current: DonneesScene | null }, refs: RefsScen
       g.Mh = (g.Mw * MACHINE.h) / MACHINE.w;
       g.Bw = g.Mw * 0.26;
       g.Lb = W * (g.portrait ? 0.24 : 0.17);
-      // La rue : de quoi y suspendre la perceuse au départ.
-      g.Hs = g.Lb + g.Mh + W * 0.06;
+      // La rue : de quoi y suspendre la perceuse au départ, posée sous le titre du bonus (plus bas sur téléphone).
+      g.marge = W * (g.portrait ? 0.26 : 0.06);
+      g.Hs = g.Lb + g.Mh + g.marge;
       g.cx = W / 2;
       g.total = g.Hs + NB * (g.S + g.R);
       g.roc = H * 0.6;
@@ -270,6 +280,11 @@ function useSceneCasse(donnees: { current: DonneesScene | null }, refs: RefsScen
       if (etincelles) etincelles.style.width = `${W * (g.portrait ? 0.42 : 0.22)}px`;
       const debris = refs.debris.current;
       if (debris) debris.style.width = `${W * (g.portrait ? 0.5 : 0.28)}px`;
+      const chaleur = refs.chaleur.current;
+      if (chaleur) {
+        chaleur.style.width = `${g.Bw * 4}px`;
+        chaleur.style.height = `${g.Bw * 2.2}px`;
+      }
       refs.poussieres.forEach((r) => {
         const el = r.current;
         if (!el) return;
@@ -307,10 +322,12 @@ function useSceneCasse(donnees: { current: DonneesScene | null }, refs: RefsScen
       const mandrin = y - g.Lb;
       const haut = mandrin - g.Mh;
       const meulee = dalleMeulee(t, F);
-      const vib = reduit || meulee < 0 ? 0 : (Math.random() - 0.5) * 2.4;
+      // Plus la mèche s'enfonce dans la dalle, plus tout tremble.
+      const um = meulee >= 0 ? partMeulee(t, meulee) : 0;
+      const vib = reduit || meulee < 0 ? 0 : (Math.random() - 0.5) * 2.4 * (1 + um);
 
       // Les secousses : la mèche qui meule, la dalle qui cède.
-      let secousse = meulee >= 0 && !reduit ? (Math.random() - 0.5) * 2 : 0;
+      let secousse = meulee >= 0 && !reduit ? (Math.random() - 0.5) * 2 * (1 + 1.5 * um) : 0;
       for (let k = 0; k < NB; k++) {
         const u = t - percee(k);
         if (k < F && u >= 0 && u < 420 && !reduit) secousse += Math.sin(u * 0.09) * 8 * Math.exp(-u / 140);
@@ -365,10 +382,21 @@ function useSceneCasse(donnees: { current: DonneesScene | null }, refs: RefsScen
       if (etincelles) {
         if (meulee < 0 || reduit) etincelles.style.opacity = '0';
         else {
-          const s = 0.8 + Math.random() * 0.4;
+          const s = (0.72 + 0.5 * um) * (0.8 + Math.random() * 0.4);
           const w = etincelles.offsetWidth;
           etincelles.style.opacity = String(0.75 + Math.random() * 0.25);
           etincelles.style.transform = `translate3d(${g.cx - w / 2}px, ${y - w * 0.5}px, 0) rotate(${(Math.random() - 0.5) * 50}deg) scale(${s})`;
+        }
+      }
+      // La chaleur au point de contact : le métal rougit à mesure que la mèche s'enfonce.
+      const chaleur = refs.chaleur.current;
+      if (chaleur) {
+        if (meulee < 0) chaleur.style.opacity = '0';
+        else {
+          const w = chaleur.offsetWidth;
+          const h = chaleur.offsetHeight;
+          chaleur.style.opacity = String((0.3 + 0.7 * um) * (reduit ? 1 : 0.88 + Math.random() * 0.12));
+          chaleur.style.transform = `translate3d(${g.cx - w / 2}px, ${y - h * 0.45}px, 0) scale(${0.55 + 0.6 * um})`;
         }
       }
       // Les gravats et la poussière de la dernière percée.
@@ -377,11 +405,11 @@ function useSceneCasse(donnees: { current: DonneesScene | null }, refs: RefsScen
       const debris = refs.debris.current;
       if (debris) {
         const u = derniere >= 0 ? t - percee(derniere) : -1;
-        if (u < 0 || u > 1100 || reduit) debris.style.opacity = '0';
+        if (u < 0 || u > 1400 || reduit) debris.style.opacity = '0';
         else {
           const w = debris.offsetWidth;
-          const yb = dalleHaut(g, derniere) + g.S * 0.6 + g.R * 0.42 * (u / 1100) ** 1.6;
-          debris.style.opacity = String(Math.min(1, 1.6 - u / 700));
+          const yb = dalleHaut(g, derniere) + g.S * 0.6 + g.R * 0.66 * (u / 1400) ** 1.7;
+          debris.style.opacity = String(Math.min(1, 2 - u / 700));
           debris.style.transform = `translate3d(${g.cx - w / 2}px, ${yb}px, 0) scale(${0.85 + u / 2500})`;
         }
       }
@@ -540,6 +568,7 @@ export function BonusBraquage({ v, b, nom }: { v: VueBW; b: VueBonusBW; nom: str
       machine: nouvelleRef(),
       meche: nouvelleRef(),
       etincelles: nouvelleRef(),
+      chaleur: nouvelleRef(),
       debris: nouvelleRef(),
       poussieres: [nouvelleRef(), nouvelleRef(), nouvelleRef()],
       gendarmes: nouvelleRef(),
@@ -586,25 +615,30 @@ export function BonusBraquage({ v, b, nom }: { v: VueBW; b: VueBonusBW; nom: str
     };
     if (v.phase !== 'bonus' && nom !== 'revele') return;
     if (nom === 'intro' && v.phase === 'bonus' && t > 200) fois('intro', () => jouerEffet('bw_coffre', { volume: 0.6, vitesse: 0.85 }));
+    // Chaque son a sa fenêtre : un téléphone qui revient d'un autre onglet ne les joue pas tous d'un coup.
+    const entre = (debut: number, marge: number) => t >= debut && t < debut + marge;
     if (descente) {
-      fois('moteur', () => jouerEffet('br_moteur'));
+      if (entre(0, 1500)) fois('moteur', () => jouerEffet('br_moteur'));
       for (let k = 0; k < NB; k++) {
-        if (k > Fe || (Fe < NB && k === Fe && t >= ta)) break;
-        if (t >= meule(k) && t < percee(k) + 200) fois(`meule${k}`, () => jouerEffet('br_meule', { vitesse: 0.94 + k * 0.05 }));
-        if (k < Fe && t >= percee(k)) fois(`percee${k}`, () => jouerEffet('br_percee', { vitesse: 1.05 - k * 0.05 }));
+        if (k > Fe) break;
+        // La dalle de l'alarme : la mèche cale vite (le court crissement) ; une dalle percée : le long, qui monte.
+        const calee = Fe < NB && k === Fe;
+        if (entre(meule(k), 500)) fois(`meule${k}`, () => jouerEffet(calee ? 'br_meule' : 'br_meule_long', { vitesse: 0.96 + k * 0.04 }));
+        if (calee) break;
+        if (entre(percee(k), 600)) fois(`percee${k}`, () => jouerEffet('br_percee', { vitesse: 1.05 - k * 0.05 }));
         // La perceuse redescend dans le sous-sol percé : son moteur reprend jusqu'à la dalle suivante.
-        if (k < Fe && k < NB - 1 && t >= percee(k) + 300 && t < meule(k + 1)) fois(`moteur${k}`, () => jouerEffet('br_moteur', { volume: 0.45, vitesse: 1 + k * 0.04 }));
+        if (k < NB - 1 && entre(percee(k) + 300, 700)) fois(`moteur${k}`, () => jouerEffet('br_moteur', { volume: 0.45, vitesse: 1 + k * 0.04 }));
       }
       if (alarme) {
-        fois('alarme', () => jouerEffet('br_alarme'));
-        if (t >= ta + ALARME.gendarmes) fois('sifflet', () => jouerEffet('br_sifflet'));
-        if (t >= ta + ALARME.fuite) fois('fuite', () => jouerEffet('bw_sirene', { volume: 0.8 }));
+        if (entre(ta, 1500)) fois('alarme', () => jouerEffet('br_alarme'));
+        if (entre(ta + ALARME.gendarmes, 1500)) fois('sifflet', () => jouerEffet('br_sifflet'));
+        if (entre(ta + ALARME.fuite, 1500)) fois('fuite', () => jouerEffet('bw_sirene', { volume: 0.8 }));
       }
       if (siecle) {
-        if (ts >= SIECLE.porte) fois('cadran', () => jouerEffet('bw_cadran'));
-        if (ts >= SIECLE.ouvre) fois('porte', () => jouerEffet('bw_coffre'));
-        if (ts >= SIECLE.tresor) fois('tresor', () => jouerEffet('lingots_pluie'));
-        if (ts >= SIECLE.jackpot) fois('jackpot', () => jouerEffet('bw_jackpot'));
+        if (entre(tb5 + SIECLE.porte, 1000)) fois('cadran', () => jouerEffet('bw_cadran'));
+        if (entre(tb5 + SIECLE.ouvre, 1000)) fois('porte', () => jouerEffet('bw_coffre'));
+        if (entre(tb5 + SIECLE.tresor, 1500)) fois('tresor', () => jouerEffet('lingots_pluie'));
+        if (entre(tb5 + SIECLE.jackpot, 2500)) fois('jackpot', () => jouerEffet('bw_jackpot'));
       }
     }
     if (nom === 'revele') fois('evade', () => jouerEffet('bw_evade'));
@@ -657,6 +691,7 @@ export function BonusBraquage({ v, b, nom }: { v: VueBW; b: VueBonusBW; nom: str
           <div key={`p${i}`} className="brq-poussiere" ref={r} />
         ))}
         <img className="brq-debris" ref={refs.debris} src={IMG('debris')} alt="" draggable={false} />
+        <div className="brq-chaleur" ref={refs.chaleur} />
         <img className="brq-etincelles" ref={refs.etincelles} src={IMG('etincelles')} alt="" draggable={false} />
         <img className={`brq-sirene ${alarme ? 'sonne' : ''}`} ref={refs.sirene} src={IMG('sirene')} alt="" draggable={false} />
         <img className="brq-gendarmes" ref={refs.gendarmes} src={IMG('gendarmes')} alt="" draggable={false} />
