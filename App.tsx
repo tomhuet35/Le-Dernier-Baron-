@@ -299,6 +299,8 @@ export function App() {
   const [uidInvite, setUidInvite] = useState<string | null>(null);
   const uidInviteRef = useRef<string | null>(null);
   uidInviteRef.current = uidInvite;
+  /** L'identité confirmée par le serveur (compte ou invité) : le casino se recharge quand elle change. */
+  const [identite, setIdentite] = useState<string | null>(null);
 
   /** Présente le compte connecté au serveur (à chaque connexion du téléphone ou changement de compte). */
   const identifier = useCallback(async () => {
@@ -313,6 +315,7 @@ export function App() {
         setChargement(false);
         if (r.ok && r.invite) {
           setUidInvite(typeof r.uid === 'string' ? r.uid : null);
+          setIdentite(typeof r.uid === 'string' ? r.uid : null);
           setProfil((r.profil as ProfilCompte | null | undefined) ?? null);
         } else if (!r.ok && r.erreur && r.erreur !== 'Patiente une seconde.' && r.erreur !== 'Wait a second.') setMessage(r.erreur);
         return;
@@ -330,6 +333,7 @@ export function App() {
     setChargement(false);
     if (r.ok) {
       setUidInvite(null);
+      setIdentite(utilisateurRef.current?.uid ?? null);
       setProfil((r.profil as ProfilCompte | null | undefined) ?? null);
       // Invité qui se connecte : sa progression au casino a suivi (ou son compte avait déjà la sienne).
       if (r.transfert === 'fait') {
@@ -555,7 +559,7 @@ export function App() {
           module={chargerCasino}
           enfants={(pret) => (
             <Suspense fallback={null}>
-              <Casino appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} onPret={pret} />
+              <Casino key={identite ?? 'casino'} appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} onPret={pret} />
             </Suspense>
           )}
         />
@@ -572,7 +576,7 @@ export function App() {
         module={chargerCasino}
         enfants={(pret) => (
           <Suspense fallback={null}>
-            <Casino appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} onPret={pret} />
+            <Casino key={identite ?? 'casino'} appel={appel} compte={compte} onQuitter={quitterCasino} invitation={casinoInvitation} onInvitation={finInvitationCasino} onPret={pret} />
           </Suspense>
         )}
       />

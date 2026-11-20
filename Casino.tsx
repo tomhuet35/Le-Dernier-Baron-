@@ -2645,6 +2645,8 @@ export default function Casino({
       <EcranProfil
         key={profilUid ?? 'moi'}
         uid={profilUid}
+        compte={compte}
+        onTailleur={() => setEcran('tailleur')}
         appel={appel}
         vue={vue}
         onVue={setVue}

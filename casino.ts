@@ -101,6 +101,8 @@ export interface VueCasino {
   /** Pseudo et avatar du joueur (en-tête du salon). */
   nom: string;
   avatar: number;
+  /** Le personnage habituel du compte (celui qu'on retrouve en ôtant sa tenue du Tailleur). */
+  avatarCompte?: number;
   solde: number;
   /** Prochaine roulette du salon (minuit à Paris), ou null si elle est disponible. */
   roueProchaine: number | null;
