@@ -25,13 +25,18 @@
 .bwx-couche.actif.apres-tunnel { animation: bwx-fondu 0.45s ease-out 0.3s both; }
 
 /* Le tunnel : l'obscurité monte, les lampes défilent, puis on ressort dans le nouveau décor. Les rails restent devinés. */
-.bwx-tunnel { position: absolute; inset: 0; z-index: 4; pointer-events: none; background: linear-gradient(180deg, #000 0%, #070403 55%, rgba(14, 9, 6, 0.9) 78%, rgba(14, 9, 6, 0.72) 100%); opacity: 0; animation: bwx-tunnel 1.9s ease-in-out both; }
-.bwx-tunnel i { position: absolute; left: 0; right: 0; top: 26%; height: 22%; background-image: radial-gradient(circle at 50% 50%, rgba(255, 226, 160, 1) 0 3px, rgba(255, 176, 80, 0.5) 7px, rgba(255, 150, 60, 0.12) 18px, transparent 30px); background-size: 210px 100%; background-repeat: repeat-x; animation: bwx-lampes 0.46s linear infinite; }
-.bwx-tunnel::after { content: ''; position: absolute; inset: 0; background: radial-gradient(90% 70% at 50% 62%, rgba(255, 170, 90, 0.1), transparent 70%); }
-@keyframes bwx-tunnel { 0% { opacity: 0; } 18% { opacity: 1; } 53% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes bwx-lampes { to { background-position: -210px 0; } }
+.bwx-tunnel { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; background: #0a0604; opacity: 0; animation: bwx-tunnel 2.8s ease-in-out both; }
+/* Les murs du tunnel (arches, lanternes, voie), assombris vers le haut et le bas. */
+.bwx-tunnel-murs { position: absolute; left: 0; width: 100%; background-repeat: repeat-x; }
+.bwx-tunnel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.15) 22%, transparent 45%, transparent 82%, rgba(0, 0, 0, 0.55) 100%), radial-gradient(120% 90% at 50% 55%, transparent 55%, rgba(0, 0, 0, 0.5) 100%); }
+@keyframes bwx-tunnel { 0% { opacity: 0; } 12% { opacity: 1; } 62% { opacity: 1; } 100% { opacity: 0; } }
 .bwx-train { transition: filter 0.35s; }
-.bwx-monde.dans-tunnel .bwx-train { filter: brightness(0.6) saturate(0.85); }
+.bwx-monde.dans-tunnel .bwx-train { filter: brightness(0.72) saturate(0.9); }
+/* Dans le tunnel, la gare et son panneau attendent la sortie. */
+.bwx-train > .bwx-gare, .bwx-train > .bwx-panneau { transition: opacity 0.5s; }
+.bwx-monde.dans-tunnel .bwx-gare, .bwx-monde.dans-tunnel .bwx-panneau { opacity: 0; }
+.bwx-neige, .bwx-pluie { transition: opacity 0.6s; }
+.bwx-monde.dans-tunnel .bwx-neige, .bwx-monde.dans-tunnel .bwx-pluie { opacity: 0 !important; }
 .bwx-fond { position: absolute; left: 0; top: 0; background-size: 100% 100%; background-repeat: no-repeat; will-change: transform; transition: filter 0.08s; }
 .bwx-fond.eclaire { filter: brightness(1.8) saturate(1.2) contrast(1.05); }
 .bwx-voie { position: absolute; left: 0; width: 100%; background-repeat: repeat-x; background-color: #050302; }
@@ -202,9 +207,10 @@
 .bwx-arrivee { position: absolute; inset: 0; z-index: 24; pointer-events: none; }
 .bwx-terminus { position: absolute; left: 50%; top: 52px; width: min(44%, 430px); transform: translateX(-50%); animation: bwx-terminus 0.9s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
 .bwx-terminus img { display: block; width: 100%; height: auto; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 22px rgba(255, 190, 90, 0.5)); }
-.bwx-terminus-texte { position: absolute; left: 17%; right: 17%; top: 38%; height: 34%; overflow: hidden; display: grid; place-items: center; align-content: center; container-type: inline-size; text-align: center; line-height: 1; }
-.bwx-terminus-texte strong { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: 10.5cqw; line-height: 1; letter-spacing: 0.05em; text-transform: uppercase; color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.85), 0 2px 0 #2a060c; }
-.bwx-terminus-texte small { margin-top: 3%; font-size: 4.6cqw; line-height: 1; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #fff1c4; }
+.bwx-terminus-texte { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.55)); }
+.bwx-terminus-texte text { paint-order: stroke fill; stroke-linejoin: round; }
+.bwx-terminus-texte .grand { font-family: 'Limelight', var(--titre), serif; font-size: 74px; fill: #ffd774; stroke: #2a060c; stroke-width: 4px; }
+.bwx-terminus-texte .petit { font-family: system-ui, sans-serif; font-weight: 800; font-size: 25px; fill: #fff1c4; stroke: #2a060c; stroke-width: 3px; }
 @keyframes bwx-terminus { from { opacity: 0; transform: translate(-50%, -120%) rotate(-3deg); } }
 .bwx-gagnant { position: absolute; left: 50%; top: calc(52px + min(44cqw, 430px) * 0.36); margin: 0; padding: 3px 14px; border-radius: 99px; border: 1.5px solid #ffd774; background: var(--couleur); color: var(--texte); font-weight: 900; font-size: clamp(12px, 2.6vw, 15px); white-space: nowrap; transform: translateX(-50%); box-shadow: 0 0 18px rgba(255, 210, 110, 0.7); animation: bwx-pop-centre 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) 0.5s both; }
 .bwx-coffre-baron { position: absolute; left: 50%; top: 60%; z-index: 25; display: grid; width: max-content; max-width: 92%; justify-items: center; gap: 4px; padding: 12px 28px 14px; border-radius: 22px; border: 2px solid #ffcf6b; background: radial-gradient(130% 150% at 50% 0%, #50340a, #140a02); box-shadow: 0 0 50px rgba(255, 200, 110, 0.6), 0 16px 34px rgba(0, 0, 0, 0.75); transform: translate(-50%, -50%); text-align: center; pointer-events: none; animation: bwx-annonce 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) both; }

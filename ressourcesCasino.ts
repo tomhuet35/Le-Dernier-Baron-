@@ -183,6 +183,7 @@ export const IMAGES_JEUX = [
   '/cartes/bw-ex2-istanbul.webp',
   '/cartes/bw-ex2-istanbul-voie.webp',
   '/cartes/bw-ex2-loco.webp',
+  '/cartes/bw-ex2-tunnel.webp',
   '/cartes/bw-ex2-gare-paris.webp',
   '/cartes/bw-ex2-gare-venise.webp',
   '/cartes/bw-ex2-gare-istanbul.webp',
