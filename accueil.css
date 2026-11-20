@@ -678,3 +678,18 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
   .ac-barre.en-jeu .ac-boutique > span:not(.pastille-nombre) { display: none; }
   .ac-barre.en-jeu .ac-menu, .ac-barre.en-jeu .ac-menu img { width: 50px !important; height: 50px !important; }
 }
+
+/* iPad et ordinateur : barre du haut des jeux plus généreuse, tout centré en hauteur dans le cadre doré. */
+@media (min-width: 601px) {
+  .ac-barre.en-jeu { min-height: 84px; align-items: center; padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 8px; }
+  .ac-barre.en-jeu .ac-salon { height: 50px; padding: 0 20px; font-size: 18px; }
+  .ac-barre.en-jeu .ac-moi .cs-avatar { --taille: 58px !important; width: 58px !important; height: 58px !important; }
+  .ac-barre.en-jeu .ac-niveau b { font-size: 18px; }
+  .ac-barre.en-jeu .ac-compteur { height: 54px !important; }
+  .ac-barre.en-jeu .ac-compteur b { font-size: 26px !important; }
+  .ac-barre.en-jeu .ac-compteur > img:first-child { width: 50px !important; height: 50px !important; }
+  .ac-barre.en-jeu .ac-compteur.ac-rubis { width: clamp(140px, 15vw, 190px); }
+  .ac-barre.en-jeu .ac-compteur.ac-dollars { width: clamp(210px, 25vw, 330px); }
+  .ac-barre.en-jeu .ac-boutique, .ac-barre.en-jeu .ac-boutique > img { width: 62px !important; height: 62px !important; }
+  .ac-barre.en-jeu .ac-menu, .ac-barre.en-jeu .ac-menu img { width: 58px !important; height: 58px !important; }
+}

@@ -3,16 +3,18 @@
  * ici on le rejoue : les symboles tombent, les gagnants éclatent comme des bulles, le multiplicateur grimpe.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { COLONNES_BULLES, LIGNES_BULLES, MISES_BULLES, MIN_GROUPE, GAINS_BULLES, type EtapeBulles, type GrilleBulles, type ResultatBulles, type SymboleBulles } from '../../shared/bulles';
+import { COLONNES_BULLES, LIGNES_BULLES, MISES_BULLES, MIN_GROUPE, GAINS_BULLES, MULTIS_CASCADE, type EtapeBulles, type GrilleBulles, type ResultatBulles, type SymboleBulles } from '../../shared/bulles';
 import type { VueCasino } from '../../shared/casino';
 import type { Appel } from './App';
-import { dollars, dollarsCourt, Jeton } from './casinoOutils';
+import { dollars, dollarsCourt } from './casinoOutils';
 import { tr } from './traduction';
 import { jouerEffet } from './ui';
 import './bulles.css';
 
 const CLE_MISE = 'baron-bulles-mise';
 const pause = (ms: number) => new Promise((ok) => window.setTimeout(ok, ms));
+/** Les paliers montrés sur l'échelle (au-dessus de ×1). */
+const ECHELLE = [...new Set(MULTIS_CASCADE)].filter((m) => m > 1).slice(-6);
 const ORDRE: SymboleBulles[] = ['couronne', 'rubis', 'perle', 'bouteille', 'coupe', 'fraise', 'bouchon'];
 
 /** De combien de rangées chaque case est tombée pour arriver là (après l'éclatement des gagnantes). */
@@ -48,6 +50,9 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
   const [bandeau, setBandeau] = useState<string | null>(null);
   const [gratuit, setGratuit] = useState<{ n: number; total: number } | null>(null);
   const [fete, setFete] = useState<number | null>(null);
+  const [annonceBonus, setAnnonceBonus] = useState(false);
+  /** La soirée du joueur sur cette machine (depuis qu'il est entré). */
+  const [soiree, setSoiree] = useState({ tours: 0, mise: 0, gain: 0, meilleur: 0, cascades: 0, bonus: 0, derniers: [] as { gain: number; x: number }[] });
   const [table, setTable] = useState(false);
   /** Le gain d'une cascade, qui s'envole au-dessus de la grille. */
   const [flottant, setFlottant] = useState<{ cle: number; texte: string } | null>(null);
@@ -113,7 +118,9 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
     if (b.gratuits.length && vivant.current) {
       setBandeau(tr('4 Bulles Bonus : tours gratuits !', '4 Bonus Bubbles: free spins!'));
       jouerEffet('lingots_pluie');
-      await pause(1600);
+      setAnnonceBonus(true);
+      await pause(2200);
+      setAnnonceBonus(false);
       for (let i = 0; i < b.gratuits.length && vivant.current; i++) {
         setGratuit({ n: i + 1, total: b.gratuits.length });
         await rejouer(b.gratuits[i].etapes, cumul);
@@ -125,6 +132,16 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
     setMasque(0);
     setBandeau(null);
     setFini(b.gain);
+    const cascades = Math.max(0, ...[b.tour, ...b.gratuits].map((t) => t.etapes.filter((e) => e.eclats.length).length));
+    setSoiree((x) => ({
+      tours: x.tours + 1,
+      mise: x.mise + b.mise,
+      gain: x.gain + b.gain,
+      meilleur: Math.max(x.meilleur, b.gain),
+      cascades: Math.max(x.cascades, cascades),
+      bonus: x.bonus + (b.gratuits.length ? 1 : 0),
+      derniers: b.gain > 0 ? [{ gain: b.gain, x: Math.round((b.gain / b.mise) * 10) / 10 }, ...x.derniers].slice(0, 6) : x.derniers,
+    }));
     if (b.gain >= 20 * b.mise) {
       setFete(b.gain);
       jouerEffet('lingots_pluie');
@@ -140,6 +157,11 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
 
   return (
     <div className="cas-ecran bl-ecran">
+      <div className="bl-bulles-deco" aria-hidden="true">
+        {Array.from({ length: 14 }, (_, k) => (
+          <i key={k} style={{ '--x': `${(k * 37) % 100}%`, '--d': `${7 + (k % 5) * 1.6}s`, '--r': `${-((k * 1.3) % 9)}s`, '--t': `${10 + (k % 4) * 8}px` } as CSSProperties} />
+        ))}
+      </div>
       <header className="cas-barre">
         <button type="button" className="cas-retour" onClick={onRetour} disabled={occupe}>
           ‹ {tr('Machines', 'Slots')}
@@ -149,8 +171,42 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
       </header>
 
       <section className="bl-scene">
+        <aside className="bl-panneau bl-carte" aria-label={tr('Carte des gains', 'Pay card')}>
+          <h2>{tr('La Carte des Gains', 'The Pay Card')}</h2>
+          <p className="bl-panneau-aide">{tr(`À ta mise de ${dollarsCourt(mise)}`, `At your ${dollarsCourt(mise)} bet`)}</p>
+          <div className="bl-carte-tete">
+            <span />
+            <span>8-9</span>
+            <span>10-11</span>
+            <span>12+</span>
+          </div>
+          {ORDRE.map((sy) => (
+            <div key={sy} className="bl-carte-ligne">
+              <img src={`/cartes/bl-${sy}.webp`} alt={sy} />
+              {GAINS_BULLES[sy].map((g, k) => (
+                <span key={k}>{dollarsCourt(Math.round(g * mise))}</span>
+              ))}
+            </div>
+          ))}
+          <p className="bl-carte-special">
+            <img src="/cartes/bl-joker.webp" alt="" /> {tr('remplace tout', 'replaces all')}
+          </p>
+          <p className="bl-carte-special">
+            <img src="/cartes/bl-bonus.webp" alt="" /> {tr('× 4 : 10 tours gratuits', '× 4: 10 free spins')}
+          </p>
+        </aside>
+        <div className="bl-centre">
+        <div className="bl-echelle" aria-label={tr(`Multiplicateur ×${ecran.multi}`, `Multiplier ×${ecran.multi}`)}>
+          <img src="/cartes/bl-echelle.webp" alt="" draggable={false} />
+          {ECHELLE.map((m, k) => (
+            <b key={m} className={ecran.multi >= m ? 'allume' : ''} style={{ left: `${20.5 + k * 11.75}%` }}>
+              ×{m}
+            </b>
+          ))}
+        </div>
         <div className="bl-machine">
           <img className="bl-cadre" src="/cartes/bl-cadre.webp" alt="" draggable={false} />
+          <img className="bl-cadre-tel" src="/cartes/bl-cadre-tel.webp" alt="" draggable={false} />
           <div className="bl-fenetre">
             <div className="bl-grille" key={ecran.cle}>
               {ecran.grille.map((col, c) =>
@@ -166,10 +222,6 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
                 )),
               )}
             </div>
-            <div className="bl-multi" aria-label={tr(`Multiplicateur ×${ecran.multi}`, `Multiplier ×${ecran.multi}`)}>
-              <img src="/cartes/bl-badge.webp" alt="" draggable={false} />
-              <b key={ecran.multi}>×{ecran.multi}</b>
-            </div>
             {flottant && (
               <strong key={flottant.cle} className="bl-flottant" aria-hidden="true">
                 {flottant.texte}
@@ -177,11 +229,44 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
             )}
             {gratuit && (
               <div className="bl-gratuits">
-                {tr('Tour gratuit', 'Free spin')} {gratuit.n}/{gratuit.total}
+                <img src="/cartes/bl-ruban.webp" alt="" draggable={false} />
+                <span>
+                  {tr('Tour gratuit', 'Free spin')} {gratuit.n}/{gratuit.total}
+                </span>
               </div>
             )}
           </div>
         </div>
+        </div>
+        <aside className="bl-panneau bl-soiree" aria-label={tr('Ta soirée', 'Your evening')}>
+          <h2>{tr('Ta Soirée', 'Your Evening')}</h2>
+          <dl>
+            <dt>{tr('Tours', 'Spins')}</dt>
+            <dd>{soiree.tours}</dd>
+            <dt>{tr('Misé', 'Bet')}</dt>
+            <dd>{dollarsCourt(soiree.mise)}</dd>
+            <dt>{tr('Gagné', 'Won')}</dt>
+            <dd className="or">{dollarsCourt(soiree.gain)}</dd>
+            <dt>{tr('Meilleur gain', 'Best win')}</dt>
+            <dd>{dollarsCourt(soiree.meilleur)}</dd>
+            <dt>{tr('Cascades d’affilée', 'Cascades in a row')}</dt>
+            <dd>{soiree.cascades}</dd>
+            <dt>{tr('Tours gratuits', 'Free spins')}</dt>
+            <dd>{soiree.bonus}</dd>
+          </dl>
+          <h3>{tr('Derniers gains', 'Latest wins')}</h3>
+          {soiree.derniers.length ? (
+            <ul>
+              {soiree.derniers.map((d, k) => (
+                <li key={`${soiree.tours}-${k}`}>
+                  <b>+{dollarsCourt(d.gain)}</b> <small>×{d.x}</small>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="bl-panneau-aide">{tr('Fais éclater tes premières bulles !', 'Pop your first bubbles!')}</p>
+          )}
+        </aside>
       </section>
 
       {/* Le socle de la machine (même habillage que le Bandit) : le résultat, la mise et le bouton. */}
@@ -211,23 +296,23 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         </div>
         <div className="bl-commandes">
           <button type="button" className="bl-pas" onClick={() => setMise(MISES_BULLES[Math.max(0, i - 1)])} disabled={occupe || i <= 0} aria-label={tr('Baisser la mise', 'Lower the bet')}>
-            −
+            <img src="/cartes/bl-moins.webp" alt="" draggable={false} />
           </button>
           <div className="bl-mise">
-            <Jeton valeur={mise} />
+            <img className="bl-jeton" src="/cartes/bl-jeton.webp" alt="" draggable={false} />
             <span>
               <small>{tr('Mise', 'Bet')}</small>
               <b>{dollarsCourt(mise)}</b>
             </span>
           </div>
           <button type="button" className="bl-pas" onClick={() => setMise(MISES_BULLES[Math.min(MISES_BULLES.length - 1, i + 1)])} disabled={occupe || i >= MISES_BULLES.length - 1} aria-label={tr('Monter la mise', 'Raise the bet')}>
-            +
+            <img src="/cartes/bl-plus.webp" alt="" draggable={false} />
           </button>
           <button type="button" className="bl-tourner" onClick={() => void tourner()} disabled={occupe}>
             <span>{tr('Tourner', 'Spin')}</span>
           </button>
           <button type="button" className="bl-table-bouton" onClick={() => setTable((x) => !x)} aria-label={tr('Table des gains', 'Pay table')}>
-            i
+            <img src="/cartes/bl-info.webp" alt="" draggable={false} />
           </button>
         </div>
       </div>
@@ -262,6 +347,12 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         </div>
       )}
 
+      {annonceBonus && (
+        <div className="bl-annonce-bonus" aria-live="assertive">
+          <img src="/cartes/bl-bonus-annonce.webp" alt="" />
+          <strong>{tr('10 tours gratuits !', '10 free spins!')}</strong>
+        </div>
+      )}
       {fete !== null && (
         <div className="bl-fete" aria-live="assertive">
           <img src="/cartes/bl-jackpot.webp" alt="" />
