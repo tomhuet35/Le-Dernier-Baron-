@@ -607,3 +607,6 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
   .ac-une-haut .ac-une-contenu > *:not(.ac-une-logo) { padding-left: 26px !important; padding-right: 30px !important; }
   .ac-une-haut .cas-affiche-texte, .ac-une-haut .cas-affiche-jouer { margin-right: 0; }
 }
+
+/* Le chiffre des pastilles bien au centre du rubis. */
+.ac .pastille-nombre { display: inline-grid !important; place-items: center; text-align: center; padding: 0 4px 1px !important; line-height: 1 !important; box-sizing: border-box; }
