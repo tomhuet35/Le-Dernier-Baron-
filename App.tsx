@@ -108,6 +108,11 @@ const CLE_SESSION = 'ldb-session';
 const CLE_NOM = 'ldb-nom';
 /** Casino : la clé secrète de l'invité (sa progression, sans compte, est rattachée à cet appareil). */
 const CLE_INVITE = 'bf-invite';
+/**
+ * Casino : l'invité de cet appareil est en veille (on s'est connecté à un compte ici). Il ne reprend plus tout seul,
+ * même après une déconnexion : seul « Jouer sans compte » le réveille, avec sa progression.
+ */
+const CLE_INVITE_VEILLE = 'bf-invite-veille';
 /** Casino : le joueur a déjà été prévenu que son compte gardait sa propre progression. */
 const CLE_INVITE_PREVENU = 'bf-invite-prevenu';
 function nouvelleCleInvite(): string {
@@ -301,14 +306,17 @@ export function App() {
   uidInviteRef.current = uidInvite;
   /** L'identité confirmée par le serveur (compte ou invité) : le casino se recharge quand elle change. */
   const [identite, setIdentite] = useState<string | null>(null);
+  /** Le téléphone sait-il déjà s'il est connecté à un compte ? (Il le retrouve un instant après le chargement.) */
+  const authConnueRef = useRef(false);
 
   /** Présente le compte connecté au serveur (à chaque connexion du téléphone ou changement de compte). */
   const identifier = useCallback(async () => {
     const m = moduleRef.current;
-    if (!m || !socket.connected) return;
+    // Tant que le compte de ce téléphone n'est pas retrouvé, on attend : sinon un compte connecté passerait pour un invité.
+    if (!m || !socket.connected || !authConnueRef.current) return;
     const cleInvite = ESPACE === 'casino' ? lire(CLE_INVITE) : null;
     if (!utilisateurRef.current) {
-      if (cleInvite) {
+      if (cleInvite && !lire(CLE_INVITE_VEILLE)) {
         // Casino sans compte : l'appareil se présente avec sa clé d'invité.
         setChargement(true);
         const r = await demander('identifier', { invite: cleInvite });
@@ -321,6 +329,7 @@ export function App() {
         return;
       }
       setUidInvite(null);
+      setIdentite(null);
       setProfil(null);
       await demander('identifier', { jeton: '' });
       return;
@@ -334,6 +343,8 @@ export function App() {
     if (r.ok) {
       setUidInvite(null);
       setIdentite(utilisateurRef.current?.uid ?? null);
+      // Un compte s'est connecté sur cet appareil : son invité ne reprendra plus tout seul.
+      if (cleInvite) ecrire(CLE_INVITE_VEILLE, '1');
       setProfil((r.profil as ProfilCompte | null | undefined) ?? null);
       // Invité qui se connecte : sa progression au casino a suivi (ou son compte avait déjà la sienne).
       if (r.transfert === 'fait') {
@@ -369,6 +380,7 @@ export function App() {
         moduleRef.current = m;
         setModule(m);
         arreter = m.suivre((u) => {
+          authConnueRef.current = true;
           utilisateurRef.current = u;
           setUtilisateur(u);
           setPret(true);
@@ -517,6 +529,7 @@ export function App() {
       uid: utilisateur?.uid ?? uidInvite,
       invite: !utilisateur && !!uidInvite,
       jouerInvite: () => {
+        ecrire(CLE_INVITE_VEILLE, null);
         if (!lire(CLE_INVITE)) ecrire(CLE_INVITE, nouvelleCleInvite());
         void identifier();
       },
