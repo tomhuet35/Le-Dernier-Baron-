@@ -165,7 +165,9 @@
 .bw-bonus-resultat strong { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 5.4vw, 30px); color: #fff1c4; text-shadow: 0 0 16px rgba(255, 200, 110, 0.8); }
 .bw-bonus-resultat.perdu { border-color: rgba(255, 154, 138, 0.7); background: rgba(40, 10, 8, 0.95); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.7); }
 .bw-bonus-resultat.perdu strong { color: #ffd0c4; text-shadow: none; font-size: clamp(15px, 4.4vw, 22px); }
-.bw-bonus-resultat.jackpot img { width: 180px; margin-top: -4px; }
+.bw-resultat-plaque { position: relative; display: grid; place-items: center; width: 180px; margin-top: -4px; line-height: 0; }
+.bw-resultat-plaque img { width: 100%; height: auto; }
+.bw-resultat-plaque b { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 2%; font-family: var(--titre); font-weight: 400; font-size: 22px; line-height: 1; letter-spacing: 0.08em; color: #fff1c4; text-shadow: 0 0 10px rgba(255, 200, 100, 0.9); }
 .bw-bonus-resultat.spectateur { font-size: 12.5px; color: var(--creme); font-weight: 700; border-color: rgba(214, 168, 75, 0.5); background: rgba(8, 6, 14, 0.88); box-shadow: none; }
 /* L'écran de chargement d'un mini-jeu */
 .bw-chargement { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; color: #fff1c4; background: radial-gradient(90% 80% at 50% 40%, rgba(103, 29, 43, 0.9), rgba(8, 5, 10, 0.98) 75%), #07050a; animation: bw-fondu-chargement 0.4s ease-out both; }
@@ -311,52 +313,6 @@
 .bw-routes-bilan li.mien { background: rgba(214, 168, 75, 0.2); box-shadow: inset 0 0 0 1px #ffcf6b; }
 
 /* LE BRAQUAGE */
-.bw-braquage { background-image: url('/cartes/bw-salle-coffres.webp'); }
-.bw-porte { position: absolute; left: 50%; top: 52%; z-index: 4; height: 70%; width: auto; max-width: none; transform: translate(-50%, -50%); filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.7)); transition: transform 1.4s cubic-bezier(0.5, 0, 0.3, 1), opacity 1.4s; }
-.bw-braquage.intro .bw-porte { animation: bw-arrive 0.9s ease-out both; }
-.bw-porte.ouverte { transform: translate(-150%, -50%) perspective(900px) rotateY(68deg) scale(0.92); opacity: 0.35; }
-.bw-braquage.codeRevele .bw-porte, .bw-braquage.mecaRevele .bw-porte { animation: bw-porte-tremble 0.5s ease-in-out 2; }
-@keyframes bw-porte-tremble { 25% { transform: translate(-50%, -50%) rotate(-2deg); } 75% { transform: translate(-50%, -50%) rotate(2deg); } }
-.bw-codes { position: absolute; left: 50%; bottom: 18%; z-index: 10; display: flex; gap: 10px; transform: translateX(-50%); }
-.bw-scene .bw-code { display: grid; gap: 2px; justify-items: center; min-width: 124px; padding: 8px 12px; border-radius: 10px; border: 2px solid #b8862e; background: linear-gradient(180deg, #fbe7b0, #c99a44 55%, #8a6220); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 16px rgba(0, 0, 0, 0.6); color: #2a1606; animation: bw-carte-arrive 0.5s ease-out both; }
-.bw-code:nth-child(2) { animation-delay: 0.1s; }
-.bw-code:nth-child(3) { animation-delay: 0.2s; }
-.bw-code strong { font-family: 'Courier New', monospace; font-size: clamp(14px, 3.4vw, 19px); font-weight: 900; letter-spacing: 0.04em; white-space: nowrap; }
-.bw-code small { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; }
-.bw-code.x2 { box-shadow: 0 0 0 3px #fff1c4, 0 0 20px rgba(255, 215, 110, 0.9); }
-.bw-code.x1 { filter: saturate(0.5) brightness(0.85); }
-.bw-code.choisie { outline: 3px solid #fff; outline-offset: 2px; }
-.bw-cadran-bloc { position: absolute; left: 50%; top: 13%; height: 62%; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 6px; transform: translateX(-50%); }
-.bw-repere { flex: none; font-size: 26px; line-height: 1; color: #ff5a4a; text-shadow: 0 2px 6px #000; margin-bottom: -12px; z-index: 2; }
-.bw-cadran { position: relative; flex: none; height: calc(100% - 66px); aspect-ratio: 1; will-change: transform; cursor: pointer; }
-.bw-cadran img { position: absolute; inset: 16%; width: 68%; height: 68%; max-width: none; }
-.bw-cadran svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.bw-zone { stroke: #d6a84b; stroke-width: 1.2; }
-.bw-zone.cachee { fill: rgba(70, 18, 28, 0.92); }
-.bw-zone.cachee:nth-of-type(odd) { fill: rgba(30, 14, 10, 0.92); }
-.bw-zone.x1 { fill: #5b4a3a; }
-.bw-zone.x2 { fill: #c99a44; }
-.bw-zone.x3 { fill: #c4222c; }
-.bw-zone.mienne { stroke: #fff; stroke-width: 3; }
-.bw-cadran svg text { font-family: var(--titre); font-size: 15px; fill: #fff1c4; }
-.bw-scene .bw-arreter { flex: none; min-height: 44px; padding: 6px 18px; border-radius: 99px; border: 2px solid #fff1c4; background: radial-gradient(120% 140% at 50% 0%, #ffe9a8, #e9ad5b 50%, #a8742a); color: #1b120c; font-weight: 900; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6); }
-.bw-scene .bw-arreter:disabled { filter: grayscale(0.6); }
-.bw-compartiments { position: absolute; left: 50%; top: 53%; z-index: 10; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3%; width: min(60%, 460px); transform: translate(-50%, -50%); }
-.bw-compartiment { position: relative; transition: transform 0.25s; animation: bw-carte-arrive 0.6s ease-out both; }
-.bw-compartiment:nth-child(2) { animation-delay: 0.1s; }
-.bw-compartiment:nth-child(3) { animation-delay: 0.2s; }
-.bw-compartiment:nth-child(4) { animation-delay: 0.3s; }
-.bw-compartiment img { width: 100%; height: auto; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.7)); }
-.bw-compartiment b { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 2px 10px; border-radius: 10px; background: rgba(10, 6, 4, 0.82); border: 1px solid #ffcf6b; font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 4.4vw, 26px); color: #fff1c4; white-space: nowrap; animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
-.bw-compartiment.jackpot b { background: linear-gradient(180deg, #ffe08a, #b3261c); color: #fff; }
-.bw-compartiment:not(:disabled):hover { transform: translateY(-4%); }
-.bw-compartiment.choisie { transform: scale(1.06); }
-.bw-compartiment.choisie img { filter: drop-shadow(0 0 16px rgba(255, 215, 110, 0.95)) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.7)); }
-.bw-serrures { position: absolute; left: 10px; top: 54px; z-index: 16; list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.bw-serrures li { padding: 2px 10px; border-radius: 99px; background: rgba(8, 6, 14, 0.85); border: 1px solid rgba(214, 168, 75, 0.4); font-size: 11.5px; font-weight: 800; color: var(--creme-doux); }
-.bw-serrures li.en-cours { border-color: #ffcf6b; color: #fff1c4; animation: bw-scintille 1.4s ease-in-out infinite; }
-.bw-serrures li.faite { border-color: #8fd18a; color: #b8f0b4; }
-.bw-serrures li b { color: #ffcf6b; }
 
 /* La fête d'un jackpot */
 .bw-fete { position: fixed; inset: 0; z-index: 85; display: grid; place-content: center; justify-items: center; gap: 4px; background: radial-gradient(circle, rgba(60, 30, 4, 0.85), rgba(0, 0, 0, 0.92)); text-align: center; animation: bw-fete 5.2s ease-out both; }
@@ -411,10 +367,6 @@
 @media (max-width: 640px) {
   .bw-bonus { aspect-ratio: 4 / 5; }
   .bw-bonus-titre { top: 42px; }
-  .bw-serrures { top: 96px; left: 50%; right: auto; transform: translateX(-50%); display: flex; gap: 4px; white-space: nowrap; }
-  .bw-serrures li { font-size: 11px; padding: 2px 8px; }
-  .bw-cadran-bloc { top: 22%; height: 54%; }
-  .bw-compartiments { top: 56%; width: 78%; }
   .bw-perso-baron { height: 52%; right: -8%; opacity: 0.95; }
   .bw-cartes { left: 3%; right: 3%; top: 20%; bottom: 36%; gap: 3%; }
   .bw-perso-pick { height: 50%; left: -6%; }
@@ -441,8 +393,6 @@
   .bw-defile::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22%; background: linear-gradient(180deg, #1c1410, #0b0806); }
   .bw-issue img { height: 62%; bottom: 22%; }
   .bw-routes-bilan { top: auto; bottom: 108px; right: 50%; transform: translateX(50%); }
-  .bw-porte { height: 46%; top: 44%; }
-  .bw-codes { flex-direction: column; bottom: 20%; gap: 6px; }
   .bw-bonus-resultat { bottom: 12px; }
   .bw-bilan { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Les jackpots en deux rangées : les quatre plaques restent entières à l'écran. */
@@ -531,9 +481,6 @@
 
 /* Le multiplicateur de la roue compris dès le début des bonus. */
 .bw-route em .bw-route-multi { display: block; flex-basis: 100%; margin-top: 1px; font-family: system-ui, sans-serif; font-size: 10.5px; font-weight: 800; color: #ff9a8a; letter-spacing: 0.02em; }
-.bw-serrures li.multi-roue b { color: #ff9a8a; }
-.bw-serrures li.total { border-color: #ffd774; animation: bw-boost 0.75s cubic-bezier(0.3, 1.6, 0.5, 1); }
-.bw-serrures li.total b { color: #fff1c4; text-shadow: 0 0 10px #ffd774, 0 0 20px rgba(255, 140, 60, 0.9); }
 /* Les gains tiennent dans leur cadre : la fourchette d'une route passe sur deux lignes, le nombre d'une carte se règle sur sa largeur. */
 .bw-route em { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 0 0.3em; }
 .bw-carte-face { container-type: inline-size; }

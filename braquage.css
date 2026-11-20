@@ -1,0 +1,216 @@
+/* Le Braquage (The Baron's Wheel) : la banque en coupe, la perceuse, l'alarme, le Coffre du Siècle. La perceuse, la
+   mèche, les chaînes, la caméra, les effets et les gendarmes sont placés par CasinoBraquage.tsx à chaque image ; ici,
+   les habits et les animations. */
+
+.bw-bonus.braquage { background: #07040a; }
+.brq { position: absolute; inset: 0; overflow: hidden; background: #07040a; color: #fff1c4; container-type: size; contain: layout; --bw: 30px; --pd: 100px; }
+
+/* La banque en coupe */
+.brq-monde { position: absolute; left: 0; top: 0; width: 100%; height: 100%; will-change: transform; }
+.brq-monde.cache { visibility: hidden; }
+.brq-monde > * { position: absolute; left: 0; top: 0; }
+.brq-surface { width: 100%; background-size: cover; background-position: center bottom; background-color: #0b0a1c; }
+.brq-surface::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(4, 3, 12, 0.55), transparent 45%); }
+.brq-roc { width: 100%; background-repeat: repeat; background-position: center top; filter: brightness(0.42) saturate(0.75); }
+.brq-roc::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0.2), #07040a 85%); }
+.brq-salle { width: 100%; background-size: cover; background-position: center; background-color: #120804; }
+.brq-salle::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 16px 26px rgba(0, 0, 0, 0.6), inset 0 -10px 18px rgba(0, 0, 0, 0.45); pointer-events: none; }
+.brq-dalle { z-index: 3; width: 100%; background-repeat: repeat-x; filter: drop-shadow(0 7px 9px rgba(0, 0, 0, 0.65)); }
+.brq-chaine { z-index: 1; background-repeat: repeat-y; background-position: center bottom; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)); }
+.brq-meche { z-index: 2; background-repeat: repeat-y; clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--bw) * 0.95), 50% 100%, 0 calc(100% - var(--bw) * 0.95)); }
+.brq-meche.meule { filter: brightness(1.18) drop-shadow(0 0 10px rgba(255, 160, 70, 0.85)); }
+.brq-machine { z-index: 2; height: auto; max-width: none; filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.7)); }
+.brq-etincelles { z-index: 5; height: auto; max-width: none; opacity: 0; mix-blend-mode: screen; pointer-events: none; }
+.brq-debris { z-index: 4; height: auto; max-width: none; opacity: 0; pointer-events: none; }
+.brq-poussiere { z-index: 4; border-radius: 50%; opacity: 0; pointer-events: none; background: radial-gradient(closest-side, rgba(214, 196, 170, 0.75), rgba(150, 128, 104, 0.45) 45%, rgba(90, 76, 62, 0) 100%); filter: blur(4px); }
+.brq-sirene { z-index: 4; height: auto; max-width: none; visibility: hidden; transform-origin: 50% 10%; filter: drop-shadow(0 0 18px rgba(255, 40, 30, 0.9)); }
+.brq-sirene.sonne { animation: brq-sirene-glow 0.5s ease-in-out infinite alternate; }
+@keyframes brq-sirene-glow { to { filter: drop-shadow(0 0 34px rgba(255, 30, 20, 1)) brightness(1.25); } }
+.brq-gendarmes { z-index: 6; width: auto; max-width: none; visibility: hidden; filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 16px rgba(80, 120, 255, 0.45)); }
+
+/* Le butin qui scintille dans les sous-sols percés */
+.brq-scintille { position: absolute; inset: 0; pointer-events: none; }
+.brq-scintille i { position: absolute; width: 2.4%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(0); background: radial-gradient(circle, #fff 0 12%, rgba(255, 236, 170, 0.9) 22%, transparent 60%); clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%); animation: brq-scintille 1.7s ease-in-out infinite; }
+@keyframes brq-scintille { 0%, 100% { transform: translate(-50%, -50%) scale(0) rotate(0deg); } 50% { transform: translate(-50%, -50%) scale(1) rotate(45deg); } }
+
+/* La percée : un éclair ; l'alarme : la lumière rouge et ses faisceaux */
+.brq-flash { position: absolute; inset: 0; z-index: 15; pointer-events: none; background: radial-gradient(70% 60% at 50% 62%, rgba(255, 244, 214, 0.85), rgba(255, 170, 70, 0.35) 40%, transparent 75%); mix-blend-mode: screen; animation: brq-flash 0.5s ease-out both; }
+@keyframes brq-flash { from { opacity: 1; } to { opacity: 0; } }
+.brq-rouge { position: absolute; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; background: radial-gradient(120% 90% at 50% 50%, transparent 30%, rgba(200, 0, 0, 0.55) 100%); animation: brq-rouge 0.6s ease-in-out infinite alternate; }
+.brq-rouge::before { content: ''; position: absolute; left: 50%; top: 50%; width: 170%; aspect-ratio: 1; transform: translate(-50%, -50%); background: conic-gradient(from 0deg, rgba(255, 30, 20, 0.32) 0 14deg, transparent 14deg 180deg, rgba(255, 30, 20, 0.32) 180deg 194deg, transparent 194deg); mix-blend-mode: screen; animation: brq-faisceaux 1.1s linear infinite; }
+@keyframes brq-rouge { from { opacity: 0.45; } to { opacity: 1; } }
+@keyframes brq-faisceaux { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* L'intro : l'affiche, l'accroche, l'échelle des butins */
+.brq-intro { position: absolute; inset: 0; z-index: 20; background: radial-gradient(90% 80% at 30% 50%, #2a0c0e, #07040a 75%); }
+.brq-affiche { position: absolute; left: 3%; top: 54px; bottom: 4%; height: auto; aspect-ratio: 1000 / 1094; border-radius: 6px; overflow: hidden; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.8)); animation: brq-affiche 1s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+.brq-affiche > img { display: block; width: 100%; height: 100%; }
+@keyframes brq-affiche { from { opacity: 0; transform: rotate(-4deg) scale(0.82); } }
+.brq-affiche-titre { position: absolute; left: 7%; width: 86%; top: 4.2%; height: 12.4%; overflow: visible; }
+.brq-affiche-titre text { font-family: 'Limelight', var(--titre), serif; font-size: 96px; fill: #ffd774; stroke: #3a0408; stroke-width: 5px; paint-order: stroke fill; filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.7)); }
+.brq-affiche-reflet { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255, 245, 210, 0.32) 45%, transparent 60%); transform: translateX(-120%); animation: brq-reflet 3.2s ease-in-out 0.9s infinite; pointer-events: none; }
+@keyframes brq-reflet { 0% { transform: translateX(-120%); } 45%, 100% { transform: translateX(120%); } }
+/* Le multiplicateur de la roue, posé sur l'affiche (il multiplie toute l'échelle). */
+.brq-multi { position: absolute; left: 50%; bottom: 4%; display: grid; justify-items: center; padding: 3px 16px 5px; border-radius: 14px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(140, 24, 18, 0.97), rgba(40, 6, 4, 0.97)); box-shadow: 0 0 26px rgba(255, 120, 90, 0.65); transform: translateX(-50%); animation: brq-multi 0.65s cubic-bezier(0.3, 1.6, 0.5, 1) 1s both; }
+.brq-multi small { font-size: clamp(8px, 1.5cqw, 10.5px); font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: #ffcf6b; white-space: nowrap; }
+.brq-multi strong { font-family: var(--titre); font-weight: 400; font-size: clamp(24px, 6cqh, 40px); line-height: 1; color: #fff1c4; text-shadow: 0 0 18px rgba(255, 180, 110, 1); }
+@keyframes brq-multi { from { opacity: 0; transform: translateX(-50%) scale(0.3); } }
+/* À droite de l'affiche : l'accroche, puis l'échelle des cinq sous-sols. */
+.brq-infos { position: absolute; left: calc(6cqw + (96cqh - 54px) * 0.914); right: 3%; top: 54px; bottom: 4%; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.brq-accroche { display: grid; gap: 3px; text-align: center; animation: brq-pop 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.4s both; }
+.brq-accroche strong { font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 3.4cqw, 30px); line-height: 1.1; color: #ffd774; text-shadow: 0 0 16px rgba(255, 200, 100, 0.6); }
+.brq-accroche span { font-weight: 800; font-size: clamp(11px, 1.7cqw, 15px); line-height: 1.25; color: #fff1c4; }
+.brq-echelle { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(5, minmax(0, 1fr)); gap: 5px; margin: 0; padding: 0; list-style: none; }
+.brq-echelle li { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'etiquette valeur' 'nom valeur'; align-content: center; align-items: center; column-gap: 8px; min-height: 0; padding: 2px 12px; border-radius: 12px; border: 1.5px solid rgba(214, 168, 75, 0.85); background: linear-gradient(90deg, rgba(103, 29, 43, 0.95), rgba(30, 10, 12, 0.95)); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55); animation: brq-ligne 0.55s cubic-bezier(0.3, 1.4, 0.5, 1) both; animation-delay: calc(0.6s + var(--k) * 0.12s); }
+.brq-echelle li small { grid-area: etiquette; font-size: clamp(9px, 1.4cqw, 11.5px); font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #ffcf6b; white-space: nowrap; }
+.brq-echelle-nom { grid-area: nom; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(10px, 1.7cqw, 14px); font-weight: 700; color: #f3e7cf; }
+.brq-echelle li b { grid-area: valeur; font-family: var(--titre); font-weight: 400; font-size: clamp(17px, 3.2cqw, 28px); line-height: 1; color: #fff1c4; }
+.brq-echelle li em { position: absolute; right: 8px; top: -9px; padding: 0 7px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #c9541c); border: 1px solid #fff1c4; color: #2a0a04; font-style: normal; font-weight: 900; font-size: 10px; letter-spacing: 0.08em; }
+.brq-echelle small .court { display: none; }
+.brq-echelle li.siecle { border-color: #ffe08a; background: linear-gradient(90deg, rgba(150, 96, 20, 0.96), rgba(60, 26, 6, 0.96)); box-shadow: 0 0 18px rgba(255, 200, 100, 0.55); }
+@keyframes brq-ligne { from { opacity: 0; transform: translateX(30%); } }
+@keyframes brq-pop { from { opacity: 0; transform: scale(0.6); } }
+
+/* La jauge de profondeur */
+.brq-jauge { position: absolute; right: 1.5%; top: 52%; z-index: 20; height: 78%; aspect-ratio: 292 / 1100; transform: translateY(-50%); filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.7)); animation: brq-jauge 0.6s ease-out both; pointer-events: none; }
+.brq-jauge > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.brq-jauge-or { position: absolute; border-radius: 0 0 999px 999px; background: linear-gradient(90deg, #8a5208, #ffe08a 45%, #ffd774 60%, #b8730e); box-shadow: 0 0 12px rgba(255, 200, 100, 0.85); transition: height 0.12s linear; }
+.brq-alveole { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; transition: transform 0.3s, background 0.3s, box-shadow 0.3s; }
+.brq-alveole svg { width: 100%; height: 100%; overflow: visible; }
+.brq-alveole text { font-family: 'Limelight', var(--titre), serif; font-size: 36px; fill: rgba(255, 225, 160, 0.55); }
+.brq-alveole.rue img { width: 92%; height: 92%; }
+.brq-alveole.acquis { background: radial-gradient(circle, #ffe9a8, #e0a92e 55%, #7a4a0c); box-shadow: 0 0 14px rgba(255, 200, 100, 0.95); transform: translate(-50%, -50%) scale(1.12); animation: brq-alveole 0.5s cubic-bezier(0.3, 1.8, 0.5, 1); }
+.brq-alveole.acquis text { fill: #3a1a04; }
+.brq-alveole.perce { animation: brq-pulse 0.5s ease-in-out infinite alternate; }
+.brq-alveole.perce text { fill: #fff1c4; }
+.brq-alveole.rate { background: radial-gradient(circle, #ff6a5a, #9a0c0c 70%); box-shadow: 0 0 16px rgba(255, 30, 20, 0.95); }
+.brq-alveole.rate text { fill: #fff; }
+.brq-alveole-jp { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); padding: 0 5px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #c9541c); border: 1px solid #fff1c4; color: #2a0a04; font-size: 9px; font-weight: 900; white-space: nowrap; }
+@keyframes brq-alveole { from { transform: translate(-50%, -50%) scale(1.8); } }
+@keyframes brq-pulse { to { box-shadow: 0 0 14px rgba(255, 200, 100, 0.9); background: rgba(255, 190, 90, 0.35); } }
+@keyframes brq-jauge { from { opacity: 0; transform: translate(40%, -50%); } }
+
+/* Le panneau du sous-sol atteint */
+.brq-plaque { position: absolute; left: 50%; top: 54px; z-index: 22; width: min(44%, 440px); transform: translateX(-50%); filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.75)); animation: brq-plaque 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both; pointer-events: none; }
+.brq-plaque > img { display: block; width: 100%; height: auto; }
+.brq-plaque-texte { position: absolute; left: 16%; right: 14%; top: 27%; bottom: 26%; display: grid; place-content: center; justify-items: center; container-type: inline-size; text-align: center; line-height: 1; }
+.brq-plaque-nom { display: block; width: 100%; height: auto; overflow: visible; }
+.brq-plaque-nom text { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 38px; font-weight: 900; letter-spacing: 3px; fill: #ffcf6b; }
+.brq-plaque-texte strong { margin-top: 0.5cqw; font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: 12.5cqw; color: #fff1c4; text-shadow: 0 0 12px rgba(255, 200, 100, 0.85); }
+@keyframes brq-plaque { from { opacity: 0; transform: translateX(-50%) translateY(-30%) scale(0.7); } }
+
+/* Les annonces */
+.brq-annonce { position: absolute; left: 50%; top: 42%; z-index: 25; display: grid; justify-items: center; gap: 2px; width: max-content; max-width: 92%; padding: 8px 26px 10px; border-radius: 16px; border: 2px solid #d6a84b; background: radial-gradient(130% 150% at 50% 0%, rgba(80, 22, 26, 0.95), rgba(14, 6, 6, 0.95)); box-shadow: 0 0 30px rgba(255, 200, 110, 0.35), 0 12px 26px rgba(0, 0, 0, 0.7); transform: translate(-50%, -50%); text-align: center; pointer-events: none; animation: brq-annonce 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.brq-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 4.4cqw, 34px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.6); }
+.brq-annonce span { font-weight: 800; font-size: clamp(12px, 1.9cqw, 15px); color: #fff1c4; }
+.brq-annonce.alarme { border-color: #ff6a5a; background: radial-gradient(130% 150% at 50% 0%, rgba(160, 10, 10, 0.96), rgba(40, 2, 2, 0.96)); animation: brq-annonce 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both, brq-alarme 0.35s steps(2) infinite; }
+.brq-annonce.alarme strong { color: #fff; letter-spacing: 0.12em; }
+@keyframes brq-annonce { from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } }
+.brq-annonce.bas { top: auto; bottom: 6%; transform: translateX(-50%); animation-name: brq-annonce-bas; }
+@keyframes brq-annonce-bas { from { opacity: 0; transform: translateX(-50%) translateY(30%) scale(0.6); } }
+.brq-annonce.alarme { top: 58%; }
+@keyframes brq-alarme { 0% { box-shadow: 0 0 34px rgba(255, 30, 20, 0.95), 0 12px 26px rgba(0, 0, 0, 0.7); } 100% { box-shadow: 0 0 10px rgba(255, 30, 20, 0.4), 0 12px 26px rgba(0, 0, 0, 0.7); } }
+
+/* L'alarme : la bande hissée par le trou */
+.brq-fuite { position: absolute; inset: 0; z-index: 26; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 50px 4% 4%; background: rgba(8, 0, 0, 0.55); animation: brq-fondu 0.5s ease-out both; pointer-events: none; }
+.brq-fuite-cadre { width: min(74cqw, 112cqh); aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; border: 3px solid #d6a84b; box-shadow: 0 0 0 2px #3a0408, 0 0 40px rgba(255, 60, 40, 0.6), 0 18px 34px rgba(0, 0, 0, 0.8); animation: brq-cadre 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.brq-fuite-cadre img { display: block; width: 100%; height: 100%; object-fit: cover; animation: brq-kenburns 3s ease-out both; }
+.brq-fuite p { margin: 0; display: grid; justify-items: center; gap: 2px; text-align: center; animation: brq-pop 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) 0.35s both; }
+.brq-fuite p strong { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 3.8cqw, 32px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 180, 90, 0.7), 0 2px 0 #3a0408; }
+.brq-fuite p span { font-weight: 800; font-size: clamp(12px, 2cqw, 16px); color: #fff1c4; }
+.brq-fuite p b { font-family: var(--titre); font-weight: 400; font-size: 1.4em; color: #fff; }
+@keyframes brq-cadre { from { opacity: 0; transform: scale(0.6) rotate(-3deg); } }
+@keyframes brq-kenburns { from { transform: scale(1.12) translate(2%, 2%); } to { transform: scale(1) translate(0, 0); } }
+@keyframes brq-fondu { from { opacity: 0; } }
+
+/* Le Coffre du Siècle : posé dans la banque, sur la porte peinte (CasinoBraquage.tsx en donne la place et --pd, le
+   diamètre du disque). La porte tremble, s'ouvre sur une lumière d'or ; la couronne et les diamants jaillissent, puis le
+   jackpot. Le disque est centré à (49 %, 50 %) de la boîte. */
+.brq-siecle { z-index: 0; perspective: 1400px; pointer-events: none; }
+.brq-siecle > * { position: absolute; }
+.brq-porte { left: 0; top: 0; width: 100%; height: 100%; max-width: none; transform-origin: 8% 50%; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.7)); transition: transform 1.1s cubic-bezier(0.45, 0, 0.25, 1), filter 1.1s; }
+.brq-siecle.ferme .brq-porte { animation: brq-tremble 0.12s linear infinite; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 14px rgba(255, 210, 120, 0.7)); }
+.brq-siecle.ouvert .brq-porte { transform: rotateY(-105deg); filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.7)) brightness(0.7); }
+.brq-siecle-lumiere { left: 49%; top: 50%; width: calc(var(--pd) * 1.3); aspect-ratio: 1; margin: calc(var(--pd) * -0.65) 0 0 calc(var(--pd) * -0.65); border-radius: 50%; background: radial-gradient(closest-side, #fffbe6 0, #ffe9a8 30%, #f0bf4a 60%, #c88a1c 78%, rgba(120, 70, 8, 0.5) 90%, transparent 100%); opacity: 0; transform: scale(0.6); transition: opacity 0.4s, transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.brq-siecle.ouvert .brq-siecle-lumiere { opacity: 1; transform: none; animation: brq-lumiere 1.6s ease-in-out 1.2s infinite alternate; }
+@keyframes brq-lumiere { to { filter: brightness(1.18); } }
+.brq-siecle-rayons { left: 49%; top: 50%; width: calc(var(--pd) * 5); aspect-ratio: 1; margin: calc(var(--pd) * -2.5) 0 0 calc(var(--pd) * -2.5); background: repeating-conic-gradient(from 0deg, rgba(255, 236, 170, 0.42) 0 5deg, transparent 5deg 16deg); -webkit-mask: radial-gradient(closest-side, #000 20%, transparent); mask: radial-gradient(closest-side, #000 20%, transparent); opacity: 0; transition: opacity 0.8s; animation: brq-rayons 9s linear infinite; mix-blend-mode: screen; }
+.brq-siecle.ouvert .brq-siecle-rayons { opacity: 1; }
+@keyframes brq-tremble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-1.4deg); } 75% { transform: rotate(1.4deg); } }
+@keyframes brq-rayons { to { transform: rotate(360deg); } }
+/* Le trésor qui jaillit : la couronne monte au-dessus du jackpot, les diamants s'ouvrent en éventail. */
+.brq-tresor { left: 49%; top: 50%; width: 0; height: 0; }
+.brq-tresor img { position: absolute; left: 0; top: 0; max-width: none; height: auto; filter: drop-shadow(0 0 16px rgba(255, 230, 160, 0.9)); }
+.brq-tresor .couronne { width: calc(var(--pd) * 0.62); animation: brq-couronne 1.1s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+.brq-tresor .diamant { width: calc(var(--pd) * 0.24); animation: brq-diamant 1.2s cubic-bezier(0.15, 0.9, 0.35, 1) both; animation-delay: calc(var(--k) * 0.09s); }
+@keyframes brq-couronne { from { transform: translate(-50%, -50%) scale(0.2); opacity: 0; } to { transform: translate(-50%, calc(-50% - var(--pd) * 0.62)) scale(1); opacity: 1; } }
+@keyframes brq-diamant {
+  from { transform: translate(-50%, -50%) scale(0.2) rotate(0deg); opacity: 0; }
+  to { transform: translate(calc(-50% + var(--dx) * var(--pd)), calc(-50% + var(--dy) * var(--pd))) scale(1) rotate(calc((var(--k) - 2) * 22deg)); opacity: 1; }
+}
+/* Le jackpot, au cœur de la lumière (la caméra y a posé la porte) : sa plaque, avec son nom ; le butin du Coffre du Siècle
+   et le jackpot qui s'y ajoute ; ce qu'il était. */
+.brq-jackpot { --l: max(calc(var(--pd) * 1.3), 46cqw); position: absolute; left: 50%; top: 53%; z-index: 23; display: grid; justify-items: center; gap: 2px; width: var(--l); transform: translate(-50%, -30%); text-align: center; pointer-events: none; animation: brq-jackpot 0.8s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.brq-jackpot-plaque { position: relative; display: grid; place-items: center; width: 100%; line-height: 0; }
+.brq-jackpot-plaque img { width: 100%; height: auto; filter: drop-shadow(0 0 22px rgba(255, 210, 110, 0.95)); }
+.brq-jackpot-plaque b { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 2%; font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: calc(var(--l) * 0.12); line-height: 1; letter-spacing: 0.08em; color: #fff1c4; text-shadow: 0 0 12px rgba(255, 200, 100, 0.95), 0 2px 0 #3a0408; }
+.brq-jackpot strong { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: calc(var(--l) * 0.11); line-height: 1.1; white-space: nowrap; color: #fff; text-shadow: 0 0 12px #fff1c4, 0 0 26px rgba(255, 170, 70, 1), 0 2px 0 #3a0408; }
+.brq-jackpot small { padding: 1px 10px; border-radius: 99px; background: rgba(20, 8, 2, 0.88); border: 1px solid #ffcf6b; font-weight: 900; font-size: clamp(9px, 1.6cqw, 12.5px); line-height: 1.5; color: #ffd774; white-space: nowrap; }
+@keyframes brq-jackpot { from { opacity: 0; transform: translate(-50%, -30%) scale(0.3); } }
+/* La plaque du sous-sol s'efface quand le trésor jaillit : la couronne monte à sa place. */
+.brq-plaque.part { animation: brq-plaque-part 0.45s ease-in both; }
+@keyframes brq-plaque-part { to { opacity: 0; transform: translateX(-50%) translateY(-40%) scale(0.85); } }
+/* Porte ouverte : la salle s'assombrit autour de la lumière ; l'or pleut derrière les panneaux. */
+.brq-voile { position: absolute; inset: 0; z-index: 10; pointer-events: none; background: radial-gradient(62% 58% at 50% 52%, transparent 35%, rgba(0, 0, 0, 0.62) 100%); animation: brq-fondu 0.9s ease-out both; }
+.brq > .cas-pluie { z-index: 19; }
+.brq .cas-pluie img { width: calc(44px * var(--t)); }
+.brq .cas-pluie img.billet { width: calc(52px * var(--t)); }
+
+/* La fin : la voiture de la bande file dans Paris */
+.brq-fin { position: absolute; inset: 0; z-index: 12; overflow: hidden; animation: brq-fondu 0.6s ease-out both; }
+.brq-fin-image { position: absolute; inset: 0; background-size: cover; background-position: center; animation: brq-fin 7s ease-out both; }
+.brq-fin-image::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(4, 2, 6, 0.55), rgba(4, 2, 6, 0.05) 35%, rgba(4, 2, 6, 0.05) 60%, rgba(4, 2, 6, 0.7)); }
+@keyframes brq-fin { from { transform: scale(1.14) translateX(3%); } to { transform: scale(1.02); } }
+.brq-fin .cas-pluie { z-index: 1; }
+.brq-fin-butin { position: absolute; left: 50%; top: 34%; z-index: 3; display: grid; justify-items: center; gap: 2px; width: max-content; max-width: 92%; padding: 10px 28px 12px; border-radius: 18px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(103, 29, 43, 0.94), rgba(20, 6, 8, 0.94)); box-shadow: 0 0 40px rgba(255, 200, 110, 0.55), 0 16px 30px rgba(0, 0, 0, 0.75); transform: translate(-50%, -50%); text-align: center; animation: brq-annonce 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.3s both; }
+.brq-fin-butin small { font-size: clamp(11px, 1.8cqw, 14px); font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #ffcf6b; }
+.brq-fin-butin strong { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: clamp(34px, 8cqw, 64px); line-height: 1; color: #fff; text-shadow: 0 0 12px #fff1c4, 0 0 28px rgba(255, 170, 70, 1); }
+.brq-fin-butin span { font-weight: 700; font-size: clamp(11px, 1.7cqw, 13.5px); color: #f3e7cf; }
+
+/* Le multiplicateur de la roue est annoncé sur l'affiche de l'intro. */
+.bw-bonus.braquage .bw-bonus-annonce-multi { display: none; }
+
+/* Téléphone : la scène est en hauteur */
+@media (max-width: 640px) {
+  .brq-affiche { left: 50%; top: 90px; bottom: auto; height: 46%; transform: translateX(-50%); animation-name: brq-affiche-tel; }
+  @keyframes brq-affiche-tel { from { opacity: 0; transform: translateX(-50%) rotate(-4deg) scale(0.82); } }
+  .brq-multi { padding: 2px 12px 4px; }
+  .brq-multi small { font-size: 7.5px; letter-spacing: 0.1em; }
+  .brq-multi strong { font-size: 24px; }
+  .brq-infos { left: 3%; right: 3%; top: calc(98px + 46%); bottom: 3%; gap: 6px; }
+  .brq-echelle small .long { display: none; }
+  .brq-echelle small .court { display: inline; }
+  .brq-accroche strong { font-size: 17px; }
+  .brq-accroche span { font-size: 11.5px; }
+  .brq-echelle { flex: none; height: auto; grid-template-rows: none; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-top: auto; }
+  .brq-echelle li { grid-template-columns: none; grid-template-areas: 'etiquette' 'valeur'; justify-items: center; align-content: center; row-gap: 3px; padding: 8px 2px 6px; border-radius: 10px; }
+  .brq-echelle li small { font-size: 8px; letter-spacing: 0.02em; }
+  .brq-echelle li b { font-size: 17px; }
+  .brq-echelle-nom { display: none; }
+  .brq-echelle li em { right: 50%; top: -8px; transform: translateX(50%); font-size: 8px; padding: 0 4px; }
+  @keyframes brq-ligne { from { opacity: 0; transform: translateY(40%); } }
+  .brq-jauge { right: 1%; top: 58%; height: 50%; }
+  .brq-plaque { top: 86px; width: 74%; }
+  .brq-annonce { top: 46%; padding: 6px 14px 8px; }
+  .brq-annonce.alarme { top: 60%; }
+  .brq-annonce strong { font-size: 20px; }
+  .brq-annonce span { font-size: 12px; }
+  .brq-fuite { padding: 84px 3% 3%; }
+  .brq-fuite-cadre { width: 94cqw; }
+  .brq-fin-butin { top: 32%; padding: 8px 18px 10px; }
+  .brq-jackpot { top: 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brq-affiche-reflet, .brq-scintille i, .brq-rouge, .brq-rouge::before, .brq-siecle-rayons, .brq-siecle.ferme .brq-porte, .brq-siecle.ouvert .brq-siecle-lumiere, .brq-fin-image, .brq-fuite-cadre img, .brq-sirene.sonne, .brq-alveole.perce { animation: none; }
+}
