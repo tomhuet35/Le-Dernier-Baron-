@@ -9,6 +9,8 @@ import {
   choixDuBonusBW,
   COMPOSITION_BW,
   DEGRES_CASE_BW,
+  DUREES_BW,
+  ETAGES_BRAQUAGE,
   etapesBonusBW,
   gainBW,
   GAINS_CHIFFRES_BW,
@@ -21,6 +23,8 @@ import {
   estBonusBW,
   multiplicateurDe,
   tirerMultiplicateursBW,
+  valeurRecompenseBW,
+  VALEUR_JACKPOT_BW,
   type BoostBW,
   type CaseBW,
   type VueBW,
@@ -103,14 +107,26 @@ describe('The Baron’s Wheel : les règles', () => {
       if (p.type !== 'pickpocket') throw new Error();
       expect(p.mallettes).toContain(p.butin);
       expect(p.mallettes.filter((x) => x === p.butin).length).toBeGreaterThanOrEqual(1);
+      // Le Braquage : une seule perceuse, le même multiple pour tous ; un jackpot en plus au Coffre du Siècle.
       const b = tirerBonusBW('braquage', h);
       if (b.type !== 'braquage') throw new Error();
-      expect([...b.code].sort()).toEqual([1, 2, 3]);
-      expect([...b.meca].sort()).toEqual([1, 1, 1, 1, 2, 2, 3, 5]);
-      const r = recompenseBonusBW(b, [0, 0, 0]);
-      expect(r.x).toBe(b.coffre[0].jackpot ? b.coffre[0].x : b.code[0] * b.meca[0] * b.coffre[0].x);
+      expect([1, 2, 3, 4, 5]).toContain(b.etage);
+      expect(b.jackpot !== null).toBe(b.etage === 5);
+      const r = recompenseBonusBW(b, []);
+      expect(r.x).toBe(ETAGES_BRAQUAGE[b.etage - 1]);
+      expect(r.fixe ?? 0).toBe(b.jackpot ? VALEUR_JACKPOT_BW[b.jackpot] : 0);
+      // Plus la perceuse descend, plus la descente dure ; au Coffre du Siècle, la descente entière.
+      const etapes = etapesBonusBW('braquage', DUREES_BW, b);
+      expect(etapes.map((e) => e.nom)).toEqual(['chargement', 'intro', 'descente', 'revele']);
+      if (b.etage === 5) expect(etapes[2].duree).toBe(DUREES_BW.descente);
+      else expect(etapes[2].duree < DUREES_BW.descente).toBe(true);
     }
-    expect(choixDuBonusBW('braquage')).toEqual([3, 8, 4]);
+    expect(choixDuBonusBW('braquage')).toEqual([]);
+    expect(ETAGES_BRAQUAGE).toEqual([3, 6, 12, 30, 100]);
+    // Le jackpot du Coffre du Siècle s'ajoute au multiple, que la roue multiplie (pas le jackpot).
+    expect(valeurRecompenseBW({ x: 100, jackpot: 'grand', fixe: 500 }, 10)).toBe(1500);
+    expect(valeurRecompenseBW({ x: 25, jackpot: 'mini' }, 10)).toBe(25);
+    expect(valeurRecompenseBW({ x: 12 }, 5)).toBe(60);
     expect(etapesBonusBW('evasion').map((e) => e.nom)).toEqual(['chargement', 'intro', 'route', 'poursuite', 'revele']);
     // Chaque mini-jeu commence par son écran de chargement.
     for (const t of BONUS_BW) expect(etapesBonusBW(t)[0]).toMatchObject({ nom: 'chargement', choix: 0 });
@@ -188,7 +204,7 @@ beforeAll(async () => {
       jeuALaffiche: () => null,
       cadeaux: [],
       delaiEcriture: 30,
-      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, serrure: 700, etape: 80, vol: 80, poursuite: 80, revele: 150, introExpress: 80, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
+      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
       arretBaronWheel: () => arretImpose,
       multiplicateursBaronWheel: () => multiplicateursImposes,
       ouvertureBaronWheel: () => ouverture,
@@ -316,7 +332,7 @@ describe('The Baron’s Wheel en direct', () => {
     b.close();
   }, 30_000);
 
-  it('joue le Braquage : code × mécanisme × coffre', async () => {
+  it('joue le Braquage : une seule perceuse pour tout le salon, le même multiple pour tous', async () => {
     const a = connecter();
     await emettre(a, 'identifier', { jeton: 'jeton-a' });
     await emettre(a, 'casino_entrer');
@@ -324,16 +340,17 @@ describe('The Baron’s Wheel en direct', () => {
     const v = await nouvelleManche(a);
     arretImpose = indice('braquage', 2);
     await emettre(a, 'casino_bw_miser', { case: 'braquage', montant: 25_000 });
-    const choisis = [1, 6, 3];
-    for (const [r, nom] of (['code', 'mecanisme', 'coffre'] as const).entries()) {
-      const x = await attendre(a, (y) => etape(y) === nom);
-      expect((await emettre(a, 'casino_bw_choisir', { etape: x.bonus!.etape, choix: choisis[r] })).ok).toBe(true);
-      if (nom === 'mecanisme') expect(x.bonus!.code!.every((c) => c !== null)).toBe(true); // le code est déjà révélé
-    }
+    // L'intro ne dit rien de la descente ; la perceuse partie, tout est connu (aucun choix à faire).
+    const intro = await attendre(a, (y) => etape(y) === 'intro');
+    expect(intro.bonus!.casse).toBeNull();
+    const descente = await attendre(a, (y) => etape(y) === 'descente');
+    const c = descente.bonus!.casse!;
+    expect([1, 2, 3, 4, 5]).toContain(c.etage);
+    expect(descente.bonus!.mesChoix).toEqual([]);
+    expect((await emettre(a, 'casino_bw_choisir', { etape: descente.bonus!.etape, choix: 0 })).ok).toBe(false);
     const fin = await attendre(a, (x) => x.phase === 'resultat' && x.numero === v.numero);
     const bz = fin.bonus!;
-    const coffre = bz.coffre![3]!;
-    const x = coffre.jackpot ? coffre.x : bz.code![1]! * bz.meca![6]! * coffre.x;
+    const x = valeurRecompenseBW({ x: ETAGES_BRAQUAGE[c.etage - 1], ...(c.jackpot ? { jackpot: c.jackpot, fixe: VALEUR_JACKPOT_BW[c.jackpot] } : {}) }, bz.multiplicateur);
     expect(bz.resultat).toMatchObject({ x, gain: gainBW(25_000, x) });
     expect(fin.bilan).toEqual({ mise: 25_000, gain: gainBW(25_000, x) });
     a.close();

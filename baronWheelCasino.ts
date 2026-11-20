@@ -30,6 +30,7 @@ import {
   MAX_MANCHE_BW,
   NB_CASES_BW,
   recompenseBonusBW,
+  valeurRecompenseBW,
   ROUE_BW,
   tirerBonusBW,
   type BonusBW,
@@ -155,11 +156,8 @@ export function creerBaronWheel(options: {
       v.mallettes = atteinte('revele') ? t.mallettes : [null, null, null];
     }
     if (t.type === 'evasion') v.routes = atteinte('poursuite') ? t.routes : [null, null, null];
-    if (t.type === 'braquage') {
-      v.code = atteinte('codeRevele') ? t.code : [null, null, null];
-      v.meca = atteinte('mecaRevele') ? t.meca : Array(8).fill(null);
-      v.coffre = atteinte('revele') ? t.coffre : [null, null, null, null];
-    }
+    // Le Braquage : la descente se joue dès que la perceuse part (aucun choix à faire, rien à deviner).
+    if (t.type === 'braquage') v.casse = atteinte('descente') ? { etage: t.etage, jackpot: t.jackpot } : null;
     if (t.type === 'express') {
       // Le voyage se révèle gare après gare : rien de ce qui attend plus loin ne part vers les téléphones.
       const tunnelVu = (n: number) => atteinte(n === 0 ? 'tunnel1' : 'tunnel2');
@@ -284,7 +282,7 @@ export function creerBaronWheel(options: {
     salon.cases[c]++;
     if (estBonusBW(c)) {
       tirage = tirerBonusBW(c, hasard);
-      etapes = etapesBonusBW(c, D);
+      etapes = etapesBonusBW(c, D, tirage);
       etape = 0;
       for (const j of joueurs.values()) j.choix = etapes.filter((e) => e.choix > 0).map(() => null);
       phase = 'bonus';
@@ -324,7 +322,7 @@ export function creerBaronWheel(options: {
       if (!mise) continue;
       const r = recompenseBonusBW(tirage, j.choix.map((x) => x ?? 0));
       // Le multiplicateur de la roue multiplie la récompense, sauf un jackpot (valeur fixe).
-      const x = r.jackpot ? r.x : r.x * multiplicateurDe(boosts, arret);
+      const x = valeurRecompenseBW(r, multiplicateurDe(boosts, arret));
       j.resultat = { ...r, x, gain: gainBW(mise, x) };
     }
   }

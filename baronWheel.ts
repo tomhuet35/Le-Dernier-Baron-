@@ -16,7 +16,7 @@
  *   cachées d'un bonus dès qu'il commence. Les choix du joueur désignent l'une de ces récompenses cachées ; aucune
  *   animation ne décide de rien.
  * - Les jackpots (MINI ×25, MINOR ×50, MAJOR ×100, GRAND ×500 la mise) sont des récompenses fixes, rares, cachées dans
- *   les bonus du Baron et du Braquage. Ils ne sont pas progressifs.
+ *   le bonus du Baron et au fond du Braquage (le Coffre du Siècle). Ils ne sont pas progressifs.
  * - Grande ouverture (la première semaine) : l'XP compte double sur la roue (et un cadeau d'ouverture dans le salon).
  */
 
@@ -196,28 +196,38 @@ export interface IssueRouteBW {
 }
 
 /**
- * THE VAULT : trois serrures. 1. Le code : trois combinaisons (×1, ×2, ×3). 2. Le mécanisme : un cadran de 8 zones
- * cachées (×1 à ×5) qu'on arrête au jugé. 3. Le coffre : quatre compartiments (×1 à ×25) ; leur trésor est multiplié
- * par les deux serrures, jusqu'à ×375 (sauf un jackpot, qui paie sa valeur fixe).
+ * LE BRAQUAGE : une seule perceuse pour tout le salon, et aucun choix. Elle perce la banque sous-sol après sous-sol ;
+ * chaque sous-sol atteint vaut son multiple, le même pour tout le monde, jusqu'à ce que l'alarme sonne et que la bande
+ * file avec le butin. Le premier sous-sol est toujours atteint ; le cinquième, le Coffre du Siècle, cache en plus un
+ * jackpot (sa valeur fixe s'ajoute au multiple).
  */
-export const CODES_BRAQUAGE = [1, 2, 3];
-export const ZONES_MECANISME = [1, 1, 1, 1, 2, 2, 3, 5];
-export const COFFRES_BRAQUAGE: TableBW<number | 'jackpot'> = [
-  [1, 4680],
-  [2, 2800],
-  [3, 1300],
-  [5, 650],
-  [10, 320],
-  [25, 80],
-  ['jackpot', 170],
+export const ETAGES_BRAQUAGE = [3, 6, 12, 30, 100];
+/** Le sous-sol où s'arrête la perceuse (l'alarme sonne pendant qu'elle perce le suivant) ; 5 : le Coffre du Siècle. */
+export const ARRET_BRAQUAGE: TableBW<number> = [
+  [1, 5100],
+  [2, 2580],
+  [3, 1390],
+  [4, 690],
+  [5, 240],
 ];
+/** Le jackpot caché dans le Coffre du Siècle. */
 export const JACKPOTS_BRAQUAGE: TableBW<JackpotBW> = [
   ['mini', 5000],
   ['minor', 3000],
   ['major', 1500],
   ['grand', 500],
 ];
-export const TABLE_COFFRES_BRAQUAGE = avecJackpots(COFFRES_BRAQUAGE, JACKPOTS_BRAQUAGE);
+
+/**
+ * Le calendrier de la descente (millisecondes depuis son début), commun au serveur (la durée de l'étape) et aux
+ * téléphones (l'animation). La perceuse traverse la dalle au-dessus du sous-sol k à perceeCasse(k) ; le sous-sol est
+ * acquis `acquis` ms plus tard. Arrêtée au sous-sol k : l'alarme sonne `alarme` ms après sa percée, puis la fuite dure
+ * `fuite` ms. Au Coffre du Siècle, la porte s'ouvre et la fête dure `siecle` ms.
+ */
+export const CASSE_BW = { premiere: 2200, etage: 2600, acquis: 500, alarme: 2000, fuite: 4400, siecle: 5600 };
+export const perceeCasseBW = (k: number) => CASSE_BW.premiere + (k - 1) * CASSE_BW.etage;
+/** La durée de la descente quand la perceuse s'arrête au sous-sol `etage` (au calendrier réel). */
+export const descenteCasseBW = (etage: number) => perceeCasseBW(etage) + (etage >= ETAGES_BRAQUAGE.length ? CASSE_BW.siecle : CASSE_BW.alarme + CASSE_BW.fuite);
 
 /** Les multiplicateurs d'une manche : 3 à 8 cases différentes, chacune avec son multiplicateur (×5 à ×100). */
 export function tirerMultiplicateursBW(h: Hasard): BoostBW[] {
@@ -278,7 +288,8 @@ export type TirageBonusBW =
   | { type: 'baron'; cartes: RecompenseBW[] }
   | { type: 'pickpocket'; butin: number; mallettes: number[] }
   | { type: 'evasion'; routes: IssueRouteBW[] }
-  | { type: 'braquage'; code: number[]; meca: number[]; coffre: RecompenseBW[] }
+  /** etage : le sous-sol où s'arrête la perceuse (1 à 5) ; jackpot : celui du Coffre du Siècle (au 5e seulement). */
+  | { type: 'braquage'; etage: number; jackpot: JackpotBW | null }
   /** decroche[k] : le tunnel (0 ou 1) où le wagon k est décroché, null pour celui qui arrive à Istanbul. */
   | { type: 'express'; paris: number[]; venise: number[]; decroche: (number | null)[]; coffre: number };
 
@@ -307,8 +318,10 @@ export function tirerBonusBW(type: BonusBW, h: Hasard): TirageBonusBW {
           return { evade, x: tirerTable(ITINERAIRES_BW[r].gains, h) };
         }),
       };
-    case 'braquage':
-      return { type, code: melanger(CODES_BRAQUAGE, h), meca: melanger(ZONES_MECANISME, h), coffre: [0, 1, 2, 3].map(() => tirerTable(TABLE_COFFRES_BRAQUAGE, h)) };
+    case 'braquage': {
+      const etage = tirerTable(ARRET_BRAQUAGE, h);
+      return { type, etage, jackpot: etage >= ETAGES_BRAQUAGE.length ? tirerTable(JACKPOTS_BRAQUAGE, h) : null };
+    }
     case 'express': {
       // L'ordre dans lequel la police décroche les wagons : 2 au premier tunnel, 2 au second, le dernier arrive.
       const ordre = melanger(
@@ -347,11 +360,7 @@ export type EtapeBW =
   | 'mallettes'
   | 'route'
   | 'poursuite'
-  | 'code'
-  | 'codeRevele'
-  | 'mecanisme'
-  | 'mecaRevele'
-  | 'coffre'
+  | 'descente'
   | 'wagons'
   | 'paris'
   | 'tunnel1'
@@ -378,10 +387,8 @@ export interface DureesBW {
   intro: number;
   /** Temps pour choisir (cartes, mallettes, itinéraire). */
   choix: number;
-  /** Temps pour chaque serrure du coffre. */
-  serrure: number;
-  /** Révélation d'une serrure. */
-  etape: number;
+  /** Le Braquage : la descente de la perceuse jusqu'au Coffre du Siècle (plus courte si l'alarme sonne avant). */
+  descente: number;
   vol: number;
   poursuite: number;
   revele: number;
@@ -400,8 +407,7 @@ export const DUREES_BW: DureesBW = {
   chargement: 3_000,
   intro: 4_500,
   choix: 10_000,
-  serrure: 8_000,
-  etape: 3_000,
+  descente: descenteCasseBW(5),
   vol: 6_500,
   poursuite: 9_000,
   revele: 5_500,
@@ -413,11 +419,12 @@ export const DUREES_BW: DureesBW = {
   arrivee: 13_000,
 };
 
-export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW): EtapeBonusBW[] {
+/** Les étapes d'un bonus. Celles du Braquage dépendent du tirage : la descente s'arrête plus tôt si l'alarme sonne. */
+export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW, t?: TirageBonusBW): EtapeBonusBW[] {
   // Chaque mini-jeu commence par son écran de chargement.
-  return [{ nom: 'chargement', choix: 0, duree: d.chargement }, ...etapesDuJeuBW(type, d)];
+  return [{ nom: 'chargement', choix: 0, duree: d.chargement }, ...etapesDuJeuBW(type, d, t)];
 }
-function etapesDuJeuBW(type: BonusBW, d: DureesBW): EtapeBonusBW[] {
+function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonusBW[] {
   const e = (nom: EtapeBW, duree: number, choix = 0): EtapeBonusBW => ({ nom, choix, duree });
   switch (type) {
     case 'baron':
@@ -426,8 +433,11 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW): EtapeBonusBW[] {
       return [e('intro', d.intro), e('vol', d.vol), e('mallettes', d.choix, 3), e('revele', d.revele)];
     case 'evasion':
       return [e('intro', d.intro), e('route', d.choix, 3), e('poursuite', d.poursuite), e('revele', d.revele)];
-    case 'braquage':
-      return [e('intro', d.intro), e('code', d.serrure, 3), e('codeRevele', d.etape), e('mecanisme', d.serrure, 8), e('mecaRevele', d.etape), e('coffre', d.serrure, 4), e('revele', d.revele)];
+    case 'braquage': {
+      const etage = t?.type === 'braquage' ? t.etage : ETAGES_BRAQUAGE.length;
+      const descente = Math.round((d.descente * descenteCasseBW(etage)) / descenteCasseBW(ETAGES_BRAQUAGE.length));
+      return [e('intro', d.intro), e('descente', descente), e('revele', d.revele)];
+    }
     case 'express':
       return [
         e('intro', d.introExpress),
@@ -444,8 +454,11 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW): EtapeBonusBW[] {
 /** Le nombre d'options de chaque étape de choix, dans l'ordre (un choix par étape). */
 export const choixDuBonusBW = (type: BonusBW) => etapesBonusBW(type).filter((e) => e.choix > 0).map((e) => e.choix);
 
-/** Ce que rapporte la mise d'un bonus, d'après les choix du joueur (un indice par étape de choix). */
-export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: number; jackpot?: JackpotBW; evade?: boolean } {
+/**
+ * Ce que rapporte la mise d'un bonus, d'après les choix du joueur (un indice par étape de choix). `fixe` : une part
+ * fixe (un jackpot gagné en plus du multiple), que le multiplicateur de la roue ne multiplie pas.
+ */
+export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: number; jackpot?: JackpotBW; evade?: boolean; fixe?: number } {
   switch (t.type) {
     case 'baron':
       return { ...t.cartes[choix[0]] };
@@ -455,14 +468,18 @@ export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: numbe
       const r = t.routes[choix[0]];
       return { x: r.evade ? r.x : 0, evade: r.evade };
     }
-    case 'braquage': {
-      const c = t.coffre[choix[2]];
-      return c.jackpot ? { ...c } : { x: t.code[choix[0]] * t.meca[choix[1]] * c.x };
-    }
+    case 'braquage':
+      return { x: ETAGES_BRAQUAGE[t.etage - 1], ...(t.jackpot ? { jackpot: t.jackpot, fixe: VALEUR_JACKPOT_BW[t.jackpot] } : {}) };
     case 'express':
       return { x: butinWagon(t, choix[0]), evade: t.decroche[choix[0]] === null };
   }
 }
+
+/**
+ * Le multiple final d'une récompense de bonus, multiplicateur de la roue `m` compris : un jackpot seul garde sa valeur
+ * fixe ; un multiple est multiplié, et un jackpot gagné en plus (la part fixe) s'y ajoute.
+ */
+export const valeurRecompenseBW = (r: { x: number; jackpot?: JackpotBW; fixe?: number }, m: number) => (r.fixe !== undefined ? r.x * m + r.fixe : r.jackpot ? r.x : r.x * m);
 
 /** Gain (mise comprise) d'une mise de `mise` qui touche un multiplicateur `x`. */
 export const gainBW = (mise: number, x: number) => Math.floor((mise * Math.round(x * 100)) / 100);
@@ -492,8 +509,13 @@ export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable
       return { multipliable: (1 - r.arrestation) * esperanceTable(r.gains), jackpots: 0 };
     }
     case 'braquage': {
-      const moy = (t: number[]) => t.reduce((s, x) => s + x, 0) / t.length;
-      return separer(TABLE_COFFRES_BRAQUAGE, moy(CODES_BRAQUAGE) * moy(ZONES_MECANISME));
+      const total = ARRET_BRAQUAGE.reduce((s, [, p]) => s + p, 0);
+      const pSiecle = (ARRET_BRAQUAGE.find(([k]) => k === ETAGES_BRAQUAGE.length)?.[1] ?? 0) / total;
+      const totalJ = JACKPOTS_BRAQUAGE.reduce((s, [, p]) => s + p, 0);
+      return {
+        multipliable: ARRET_BRAQUAGE.reduce((s, [k, p]) => s + (p / total) * ETAGES_BRAQUAGE[k - 1], 0),
+        jackpots: pSiecle * JACKPOTS_BRAQUAGE.reduce((s, [j, p]) => s + (p / totalJ) * VALEUR_JACKPOT_BW[j], 0),
+      };
     }
     case 'express': {
       // Le butin de Paris pour tous ; Venise pour les 3 wagons sur 5 qui passent le premier tunnel ; le Coffre du Baron
@@ -567,7 +589,7 @@ export function simulerBW(n: number, h: Hasard): SimulationBW {
       const t = tirerBonusBW(c, h);
       const choix = choixDuBonusBW(c).map((q) => Math.floor(h() * q));
       const r = recompenseBonusBW(t, choix);
-      x = r.jackpot ? r.x : r.x * m;
+      x = valeurRecompenseBW(r, m);
       if (r.jackpot) jackpots[r.jackpot]++;
       const cle = `${c} ×${x}`;
       multiplicateurs[cle] = (multiplicateurs[cle] ?? 0) + 1;
@@ -623,9 +645,8 @@ export interface VueBonusBW {
   butin?: number | null;
   mallettes?: (number | null)[];
   routes?: (IssueRouteBW | null)[];
-  code?: (number | null)[];
-  meca?: (number | null)[];
-  coffre?: (RecompenseBW | null)[];
+  /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
+  casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**
    * L'Express : le butin de chaque wagon à Paris et à Venise, le tunnel où il est décroché, et le Coffre du Baron (avec
    * le wagon qui l'ouvre), chacun révélé quand le train y arrive.
