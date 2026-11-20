@@ -112,3 +112,8 @@
   .ht-bulle p { font-size: 15px; }
   .ht-groom-image { width: auto; max-width: 70%; max-height: 38dvh; justify-self: start; margin-left: 6%; }
 }
+
+/* Le calendrier n'est plus rogné en hauteur (les cases, placées en % de l'image entière, tombaient à côté) :
+   on réduit plutôt sa largeur pour qu'il tienne en entier. */
+.ht-calendrier { width: min(100%, calc(62dvh * 2 / 3)); margin-inline: auto; aspect-ratio: 2 / 3; }
+.ht-calendrier > img { height: 100%; max-height: none; aspect-ratio: auto; object-fit: fill; }

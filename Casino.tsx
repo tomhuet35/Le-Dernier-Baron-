@@ -107,6 +107,8 @@ const POSITION_CASE = [1, 2, 3, 4, 5, 6, 7, 0];
 export function RoueIllustree({ image, libelles, rotation, tourne, gagnante, petit }: { image: string; libelles: [string, string, string][]; rotation: number; tourne: boolean; gagnante: number | null; petit?: boolean }) {
   return (
     <div className={`rj ${tourne ? 'tourne' : ''} ${petit ? 'petit' : ''}`}>
+      {/* Pendant que la roue tourne, on zoome sur elle (le support sort du cadre). */}
+      <div className="rj-zoom">
       <img className="rj-support" src="/cartes/roue-support.webp" alt="" draggable={false} />
       <div className="rj-roue" style={{ transform: `rotate(${rotation}deg)`, transitionDuration: tourne ? `${DUREE_ROUE_MS}ms` : '0ms' }}>
         <img src={`/cartes/${image}.webp`} alt="" draggable={false} />
@@ -119,6 +121,7 @@ export function RoueIllustree({ image, libelles, rotation, tourne, gagnante, pet
         ))}
       </div>
       <img className="rj-fleche" src="/cartes/roue-fleche.webp" alt="" draggable={false} />
+      </div>
     </div>
   );
 }

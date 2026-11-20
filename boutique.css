@@ -132,3 +132,9 @@
 .bq-visuel img.bq-combo, .bq-offre.photo .bq-visuel img.bq-combo { position: absolute; bottom: 3%; width: 38%; height: auto; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.85)); pointer-events: none; }
 .bq-visuel img.bq-combo.rubis { left: 1%; transform: rotate(-6deg); }
 .bq-visuel img.bq-combo.dollars { right: 1%; transform: rotate(6deg); }
+
+/* Zoom sur la roue pendant qu'elle tourne, puis retour à la vue entière pour le résultat. */
+.rj:not(.petit) { overflow: hidden; border-radius: 18px; }
+.rj-zoom { position: absolute; inset: 0; transform-origin: 50% 32.5%; transition: transform 0.7s cubic-bezier(0.3, 0.7, 0.2, 1); }
+.rj.tourne .rj-zoom { transform: translateY(21%) scale(1.42); }
+@media (prefers-reduced-motion: reduce) { .rj.tourne .rj-zoom { transform: none; } }
