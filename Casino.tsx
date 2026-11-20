@@ -1877,6 +1877,50 @@ function ALaUne({ elements }: { elements: ElementUne[] }) {
   );
 }
 
+/** La barre du haut (profil, rubis, dollars, Boutique, menu) : à l'accueil, et aussi au-dessus de chaque jeu. */
+function BarreHaut({ vue, onProfil, onBoutique, onMenu, enJeu }: { vue: VueCasino; onProfil: () => void; onBoutique: (rayon: string) => void; onMenu: () => void; enJeu?: boolean }) {
+  const solde = useSoldeAnime(vue.solde);
+  const attenteRoue = useAttente(vue.roueProchaine);
+  const niveau = vue.hotel?.niveau ?? vue.profil?.niveau ?? 1;
+  const c = vue.contrats;
+  return (
+  <header className={`ac-barre ${enJeu ? 'en-jeu' : ''}`}>
+    <button type="button" className="ac-moi" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
+      <CadreAvatar avatar={vue.avatar} niveau={niveau} taille={58} special={cadreSpecial(c?.cadres, c?.cadreChoisi)} sansNiveau />
+      <span className="ac-niveau">
+        <b>{tr(`Niv. ${niveau}`, `Lvl ${niveau}`)}</b>
+        {vue.profil && <BarreXp xp={vue.profil.xp} xpNiveau={vue.profil.xpNiveau} xpSuivant={vue.profil.xpSuivant} fine />}
+      </span>
+    </button>
+    <span className="ac-compteur ac-rubis">
+      <img src="/cartes/rubis-icone.webp" alt={tr('Rubis', 'Rubies')} />
+      <b>{(c?.rubis ?? 0).toLocaleString(tr('fr-FR', 'en-US'))}</b>
+      <button type="button" className="ac-plus" onClick={() => onBoutique('rubis')} aria-label={tr('Obtenir des rubis', 'Get rubies')}>
+        <img src="/cartes/bouton-plus.webp" alt="" />
+      </button>
+    </span>
+    <span className="ac-compteur ac-dollars">
+      <img src="/cartes/dollars-icone.webp" alt="$" />
+      <b title={dollars(solde)}>{dollarsCourt(solde)}</b>
+      <button type="button" className="ac-plus" onClick={() => onBoutique('dollars')} aria-label={tr('Obtenir des dollars', 'Get dollars')}>
+        <img src="/cartes/bouton-plus.webp" alt="" />
+      </button>
+    </span>
+    <button type="button" className="ac-boutique" onClick={() => onBoutique('debutant')} aria-label={tr('La boutique', 'The shop')}>
+      <img src="/cartes/icone-boutique.webp" alt="" />
+      <span>{tr('Boutique', 'Shop')}</span>
+      {!attenteRoue && <span className="pastille-nombre">1</span>}
+    </button>
+    <span className="ac-carte-membre" style={{ marginLeft: 'auto' }}>
+      <CarteDeMembre vue={vue} />
+    </span>
+    <button type="button" className="ac-menu" onClick={() => onMenu()} aria-label={tr('Menu du salon', 'Lounge menu')}>
+      <img src="/cartes/bouton-menu.webp" alt="" />
+    </button>
+  </header>
+  );
+}
+
 /** L'accueil du salon : barre du haut, « À la une », les étages de l'hôtel et leurs jeux, le dock. */
 function Accueil({
   vue,
@@ -1901,6 +1945,8 @@ function Accueil({
   onDefis,
   onProfil,
   onQuitter,
+  ouverture,
+  onOuverture,
   onCercles,
   onBourse,
   onVip,
@@ -1934,8 +1980,10 @@ function Accueil({
   onDefis: () => void;
   onProfil: () => void;
   onQuitter: () => void;
+  /** Venu d'un jeu par la barre du haut : la Boutique (sur un rayon) ou le menu à ouvrir en arrivant. */
+  ouverture?: { boutique?: string; menu?: boolean } | null;
+  onOuverture?: () => void;
 }) {
-  const solde = useSoldeAnime(vue.solde);
   const attenteRoue = useAttente(vue.roueProchaine);
   const finVentes = useAttente(vue.ventes?.fin);
   const [menu, setMenu] = useState(false);
@@ -1943,6 +1991,12 @@ function Accueil({
   // La Boutique ouverte, et sur quel rayon (le « + » des rubis ou des dollars mène droit à leurs offres).
   const [boutique, setBoutique] = useState<string | false>(false);
   const [coffreRubis, setCoffreRubis] = useState(false);
+  useEffect(() => {
+    if (!ouverture) return;
+    if (ouverture.boutique) setBoutique(ouverture.boutique);
+    if (ouverture.menu) setMenu(true);
+    onOuverture?.();
+  }, [ouverture, onOuverture]);
   const niveau = vue.hotel?.niveau ?? vue.profil?.niveau ?? 1;
   const c = vue.contrats;
   const e = etage(etageActif);
@@ -2006,40 +2060,7 @@ function Accueil({
 
   return (
     <div className="ac ac-sans-etages">
-      <header className="ac-barre">
-        <button type="button" className="ac-moi" onClick={onProfil} aria-label={tr('Mon profil du casino', 'My casino profile')}>
-          <CadreAvatar avatar={vue.avatar} niveau={niveau} taille={58} special={cadreSpecial(c?.cadres, c?.cadreChoisi)} sansNiveau />
-          <span className="ac-niveau">
-            <b>{tr(`Niv. ${niveau}`, `Lvl ${niveau}`)}</b>
-            {vue.profil && <BarreXp xp={vue.profil.xp} xpNiveau={vue.profil.xpNiveau} xpSuivant={vue.profil.xpSuivant} fine />}
-          </span>
-        </button>
-        <span className="ac-compteur ac-rubis">
-          <img src="/cartes/rubis-icone.webp" alt={tr('Rubis', 'Rubies')} />
-          <b>{(c?.rubis ?? 0).toLocaleString(tr('fr-FR', 'en-US'))}</b>
-          <button type="button" className="ac-plus" onClick={() => setBoutique('rubis')} aria-label={tr('Obtenir des rubis', 'Get rubies')}>
-            <img src="/cartes/bouton-plus.webp" alt="" />
-          </button>
-        </span>
-        <span className="ac-compteur ac-dollars">
-          <img src="/cartes/dollars-icone.webp" alt="$" />
-          <b title={dollars(solde)}>{dollarsCourt(solde)}</b>
-          <button type="button" className="ac-plus" onClick={() => setBoutique('dollars')} aria-label={tr('Obtenir des dollars', 'Get dollars')}>
-            <img src="/cartes/bouton-plus.webp" alt="" />
-          </button>
-        </span>
-        <button type="button" className="ac-boutique" onClick={() => setBoutique('debutant')} aria-label={tr('La boutique', 'The shop')}>
-          <img src="/cartes/icone-boutique.webp" alt="" />
-          <span>{tr('Boutique', 'Shop')}</span>
-          {!attenteRoue && <span className="pastille-nombre">1</span>}
-        </button>
-        <span className="ac-carte-membre" style={{ marginLeft: 'auto' }}>
-          <CarteDeMembre vue={vue} />
-        </span>
-        <button type="button" className="ac-menu" onClick={() => setMenu(true)} aria-label={tr('Menu du salon', 'Lounge menu')}>
-          <img src="/cartes/bouton-menu.webp" alt="" />
-        </button>
-      </header>
+      <BarreHaut vue={vue} onProfil={onProfil} onBoutique={setBoutique} onMenu={() => setMenu(true)} />
 
       <div className="ac-une-haut">
         <ALaUne elements={une} />
@@ -2434,6 +2455,16 @@ export default function Casino({
     setCibleDefi(cible);
     setEcran('defis');
   };
+  // La barre du haut dans un jeu : on revient au salon (en quittant la table s'il y en a une), puis on ouvre ce qui est demandé.
+  const [ouverture, setOuverture] = useState<{ boutique?: string; menu?: boolean } | null>(null);
+  const finOuverture = useCallback(() => setOuverture(null), []);
+  const depuisJeu = (suite: () => void) => {
+    if (ecran === 'table' && tableRef.current) void quitterTable().then(suite);
+    else {
+      retourSalon();
+      suite();
+    }
+  };
   const retourSalon = () => {
     setEcran('salon');
     void appel('casino_vue').then((r) => {
@@ -2590,6 +2621,8 @@ export default function Casino({
         onDefis={() => ouvrirDefis()}
         onProfil={() => ouvrirProfil(null)}
         onQuitter={() => onQuitter()}
+        ouverture={ouverture}
+        onOuverture={finOuverture}
         onCercles={() => setEcran('cercles')}
         onBourse={() => setEcran('bourse')}
         onVip={(j) => (setTablesVip(true), setFenetreTables(j))}
@@ -2607,6 +2640,17 @@ export default function Casino({
   if (vue && jeuACharger) contenu = <ChargementJeu key={jeuACharger} jeu={jeuACharger}>{contenu}</ChargementJeu>;
   return (
     <div className="cas">
+      {vue && ecran !== 'salon' && (
+        <div className="ac ac-barre-jeu">
+          <BarreHaut
+            vue={vue}
+            enJeu
+            onProfil={() => depuisJeu(() => ouvrirProfil(null))}
+            onBoutique={(rayon) => depuisJeu(() => setOuverture({ boutique: rayon }))}
+            onMenu={() => depuisJeu(() => setOuverture({ menu: true }))}
+          />
+        </div>
+      )}
       <Garde key={ecran} onRetour={retourSalon} libelleRetour={tr('Retour au salon', 'Back to the lounge')}>
         {contenu}
       </Garde>

@@ -610,3 +610,40 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
 
 /* Le chiffre des pastilles bien au centre du rubis. */
 .ac .pastille-nombre { display: inline-grid !important; place-items: center; text-align: center; padding: 0 4px 1px !important; line-height: 1 !important; box-sizing: border-box; }
+
+/* Téléphone : le logo des affiches « À la une » est un élément de la rangée (bien centré en hauteur), plus un calque. */
+@media (max-width: 600px) {
+  .ac-une-haut .ac-une-contenu { align-items: center; }
+  .ac-une-haut .ac-une-contenu > .ac-une-logo { position: static !important; translate: none !important; align-self: center; flex: none !important; width: 62px !important; height: 62px !important; object-fit: contain; margin-left: 26px; }
+  .ac-une-haut .ac-une-contenu.illustre:has(.ac-une-logo) > *:not(.ac-une-logo) { padding-left: 10px !important; }
+}
+@media (max-width: 600px) {
+  .ac-une-haut .fn-bandeau.affiche { position: relative; padding: 0 !important; }
+  .ac-une-haut .fn-bandeau.affiche .fn-bandeau-texte { position: absolute; left: 50%; translate: -50% 0; bottom: 3px; z-index: 2; padding: 1px 10px; border-radius: 99px; background: rgba(10, 2, 4, 0.75); white-space: nowrap; font-size: 11px; }
+  .ac-une-haut .fn-bandeau.affiche .fn-bandeau-affiche { height: 100%; }
+  .ac-une-haut .fn-bandeau.affiche .fn-bandeau-affiche img { width: 100%; height: 100%; object-fit: cover; }
+}
+
+/* La barre du haut au-dessus des jeux : compacte, toujours visible en haut. */
+.ac.ac-barre-jeu { display: block; height: auto; min-height: 0; padding: 0 10px; position: sticky; top: 0; z-index: 15; grid-template-areas: none; }
+.ac-barre.en-jeu { min-height: 0; padding-top: max(4px, env(safe-area-inset-top)); padding-bottom: 4px; }
+.ac-barre.en-jeu .ac-carte-membre { display: none; }
+@media (min-width: 601px) {
+  .ac-barre.en-jeu { min-height: 64px; }
+  .ac-barre.en-jeu .ac-moi .cs-avatar { --taille: 48px !important; width: 48px !important; height: 48px !important; }
+}
+@media (max-width: 600px) {
+  .ac-barre.en-jeu { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 6px; }
+  .ac-barre.en-jeu .ac-moi .cs-avatar { --taille: 38px !important; width: 38px !important; height: 38px !important; }
+  .ac-barre.en-jeu .ac-compteur { height: 32px; }
+  .ac-barre.en-jeu .ac-boutique > img { width: 40px; height: 40px; }
+  .ac-barre.en-jeu .ac-boutique > span:not(.pastille-nombre) { display: none; }
+  .ac-barre.en-jeu .ac-menu { width: 34px; height: 34px; }
+}
+/* Sous la barre, l'écran du jeu n'a plus besoin de laisser la place de l'encoche en haut. */
+.ac-barre-jeu + * .cas-ecran, .ac-barre-jeu + .cas-ecran { padding-top: 6px !important; }
+/* Les machines à sous gardent tout l'écran malgré la barre du haut (format paysage : on retire sa hauteur). */
+@media (min-aspect-ratio: 1 / 1) {
+  .cas:has(.ac-barre-jeu) .cas-machine-ecran { --w: max(300px, min(calc(100vw - 16px), 700px, calc((100dvh - 254px) / 1.213))); padding-top: 4px; }
+  .cas:has(.ac-barre-jeu) .cas-machine-ecran.nuits { --w: max(300px, min(calc(100vw - 16px), 700px, calc((100dvh - 254px) / 1.235))); }
+}
