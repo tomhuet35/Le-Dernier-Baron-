@@ -44,7 +44,7 @@ const IMG = (n: string) => `/cartes/bw-ex2-${n}.webp`;
 /** Toutes les images de l'Express (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_EXPRESS_NOMS = [
   'bw-ex-gare-depart',
-  ...['affiche', 'baron', 'chef', 'loco', 'terminus'].map((n) => `bw-ex2-${n}`),
+  ...['affiche', 'baron', 'chef', 'loco', 'terminus', 'gare-paris', 'gare-venise', 'gare-istanbul'].map((n) => `bw-ex2-${n}`),
   ...[1, 2, 3, 4, 5].map((k) => `bw-ex2-wagon-${k}`),
   ...(['paris', 'alpes', 'venise', 'balkans', 'istanbul'] as Decor[]).flatMap((d) => [`bw-ex2-${d}`, `bw-ex2-${d}-voie`]),
   'bw-ex-coffre',
@@ -72,10 +72,10 @@ const REPERE: Record<Decor, number> = { paris: 0.505, alpes: 0.5, venise: 0.43, 
 const LOCO = { w: 1100, h: 338, cheminee: 0.786 };
 const WAGON = { w: 1100, h: 344 };
 const GENDARME = { w: 683, h: 440 };
-const GARES: Record<string, { ville: [string, string]; gare: string }> = {
-  paris: { ville: ['PARIS', 'PARIS'], gare: 'Gare de l’Est' },
-  venise: { ville: ['VENISE', 'VENICE'], gare: 'Santa Lucia' },
-  istanbul: { ville: ['ISTANBUL', 'ISTANBUL'], gare: 'Sirkeci' },
+const GARES: Record<string, { ville: [string, string]; gare: string; image: string }> = {
+  paris: { ville: ['PARIS', 'PARIS'], gare: 'Gare de l’Est', image: 'paris' },
+  venise: { ville: ['VENISE', 'VENICE'], gare: 'Santa Lucia', image: 'venise' },
+  istanbul: { ville: ['ISTANBUL', 'ISTANBUL'], gare: 'Sirkeci', image: 'istanbul' },
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -310,6 +310,7 @@ interface RefsScene {
   fonds: RefObject<HTMLDivElement>[];
   voies: RefObject<HTMLDivElement>[];
   panneau: RefObject<HTMLDivElement>;
+  gare: RefObject<HTMLImageElement>;
   loco: RefObject<HTMLDivElement>;
   wagons: RefObject<HTMLDivElement>[];
   fumees: RefObject<HTMLImageElement>[];
@@ -521,6 +522,19 @@ function useSceneTrain(donnees: { current: DonneesScene | null }, refs: RefsScen
         }
       });
 
+      // La gare : elle arrive avec le train, s'arrête derrière la locomotive et les premiers wagons, repart. Son quai
+      // se pose sur le bord arrière de la voie.
+      const gareEl = refs.gare.current;
+      if (gareEl) {
+        const hG = g.hW * (g.portrait ? 2.5 : 2.7);
+        dimensionner(gareEl, 'gare', () => {
+          gareEl.style.height = `${hG}px`;
+          gareEl.style.width = `${hG * 3}px`;
+        });
+        const xg = centreLoco - g.step * 1.0 + (st.sArret - s);
+        gareEl.style.transform = `translate3d(${ecran(xg) - hG * 1.5}px, ${g.ech * GEO[decor].haut + g.ech * 8 - hG}px, 0)`;
+      }
+
       // Le panneau de la gare : il arrive avec le décor, s'arrête au-dessus de la locomotive, repart.
       const panneau = refs.panneau.current;
       if (panneau) {
@@ -701,6 +715,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
       fonds: [nouvelleRef(), nouvelleRef()],
       voies: [nouvelleRef(), nouvelleRef()],
       panneau: nouvelleRef(),
+      gare: nouvelleRef(),
       loco: nouvelleRef(),
       wagons: Array.from({ length: NB_WAGONS }, () => nouvelleRef<HTMLDivElement>()),
       fumees: Array.from({ length: 12 }, () => nouvelleRef<HTMLImageElement>()),
@@ -873,6 +888,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         )}
 
         <div className={`bwx-train ${decor ? '' : 'cache'}`} aria-hidden="true">
+          {gare && <img className="bwx-gare" key={`gare-${gare.ville[0]}`} ref={refs.gare} src={IMG(`gare-${gare.image}`)} alt="" draggable={false} />}
           {gare && (
             <div className="bwx-panneau" ref={refs.panneau}>
               <span className="bwx-panneau-plaque">
