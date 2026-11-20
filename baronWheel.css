@@ -84,14 +84,24 @@
 /* Le tapis : huit cases */
 .bw-commandes { display: grid; gap: 10px; padding: 10px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.92); align-content: start; }
 .bw-tapis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.bw-case { position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 80px; padding: 6px 3px; border-radius: 12px; border: 2px solid var(--or-bw); background: var(--fond); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.28)); color: var(--texte); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.45); transition: transform 0.12s, box-shadow 0.2s; }
+.bw-case { --cadre: url(/cartes/bw-cadre-chiffres.webp); --tranche: 115; --cw: 24px; position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 80px; padding: 10px 9px; border-radius: 10px; border: none; background: var(--fond); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.28)); color: var(--texte); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); transition: transform 0.12s, box-shadow 0.2s; }
+/* Le cadre Art déco de la case : coins ornés, côtés qui s'étirent avec elle (chiffres, bonus, Express). */
+.bw-case::after { content: ''; position: absolute; inset: -3px; z-index: 1; border: var(--cw) solid transparent; border-image: var(--cadre) var(--tranche) / var(--cw) stretch; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); transition: filter 0.2s; }
+.bw-case.baron, .bw-case.pickpocket, .bw-case.evasion, .bw-case.braquage { --cadre: url(/cartes/bw-cadre-bonus.webp); --tranche: 120; }
+.bw-case.express { --cadre: url(/cartes/bw-cadre-express.webp); --tranche: 140; --cw: 28px; padding: 12px 14px; }
+.bw-case.express::after { border-image-repeat: round; }
+.bw-case.express::before { content: ''; position: absolute; inset: -3px; z-index: 1; background: url(/cartes/bw-cadre-express-haut.webp) center top / auto var(--cw) no-repeat, url(/cartes/bw-cadre-express-bas.webp) center bottom / auto var(--cw) no-repeat; pointer-events: none; }
+.bw-case > * { position: relative; z-index: 2; }
+.bw-case > .bw-case-mise, .bw-case.express .bw-case-multi { position: absolute; z-index: 3; }
 .bw-case strong { font-family: var(--titre); font-weight: 400; font-size: clamp(19px, 5.4vw, 27px); line-height: 1; }
 .bw-case > img { width: clamp(38px, 11vw, 54px); height: auto; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
 .bw-case-nom { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(9px, 2.5vw, 11px); font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; }
 .bw-case:active:not(:disabled) { transform: scale(0.95); }
 .bw-case:disabled { opacity: 1; cursor: default; filter: saturate(0.8) brightness(0.88); }
-.bw-case.misee { box-shadow: 0 0 0 2px #fff1c4, 0 0 14px rgba(255, 210, 120, 0.6); }
-.bw-case.gagnante { filter: none; box-shadow: 0 0 0 3px #fff6dc, 0 0 24px rgba(255, 220, 140, 0.9); animation: bw-case-gagne 0.6s ease-in-out infinite alternate; }
+.bw-case.misee { box-shadow: 0 0 16px rgba(255, 210, 120, 0.65); }
+.bw-case.misee::after { filter: brightness(1.2) drop-shadow(0 0 4px rgba(255, 241, 196, 0.95)); }
+.bw-case.gagnante { filter: none; box-shadow: 0 0 26px rgba(255, 220, 140, 0.95); animation: bw-case-gagne 0.6s ease-in-out infinite alternate; }
+.bw-case.gagnante::after { filter: brightness(1.45) drop-shadow(0 0 7px #fff6dc); }
 @keyframes bw-case-gagne { to { transform: scale(1.04); } }
 .bw-case-mise { position: absolute; right: -4px; top: -9px; z-index: 2; display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px 1px 1px; border-radius: 99px; background: rgba(10, 6, 4, 0.92); border: 1px solid #ffcf6b; font-size: 10.5px; font-weight: 900; color: #fff1c4; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bw-case-mise img { width: 15px; height: 15px; }
@@ -443,7 +453,8 @@
 }
 @media (max-width: 420px) {
   .bw-tapis { gap: 5px; }
-  .bw-case { min-height: 72px; padding: 9px 2px 5px; border-radius: 10px; }
+  .bw-case { --cw: 20px; min-height: 72px; padding: 10px 6px 7px; border-radius: 8px; }
+  .bw-case.express { --cw: 24px; }
   .bw-case-multi { font-size: 10px; }
   .bw-commandes .bj-jetons { gap: 4px; }
   .bw-pastille { min-width: 38px; height: 28px; font-size: 12px; }
@@ -491,8 +502,10 @@
 .bw-case.multipliee > img { width: clamp(32px, 9vw, 48px); }
 .bw-case.multipliee strong { font-size: clamp(17px, 4.8vw, 24px); }
 .bw-case.express .bw-case-multi { position: absolute; left: -4px; top: -7px; max-width: 60%; padding: 0 6px; border-radius: 99px; background: rgba(14, 2, 4, 0.92); border: 1px solid rgba(255, 50, 50, 0.8); line-height: 1.45; }
-.bw-case.multipliee { box-shadow: 0 0 0 2px #ff2b2b, 0 0 12px rgba(255, 40, 40, 0.55); }
-.bw-case.multipliee.misee { box-shadow: 0 0 0 2px #ff2b2b, 0 0 0 4px #fff1c4, 0 0 18px rgba(255, 60, 50, 0.8); }
+.bw-case.multipliee { box-shadow: 0 0 14px rgba(255, 40, 40, 0.7); }
+.bw-case.multipliee::after { filter: drop-shadow(0 0 3px #ff2b2b) drop-shadow(0 0 6px rgba(255, 40, 40, 0.8)); }
+.bw-case.multipliee.misee { box-shadow: 0 0 20px rgba(255, 60, 50, 0.85); }
+.bw-case.multipliee.misee::after { filter: brightness(1.2) drop-shadow(0 0 3px #ff2b2b) drop-shadow(0 0 5px rgba(255, 241, 196, 0.9)); }
 .bw-bonus-multi { padding: 0 8px; border-radius: 99px; background: linear-gradient(180deg, #ff7a6b, #b3261c); border: 1px solid #fff1c4; color: #fff1c4; font-family: var(--titre); font-style: normal; font-size: clamp(14px, 3.6vw, 19px); }
 .bw-bonus-annonce-multi { position: absolute; left: 50%; top: 50%; z-index: 32; display: grid; justify-items: center; gap: 2px; padding: 10px 26px 12px; border-radius: 20px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(140, 24, 18, 0.97), rgba(40, 6, 4, 0.97)); box-shadow: 0 0 40px rgba(255, 120, 90, 0.6); transform: translate(-50%, -50%); text-align: center; animation: bw-resultat-fixe 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.3s both; }
 .bw-bonus-annonce-multi small { font-size: 11px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: #ffcf6b; }
