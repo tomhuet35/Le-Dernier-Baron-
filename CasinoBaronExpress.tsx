@@ -44,8 +44,9 @@ const IMG = (n: string) => `/cartes/bw-ex2-${n}.webp`;
 /** Toutes les images de l'Express (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_EXPRESS_NOMS = [
   'bw-ex-gare-depart',
-  ...['affiche', 'baron', 'chef', 'loco', 'terminus', 'tunnel', 'gare-paris', 'gare-venise', 'gare-istanbul'].map((n) => `bw-ex2-${n}`),
-  ...[1, 2, 3, 4, 5].map((k) => `bw-ex2-wagon-${k}`),
+  ...['affiche', 'baron', 'chef', 'loco', 'terminus', 'tunnel', 'tunnel-lampes', 'gare-paris', 'gare-venise', 'gare-istanbul'].map((n) => `bw-ex2-${n}`),
+  ...[1, 2, 3, 4, 5].flatMap((k) => [`bw-ex2-wagon-${k}`, `bw-ex2-wagon-${k}-nuit`]),
+  'bw-ex2-loco-nuit',
   ...(['paris', 'alpes', 'venise', 'balkans', 'istanbul'] as Decor[]).flatMap((d) => [`bw-ex2-${d}`, `bw-ex2-${d}-voie`]),
   'bw-ex-coffre',
   'bw-ex-coffre-ouvert',
@@ -927,6 +928,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
             return (
               <div key={k} className={`bwx-wagon ${k === mien ? 'mien' : ''} ${dep >= 0 ? 'devie' : ''}`} ref={refs.wagons[k]}>
                 <img src={IMG(`wagon-${k + 1}`)} alt="" draggable={false} />
+                <img className="bwx-nuit" src={IMG(`wagon-${k + 1}-nuit`)} alt="" draggable={false} />
                 <span className="bwx-plaque" style={{ '--couleur': WAGONS_EXPRESS[k].couleur, '--texte': WAGONS_EXPRESS[k].texte } as CSSProperties}>
                   {k === mien ? '★ ' : ''}
                   {nomWagon(k)}
@@ -955,6 +957,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
           })}
           <div className="bwx-loco" ref={refs.loco}>
             <img src={IMG('loco')} alt="" draggable={false} />
+            <img className="bwx-nuit" src={IMG('loco-nuit')} alt="" draggable={false} />
             <i className="bwx-phare" />
             <i className="bwx-lanterne" />
           </div>
