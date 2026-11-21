@@ -2230,32 +2230,7 @@ function Accueil({
         </div>
       </nav>
 
-      {menu && (
-        <Fenetre titre={tr('Salon privé', 'Private lounge')} onFermer={() => setMenu(false)}>
-          <div className="ac-menu-liste">
-            <button type="button" onClick={() => (setMenu(false), onProfil())}>
-              <img src="/cartes/icone-profil.webp" alt="" /> {tr('Mon profil', 'My profile')}
-            </button>
-            <button type="button" onClick={() => (setMenu(false), onAmis())}>
-              <img src="/cartes/icone-amis.webp" alt="" /> {tr('Amis', 'Friends')}
-            </button>
-            <button type="button" onClick={() => (setMenu(false), onDefis())}>
-              <img src="/cartes/icone-invitation.webp" alt="" /> {tr('Défis', 'Challenges')}
-            </button>
-            <button type="button" onClick={() => (setMenu(false), onBureau())}>
-              <img src="/cartes/objet-globe.webp" alt="" /> {tr('Mon bureau', 'My office')}
-            </button>
-            <button type="button" onClick={() => (setMenu(false), setRiches(true))}>
-              <img src="/cartes/icone-scores.webp" alt="" /> {tr('Les plus riches', 'Richest players')}
-            </button>
-            <BoutonMusique />
-            <button type="button" className="ac-quitter" onClick={() => (setMenu(false), onQuitter())}>
-              ‹ {tr('Quitter le salon', 'Leave the lounge')}
-            </button>
-          </div>
-          <p className="cas-mention">{tr('Argent fictif, sans aucune valeur réelle.', 'Play money, with no real value.')}</p>
-        </Fenetre>
-      )}
+      {menu && <MenuSalon onFermer={() => setMenu(false)} onProfil={onProfil} onAmis={onAmis} onDefis={onDefis} onBureau={onBureau} onRiches={() => setRiches(true)} onQuitter={onQuitter} />}
       {boutique && (
         <FenetreBoutique
           rayon={boutique}
@@ -2272,23 +2247,58 @@ function Accueil({
         />
       )}
       {coffreRubis && <Plinko vue={vue} appel={appel} onVue={onVue} onFermer={() => setCoffreRubis(false)} />}
-      {riches && (
-        <Fenetre titre={tr('Les plus riches du salon', 'Richest in the lounge')} onFermer={() => setRiches(false)}>
-          <section className="cas-riches ac-riches">
-            <ol>
-              {vue.riches.map((r, i) => (
-                <li key={`${i}-${r.nom}`} className={r.moi ? 'moi' : ''}>
-                  <span className="cas-riche-rang">{i + 1}</span>
-                  <CadreAvatar avatar={r.avatar} niveau={r.niveau ?? 1} taille={34} sansNiveau />
-                  <span className="cas-riche-nom">{r.nom || tr('Créateur', 'Creator')}</span>
-                  <strong>{dollars(r.solde)}</strong>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </Fenetre>
-      )}
+      {riches && <FenetreRiches vue={vue} onFermer={() => setRiches(false)} />}
     </div>
+  );
+}
+
+/** Le menu du salon (aussi ouvert depuis un jeu, par-dessus la partie). */
+function MenuSalon(p: { onFermer: () => void; onProfil: () => void; onAmis: () => void; onDefis: () => void; onBureau: () => void; onRiches: () => void; onQuitter: () => void }) {
+  const puis = (f: () => void) => () => (p.onFermer(), f());
+  return (
+    <Fenetre titre={tr('Salon privé', 'Private lounge')} onFermer={p.onFermer}>
+      <div className="ac-menu-liste">
+        <button type="button" onClick={puis(p.onProfil)}>
+          <img src="/cartes/icone-profil.webp" alt="" /> {tr('Mon profil', 'My profile')}
+        </button>
+        <button type="button" onClick={puis(p.onAmis)}>
+          <img src="/cartes/icone-amis.webp" alt="" /> {tr('Amis', 'Friends')}
+        </button>
+        <button type="button" onClick={puis(p.onDefis)}>
+          <img src="/cartes/icone-invitation.webp" alt="" /> {tr('Défis', 'Challenges')}
+        </button>
+        <button type="button" onClick={puis(p.onBureau)}>
+          <img src="/cartes/objet-globe.webp" alt="" /> {tr('Mon bureau', 'My office')}
+        </button>
+        <button type="button" onClick={puis(p.onRiches)}>
+          <img src="/cartes/icone-scores.webp" alt="" /> {tr('Les plus riches', 'Richest players')}
+        </button>
+        <BoutonMusique />
+        <button type="button" className="ac-quitter" onClick={puis(p.onQuitter)}>
+          ‹ {tr('Quitter le salon', 'Leave the lounge')}
+        </button>
+      </div>
+      <p className="cas-mention">{tr('Argent fictif, sans aucune valeur réelle.', 'Play money, with no real value.')}</p>
+    </Fenetre>
+  );
+}
+
+function FenetreRiches({ vue, onFermer }: { vue: VueCasino; onFermer: () => void }) {
+  return (
+    <Fenetre titre={tr('Les plus riches du salon', 'Richest in the lounge')} onFermer={onFermer}>
+      <section className="cas-riches ac-riches">
+        <ol>
+          {vue.riches.map((r, i) => (
+            <li key={`${i}-${r.nom}`} className={r.moi ? 'moi' : ''}>
+              <span className="cas-riche-rang">{i + 1}</span>
+              <CadreAvatar avatar={r.avatar} niveau={r.niveau ?? 1} taille={34} sansNiveau />
+              <span className="cas-riche-nom">{r.nom || tr('Créateur', 'Creator')}</span>
+              <strong>{dollars(r.solde)}</strong>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </Fenetre>
   );
 }
 
@@ -2533,6 +2543,19 @@ export default function Casino({
   };
   // La barre du haut dans un jeu : on revient au salon (en quittant la table s'il y en a une), puis on ouvre ce qui est demandé.
   const [ouverture, setOuverture] = useState<{ boutique?: string; menu?: boolean } | null>(null);
+  // Dans un jeu, la barre du haut ouvre le profil, la Boutique et le menu par-dessus la partie, qui continue dessous :
+  // on la retrouve en les fermant. Le profil, le Tailleur et le Marché noir s'ouvrent en plein écran (un calque).
+  const [calque, setCalque] = useState<{ ecran: 'profil' | 'tailleur' | 'marche'; retour?: 'profil' } | null>(null);
+  const [boutiqueJeu, setBoutiqueJeu] = useState<string | false>(false);
+  const [menuJeu, setMenuJeu] = useState(false);
+  const [richesJeu, setRichesJeu] = useState(false);
+  const [coffreJeu, setCoffreJeu] = useState(false);
+  const attenteRoueJeu = useAttente(vue?.roueProchaine);
+  useEffect(() => {
+    setCalque(null);
+    setBoutiqueJeu(false);
+    setMenuJeu(false);
+  }, [ecran]);
   const finOuverture = useCallback(() => setOuverture(null), []);
   const depuisJeu = (suite: () => void) => {
     if (ecran === 'table' && tableRef.current) void quitterTable().then(suite);
@@ -2725,15 +2748,63 @@ export default function Casino({
             vue={vue}
             enJeu
             onSalon={() => depuisJeu(() => undefined)}
-            onProfil={() => depuisJeu(() => ouvrirProfil(null))}
-            onBoutique={(rayon) => depuisJeu(() => setOuverture({ boutique: rayon }))}
-            onMenu={() => depuisJeu(() => setOuverture({ menu: true }))}
+            onProfil={() => (jeuACharger ? setCalque({ ecran: 'profil' }) : depuisJeu(() => ouvrirProfil(null)))}
+            onBoutique={(rayon) => (jeuACharger ? setBoutiqueJeu(rayon) : depuisJeu(() => setOuverture({ boutique: rayon })))}
+            onMenu={() => (jeuACharger ? setMenuJeu(true) : depuisJeu(() => setOuverture({ menu: true })))}
           />
         </div>
       )}
       <Garde key={ecran} onRetour={retourSalon} libelleRetour={tr('Retour au salon', 'Back to the lounge')}>
         {contenu}
       </Garde>
+      {calque && vue && (
+        <div className="cas cas-calque">
+          {calque.ecran === 'profil' && (
+            <EcranProfil
+              uid={null}
+              compte={compte}
+              onTailleur={() => setCalque({ ecran: 'tailleur', retour: 'profil' })}
+              appel={appel}
+              vue={vue}
+              onVue={setVue}
+              onRetour={() => setCalque(null)}
+              onRejoindre={(p) => (setCalque(null), void rejoindre(p))}
+              onDefier={(uid) => depuisJeu(() => ouvrirDefis(uid))}
+              onBureau={(uid) => depuisJeu(() => ouvrirBureau(uid === moi ? null : uid))}
+            />
+          )}
+          {calque.ecran === 'tailleur' && <EcranTailleur vue={vue} appel={appel} onVue={setVue} onRetour={() => setCalque(calque.retour ? { ecran: calque.retour } : null)} />}
+          {calque.ecran === 'marche' && <EcranMarche vue={vue} appel={appel} onVue={setVue} onRetour={() => setCalque(null)} />}
+        </div>
+      )}
+      {menuJeu && vue && (
+        <MenuSalon
+          onFermer={() => setMenuJeu(false)}
+          onProfil={() => setCalque({ ecran: 'profil' })}
+          onAmis={() => depuisJeu(() => setEcran('amis'))}
+          onDefis={() => depuisJeu(() => ouvrirDefis())}
+          onBureau={() => depuisJeu(() => ouvrirBureau(null))}
+          onRiches={() => setRichesJeu(true)}
+          onQuitter={() => depuisJeu(onQuitter)}
+        />
+      )}
+      {richesJeu && vue && <FenetreRiches vue={vue} onFermer={() => setRichesJeu(false)} />}
+      {boutiqueJeu && vue && (
+        <FenetreBoutique
+          rayon={boutiqueJeu}
+          attenteRoue={attenteRoueJeu}
+          onFermer={() => setBoutiqueJeu(false)}
+          ouvrir={(f) => {
+            setBoutiqueJeu(false);
+            f();
+          }}
+          onRoue={() => setRoue(true)}
+          onMarche={() => setCalque({ ecran: 'marche' })}
+          onTailleur={() => setCalque({ ecran: 'tailleur' })}
+          onCoffre={() => setCoffreJeu(true)}
+        />
+      )}
+      {coffreJeu && vue && <Plinko vue={vue} appel={appel} onVue={setVue} onFermer={() => setCoffreJeu(false)} />}
       {fenetreTables && vue && <FenetreTables key={`${fenetreTables}-${tablesVip}`} jeu={fenetreTables} vip={tablesVip} vue={vue} appel={appel} onTable={allerTable} onVue={setVue} onFermer={() => (setFenetreTables(null), setTablesVip(false))} />}
       {info && <div className="toast">{info}</div>}
       {cadeau !== null && (
