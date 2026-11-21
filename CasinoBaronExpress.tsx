@@ -97,7 +97,7 @@ const ISTANBUL = { terminus: 3300, coffre: 5000, ouverture: 6700, compte: 1900 }
 /** Entre deux décors, le train passe un tunnel : l'obscurité monte, les lampes défilent, puis le nouveau décor apparaît. */
 const TUNNEL = { duree: 2800, sortie: 1750 };
 /** L'image du tunnel (une tuile de 1627 × 724 qui se répète) : son rail avant est à la rangée 655, comme celui des décors. */
-const TUNNEL_IMG = { tuile: 1627, rail: 655 };
+const TUNNEL_IMG = { tuile: 1568, rail: 603 };
 /** Les éclairs de l'orage des Balkans (deux tombent juste avant les « CLAC »). */
 const ECLAIRS = [700, 3400, 5100, 8300, 10_700];
 
