@@ -416,6 +416,9 @@ export interface DureesBW {
   introDonne: number;
   donne: number;
   reveleDonne: number;
+  /** Le Pickpocket (le Bal du Grand Hôtel) : l'affiche, puis le retournement des chapeaux (le vol et le bonneteau : vol). */
+  introPick: number;
+  revelePick: number;
   gare: number;
   tunnel: number;
   traversee: number;
@@ -430,7 +433,8 @@ export const DUREES_BW: DureesBW = {
   intro: 4_500,
   choix: 10_000,
   descente: descenteCasseBW(5),
-  vol: 6_500,
+  // Le Bal : le vol du collier au milieu des danseurs, l'inspecteur, puis le bonneteau des trois chapeaux.
+  vol: 11_000,
   // La course à trois : le départ, un plan sur chaque voiture, les arrestations, puis le saut (voir COURSE_BW).
   poursuite: 24_000,
   revele: 5_500,
@@ -440,6 +444,8 @@ export const DUREES_BW: DureesBW = {
   introDonne: 5_000,
   donne: 6_000,
   reveleDonne: 7_500,
+  introPick: 6_000,
+  revelePick: 7_000,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
   tunnel: 12_000,
@@ -458,7 +464,7 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
     case 'baron':
       return [e('intro', d.introDonne), e('donne', d.donne), e('cartes', d.choix, NB_CARTES_BARON), e('revele', d.reveleDonne)];
     case 'pickpocket':
-      return [e('intro', d.intro), e('vol', d.vol), e('mallettes', d.choix, 3), e('revele', d.revele)];
+      return [e('intro', d.introPick), e('vol', d.vol), e('mallettes', d.choix, 3), e('revele', d.revelePick)];
     case 'evasion':
       return [e('intro', d.introEvasion), e('route', d.choix, 3), e('poursuite', d.poursuite), e('revele', d.revele)];
     case 'braquage': {
