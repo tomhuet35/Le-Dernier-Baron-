@@ -828,7 +828,7 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   br_percee: { fichier: '/cartes/son-br-percee.mp3', volume: 0.85, baisserMusique: false, aLaDemande: true },
   br_alarme: { fichier: '/cartes/son-br-alarme.mp3', volume: 0.6, baisserMusique: true, aLaDemande: true },
   br_sifflet: { fichier: '/cartes/son-br-sifflet.mp3', volume: 0.42, baisserMusique: false, aLaDemande: true },
-  // La Grande Évasion : les trois moteurs au départ, une voiture qui passe, un obstacle pulvérisé, le saut de la Seine.
+  // L'Évasion : les trois moteurs au départ, une voiture qui passe, le saut de la Seine (ev_fracas : inutilisé).
   ev_moteur: { fichier: '/cartes/son-ev-moteur.mp3', volume: 0.62, baisserMusique: false, aLaDemande: true },
   ev_passage: { fichier: '/cartes/son-ev-passage.mp3', volume: 0.5, baisserMusique: false, aLaDemande: true },
   ev_fracas: { fichier: '/cartes/son-ev-fracas.mp3', volume: 0.55, baisserMusique: false, aLaDemande: true },

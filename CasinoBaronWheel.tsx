@@ -1,6 +1,6 @@
 /**
  * The Baron's Wheel (Salon privé) : la roue géante de 40 cases, en direct, et ses cinq bonus (le Choix du Baron, le
- * Pickpocket, la Grande Évasion, le Braquage et L'Express du Baron ; ces trois derniers ont leur propre écran,
+ * Pickpocket, l'Évasion, le Braquage et L'Express du Baron ; ces trois derniers ont leur propre écran,
  * CasinoEvasion.tsx, CasinoBraquage.tsx et CasinoBaronExpress.tsx).
  *
  * Le serveur tient les manches et diffuse la vue (« casino_bw ») ; il a déjà tiré la case d'arrêt quand la roue part,
@@ -57,14 +57,14 @@ export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string
   x10: { nom: ['10X', '10X'], fond: '#f6d77a', texte: '#3a1810' },
   baron: { nom: ['Baron', 'Baron'], fond: '#0d0b0b', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp' },
   pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket.webp' },
-  evasion: { nom: ['Grande Évasion', 'Great Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp' },
+  evasion: { nom: ['Évasion', 'Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp' },
   braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp' },
   express: { nom: ['Express du Baron', 'Baron Express'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
   pickpocket: ['Le Grand Vol', 'The Big Theft'],
-  evasion: ['La Grande Évasion', 'The Great Escape'],
+  evasion: ['Évasion', 'The Escape'],
   braquage: ['Le Braquage', 'The Big Heist'],
   express: ['L’Express du Baron', 'The Baron Express'],
 };
@@ -984,8 +984,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2) et Braquage (3), et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×100) ; la carte du Baron cache un jackpot. À la Grande Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×30, arrestation 8 %), les Ruelles (×20 à ×100, 61 %) ou les Souterrains (×50 à ×500, 88 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×100 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
-            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2) and Big Heist (3), and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×100); the Baron’s card hides a jackpot. In the Great Escape, three cars flee: the Boulevard (×10 to ×30, 8% arrest), the Alleys (×20 to ×100, 61%) or the Tunnels (×50 to ×500, 88%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×100 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
+            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Évasion (2) et Braquage (3), et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×100) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×30, arrestation 8 %), les Ruelles (×20 à ×100, 61 %) ou les Souterrains (×50 à ×500, 88 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×100 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
+            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Escape (2) and Big Heist (3), and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×100); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×30, 8% arrest), the Alleys (×20 to ×100, 61%) or the Tunnels (×50 to ×500, 88%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×100 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
           )}
         </p>
       </aside>
