@@ -1,5 +1,5 @@
 /**
- * L'Évasion (The Baron's Wheel) : la course à trois. Trois voitures quittent la banque, une par itinéraire
+ * L'Évasion (Le Baron Express) : la course à trois. Trois voitures quittent la banque, une par itinéraire
  * (le Boulevard, les Ruelles, les Souterrains) ; chaque joueur monte dans l'une d'elles. Plus l'itinéraire est risqué,
  * plus le butin est gros… si la voiture échappe à la police.
  *
@@ -7,10 +7,9 @@
  * la poursuite (les choix sont faits). Cet écran met la course en scène :
  * - l'intro : l'affiche, les trois voitures et ce que rapporte chacune (multiplicateur de la roue compris) ;
  * - le choix : trois cartes, une par voiture ;
- * - la poursuite (COURSE_BW) : le départ des trois voitures côte à côte, la police aux trousses ; puis la caméra suit
- *   chaque voiture à son tour, plein écran, dans ses décors, la police aux trousses ; le dénouement sur le quai
- *   de la Seine, où les voitures arrêtées pilent l'une après l'autre devant le barrage ; enfin le saut : les voitures
- *   qui s'échappent montent l'une après l'autre sur le pont-levis et s'envolent par-dessus le barrage et la Seine.
+ * - la poursuite (COURSE_BW) : le départ des trois voitures côte à côte, la police aux trousses ; elles se séparent,
+ *   chacune vers son itinéraire, et la caméra ne suit plus que la mienne (sinon la plus choisie), plein écran, dans
+ *   ses décors ; à la sortie de Paris, un barrage de police l'arrête… ou elle saute le pont-levis par-dessus le barrage.
  *   Les décors, la chaussée, les voitures et leurs roues et les effets sont placés à chaque image
  *   (requestAnimationFrame) ; les panneaux suivent l'horloge de l'étape (10 fois par seconde) ;
  * - la fin : l'image de l'évasion (ou de l'arrestation) de ma voiture, et le bilan des trois.
@@ -87,56 +86,51 @@ const BARRAGE = { ratio: 456 / 900, h: 1.75 };
 // Le calendrier de la poursuite (millisecondes d'une poursuite de 24 s, voir COURSE_BW)
 
 const REF = DUREES_BW.poursuite;
-const { depart: DEPART, plan: PLAN, denouement: DENOUEMENT, issue: ISSUE } = COURSE_BW;
-/** La fin des plans : la caméra revient sur les trois voitures, qui débouchent sur le quai de la Seine. */
-const FIN_PLANS = DEPART + 3 * PLAN;
-const debutPlan = (k: number) => DEPART + k * PLAN;
-/** Dans un plan : le changement de décor. */
-const CHANGE_DECOR = 1800;
+const { depart: DEPART, separe: SEPARE, issue: ISSUE } = COURSE_BW;
+/** Le début du plan de ma voiture (après la séparation), le changement de décor au milieu. */
+const DEBUT_PLAN = DEPART + SEPARE;
+const CHANGE_DECOR = (DEBUT_PLAN + ISSUE) / 2;
 /** Le barrage (depuis le début de l'issue) : le freinage, l'arrêt. */
 const FREIN = { debut: 150, arret: 1000 };
 /** Le saut (depuis son début) : la montée sur le pont-levis, le vol, l'atterrissage, la sortie ; le tampon dure. */
 const SAUT = { montee: 700, vol: 1000, sortie: 600, tampon: 1400 };
 
 interface Calendrier {
-  /** Le début de l'issue de chaque voiture : son arrêt au barrage, ou son saut. */
+  /** Le début de l'issue de chaque voiture : son arrêt au barrage, ou son saut (seule celle suivie se voit). */
   issue: number[];
-  /** La fin des arrestations ; le début du plan du saut (Infini si aucune voiture ne s'échappe). */
+  /** La fin de l'arrestation ; le début du plan du saut (Infini si la voiture suivie est arrêtée). */
   finArrets: number;
   saut: number;
   camera: [number, number][];
 }
-/** Le calendrier du dénouement, d'après l'issue de chaque voiture (inconnue : elles s'échappent toutes). */
-function calendrier(issues: boolean[] | null): Calendrier {
-  const evade = (k: number) => !issues || issues[k];
-  const arretees = [0, 1, 2].filter((k) => !evade(k));
-  const evadees = [0, 1, 2].filter(evade);
-  const issue = [0, 0, 0];
-  arretees.forEach((k, m) => (issue[k] = DENOUEMENT + 200 + m * ISSUE));
-  const finArrets = DENOUEMENT + 200 + arretees.length * ISSUE + (arretees.length ? 1100 : 300);
-  const saut = evadees.length ? finArrets : Number.POSITIVE_INFINITY;
-  const ecartSauts = evadees.length > 1 ? Math.min(1500, (REF - 400 - finArrets - SAUT.montee - SAUT.vol - SAUT.tampon) / (evadees.length - 1)) : 0;
-  evadees.forEach((k, j) => (issue[k] = finArrets + 400 + j * ecartSauts));
+/** Le calendrier de la fin, d'après l'issue de la voiture suivie (inconnue : elle s'échappe). */
+function calendrier(issues: boolean[] | null, suivi: number): Calendrier {
+  const evade = !issues || issues[suivi];
+  const issue = [ISSUE, ISSUE, ISSUE];
+  if (evade) issue[suivi] = ISSUE + 400;
   return {
     issue,
-    finArrets,
-    saut,
-    camera: [
-      [0, 0.3],
-      [1200, 1],
-      [FIN_PLANS, 1],
-      [DENOUEMENT + 300, 0.22],
-      [finArrets, 0.1],
-      [finArrets + 800, 0],
-    ],
+    finArrets: evade ? ISSUE : ISSUE + FREIN.arret + 1100,
+    saut: evade ? ISSUE : Number.POSITIVE_INFINITY,
+    // La caméra s'arrête avec la voiture arrêtée.
+    camera: evade
+      ? [
+          [0, 0.3],
+          [1200, 1],
+        ]
+      : [
+          [0, 0.3],
+          [1200, 1],
+          [ISSUE + FREIN.debut, 1],
+          [ISSUE + FREIN.arret, 0],
+        ],
   };
 }
 /** Le moment où l'issue d'une voiture se voit (elle pile, ou elle atterrit sur l'autre rive). */
 const finIssue = (c: Calendrier, k: number, evade: boolean) => c.issue[k] + (evade ? SAUT.montee + SAUT.vol : FREIN.arret);
 
-type Acte = 'depart' | 'plan' | 'denouement' | 'saut';
-const acteA = (s: number, c: Calendrier): { acte: Acte; plan: number } =>
-  s < DEPART ? { acte: 'depart', plan: -1 } : s < FIN_PLANS ? { acte: 'plan', plan: Math.floor((s - DEPART) / PLAN) } : s < c.saut ? { acte: 'denouement', plan: -1 } : { acte: 'saut', plan: -1 };
+type Acte = 'depart' | 'separe' | 'plan' | 'saut';
+const acteA = (s: number, c: Calendrier): { acte: Acte } => ({ acte: s < DEPART ? 'depart' : s < DEBUT_PLAN ? 'separe' : s < c.saut ? 'plan' : 'saut' });
 
 const borne = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u);
 const lisse = (u: number) => {
@@ -235,6 +229,8 @@ interface DonneesScene {
   echelle: number;
   issues: boolean[] | null;
   poursuite: boolean;
+  /** La voiture que l'écran suit après la séparation (la mienne, sinon la plus choisie). */
+  suivi: number;
 }
 
 function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObject<HTMLDivElement>, pistes: RefsPiste[], saut: RefsSaut) {
@@ -260,8 +256,8 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
       const { W: w, H: h } = taille;
       if (!d || !d.poursuite || !w || !h) return;
       const s = (performance.now() - d.debut) * d.echelle;
-      const cal = calendrier(d.issues);
-      const { acte, plan } = acteA(s, cal);
+      const cal = calendrier(d.issues, d.suivi);
+      const { acte } = acteA(s, cal);
       const reduit = mouvementReduit();
       const portrait = h > w * 1.05;
       const plein = acte === 'plan';
@@ -299,7 +295,7 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         pistes.forEach((p, k) => {
           const V = VOITURES[ROUTES_BW[k]];
           const evade = d.issues?.[k] ?? true;
-          if (!evade) return placerVehicule(p.sauteur, V, 0, 0, Cw, 0, 0, true);
+          if (!evade || k !== d.suivi) return placerVehicule(p.sauteur, V, 0, 0, Cw, 0, 0, true);
           const t = s - cal.issue[k];
           if (t < 0 || t > SAUT.montee + SAUT.vol + SAUT.sortie) return placerVehicule(p.sauteur, V, 0, 0, Cw, 0, 0, true);
           let x: number;
@@ -350,9 +346,9 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         const piste = p.el.current;
         if (!piste) return;
         // En plan, seule la piste suivie se voit ; dans la scène commune, la première porte le décor et la chaussée.
-        const visible = acte !== 'saut' && (!plein || plan === k);
+        const visible = acte !== 'saut' && (!plein || k === d.suivi);
         const decor = plein || k === 0;
-        const cle = `${d.cle}-${acte}-${plan}-${taille.version}`;
+        const cle = `${d.cle}-${acte}-${d.suivi}-${taille.version}`;
         const change = derniers[k].cle !== cle;
         if (change) {
           derniers[k].cle = cle;
@@ -376,12 +372,12 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         const uVoiture = v * cheminVoiture(s, cal, k, evade);
         const iK = cal.issue[k];
 
-        // Les décors : le premier, le second (à mi-plan), puis le quai de la Seine ; chacun défile lentement.
-        const p0 = debutPlan(k);
+        // Les décors : le premier, puis le second (à mi-plan) ; chacun défile lentement.
+        // (Dans la scène commune, le premier décor du Boulevard ; en plan, ceux de la voiture suivie.)
         const fenetres: [number, number, number][] = [
-          [0, p0 + CHANGE_DECOR + 400, 1 - borne((s - p0 - CHANGE_DECOR + 400) / 800)],
-          [p0 + CHANGE_DECOR - 400, FIN_PLANS + 400, borne((s - p0 - CHANGE_DECOR + 400) / 800) * (1 - borne((s - FIN_PLANS) / 400))],
-          [FIN_PLANS, cal.finArrets + 800, borne((s - FIN_PLANS) / 400)],
+          [0, CHANGE_DECOR + 400, 1 - borne((s - CHANGE_DECOR + 400) / 800)],
+          [CHANGE_DECOR - 400, ISSUE + 1500, borne((s - CHANGE_DECOR + 400) / 800)],
+          [0, 1, 0],
         ];
         p.decors.forEach((r, i) => {
           const dec = r.current;
@@ -405,12 +401,12 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
           dec.style.transform = `translate3d(${x}px, ${top}px, 0)`;
         });
 
-        // La chaussée qui défile (les pavés du quai pour le dénouement, l'avenue au départ).
+        // La chaussée qui défile (l'avenue dans la scène commune).
         const chaussee = p.route.current;
         if (chaussee) {
           if (change) {
             chaussee.style.visibility = decor ? 'visible' : 'hidden';
-            chaussee.style.backgroundImage = `url(${IMG(`route-${plein ? route : acte === 'denouement' ? 'ruelles' : 'boulevard'}`)})`;
+            chaussee.style.backgroundImage = `url(${IMG(`route-${plein ? route : 'boulevard'}`)})`;
           }
           const tw = Bh * TUILE;
           chaussee.style.top = `${yRoute}px`;
@@ -425,10 +421,17 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         let yv = 0;
         let rot = 0;
         if (s < DEPART) xv = -Cw + (xC + Cw) * sortie((s - (2 - k) * 180) / 1500);
+        // La séparation : les deux autres voitures prennent leur itinéraire (l'une file devant, l'autre bifurque).
+        if (acte === 'separe' && k !== d.suivi) {
+          const m = [0, 1, 2].filter((j) => j !== d.suivi).indexOf(k);
+          const q = sortie((s - DEPART - m * 300) / 1200);
+          xv += m === 0 ? w * 1.3 * q : -w * 1.2 * q * q;
+          yv += m === 0 ? -Bh * 0.25 * q : Bh * 0.2 * q;
+        }
         // Les secousses de la route (pas pour une voiture arrêtée).
         const roule = evade || s < iK + FREIN.arret;
         if (!reduit && roule) yv += Math.sin(s / 47 + k) * Ch * 0.012;
-        const freine = !evade && acte === 'denouement' && s > iK + FREIN.debut && s < iK + FREIN.arret + 150;
+        const freine = !evade && acte === 'plan' && s > iK + FREIN.debut && s < iK + FREIN.arret + 150;
         if (freine) rot += 2.2 * Math.sin(borne((s - iK - FREIN.debut) / 850) * Math.PI);
         placerVehicule(p.voiture, V, xv, yG + yv, Cw, rot, uVoiture, false);
         const fumee = p.voiture.fumee.current;
@@ -439,7 +442,7 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         // La police, à quelques longueurs.
         const g = ecart(s, k, evade, cal);
         const xp = xv - Cw * (1.04 + g);
-        const freinePolice = !evade && acte === 'denouement' && s > iK && s < iK + 1200;
+        const freinePolice = !evade && acte === 'plan' && s > iK && s < iK + 1200;
         placerVehicule(p.police, POLICE, xp, yG + (reduit || !roule ? 0 : Math.sin(s / 53 + k * 3) * Ch * 0.012), Cw, freinePolice ? 1.5 : 0, uVoiture, false);
         const fp = p.police.fumee.current;
         if (fp) fp.style.opacity = String(!roule ? 0 : freinePolice ? 0.85 : 0.25);
@@ -447,7 +450,7 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         // Le barrage, posé sur la chaussée : la voiture pile juste devant.
         const barrage = p.barrage.current;
         if (barrage) {
-          const vu = acte === 'denouement' && !evade && s > iK - 900;
+          const vu = acte === 'plan' && !evade && s > iK - 900;
           barrage.style.visibility = vu ? 'visible' : 'hidden';
           if (vu) {
             const bh = Ch * BARRAGE.h;
@@ -526,7 +529,7 @@ function Jauge({ s, issues, mien, plan, c }: { s: number; issues: boolean[] | nu
           // En plan, seule la voiture suivie : les autres ne se voient pas.
           if (k !== plan) return null;
           const g = ecart(s, k, issues?.[k] ?? true, c);
-          const pos = Math.min(0.9, Math.max(0.1, 0.18 + g * 0.55 + ((s - DEPART) / (FIN_PLANS - DEPART)) * 0.2));
+          const pos = Math.min(0.9, Math.max(0.1, 0.18 + g * 0.55 + ((s - DEBUT_PLAN) / (ISSUE - DEBUT_PLAN)) * 0.2));
           return <Voiture key={r} route={r} className={`eva-jauge-auto ${mien === k ? 'mien' : ''} ${plan === k ? 'suivie' : ''}`} style={{ left: `${pos * 100}%`, '--k': k } as CSSProperties} />;
         })}
       </span>
@@ -554,7 +557,7 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
   // La voiture que l'écran suit : la mienne, sinon la plus choisie du salon.
   const suivi = choix ?? (Math.max(...salon) > 0 ? salon.indexOf(Math.max(...salon)) : 0);
   const issues = b.routes && b.routes.every((x) => x) ? b.routes.map((x) => !!x?.evade) : null;
-  const cal = calendrier(issues);
+  const cal = calendrier(issues, suivi);
 
   // L'horloge de l'étape (recalée sur le serveur) et un battement de 10 par seconde pour React.
   const cleEtape = `${v.numero}-${b.etape}-${v.phase}`;
@@ -570,10 +573,11 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
   const poursuite = nom === 'poursuite' && v.phase === 'bonus';
   const echelle = poursuite && v.duree ? REF / v.duree : 1;
   const s = (maintenant - horloge.current.debut) * echelle;
-  const { acte, plan } = acteA(s, cal);
+  const { acte } = acteA(s, cal);
+  const tous = acte === 'depart' || acte === 'separe';
 
   const donnees = useRef<DonneesScene | null>(null);
-  donnees.current = { cle: cleEtape, debut: horloge.current.debut, echelle, issues, poursuite };
+  donnees.current = { cle: cleEtape, debut: horloge.current.debut, echelle, issues, poursuite, suivi };
   const scene = useRef<HTMLDivElement>(null);
   const pistesRef = useRef<RefsPiste[] | null>(null);
   if (!pistesRef.current)
@@ -605,18 +609,18 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
     const entre = (debut: number, marge: number) => s >= debut && s < debut + marge;
     if (entre(0, 1500)) fois('moteur', () => jouerEffet('ev_moteur'));
     if (entre(500, 1500)) fois('sirene', () => jouerEffet('bw_sirene', { volume: 0.75 }));
-    if (entre(FIN_PLANS, 1000)) fois('sirene2', () => jouerEffet('bw_sirene', { volume: 0.6 }));
-    for (let k = 0; k < 3; k++) {
-      if (entre(debutPlan(k), 800)) fois(`passage${k}`, () => jouerEffet('ev_passage', { vitesse: 0.94 + k * 0.06 }));
-      if (!issues) continue;
+    if (entre(DEPART + 100, 800)) fois('separe', () => jouerEffet('ev_passage', { vitesse: 1.05 }));
+    if (entre(DEBUT_PLAN, 800)) fois('passage', () => jouerEffet('ev_passage', { vitesse: 0.96 }));
+    if (entre(ISSUE - 2200, 1000)) fois('sirene2', () => jouerEffet('bw_sirene', { volume: 0.6 }));
+    if (issues) {
+      const k = suivi;
       const i = cal.issue[k];
-      const ton = k === choix ? 1 : 0.6;
       if (issues[k]) {
-        if (entre(i + 100, 700)) fois(`saut${k}`, () => jouerEffet('ev_saut', { volume: ton }));
-        if (entre(i + SAUT.montee + SAUT.vol, 900)) fois(`foule${k}`, () => jouerEffet('course_foule', { volume: 0.6 * ton }));
+        if (entre(i + 100, 700)) fois('saut', () => jouerEffet('ev_saut'));
+        if (entre(i + SAUT.montee + SAUT.vol, 900)) fois('foule', () => jouerEffet('course_foule', { volume: 0.6 }));
       } else {
-        if (entre(i + FREIN.debut, 600)) fois(`frein${k}`, () => jouerEffet('ex_freins', { volume: 0.8 * ton }));
-        if (entre(i + FREIN.arret, 900)) fois(`sifflet${k}`, () => jouerEffet('br_sifflet', { volume: ton }));
+        if (entre(i + FREIN.debut, 600)) fois('frein', () => jouerEffet('ex_freins', { volume: 0.8 }));
+        if (entre(i + FREIN.arret, 900)) fois('sifflet', () => jouerEffet('br_sifflet'));
       }
     }
     if (entre(cal.saut, 1000)) fois('feux', () => jouerEffet('ex_feux', { volume: 0.7 }));
@@ -626,9 +630,9 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
   let annonce: { titre: string; sous?: string; haut?: boolean } | null = null;
   if (poursuite) {
     if (s > 300 && s < DEPART - 300) annonce = { titre: tr('Trois voitures, trois itinéraires !', 'Three cars, three routes!'), sous: tr('La police est à leurs trousses…', 'The police are on their tail…') };
-    else if (s >= FIN_PLANS && s < DENOUEMENT + 100) annonce = { titre: tr('Le pont… ou le barrage ?', 'The bridge… or the roadblock?'), sous: tr('Le quai de la Seine, le dernier obstacle', 'The Seine embankment, the last hurdle') };
-    else if (acte === 'saut' && s < cal.saut + 1050) annonce = { titre: tr('Le pont-levis !', 'The drawbridge!'), sous: tr('Les voitures qui s’échappent sautent la Seine', 'The cars that escape jump the Seine'), haut: true };
-    else if (issues && issues.every((e) => !e) && s > cal.finArrets) annonce = { titre: tr('Toutes arrêtées !', 'All caught!'), sous: tr('La police a eu les trois voitures', 'The police got all three cars') };
+    else if (acte === 'separe' && s > DEPART + 150) annonce = { titre: tr('Les voitures se séparent !', 'The cars split up!'), sous: choix !== null ? tr(`Suis ta voiture : ${tr(...NOMS_ROUTES[ROUTES_BW[suivi]].nom)}`, `Follow your car: ${tr(...NOMS_ROUTES[ROUTES_BW[suivi]].nom)}`) : tr(`La caméra suit : ${tr(...NOMS_ROUTES[ROUTES_BW[suivi]].nom)}`, `Following: ${tr(...NOMS_ROUTES[ROUTES_BW[suivi]].nom)}`) };
+    else if (s >= ISSUE - 2200 && s < ISSUE - 300) annonce = { titre: tr('La sortie de Paris…', 'The way out of Paris…'), sous: tr('Libre… ou barrée par la police ?', 'Clear… or blocked by the police?') };
+    else if (acte === 'saut' && s < cal.saut + 1050) annonce = { titre: tr('Le pont-levis !', 'The drawbridge!'), sous: tr('La voiture saute par-dessus le barrage', 'The car jumps over the roadblock'), haut: true };
   }
 
   const routes = ROUTES_BW.map((r, k) => ({ r, k, it: ITINERAIRES_BW[r] }));
@@ -672,20 +676,21 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
           issues &&
           ROUTES_BW.map((r, k) => {
             const t = s - cal.issue[k];
+            if (k !== suivi) return null;
             if (issues[k] && acte === 'saut' && t > SAUT.montee - 100 && t < SAUT.montee + 1300) return <Gerbe key={r} style={{ left: `${(PONT.bout[0] / vuPont(enHauteur)) * 100}%`, top: `calc(100% - ${((1 - PONT.bout[1]) * 100) / (3 * vuPont(enHauteur))}cqw)` }} />;
-            if (!issues[k] && acte === 'denouement' && t > FREIN.arret - 100 && t < FREIN.arret + 1600) return <i key={r} className="eva-gyro-flash" />;
+            if (!issues[k] && acte === 'plan' && t > FREIN.arret - 100 && t < FREIN.arret + 1600) return <i key={r} className="eva-gyro-flash" />;
             return null;
           })}
       </div>
 
       {/* Les plaques : celle de la voiture suivie (en plan), ou les trois, avec leur issue. */}
       {poursuite && (
-        <div className={`eva-plaques ${acte}`}>
+        <div className={`eva-plaques ${tous ? acte : 'plan'}`}>
           {ROUTES_BW.map((r, k) => {
-            if (acte === 'plan' && plan !== k) return null;
-            const fait = acte !== 'plan' && resolue(k);
+            if (!tous && k !== suivi) return null;
+            const fait = !tous && resolue(k);
             return (
-              <span key={`${r}-${acte === 'plan' ? 'plan' : 'tous'}`} className={`eva-plaque ${choix === k ? 'mienne' : ''} ${fait ? (issues?.[k] ? 'evadee' : 'arretee') : ''}`}>
+              <span key={`${r}-${tous ? 'tous' : 'plan'}`} className={`eva-plaque ${choix === k ? 'mienne' : ''} ${fait ? (issues?.[k] ? 'evadee' : 'arretee') : ''}`}>
                 <i className={`eva-pastille ${r}`} />
                 <strong>{tr(...NOMS_ROUTES[r].nom)}</strong>
                 {fait ? (
@@ -704,7 +709,7 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         issues &&
         ROUTES_BW.map((r, k) => {
           const t = s - finIssue(cal, k, issues[k]);
-          if (t < 0 || t > SAUT.tampon) return null;
+          if (k !== suivi || t < 0 || t > SAUT.tampon) return null;
           return (
             <span key={r} className={`eva-tampon ${issues[k] ? 'evadee' : 'arretee'} ${choix === k ? 'mienne' : ''} ${acte === 'saut' ? 'saut' : ''}`} role="status">
               <small>
@@ -716,9 +721,9 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
             </span>
           );
         })}
-      {poursuite && acte === 'plan' && <div className="eva-coupe" key={`coupe${plan}`} aria-hidden="true" />}
-      {poursuite && (acte === 'denouement' || acte === 'saut') && (s < FIN_PLANS + 500 || (s >= cal.saut && s < cal.saut + 500)) && <div className="eva-coupe" key={acte} aria-hidden="true" />}
-      {poursuite && acte === 'plan' && <Jauge s={s} issues={issues} mien={choix} plan={plan} c={cal} />}
+      {poursuite && acte === 'plan' && s < DEBUT_PLAN + 500 && <div className="eva-coupe" key="plan" aria-hidden="true" />}
+      {poursuite && acte === 'saut' && s < cal.saut + 500 && <div className="eva-coupe" key="saut" aria-hidden="true" />}
+      {poursuite && acte === 'plan' && <Jauge s={s} issues={issues} mien={choix} plan={suivi} c={cal} />}
 
       {annonce && (
         <div className={`eva-annonce ${annonce.haut ? 'haut' : ''}`} key={annonce.titre} role="status">

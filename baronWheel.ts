@@ -192,11 +192,10 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
 };
 /**
  * Le calendrier de la course à trois (millisecondes depuis le début de la poursuite, pour une poursuite de 24 s) :
- * les trois voitures démarrent ensemble ; la caméra suit chacune à son tour (plan) ; puis le dénouement : les voitures
- * arrêtées, l'une après l'autre, au barrage de police (issue : le temps de chacune) ; enfin le saut par-dessus la Seine
- * des voitures qui s'échappent, à la suite.
+ * les trois voitures démarrent ensemble, puis se séparent ; la caméra suit alors la voiture du joueur jusqu'à la sortie
+ * de Paris (issue) : le barrage de police qui l'arrête, ou le saut du pont-levis par-dessus le barrage.
  */
-export const COURSE_BW = { depart: 2_600, plan: 3_600, denouement: 14_200, issue: 1_300 };
+export const COURSE_BW = { depart: 2_600, separe: 1_600, issue: 19_000 };
 /**
  * Le calendrier de la Grande Donne (millisecondes depuis le début de chaque étape) : à la donne, le Baron mélange puis
  * distribue les neuf cartes ; au retournement, les autres cartes se retournent en vague, puis la mienne, au centre.
@@ -435,7 +434,7 @@ export const DUREES_BW: DureesBW = {
   descente: descenteCasseBW(5),
   // Le Bal : le vol du collier au milieu des danseurs, l'inspecteur, puis le bonneteau des trois chapeaux.
   vol: 11_000,
-  // La course à trois : le départ, un plan sur chaque voiture, les arrestations, puis le saut (voir COURSE_BW).
+  // La course à trois : le départ ensemble, la séparation, ma voiture jusqu'au barrage ou au saut (voir COURSE_BW).
   poursuite: 24_000,
   revele: 5_500,
   introExpress: 7_000,
