@@ -63,11 +63,12 @@
 @keyframes bw-gagnante { to { fill: rgba(255, 245, 210, 0.45); } }
 .bw-rl-jante { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; max-width: none; pointer-events: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.65)); }
 .bw-rl-moyeu { position: absolute; left: 33.4%; top: 33.4%; width: 33.2%; height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6)); }
-.bw-rl-rails { position: absolute; left: -6%; top: 93.5%; z-index: 0; width: 112%; height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6)); }
-.bw-rl-glissiere { position: absolute; left: 73%; top: 48.2%; z-index: 3; width: 25.5%; height: 3.6%; border-radius: 4px; background: linear-gradient(180deg, #f6d98a, #b9862f 45%, #6b4716 55%, #c99a42); box-shadow: 0 3px 6px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(60, 30, 4, 0.6); pointer-events: none; }
-.bw-rl-bielle { position: absolute; left: 0; top: 0; z-index: 4; height: auto; max-width: none; pointer-events: none; transform-origin: 10.44% 50%; will-change: transform; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.65)); }
-.bw-rl-vapeur { position: absolute; left: 0; top: 0; z-index: 5; width: 10%; height: auto; max-width: none; opacity: 0; pointer-events: none; will-change: transform, opacity; }
-.bw-aiguille { position: absolute; left: 47.3%; top: -6%; width: 5.4%; height: auto; max-width: none; z-index: 6; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); transform-origin: 50% 8%; }
+.bw-rl-rails { position: absolute; left: -150%; top: 93.5%; z-index: 0; width: 400%; height: 27.8%; background: url('/cartes/bw-rl-rails.webp') 50% 0 / 11.35% auto repeat-x; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6)); }
+.bw-rl-glissiere { position: absolute; left: 53.5%; top: 50%; z-index: 3; width: 52%; height: auto; max-width: none; transform: translateY(-50%); pointer-events: none; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6)); }
+.bw-rl-crosse { position: absolute; left: 0; top: 0; z-index: 4; height: auto; max-width: none; pointer-events: none; will-change: transform; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
+.bw-rl-bielle { position: absolute; left: 0; top: 0; z-index: 5; height: auto; max-width: none; pointer-events: none; transform-origin: 10.44% 50%; will-change: transform; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.65)); }
+.bw-rl-vapeur { position: absolute; left: 0; top: 0; z-index: 6; width: 10%; height: auto; max-width: none; opacity: 0; pointer-events: none; will-change: transform, opacity; }
+.bw-aiguille { position: absolute; left: 47.3%; top: -6%; width: 5.4%; height: auto; max-width: none; z-index: 7; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); transform-origin: 50% 8%; }
 .bw-roue.tour .bw-aiguille { animation: bw-aiguille 0.09s ease-in-out infinite alternate; }
 @keyframes bw-aiguille { to { transform: rotate(-3deg); } }
 @media (max-width: 699px) { .bw-plateau { background-image: url('/cartes/bw-rl-decor-portrait.webp'); } }
