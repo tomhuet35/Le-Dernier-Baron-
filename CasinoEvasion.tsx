@@ -52,6 +52,7 @@ export const IMAGES_EVASION_NOMS = [
   'affiche',
   ...ROUTES_BW.flatMap((r) => [...DECORS[r], `route-${r}`, `voiture-${r}`, ...OBSTACLES[r].map((o) => o.img)]),
   'seine',
+  'saut',
   'barrage',
   'roue',
   'police',
@@ -199,12 +200,12 @@ function cheminVoiture(s: number, c: Calendrier, k: number, evade: boolean): num
 /** La scène commune (le départ, le dénouement) : une seule chaussée à trois voies, les voitures côte à côte en profondeur. */
 const COMMUN = { route: 0.6, sols: [0.3, 0.58, 0.86], echelles: [0.7, 0.85, 1], x: [0.5, 0.57, 0.64] };
 /**
- * Le plan du saut, sur le décor du pont (2172 × 724, vu jusqu'à une part `vu` de sa largeur, posé en bas de l'écran) :
- * le pied et le bout du pont-levis, le quai (parts de la largeur et de la hauteur du décor) ; l'atterrissage, sur le quai
- * d'en face (part de la largeur de l'écran) ; la largeur d'une voiture (part de celle du décor).
+ * Le plan du saut, sur le décor du pont-levis (2172 × 724, vu jusqu'à une part `vu` de sa largeur, posé en bas de
+ * l'écran) : le pied et le bout du pont-levis, le quai (parts de la largeur et de la hauteur du décor) ; l'atterrissage,
+ * sur le quai d'en face (part de la largeur de l'écran) ; la largeur d'une voiture (part de celle du décor).
  */
-const PONT = { pied: [0.115, 0.732], bout: [0.355, 0.207], quai: 0.765, atterrit: 0.84, voiture: 0.115 };
-const vuPont = (portrait: boolean) => (portrait ? 0.58 : 0.7);
+const PONT = { pied: [0.076, 0.615], bout: [0.412, 0.131], quai: 0.93, atterrit: 0.84, voiture: 0.13 };
+const vuPont = (portrait: boolean) => (portrait ? 0.62 : 1);
 
 /** L'écart entre la police et la voiture (en largeurs de voiture), qui varie pendant la course. */
 function ecart(s: number, k: number, evade: boolean, c: Calendrier): number {
@@ -301,7 +302,7 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
           decor.style.height = `${Dh}px`;
           decor.style.transform = `translate3d(0, ${top}px, 0)`;
         }
-        const Cw = Dw * PONT.voiture;
+        const Cw = Dw * PONT.voiture * (portrait ? 1 : 1.15);
         const [bx, by] = pt(PONT.pied[0], PONT.pied[1]);
         const [tx, ty] = pt(PONT.bout[0], PONT.bout[1]);
         const [, yQuai] = pt(0, PONT.quai);
@@ -343,8 +344,8 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         });
         // La police arrive par le quai et pile au pied du pont-levis.
         const tp = s - cal.saut;
-        const xp = -Cw + (bx * 0.9 + Cw) * sortie(tp / 1400);
-        placerVehicule(saut.police, POLICE, xp, yQuai + Dh * 0.08, Cw * 1.05, tp > 900 && tp < 1500 ? 2 : 0, xp, false);
+        const xp = -Cw + (w * 0.2 + Cw) * sortie(tp / 1400);
+        placerVehicule(saut.police, POLICE, xp, yQuai + Dh * 0.03, Cw * 1.05, tp > 900 && tp < 1500 ? 2 : 0, xp, false);
         const fp = saut.police.fumee.current;
         if (fp) fp.style.opacity = String(tp > 800 && tp < 1700 ? 0.9 : 0);
       }
@@ -705,7 +706,7 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         })}
         {/* Le plan du saut : le pont-levis, et les voitures qui s'échappent, l'une après l'autre. */}
         <div className="eva-saut" ref={sautRef.current.el}>
-          <div className="eva-decor" ref={sautRef.current.decor} style={{ backgroundImage: `url(${IMG('seine')})`, opacity: 1 }} />
+          <div className="eva-decor" ref={sautRef.current.decor} style={{ backgroundImage: `url(${IMG('saut')})`, opacity: 1 }} />
           <AutoDom V={POLICE} r={sautRef.current.police} police />
           {pistes.map((p, k) => (
             <AutoDom key={k} V={VOITURES[ROUTES_BW[k]]} r={p.sauteur} />
