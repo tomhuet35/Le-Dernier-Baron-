@@ -18,6 +18,7 @@ export const IMAGES_JEUX: Record<JeuCasino, string> = {
   couronne: '/cartes/casino-couronne.webp',
   chute: '/cartes/casino-chute.webp',
   tickets: '/cartes/casino-tickets.webp',
+  toits: '/cartes/casino-toits.webp',
   course: '/cartes/casino-course.webp',
   baronWheel: '/cartes/casino-baron-wheel.webp',
 };

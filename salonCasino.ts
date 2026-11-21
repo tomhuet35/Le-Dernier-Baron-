@@ -105,6 +105,7 @@ import { creerCoffres } from './festinCasino';
 import { creerVolCouronne } from './couronneCasino';
 import { creerChute } from './chuteCasino';
 import { creerTickets } from './ticketsCasino';
+import { creerToits } from './toitsCasino';
 import { creerCourse } from './courseCasino';
 import { creerBaronWheel } from './baronWheelCasino';
 import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, type BoostBW, type DureesBW } from '../shared/baronWheel';
@@ -149,6 +150,8 @@ export interface OptionsCasino {
   /** Les Coffres du Baron : hasard, et positions des badges de police imposées (tests, démonstration). */
   hasardCoffres?: (n: number) => number;
   placerBadgesCoffres?: (badges: number) => number[] | undefined;
+  /** Le hasard des sauts de « Sur les toits » (tests, démonstration) ; au hasard sinon. */
+  hasardToits?: (n: number) => number;
   /** Le Vol de la Couronne : délais, vitesse de montée et point de la pie imposé (tests, démonstration). */
   delaisCouronne?: Partial<DureesCouronne>;
   kCouronne?: number;
@@ -798,6 +801,7 @@ export function creerCasino(options: OptionsCasino) {
   };
 
   const tickets = creerTickets({ banque: banqueDe('tickets'), horloge, annoncer: (a) => annoncer(a) });
+  const toits = creerToits({ banque: banqueDe('toits'), hasard: options.hasardToits, annoncer: (a) => annoncer(a) });
   const chute = creerChute({ banque: banqueDe('chute'), horloge, hasard: options.hasardChute, chemin: options.cheminChute, delaiAnnonce: options.delaiAnnonceChute, annoncer: (a) => annoncer(a) });
 
   function vue(uid: string): VueCasino {
@@ -822,6 +826,7 @@ export function creerCasino(options: OptionsCasino) {
       tablesRoulette: roulettes.resume(),
       folleNuit: show.resume(),
       coffres: { enCours: coffres.enCours(uid) },
+      toits: { enCours: toits.enCours(uid) },
       couronne: couronne.resume(),
       course: course.resume(),
       baronWheel: roueBW.resume(),
@@ -983,6 +988,7 @@ export function creerCasino(options: OptionsCasino) {
     couronne.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     chute.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     tickets.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
+    toits.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     course.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     roueBW.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
 
@@ -1663,7 +1669,7 @@ export function creerCasino(options: OptionsCasino) {
    * une mise dont le coup ne sera jamais joué.
    */
   async function vider() {
-    for (const jeu of [tables, roulettes, show, couronne, course, roueBW, coffres]) {
+    for (const jeu of [tables, roulettes, show, couronne, course, roueBW, coffres, toits]) {
       try {
         jeu.rendreMisesEnCours();
       } catch (e) {
