@@ -311,6 +311,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bw-ev-route-souterrains.webp',
     '/cartes/bw-ev-ruelles-1.webp',
     '/cartes/bw-ev-ruelles-2.webp',
+    '/cartes/bw-ev-saut.webp',
     '/cartes/bw-ev-seine.webp',
     '/cartes/bw-ev-souterrains-1.webp',
     '/cartes/bw-ev-souterrains-2.webp',
