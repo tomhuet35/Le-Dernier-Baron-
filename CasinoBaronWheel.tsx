@@ -132,14 +132,16 @@ interface HorlogesRoue {
 
 /**
  * La roue motrice (Le Baron Express) : le moyeu tourne avec le disque ; son maneton entraîne la bielle, dont l'autre
- * bout glisse sur la glissière horizontale (à droite du moyeu). Les mesures sont en part de la largeur de la roue.
+ * bout tient la crosse, qui coulisse dans la glissière horizontale (à droite du moyeu). Les mesures sont en part de la largeur de la roue.
  */
 const MOTRICE = {
   /** Le maneton : sa distance au centre, son angle (degrés, sens horaire depuis la droite) quand la roue est à 0. */
   maneton: 0.099,
   angle: -23.3,
   /** La bielle : d'un œil à l'autre ; l'image (900 × 218) a ses œils à 94 et 834 px. */
-  bielle: 0.36,
+  bielle: 0.3,
+  /** La crosse (au bout de la bielle) : sa largeur ; elle coulisse dans la glissière. */
+  crosse: 0.14,
   oeil: 94 / 900,
   /** Une bouffée de vapeur par demi-tour de roue. */
   bouffee: 180,
@@ -150,6 +152,7 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
   const disque = useRef<HTMLDivElement>(null);
   const roue = useRef<HTMLDivElement>(null);
   const bielle = useRef<HTMLImageElement>(null);
+  const crosse = useRef<HTMLImageElement>(null);
   const bouffees = useRef<(HTMLImageElement | null)[]>([]);
   const gagnante = v.phase === 'bonus' || v.phase === 'resultat' ? v.arret : null;
   const boosts = v.multiplicateurs ?? [];
@@ -187,6 +190,12 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
         const lb = (L * 900) / 740;
         b.style.width = `${lb}px`;
         b.style.transform = `translate3d(${px - MOTRICE.oeil * lb}px, ${py - (lb * 218) / 900 / 2}px, 0) rotate(${phi}rad)`;
+        const c = crosse.current;
+        if (c) {
+          const cw = MOTRICE.crosse * W;
+          c.style.width = `${cw}px`;
+          c.style.transform = `translate3d(${qx - cw / 2}px, ${W / 2 - (cw * 135) / 300 / 2}px, 0)`;
+        }
       }
       // La vapeur : une bouffée par demi-tour pendant le tour, de plus en plus espacées.
       const t = performance.now();
@@ -258,7 +267,7 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
   return (
     <div className={`bw-roue ${v.phase}`} ref={roue}>
       <div className="bw-roue-halo" aria-hidden="true" />
-      <img className="bw-rl-rails" src="/cartes/bw-rl-rails.webp" alt="" draggable={false} />
+      <i className="bw-rl-rails" aria-hidden="true" />
       <div className="bw-disque" ref={disque}>
         <svg viewBox="-370 -370 740 740" aria-hidden="true">
           <circle r="366" fill="#1a0f08" />
@@ -290,7 +299,8 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
         <img className="bw-rl-moyeu" src="/cartes/bw-rl-moyeu.webp" alt="" draggable={false} />
       </div>
       <img className="bw-rl-jante" src="/cartes/bw-rl-jante.webp" alt="" draggable={false} />
-      <i className="bw-rl-glissiere" aria-hidden="true" />
+      <img className="bw-rl-glissiere" src="/cartes/bw-rl-glissiere.webp" alt="" draggable={false} />
+      <img className="bw-rl-crosse" ref={crosse} src="/cartes/bw-rl-crosse.webp" alt="" draggable={false} />
       <img className="bw-rl-bielle" ref={bielle} src="/cartes/bw-rl-bielle.webp" alt="" draggable={false} />
       {Array.from({ length: NB_BOUFFEES }, (_, k) => (
         <img

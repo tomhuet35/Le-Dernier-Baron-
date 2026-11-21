@@ -357,6 +357,8 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bw-rl-bielle.webp',
     '/cartes/bw-rl-sifflet.webp',
     '/cartes/bw-rl-rails.webp',
+    '/cartes/bw-rl-glissiere.webp',
+    '/cartes/bw-rl-crosse.webp',
     '/cartes/bw-rl-vapeur.webp',
     '/cartes/bw-rl-decor-paysage.webp',
     '/cartes/bw-rl-decor-portrait.webp',
