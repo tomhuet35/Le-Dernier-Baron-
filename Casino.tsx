@@ -1212,7 +1212,7 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // Le salon
 
 const JEUX: { id: 'baronWheel' | 'folleNuit' | 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'tickets' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
-  { id: 'baronWheel', nom: ['The Baron’s Wheel', 'The Baron’s Wheel'], image: '/cartes/casino-baron-wheel-affiche.webp', repli: '/cartes/casino-baron-wheel-bandeau-petit.webp' },
+  { id: 'baronWheel', nom: ['Le Baron Express', 'The Baron Express'], image: '/cartes/casino-baron-wheel-affiche.webp', repli: '/cartes/casino-baron-wheel-bandeau-petit.webp' },
   { id: 'folleNuit', nom: ['La Folle Nuit', 'Crazy Night'], image: '/cartes/casino-folle-nuit-affiche.webp', repli: '/cartes/casino-folle-nuit.webp' },
   { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines-affiche.webp', repli: '/cartes/casino-machines.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
@@ -1364,7 +1364,7 @@ function Annonce({ annonce }: { annonce: AnnonceCasino }) {
       : annonce.jeu === 'tickets'
         ? tr(`${annonce.nom} a gratté ${dollars(annonce.gain)} aux Tickets du Baron !`, `${annonce.nom} scratched ${dollars(annonce.gain)} on the Baron’s Tickets!`)
       : annonce.jeu === 'baronWheel'
-        ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à The Baron’s Wheel !`, `${annonce.nom} won ${dollars(annonce.gain)} on The Baron’s Wheel!`)
+        ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} au Baron Express !`, `${annonce.nom} won ${dollars(annonce.gain)} on The Baron Express!`)
       : annonce.jeu === 'course'
         ? tr(`${annonce.nom} a gagné ${dollars(annonce.gain)} à la Course des Écuries !`, `${annonce.nom} won ${dollars(annonce.gain)} at the Stables’ Race!`)
       : annonce.jeu === 'folleNuit'
