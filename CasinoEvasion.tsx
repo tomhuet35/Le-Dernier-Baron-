@@ -272,7 +272,8 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
       const cs = `${d.cle}-${acte}-${taille.version}`;
       if (ps && cs !== cleSaut) {
         cleSaut = cs;
-        ps.style.visibility = acte === 'saut' ? 'visible' : 'hidden';
+        ps.style.visibility = 'visible';
+        ps.style.display = acte === 'saut' ? '' : 'none';
       }
       if (acte === 'saut') {
         const vu = vuPont(portrait);
@@ -355,7 +356,9 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         const change = derniers[k].cle !== cle;
         if (change) {
           derniers[k].cle = cle;
-          piste.style.visibility = visible ? 'visible' : 'hidden';
+          // display (pas visibility) : les voitures se déclarent visibles elles-mêmes, ce qui passerait outre un parent caché.
+          piste.style.visibility = 'visible';
+          piste.style.display = visible ? '' : 'none';
         }
         if (!visible) return;
 
