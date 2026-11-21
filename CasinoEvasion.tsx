@@ -1,5 +1,5 @@
 /**
- * La Grande Évasion (The Baron's Wheel) : la course à trois. Trois voitures quittent la banque, une par itinéraire
+ * L'Évasion (The Baron's Wheel) : la course à trois. Trois voitures quittent la banque, une par itinéraire
  * (le Boulevard, les Ruelles, les Souterrains) ; chaque joueur monte dans l'une d'elles. Plus l'itinéraire est risqué,
  * plus le butin est gros… si la voiture échappe à la police.
  *
@@ -8,10 +8,10 @@
  * - l'intro : l'affiche, les trois voitures et ce que rapporte chacune (multiplicateur de la roue compris) ;
  * - le choix : trois cartes, une par voiture ;
  * - la poursuite (COURSE_BW) : le départ des trois voitures côte à côte, la police aux trousses ; puis la caméra suit
- *   chaque voiture à son tour, plein écran, dans ses décors, où elle saute les obstacles ; le dénouement sur le quai
+ *   chaque voiture à son tour, plein écran, dans ses décors, la police aux trousses ; le dénouement sur le quai
  *   de la Seine, où les voitures arrêtées pilent l'une après l'autre devant le barrage ; enfin le saut : les voitures
- *   qui s'échappent montent l'une après l'autre sur le pont-levis et s'envolent par-dessus la Seine.
- *   Les décors, la chaussée, les voitures et leurs roues, les obstacles et les effets sont placés à chaque image
+ *   qui s'échappent montent l'une après l'autre sur le pont-levis et s'envolent par-dessus le barrage et la Seine.
+ *   Les décors, la chaussée, les voitures et leurs roues et les effets sont placés à chaque image
  *   (requestAnimationFrame) ; les panneaux suivent l'horloge de l'étape (10 fois par seconde) ;
  * - la fin : l'image de l'évasion (ou de l'arrestation) de ma voiture, et le bilan des trois.
  */
@@ -31,26 +31,11 @@ const DECORS: Record<RouteBW, [string, string]> = {
   ruelles: ['ruelles-1', 'ruelles-2'],
   souterrains: ['souterrains-1', 'souterrains-2'],
 };
-/** Les deux obstacles de chaque itinéraire : l'image, sa hauteur (en hauteurs de carrosserie), son rapport hauteur / largeur. */
-const OBSTACLES: Record<RouteBW, { img: string; h: number; ratio: number }[]> = {
-  boulevard: [
-    { img: 'obstacle-fiacre', h: 1.15, ratio: 482 / 760 },
-    { img: 'obstacle-kiosque', h: 1.3, ratio: 607 / 600 },
-  ],
-  ruelles: [
-    { img: 'obstacle-charrette', h: 1.1, ratio: 513 / 760 },
-    { img: 'obstacle-chevalet', h: 1.3, ratio: 642 / 600 },
-  ],
-  souterrains: [
-    { img: 'obstacle-wagonnet', h: 1.05, ratio: 485 / 760 },
-    { img: 'obstacle-eboulement', h: 1.35, ratio: 598 / 600 },
-  ],
-};
 
-/** Toutes les images de la Grande Évasion (sans chemin ni extension), préchargées avant le bonus. */
+/** Toutes les images de l'Évasion (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_EVASION_NOMS = [
   'affiche',
-  ...ROUTES_BW.flatMap((r) => [...DECORS[r], `route-${r}`, `voiture-${r}`, ...OBSTACLES[r].map((o) => o.img)]),
+  ...ROUTES_BW.flatMap((r) => [...DECORS[r], `route-${r}`, `voiture-${r}`]),
   'seine',
   'saut',
   'barrage',
@@ -61,7 +46,7 @@ export const IMAGES_EVASION_NOMS = [
   'gyrophare',
   'etincelles',
   'jauge',
-  'fin-evade',
+  'fin-evade2',
   'fin-arrete',
 ].map((n) => `bw-ev-${n}`);
 
@@ -106,8 +91,7 @@ const { depart: DEPART, plan: PLAN, denouement: DENOUEMENT, issue: ISSUE } = COU
 /** La fin des plans : la caméra revient sur les trois voitures, qui débouchent sur le quai de la Seine. */
 const FIN_PLANS = DEPART + 3 * PLAN;
 const debutPlan = (k: number) => DEPART + k * PLAN;
-/** Dans un plan : le passage de chaque obstacle sous la voiture, le changement de décor. */
-const OBST = [1200, 2650];
+/** Dans un plan : le changement de décor. */
 const CHANGE_DECOR = 1800;
 /** Le barrage (depuis le début de l'issue) : le freinage, l'arrêt. */
 const FREIN = { debut: 150, arret: 1000 };
@@ -229,7 +213,6 @@ interface RefsPiste {
   el: RefObject<HTMLDivElement>;
   decors: RefObject<HTMLDivElement>[];
   route: RefObject<HTMLDivElement>;
-  obstacles: RefObject<HTMLImageElement>[];
   barrage: RefObject<HTMLImageElement>;
   voiture: RefsVehicule;
   police: RefsVehicule;
@@ -239,6 +222,7 @@ interface RefsPiste {
 interface RefsSaut {
   el: RefObject<HTMLDivElement>;
   decor: RefObject<HTMLDivElement>;
+  barrage: RefObject<HTMLImageElement>;
   police: RefsVehicule;
 }
 const nouvelleRef = <T,>(): RefObject<T> => ({ current: null });
@@ -266,7 +250,7 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
     mesurer();
     const ro = new ResizeObserver(mesurer);
     ro.observe(el);
-    const derniers = pistes.map(() => ({ cle: '', fracas: [false, false] }));
+    const derniers = pistes.map(() => ({ cle: '' }));
     let cleSaut = '';
 
     let raf = 0;
@@ -306,7 +290,7 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         const [bx, by] = pt(PONT.pied[0], PONT.pied[1]);
         const [tx, ty] = pt(PONT.bout[0], PONT.bout[1]);
         const [, yQuai] = pt(0, PONT.quai);
-        const xAtt = w * PONT.atterrit;
+        const xAtt = w * (portrait ? 0.93 : PONT.atterrit);
         const angle = (Math.atan2(by - ty, tx - bx) * 180) / Math.PI;
         // Le départ de la montée : sur le prolongement du pont-levis, hors de l'écran à gauche.
         const x0 = bx - (tx - bx) * 0.75;
@@ -342,6 +326,15 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
           const et = p.sauteur.etincelles.current;
           if (et) et.style.opacity = String(t > SAUT.montee + SAUT.vol && t < SAUT.montee + SAUT.vol + 350 ? 1 : 0);
         });
+        // Le barrage de police, sur le quai entre le pont-levis et l'atterrissage : les voitures le survolent.
+        const barrage = saut.barrage.current;
+        if (barrage) {
+          const bh = Cw * (portrait ? 0.8 : 0.95);
+          const bw = bh / BARRAGE.ratio;
+          const xb = tx + (xAtt - tx) * (portrait ? 0.42 : 0.5);
+          barrage.style.width = `${bw}px`;
+          barrage.style.transform = `translate3d(${xb - bw / 2}px, ${yQuai + Dh * 0.03 - bh * 0.96}px, 0)`;
+        }
         // La police arrive par le quai et pile au pied du pont-levis.
         const tp = s - cal.saut;
         const xp = -Cw + (w * 0.2 + Cw) * sortie(tp / 1400);
@@ -424,52 +417,11 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
           chaussee.style.transform = `translate3d(${-(((u % tw) + tw) % tw)}px, 0, 0)`;
         }
 
-        // Les obstacles du plan : ils arrivent de la droite, sur la chaussée, et passent sous la voiture qui les saute.
-        const sauts: { x: number; l: number; h: number }[] = [];
-        p.obstacles.forEach((r, j) => {
-          const o = r.current;
-          if (!o) return;
-          const ob = OBSTACLES[route][j];
-          const oh = Ch * ob.h;
-          const ow = oh / ob.ratio;
-          const x = xC + (v * (p0 + OBST[j] - s)) / 1000;
-          const vu = plein && x > -ow && x < w + ow;
-          o.style.visibility = vu ? 'visible' : 'hidden';
-          if (!vu) return;
-          sauts.push({ x, l: ow, h: oh });
-          // Pulvérisé au passage de la voiture : il bascule et s'efface.
-          const choc = borne((xC - x) / (Cw * 0.9));
-          o.style.width = `${ow}px`;
-          o.style.opacity = String(1 - choc * 0.75);
-          o.style.transform = `translate3d(${x - ow / 2}px, ${yG - oh * 0.97}px, 0) rotate(${choc * 14}deg)`;
-          if (choc > 0.05 && !derniers[k].fracas[j]) {
-            derniers[k].fracas[j] = true;
-            jouerEffet('ev_fracas', { vitesse: 0.92 + j * 0.12 });
-          }
-          if (choc === 0) derniers[k].fracas[j] = false;
-        });
-
-        // Le saut d'un véhicule au-dessus des obstacles proches (hauteur, inclinaison, et l'atterrissage).
-        const sautDe = (xv: number) => {
-          for (const o of sauts) {
-            const demi = ((Cw + o.l) / 2) * 1.08;
-            const dd = o.x - xv;
-            if (Math.abs(dd) < demi) {
-              const q = (demi - dd) / (2 * demi);
-              return { y: -(o.h * 1.02 + Ch * 0.08) * Math.sin(q * Math.PI), rot: -9 * Math.sin(q * Math.PI * 2), q };
-            }
-          }
-          return { y: 0, rot: 0, q: -1 };
-        };
-
-        // La voiture : son entrée au départ, ses sauts, le barrage.
+        // La voiture : son entrée au départ, le barrage.
         let xv = xC + (uVoiture - u);
         let yv = 0;
         let rot = 0;
         if (s < DEPART) xv = -Cw + (xC + Cw) * sortie((s - (2 - k) * 180) / 1500);
-        const sv = sautDe(xv);
-        yv += sv.y;
-        rot += sv.rot;
         // Les secousses de la route (pas pour une voiture arrêtée).
         const roule = evade || s < iK + FREIN.arret;
         if (!reduit && roule) yv += Math.sin(s / 47 + k) * Ch * 0.012;
@@ -479,14 +431,13 @@ function useSceneCourse(donnees: { current: DonneesScene | null }, scene: RefObj
         const fumee = p.voiture.fumee.current;
         if (fumee) fumee.style.opacity = String(!roule ? 0 : freine ? 0.95 : 0.35 + 0.15 * Math.sin(s / 90));
         const etincelles = p.voiture.etincelles.current;
-        if (etincelles) etincelles.style.opacity = String(freine ? 0.6 + 0.4 * Math.sin(s / 40) : sv.q > 0.82 ? 1 - (sv.q - 0.82) / 0.18 : 0);
+        if (etincelles) etincelles.style.opacity = String(freine ? 0.6 + 0.4 * Math.sin(s / 40) : 0);
 
-        // La police, à quelques longueurs ; elle saute aussi les obstacles.
+        // La police, à quelques longueurs.
         const g = ecart(s, k, evade, cal);
         const xp = xv - Cw * (1.04 + g);
-        const sp = sautDe(xp);
         const freinePolice = !evade && acte === 'denouement' && s > iK && s < iK + 1200;
-        placerVehicule(p.police, POLICE, xp, yG + sp.y + (reduit || !roule ? 0 : Math.sin(s / 53 + k * 3) * Ch * 0.012), Cw, sp.rot + (freinePolice ? 1.5 : 0), uVoiture, false);
+        placerVehicule(p.police, POLICE, xp, yG + (reduit || !roule ? 0 : Math.sin(s / 53 + k * 3) * Ch * 0.012), Cw, freinePolice ? 1.5 : 0, uVoiture, false);
         const fp = p.police.fumee.current;
         if (fp) fp.style.opacity = String(!roule ? 0 : freinePolice ? 0.85 : 0.25);
 
@@ -569,6 +520,8 @@ function Jauge({ s, issues, mien, plan, c }: { s: number; issues: boolean[] | nu
       <img src={IMG('jauge')} alt="" draggable={false} />
       <span className="eva-jauge-canal">
         {ROUTES_BW.map((r, k) => {
+          // En plan, seule la voiture suivie : les autres ne se voient pas.
+          if (k !== plan) return null;
           const g = ecart(s, k, issues?.[k] ?? true, c);
           const pos = Math.min(0.9, Math.max(0.1, 0.18 + g * 0.55 + ((s - DEPART) / (FIN_PLANS - DEPART)) * 0.2));
           return <Voiture key={r} route={r} className={`eva-jauge-auto ${mien === k ? 'mien' : ''} ${plan === k ? 'suivie' : ''}`} style={{ left: `${pos * 100}%`, '--k': k } as CSSProperties} />;
@@ -625,7 +578,6 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
       el: nouvelleRef(),
       decors: [nouvelleRef(), nouvelleRef(), nouvelleRef()],
       route: nouvelleRef(),
-      obstacles: [nouvelleRef(), nouvelleRef()],
       barrage: nouvelleRef(),
       voiture: refsVehicule(),
       police: refsVehicule(),
@@ -633,7 +585,7 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
     }));
   const pistes = pistesRef.current;
   const sautRef = useRef<RefsSaut | null>(null);
-  if (!sautRef.current) sautRef.current = { el: nouvelleRef(), decor: nouvelleRef(), police: refsVehicule() };
+  if (!sautRef.current) sautRef.current = { el: nouvelleRef(), decor: nouvelleRef(), barrage: nouvelleRef(), police: refsVehicule() };
   useSceneCourse(donnees, scene, pistes, sautRef.current);
 
   // Les sons de la course.
@@ -695,9 +647,6 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
                 <div key={d} className="eva-decor" ref={p.decors[i]} style={{ backgroundImage: `url(${IMG(d)})` }} />
               ))}
               <div className="eva-route" ref={p.route} />
-              {OBSTACLES[r].map((o, j) => (
-                <img key={o.img} className="eva-obstacle" ref={p.obstacles[j]} src={IMG(o.img)} alt="" draggable={false} />
-              ))}
               <AutoDom V={POLICE} r={p.police} police />
               <AutoDom V={VOITURES[r]} r={p.voiture} />
               <img className="eva-barrage" ref={p.barrage} src={IMG('barrage')} alt="" draggable={false} />
@@ -707,6 +656,8 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         {/* Le plan du saut : le pont-levis, et les voitures qui s'échappent, l'une après l'autre. */}
         <div className="eva-saut" ref={sautRef.current.el}>
           <div className="eva-decor" ref={sautRef.current.decor} style={{ backgroundImage: `url(${IMG('saut')})`, opacity: 1 }} />
+          <img className="eva-barrage saut" ref={sautRef.current.barrage} src={IMG('barrage')} alt="" draggable={false} />
+          <i className="eva-gyro-flash saut" />
           <AutoDom V={POLICE} r={sautRef.current.police} police />
           {pistes.map((p, k) => (
             <AutoDom key={k} V={VOITURES[ROUTES_BW[k]]} r={p.sauteur} />
@@ -777,12 +728,9 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         <div className="eva-intro">
           <div className="eva-affiche">
             <img src={IMG('affiche')} alt="" draggable={false} />
-            <svg className="eva-affiche-titre" viewBox="0 0 1000 200" role="img" aria-label={tr('La Grande Évasion', 'The Great Escape')}>
-              <text x="500" y="64" textAnchor="middle" dominantBaseline="middle" textLength="520" lengthAdjust="spacingAndGlyphs" className="petit">
-                {tr('LA GRANDE', 'THE GREAT')}
-              </text>
-              <text x="500" y="146" textAnchor="middle" dominantBaseline="middle" textLength="780" lengthAdjust="spacingAndGlyphs">
-                {tr('ÉVASION', 'ESCAPE')}
+            <svg className="eva-affiche-titre" viewBox="0 0 1000 200" role="img" aria-label={tr('Évasion', 'The Escape')}>
+              <text x="500" y="108" textAnchor="middle" dominantBaseline="middle" textLength="760" lengthAdjust="spacingAndGlyphs">
+                {tr('ÉVASION', 'THE ESCAPE')}
               </text>
             </svg>
             <i className="eva-affiche-reflet" />
@@ -839,7 +787,7 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
 
       {nom === 'revele' && b.routes && (
         <div className={`eva-fin ${issueMienne?.evade ? 'evade' : 'arrete'}`}>
-          <div className="eva-fin-image" style={{ backgroundImage: `url(${IMG(issueMienne?.evade ? 'fin-evade' : 'fin-arrete')})` }} />
+          <div className="eva-fin-image" style={{ backgroundImage: `url(${IMG(issueMienne?.evade ? 'fin-evade2' : 'fin-arrete')})` }} />
           <ul className="eva-bilan" aria-label={tr('Les trois voitures', 'The three cars')}>
             {routes.map(({ r, k }) => {
               const x = b.routes?.[k];

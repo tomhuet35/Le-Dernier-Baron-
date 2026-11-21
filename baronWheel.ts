@@ -410,7 +410,7 @@ export interface DureesBW {
   introExpress: number;
   /** L'intro du Braquage : l'affiche et l'échelle des butins, le temps de les lire. */
   introBraquage: number;
-  /** L'intro de la Grande Évasion : l'affiche et les trois voitures. */
+  /** L'intro de l'Évasion : l'affiche et les trois voitures. */
   introEvasion: number;
   /** Le Choix du Baron : l'affiche, le mélange et la donne des neuf cartes, puis leur retournement (voir DONNE_BW). */
   introDonne: number;
