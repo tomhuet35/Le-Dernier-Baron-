@@ -70,6 +70,20 @@ const NOMS_BONUS: Record<BonusBW, [string, string]> = {
 const NOMS_JACKPOTS: Record<JackpotBW, string> = { mini: 'MINI', minor: 'MINOR', major: 'MAJOR', grand: 'GRAND' };
 const nomCase = (c: CaseBW) => (estBonusBW(c) ? tr(...CASES_VISUELS[c].nom) : fx(GAINS_CHIFFRES_BW[c]));
 
+/**
+ * Le nom d'une case de mise, toujours dans son cadre : sur une ligne s'il est court, sinon un mot par ligne ; la taille
+ * du texte suit la largeur de la case et le nombre de lettres de sa plus longue ligne (--n).
+ */
+function NomCase({ texte }: { texte: string }) {
+  const long = texte.length > 9 && texte.includes(' ');
+  const n = long ? Math.max(...texte.split(' ').map((m) => m.length)) : texte.length;
+  return (
+    <span className={`bw-case-nom ${long ? 'long' : ''}`} style={{ '--n': n } as CSSProperties}>
+      {texte}
+    </span>
+  );
+}
+
 /** Les secondes qui restent avant `fin` (horloge du téléphone), rafraîchies 4 fois par seconde. */
 function useSecondes(fin: number | null): number {
   const [, setTic] = useState(0);
@@ -915,7 +929,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
             return (
               <button key={c} type="button" className={`bw-case ${c} ${m ? 'misee' : ''} ${gagnante === c ? 'gagnante' : ''} ${multis.length ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} onClick={() => void miser(c)} disabled={!ouvertes} aria-label={`${tr(...vis.nom)} ${m ? dollars(m) : ''}`}>
                 {vis.image ? <img src={vis.image} alt="" draggable={false} /> : <strong>{fx(GAINS_CHIFFRES_BW[c as 'x1'])}</strong>}
-                <span className="bw-case-nom">{estBonusBW(c) ? tr(...vis.nom) : tr(`case ${vis.nom[0]}`, `${vis.nom[1]} spot`)}</span>
+                <NomCase texte={estBonusBW(c) ? tr(...vis.nom) : tr(`case ${vis.nom[0]}`, `${vis.nom[1]} spot`)} />
                 {multis.length > 0 && <span className="bw-case-multi">{[...multis].sort((a, b) => b - a).map((x) => `×${x}`).join(' ')}</span>}
                 {c === 'express' && <small className="bw-case-sous">{tr('Case unique · ×10 à ×10 000', 'One spot · ×10 to ×10,000')}</small>}
                 {m > 0 && (

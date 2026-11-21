@@ -95,7 +95,11 @@
 .bw-case > .bw-case-mise, .bw-case.express .bw-case-multi { position: absolute; z-index: 3; }
 .bw-case strong { font-family: var(--titre); font-weight: 400; font-size: clamp(19px, 5.4vw, 27px); line-height: 1; }
 .bw-case > img { width: clamp(38px, 11vw, 54px); height: auto; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
-.bw-case-nom { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(9px, 2.5vw, 11px); font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; }
+/* Le nom tient dans le cadre : sa taille suit la largeur libre de la case (cadre ôté) et sa plus longue ligne (--n lettres). */
+.bw-case { container-type: inline-size; }
+.bw-case-nom { max-width: 100%; white-space: nowrap; font-size: max(7px, min(11.5px, calc((100cqw - 10px) / (var(--n, 6) * 0.74)))); line-height: 1.08; font-weight: 900; letter-spacing: 0.03em; text-align: center; text-transform: uppercase; }
+.bw-case-nom.long { white-space: normal; }
+.bw-case:has(> .bw-case-nom.long) > img { width: clamp(30px, 9vw, 54px); }
 .bw-case:active:not(:disabled) { transform: scale(0.95); }
 .bw-case:disabled { opacity: 1; cursor: default; filter: saturate(0.8) brightness(0.88); }
 .bw-case.misee { box-shadow: 0 0 16px rgba(255, 210, 120, 0.65); }
@@ -152,9 +156,9 @@
    Les bonus : une scène qui prend la place de la roue */
 .bw-bonus { position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 300px; overflow: hidden; }
 .bw-scene { position: absolute; inset: 0; background-size: cover; background-position: center; }
-.bw-bonus-titre { position: absolute; left: 50%; top: 10px; z-index: 30; display: inline-flex; align-items: center; gap: 8px; padding: 4px 16px 4px 5px; border-radius: 99px; border: 2px solid var(--or-bw); background: linear-gradient(180deg, rgba(103, 29, 43, 0.96), rgba(40, 10, 16, 0.96)); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6); transform: translateX(-50%); white-space: nowrap; animation: bw-titre 0.6s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.bw-bonus-titre { position: absolute; left: 50%; top: 10px; z-index: 30; display: inline-flex; width: max-content; max-width: calc(100% - 16px); align-items: center; gap: 8px; padding: 4px 16px 4px 5px; border-radius: 99px; border: 2px solid var(--or-bw); background: linear-gradient(180deg, rgba(103, 29, 43, 0.96), rgba(40, 10, 16, 0.96)); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6); transform: translateX(-50%); white-space: nowrap; animation: bw-titre 0.6s cubic-bezier(0.3, 1.5, 0.5, 1); }
 .bw-bonus-titre img { width: 34px; height: 34px; }
-.bw-bonus-titre strong { font-family: var(--titre); font-weight: 400; font-size: clamp(15px, 4vw, 22px); color: #ffd774; }
+.bw-bonus-titre strong { overflow: hidden; text-overflow: ellipsis; font-family: var(--titre); font-weight: 400; font-size: clamp(15px, 4vw, 22px); color: #ffd774; }
 @keyframes bw-titre { from { opacity: 0; transform: translateX(-50%) scale(0.6); } }
 .bw-bonus-consigne { position: absolute; left: 50%; bottom: 10px; z-index: 30; pointer-events: none; display: grid; justify-items: center; gap: 4px; width: max-content; max-width: 94%; padding: 6px 14px 8px; border-radius: 14px; background: rgba(8, 6, 14, 0.82); border: 1px solid rgba(214, 168, 75, 0.55); transform: translateX(-50%); text-align: center; color: #fff1c4; font-weight: 800; font-size: clamp(12.5px, 3.4vw, 15px); }
 .bw-bonus-consigne small { font-weight: 600; font-size: 11.5px; color: var(--creme-doux); }
@@ -390,7 +394,7 @@
 /* L'Express du Baron : sa case unique prend toute la largeur du tapis. */
 .bw-case.express { grid-column: 1 / -1; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 12px; row-gap: 0; justify-content: center; min-height: 64px; background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.3)), radial-gradient(120% 160% at 50% 0%, rgba(255, 210, 120, 0.18), transparent 60%); }
 .bw-case.express > img { grid-row: 1 / 3; width: clamp(40px, 10vw, 52px); }
-.bw-case.express .bw-case-nom { align-self: end; justify-self: start; font-family: var(--titre); font-size: clamp(15px, 4vw, 19px); color: #ffd774; }
+.bw-case.express .bw-case-nom { align-self: end; justify-self: start; white-space: nowrap; text-align: left; font-family: var(--titre); font-size: clamp(15px, 4vw, 19px); color: #ffd774; }
 .bw-case-sous { align-self: start; justify-self: start; font-size: 11px; font-weight: 800; color: #bfeccf; }
 
 /* Le multiplicateur de la roue compris dès le début des bonus. */
