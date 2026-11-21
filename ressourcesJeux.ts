@@ -412,7 +412,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bw-br-etage-4.webp',
     '/cartes/bw-br-etage-5.webp',
     '/cartes/bw-br-etincelles.webp',
-    '/cartes/bw-br-debris.webp',
+    '/cartes/bw-br-debris2.webp',
     '/cartes/bw-br-jauge.webp',
     '/cartes/bw-br-plaque.webp',
     '/cartes/bw-br-sirene.webp',

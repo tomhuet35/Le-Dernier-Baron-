@@ -34,7 +34,7 @@ export const IMAGES_BRAQUAGE_NOMS = [
   'dalle-trou',
   ...[1, 2, 3, 4, 5].map((k) => `etage-${k}`),
   'etincelles',
-  'debris',
+  'debris2',
   'jauge',
   'plaque',
   'sirene',
@@ -279,7 +279,7 @@ function useSceneCasse(donnees: { current: DonneesScene | null }, refs: RefsScen
       const etincelles = refs.etincelles.current;
       if (etincelles) etincelles.style.width = `${W * (g.portrait ? 0.42 : 0.22)}px`;
       const debris = refs.debris.current;
-      if (debris) debris.style.width = `${W * (g.portrait ? 0.5 : 0.28)}px`;
+      if (debris) debris.style.width = `${W * (g.portrait ? 0.42 : 0.22)}px`;
       const chaleur = refs.chaleur.current;
       if (chaleur) {
         chaleur.style.width = `${g.Bw * 4}px`;
@@ -407,10 +407,12 @@ function useSceneCasse(donnees: { current: DonneesScene | null }, refs: RefsScen
         const u = derniere >= 0 ? t - percee(derniere) : -1;
         if (u < 0 || u > 1400 || reduit) debris.style.opacity = '0';
         else {
+          // La dalle percée éclate : ses blocs (encore rougis par la mèche) tombent dans le sous-sol.
           const w = debris.offsetWidth;
-          const yb = dalleHaut(g, derniere) + g.S * 0.6 + g.R * 0.66 * (u / 1400) ** 1.7;
-          debris.style.opacity = String(Math.min(1, 2 - u / 700));
-          debris.style.transform = `translate3d(${g.cx - w / 2}px, ${yb}px, 0) scale(${0.85 + u / 2500})`;
+          const h = debris.offsetHeight;
+          const yb = dalleHaut(g, derniere) + g.S * 0.2 - h * 0.12 + g.R * 0.42 * (u / 1400) ** 1.6;
+          debris.style.opacity = String(Math.min(1, u / 120, 2.2 - u / 640));
+          debris.style.transform = `translate3d(${g.cx - w / 2}px, ${yb}px, 0) scale(${0.8 + u / 2200}) rotate(${(u / 1400) * 6}deg)`;
         }
       }
       refs.poussieres.forEach((r, i) => {
@@ -690,7 +692,7 @@ export function BonusBraquage({ v, b, nom }: { v: VueBW; b: VueBonusBW; nom: str
         {refs.poussieres.map((r, i) => (
           <div key={`p${i}`} className="brq-poussiere" ref={r} />
         ))}
-        <img className="brq-debris" ref={refs.debris} src={IMG('debris')} alt="" draggable={false} />
+        <img className="brq-debris" ref={refs.debris} src={IMG('debris2')} alt="" draggable={false} />
         <div className="brq-chaleur" ref={refs.chaleur} />
         <img className="brq-etincelles" ref={refs.etincelles} src={IMG('etincelles')} alt="" draggable={false} />
         <img className={`brq-sirene ${alarme ? 'sonne' : ''}`} ref={refs.sirene} src={IMG('sirene')} alt="" draggable={false} />

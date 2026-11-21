@@ -622,7 +622,7 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
                 {resolue ? (
                   <b>{issues?.[k] ? fx((b.routes?.[k]?.x ?? 0) * M) : tr('arrêtée', 'caught')}</b>
                 ) : (
-                  <small>{tr(`arrestation ${Math.round(ITINERAIRES_BW[r].arrestation * 100)} %`, `${Math.round(ITINERAIRES_BW[r].arrestation * 100)}% arrest`)}</small>
+                  <small>{tr(`arrestation ${Math.round(ITINERAIRES_BW[r].arrestation * 100)}\u00a0%`, `${Math.round(ITINERAIRES_BW[r].arrestation * 100)}% arrest`)}</small>
                 )}
                 {choix === k && <em>{tr('Toi', 'You')}</em>}
               </span>
@@ -690,7 +690,7 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
                   <img src={IMG(`voiture-${r}`)} alt="" draggable={false} />
                   <span className="eva-liste-nom">
                     <strong>{tr(...NOMS_ROUTES[r].nom)}</strong>
-                    <small>{tr(`Arrestation ${Math.round(it.arrestation * 100)} %`, `${Math.round(it.arrestation * 100)}% arrest`)}</small>
+                    <small>{tr(`Arrestation ${Math.round(it.arrestation * 100)}\u00a0%`, `${Math.round(it.arrestation * 100)}% arrest`)}</small>
                   </span>
                   <b>
                     <ValeurMultipliee x={Math.min(...gains(r))} m={M} rapide /> → <ValeurMultipliee x={Math.max(...gains(r))} m={M} rapide />
@@ -711,7 +711,7 @@ export function BonusEvasion({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
               <span className="eva-carte-texte">
                 <strong>{tr(...NOMS_ROUTES[r].nom)}</strong>
                 <small>
-                  {tr(...NOMS_ROUTES[r].risque)} · {tr(`arrestation ${Math.round(it.arrestation * 100)} %`, `${Math.round(it.arrestation * 100)}% arrest`)}
+                  {tr(...NOMS_ROUTES[r].risque)} · {tr(`arrestation ${Math.round(it.arrestation * 100)}\u00a0%`, `${Math.round(it.arrestation * 100)}% arrest`)}
                 </small>
                 <em>
                   <ValeurMultipliee x={Math.min(...gains(r))} m={M} rapide /> → <ValeurMultipliee x={Math.max(...gains(r))} m={M} rapide />

@@ -125,14 +125,14 @@
 .eva-carte-decor::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5, 4, 10, 0.1), rgba(5, 4, 10, 0.65)); }
 .eva-carte-auto { position: absolute; left: 6%; width: 88%; top: 18%; height: auto; max-height: 50%; object-fit: contain; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.7)); animation: eva-moteur 0.18s ease-in-out infinite alternate; }
 @keyframes eva-moteur { to { transform: translateY(1.5px); } }
-.eva-carte-texte { display: grid; gap: 2px; padding: 6px 8px 8px; background: linear-gradient(180deg, rgba(103, 29, 43, 0.97), rgba(40, 10, 16, 0.97)); border-top: 1.5px solid rgba(214, 168, 75, 0.8); }
+.eva-carte-texte { display: grid; gap: 2px; min-width: 0; container-type: inline-size; padding: 6px 8px 8px; background: linear-gradient(180deg, rgba(103, 29, 43, 0.97), rgba(40, 10, 16, 0.97)); border-top: 1.5px solid rgba(214, 168, 75, 0.8); }
 .eva-carte-texte strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 2.6cqw, 22px); color: #ffd774; }
 .eva-carte-texte small { font-size: clamp(9.5px, 1.5cqw, 12.5px); font-weight: 800; color: #f3e7cf; }
 .eva-carte-texte em { font-style: normal; font-family: var(--titre); font-size: clamp(14px, 2.4cqw, 21px); color: #fff1c4; white-space: nowrap; }
 .eva-carte.choisie { border-color: #ffe08a; box-shadow: 0 0 0 2px #ffe08a, 0 0 30px rgba(255, 210, 110, 0.85); transform: scale(1.03); }
 .eva-carte.choisie .eva-carte-auto { animation-duration: 0.09s; }
 .eva-carte.autre { filter: saturate(0.4) brightness(0.55); }
-.eva-nb { position: absolute; right: 8px; top: 8px; z-index: 2; min-width: 24px; padding: 1px 7px; border-radius: 99px; background: #ffd774; color: #2a0a04; font-style: normal; font-weight: 900; font-size: 13px; }
+.eva-nb { position: absolute; left: 8px; top: 8px; z-index: 2; min-width: 24px; padding: 1px 7px; border-radius: 99px; background: #ffd774; color: #2a0a04; font-style: normal; font-weight: 900; font-size: 13px; }
 
 /* La fin : l'image de l'évasion (ou de l'arrestation), le bilan des trois voitures. */
 .eva-fin { position: absolute; inset: 0; z-index: 12; overflow: hidden; animation: eva-fondu 0.6s ease-out both; }
@@ -172,9 +172,9 @@
   .eva-carte-decor { background-position: 25% 100%; }
   .eva-carte-auto { left: 3%; width: 49%; top: 50%; max-height: 80%; transform: translateY(-40%); animation: none; }
   .eva-carte-texte { align-content: center; padding: 4px 6px; border-top: 0; border-left: 1.5px solid rgba(214, 168, 75, 0.8); }
-  .eva-carte-texte strong { font-size: 15px; }
-  .eva-carte-texte small { font-size: 9.5px; }
-  .eva-carte-texte em { font-size: 14px; }
+  .eva-carte-texte strong { font-size: min(15px, 11cqw); white-space: nowrap; }
+  .eva-carte-texte small { font-size: min(9.5px, 6.4cqw); }
+  .eva-carte-texte em { font-size: min(14px, 8.4cqw); }
   .eva-plaques { left: 5px; gap: 3px; }
   .eva-plaque { gap: 4px; padding: 2px 8px 2px 4px; }
   .eva-tampon { left: 50%; top: 44%; }
