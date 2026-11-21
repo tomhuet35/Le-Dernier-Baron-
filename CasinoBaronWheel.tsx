@@ -1,7 +1,7 @@
 /**
  * The Baron's Wheel (Salon privé) : la roue géante de 40 cases, en direct, et ses cinq bonus (le Choix du Baron, le
- * Pickpocket, la Grande Évasion, le Braquage et L'Express du Baron ; ces deux derniers ont leur propre écran,
- * CasinoBraquage.tsx et CasinoBaronExpress.tsx).
+ * Pickpocket, la Grande Évasion, le Braquage et L'Express du Baron ; ces trois derniers ont leur propre écran,
+ * CasinoEvasion.tsx, CasinoBraquage.tsx et CasinoBaronExpress.tsx).
  *
  * Le serveur tient les manches et diffuse la vue (« casino_bw ») ; il a déjà tiré la case d'arrêt quand la roue part,
  * et toutes les récompenses cachées d'un bonus quand il commence. Cet écran ne fait que montrer : la roue tourne
@@ -17,13 +17,11 @@ import {
   DEGRES_CASE_BW,
   estBonusBW,
   GAINS_CHIFFRES_BW,
-  ITINERAIRES_BW,
   JACKPOTS_BW,
   JETONS_BW,
   MAX_CASE_BW,
   MAX_MANCHE_BW,
   ROUE_BW,
-  ROUTES_BW,
   VALEUR_JACKPOT_BW,
   type BonusBW,
   type BoostBW,
@@ -31,7 +29,6 @@ import {
   type JackpotBW,
   type JournalBW,
   type RecompenseBW,
-  type RouteBW,
   type VueBonusBW,
   type VueBW,
 } from '../../shared/baronWheel';
@@ -43,6 +40,7 @@ import { EN, tr } from './traduction';
 import { jouerEffet, mouvementReduit, musiqueDuCasino } from './ui';
 import { BonusExpress, IMAGES_EXPRESS_NOMS, ValeurMultipliee } from './CasinoBaronExpress';
 import { BonusBraquage, IMAGES_BRAQUAGE_NOMS } from './CasinoBraquage';
+import { BonusEvasion, IMAGES_EVASION_NOMS } from './CasinoEvasion';
 import './baronWheel.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
@@ -58,7 +56,7 @@ export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string
   x10: { nom: ['10X', '10X'], fond: '#f6d77a', texte: '#3a1810' },
   baron: { nom: ['Baron', 'Baron'], fond: '#0d0b0b', texte: '#F3E7CF', image: '/cartes/bw-sym-baron.webp' },
   pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket.webp' },
-  evasion: { nom: ['Grande Évasion', 'Great Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion.webp' },
+  evasion: { nom: ['Grande Évasion', 'Great Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp' },
   braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp' },
   express: { nom: ['Express du Baron', 'Baron Express'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
 };
@@ -68,11 +66,6 @@ const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   evasion: ['La Grande Évasion', 'The Great Escape'],
   braquage: ['Le Braquage', 'The Big Heist'],
   express: ['L’Express du Baron', 'The Baron Express'],
-};
-const NOMS_ROUTES: Record<RouteBW, { nom: [string, string]; risque: [string, string] }> = {
-  boulevard: { nom: ['Le Boulevard', 'The Boulevard'], risque: ['Risque faible', 'Low risk'] },
-  ruelles: { nom: ['Les Ruelles', 'The Alleys'], risque: ['Risque moyen', 'Medium risk'] },
-  souterrains: { nom: ['Les Souterrains', 'The Tunnels'], risque: ['Risque élevé', 'High risk'] },
 };
 const NOMS_JACKPOTS: Record<JackpotBW, string> = { mini: 'MINI', minor: 'MINOR', major: 'MAJOR', grand: 'GRAND' };
 const nomCase = (c: CaseBW) => (estBonusBW(c) ? tr(...CASES_VISUELS[c].nom) : fx(GAINS_CHIFFRES_BW[c]));
@@ -363,7 +356,7 @@ const IMAGES_BONUS_BW: Record<BonusBW, string[]> = Object.fromEntries(
   Object.entries({
     baron: ['bw-sym-baron', 'bw-scene-baron', 'bw-rideau', 'bw-baron', 'bw-carte-dos', 'bw-carte-face', ...plaques],
     pickpocket: ['bw-sym-pickpocket', 'bw-scene-pickpocket', 'bw-pickpocket', 'bw-mallette', 'bw-mallette-ouverte'],
-    evasion: ['bw-sym-evasion', 'bw-depart', 'bw-voiture-baron', 'bw-voiture-police', 'bw-route-boulevard', 'bw-route-ruelles', 'bw-route-souterrains', 'bw-obstacle-1', 'bw-obstacle-2', 'bw-obstacle-3', 'bw-obstacle-4', 'bw-baron-evade', 'bw-gendarme'],
+    evasion: ['bw-sym-evasion2', ...IMAGES_EVASION_NOMS],
     braquage: ['bw-sym-braquage2', ...IMAGES_BRAQUAGE_NOMS, ...plaques],
     express: ['bw-sym-express', ...IMAGES_EXPRESS_NOMS],
   }).map(([t, noms]) => [t, noms.map((n) => `/cartes/${n}.webp`)]),
@@ -417,7 +410,7 @@ function useChargement(type: BonusBW): number {
 const ASTUCES_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Baron te présente trois cartes : une seule cache le plus gros lot.', 'The Baron shows you three cards: only one hides the biggest prize.'],
   pickpocket: ['Suis bien la mallette où le Pickpocket cache son butin\u00a0!', 'Keep your eye on the briefcase where the Pickpocket hides the loot!'],
-  evasion: ['Choisis ton itinéraire : plus il est risqué, plus il rapporte.', 'Pick your route: the riskier it is, the more it pays.'],
+  evasion: ['Trois voitures, trois itinéraires : monte dans l’une d’elles. Plus la route est risquée, plus le butin est gros.', 'Three cars, three routes: jump into one. The riskier the route, the bigger the loot.'],
   braquage: ['Une seule perceuse pour tout le salon : plus elle descend, plus le butin grossit… jusqu’à l’alarme.', 'One drill for the whole room: the deeper it goes, the bigger the loot… until the alarm.'],
   express: ['5 wagons au départ de Paris : un seul arrivera à Istanbul et ouvrira le Coffre du Baron.', '5 carriages leave Paris: only one will reach Istanbul and open the Baron’s Safe.'],
 };
@@ -538,107 +531,12 @@ function BonusPickpocket({ b, nom, ouvert, choisir }: PropsBonus) {
   );
 }
 
-/** La voiture du Baron, et la police à ses trousses (gyrophare). */
-function Voitures() {
-  return (
-    <>
-      <span className="bw-voiture police">
-        <img src="/cartes/bw-voiture-police.webp" alt="" draggable={false} />
-        <i className="bw-gyro" />
-      </span>
-      <span className="bw-voiture baron">
-        <img src="/cartes/bw-voiture-baron.webp" alt="" draggable={false} />
-        <i className="bw-fumee-pot" />
-      </span>
-    </>
-  );
-}
-
-/** LA GRANDE ÉVASION : trois itinéraires, puis la course-poursuite dans Paris. */
-/** Les obstacles de chaque rue : 1 barrière, 2 charrette, 3 tonneaux, 4 gendarme. */
-const OBSTACLES_ROUTE: Record<(typeof ROUTES_BW)[number], number[]> = {
-  boulevard: [1, 4, 1],
-  ruelles: [2, 3, 4],
-  souterrains: [3, 3],
-};
-
-function BonusEvasion({ b, nom, ouvert, choisir, v }: PropsBonus) {
-  const choix = b.mesChoix[0];
-  // Ce que l'écran suit : mon itinéraire, sinon le plus choisi du salon.
-  const salon = b.choixSalon[0] ?? [0, 0, 0];
-  const suivi = choix ?? salon.indexOf(Math.max(...salon));
-  const route = ROUTES_BW[suivi < 0 ? 0 : suivi];
-  const issue = b.routes?.[ROUTES_BW.indexOf(route)] ?? null;
-  const enRoute = nom === 'poursuite' || nom === 'revele';
-  return (
-    <div className={`bw-scene bw-evasion ${nom} ${enRoute ? route : ''} ${issue ? (issue.evade ? 'evade' : 'arrete') : ''}`} style={enRoute ? ({ '--duree': `${v.duree ?? 9000}ms` } as CSSProperties) : undefined}>
-      {enRoute ? (
-        <div className="bw-defile" aria-hidden="true" style={{ '--fond-route': `url(/cartes/bw-route-${route}.webp)` } as CSSProperties}>
-          <div className="bw-route-fond">
-            <img src={`/cartes/bw-route-${route}.webp`} alt="" draggable={false} />
-            <img src={`/cartes/bw-route-${route}.webp`} alt="" draggable={false} />
-          </div>
-          {/* Seulement les obstacles qui vont avec la rue choisie (pas de charrette de fruits dans les égouts). */}
-          {OBSTACLES_ROUTE[route].map((k, i) => (
-            <img key={`${route}-${k}`} className={`bw-obstacle o${i + 1}`} src={`/cartes/bw-obstacle-${k}.webp`} alt="" draggable={false} />
-          ))}
-          <Voitures />
-        </div>
-      ) : (
-        <div className="bw-depart" aria-hidden="true">
-          <Voitures />
-        </div>
-      )}
-      {nom === 'route' && (
-        <div className="bw-routes">
-          {ROUTES_BW.map((r, k) => {
-            const it = ITINERAIRES_BW[r];
-            const gains = it.gains.map(([x]) => x);
-            return (
-              <button key={r} type="button" className={`bw-route ${r} ${choix === k ? 'choisie' : ''}`} onClick={() => choisir(k)} disabled={!ouvert || choix !== null}>
-                <span className="bw-route-vignette" style={{ backgroundImage: `url(/cartes/bw-route-${r}.webp)` }} />
-                <strong>{tr(...NOMS_ROUTES[r].nom)}</strong>
-                <small>
-                  {tr(...NOMS_ROUTES[r].risque)} · {tr(`arrestation ${Math.round(it.arrestation * 100)} %`, `${Math.round(it.arrestation * 100)}% arrest`)}
-                </small>
-                <em>
-                  <ValeurMultipliee x={Math.min(...gains)} m={b.multiplicateur} /> → <ValeurMultipliee x={Math.max(...gains)} m={b.multiplicateur} />
-                  {b.multiplicateur > 1 && <small className="bw-route-multi">{tr(`roue ×${b.multiplicateur} incluse`, `wheel ×${b.multiplicateur} included`)}</small>}
-                </em>
-                {b.choixSalon[0]?.[k] ? <i className="bw-nb-choix">{b.choixSalon[0][k]}</i> : null}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {nom === 'revele' && issue && (
-        <div className={`bw-issue ${issue.evade ? 'evade' : 'arrete'}`}>
-          <img src={issue.evade ? '/cartes/bw-baron-evade.webp' : '/cartes/bw-gendarme.webp'} alt="" draggable={false} />
-        </div>
-      )}
-      {nom === 'revele' && b.routes && (
-        <ul className="bw-routes-bilan">
-          {ROUTES_BW.map((r, k) => {
-            const x = b.routes?.[k];
-            return (
-              <li key={r} className={`${x?.evade ? 'evade' : 'arrete'} ${choix === k ? 'mien' : ''}`}>
-                <span>{tr(...NOMS_ROUTES[r].nom)}</span>
-                <strong>{x?.evade ? <ValeurMultipliee x={x.x} m={b.multiplicateur} son={choix === k} /> : tr('arrêté', 'caught')}</strong>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 const TEXTES_ETAPES: Record<string, [string, string]> = {
   intro: ['', ''],
   cartes: ['Choisis une carte dorée', 'Pick a golden card'],
   vol: ['Le Pickpocket cache le butin dans l’une des mallettes…', 'The Pickpocket hides the loot in one of the briefcases…'],
   mallettes: ['Où est le butin ? Choisis une mallette', 'Where is the loot? Pick a briefcase'],
-  route: ['La police arrive ! Choisis ton itinéraire', 'The police are coming! Pick your route'],
+  route: ['La police arrive ! Choisis ta voiture', 'The police are coming! Pick your car'],
   poursuite: ['La course-poursuite\u00a0!', 'The car chase!'],
   wagons: ['Choisis ton wagon : un seul arrivera à Istanbul\u00a0!', 'Pick your carriage: only one will reach Istanbul!'],
   revele: ['', ''],
@@ -671,7 +569,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
     <div className={`bw-bonus ${b.type}`}>
       {b.type === 'baron' && <BonusBaron {...props} />}
       {b.type === 'pickpocket' && <BonusPickpocket {...props} />}
-      {b.type === 'evasion' && <BonusEvasion {...props} />}
+      {b.type === 'evasion' && <BonusEvasion v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       {b.type === 'braquage' && <BonusBraquage v={v} b={b} nom={nom} />}
       {b.type === 'express' && <BonusExpress v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       <div className="bw-bonus-titre">
@@ -686,7 +584,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
           <span>{tr('Tous les gains de ce bonus sont multipliés\u00a0!', 'Every win in this bonus is multiplied!')}</span>
         </div>
       )}
-      {nom !== 'revele' && nom !== 'intro' && b.type !== 'braquage' && (b.type !== 'express' || nom === 'wagons') && (
+      {nom !== 'revele' && nom !== 'intro' && b.type !== 'braquage' && (b.type !== 'express' || nom === 'wagons') && (b.type !== 'evasion' || nom === 'route') && (
         <div className="bw-bonus-consigne">
           <span>{texte}</span>
           {rang >= 0 && (b.mise > 0 ? b.mesChoix[rang] !== null ? <small>{tr('Choix fait : on attend les autres…', 'Done: waiting for the others…')}</small> : <small>{tr(`Ta mise : ${dollars(b.mise)}`, `Your bet: ${dollars(b.mise)}`)}</small> : <small>{tr('Tu regardes : tu n’as pas misé sur ce bonus.', 'Watching: you did not bet on this bonus.')}</small>)}
@@ -825,7 +723,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       const n = etapeNom(v);
       // L'Express et le Braquage jouent leurs propres sons.
       if (n === 'intro' && v.bonus.type !== 'express' && v.bonus.type !== 'braquage') jouerEffet(v.bonus.type === 'baron' ? 'bw_baron' : v.bonus.type === 'pickpocket' ? 'bw_vol' : 'bw_sirene');
-      if (n === 'poursuite') jouerEffet('bw_sirene');
       if (n === 'revele') {
         if (v.bonus.type === 'baron') jouerEffet('bw_carte');
         if (v.bonus.type === 'evasion') {
@@ -1117,8 +1014,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2) et Braquage (3), et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×100 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
-            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2) and Big Heist (3), and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×100 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
+            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Grande Évasion (2) et Braquage (3), et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). À la Grande Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×30, arrestation 8 %), les Ruelles (×20 à ×100, 61 %) ou les Souterrains (×50 à ×500, 88 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×100 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
+            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Great Escape (2) and Big Heist (3), and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Great Escape, three cars flee: the Boulevard (×10 to ×30, 8% arrest), the Alleys (×20 to ×100, 61%) or the Tunnels (×50 to ×500, 88%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×100 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
           )}
         </p>
       </aside>

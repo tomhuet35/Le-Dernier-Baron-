@@ -248,70 +248,6 @@
 .bw-fumee { position: absolute; inset: -20% -6%; z-index: 9; pointer-events: none; background: radial-gradient(closest-side at 20% 60%, rgba(220, 210, 200, 0.85), transparent), radial-gradient(closest-side at 50% 45%, rgba(230, 220, 210, 0.9), transparent), radial-gradient(closest-side at 80% 60%, rgba(220, 210, 200, 0.85), transparent); filter: blur(10px); animation: bw-fumee 6.2s ease-in-out both; }
 @keyframes bw-fumee { 0%, 25% { opacity: 0; transform: scale(0.6); } 38%, 78% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.2); } }
 
-/* LA GRANDE ÉVASION */
-.bw-evasion { background: #05060c url('/cartes/bw-depart.webp') center / cover; }
-.bw-depart, .bw-defile { position: absolute; inset: 0; overflow: hidden; }
-.bw-voiture { position: absolute; bottom: 5%; z-index: 6; line-height: 0; }
-.bw-voiture img { width: 100%; height: auto; filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.7)); }
-.bw-voiture.baron { left: 46%; width: 46%; }
-.bw-voiture.police { left: -6%; width: 40%; z-index: 5; }
-.bw-gyro { position: absolute; left: 39%; top: 2%; width: 9%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(120, 170, 255, 1), rgba(60, 110, 255, 0.4) 45%, transparent 70%); transform: scale(2.4); animation: bw-gyro 0.45s steps(2) infinite; }
-@keyframes bw-gyro { 50% { opacity: 0.1; } }
-.bw-evasion.intro .bw-voiture.baron { animation: bw-entree-gauche 1.6s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s both; }
-.bw-evasion.intro .bw-voiture.police { animation: bw-police-arrive 1.6s ease-out 2.2s both; }
-@keyframes bw-police-arrive { from { transform: translateX(-110%); } }
-.bw-routes { position: absolute; left: 4%; right: 4%; top: 18%; z-index: 12; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5%; }
-.bw-scene .bw-route { position: relative; display: grid; gap: 3px; justify-items: center; padding: 6px 6px 10px; border-radius: 14px; border: 2px solid var(--or-bw); background: rgba(8, 6, 14, 0.9); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.6); text-align: center; transition: transform 0.2s; animation: bw-carte-arrive 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
-.bw-route:nth-child(2) { animation-delay: 0.1s; }
-.bw-route:nth-child(3) { animation-delay: 0.2s; }
-.bw-route-vignette { width: 100%; aspect-ratio: 16 / 7; border-radius: 9px; background-size: auto 100%; background-position: 20% 50%; }
-.bw-route strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 3.6vw, 20px); color: #ffd774; }
-.bw-route small { font-size: clamp(10px, 2.6vw, 12px); color: var(--creme-doux); }
-.bw-route em { font-style: normal; font-family: var(--titre); font-size: clamp(14px, 3.6vw, 19px); color: #fff1c4; }
-.bw-route.ruelles { border-color: #e7a04a; }
-.bw-route.souterrains { border-color: #ff7a6b; }
-.bw-route:not(:disabled):hover { transform: translateY(-4px); }
-.bw-route.choisie { box-shadow: 0 0 0 3px #fff1c4, 0 0 22px rgba(255, 215, 110, 0.8); transform: translateY(-4px); }
-/* La poursuite : la rue défile, les voitures restent à leur place (le Baron rebondit, la police gagne ou perd du terrain). */
-.bw-defile { background: #05060c var(--fond-route) left center / auto 100% repeat-x; }
-/* Safari (iPad/iPhone) ne sait pas dimensionner des images en height:100 % dans un conteneur flex sans largeur : la bande a donc une taille explicite (deux images 3000 × 500 côte à côte). */
-.bw-route-fond { position: absolute; top: 0; bottom: 0; left: 0; display: flex; aspect-ratio: 12 / 1; animation: bw-defile 3.2s linear infinite; will-change: transform; }
-.bw-route-fond img { display: block; width: 50%; height: 100%; max-width: none; flex: none; object-fit: cover; }
-@keyframes bw-defile { to { transform: translateX(-50%); } }
-.bw-defile .bw-voiture.baron { left: 50%; width: 44%; animation: bw-rebond 0.38s ease-in-out infinite alternate; }
-.bw-defile .bw-voiture.police { left: -4%; width: 38%; animation: bw-rebond 0.33s ease-in-out infinite alternate; }
-@keyframes bw-rebond { to { transform: translateY(-3%) rotate(-0.8deg); } }
-.bw-evasion.poursuite.evade .bw-defile .bw-voiture.police { animation: bw-rebond 0.33s ease-in-out infinite alternate, bw-police-perd var(--duree) ease-in forwards; }
-.bw-evasion.poursuite.arrete .bw-defile .bw-voiture.police { animation: bw-rebond 0.33s ease-in-out infinite alternate, bw-police-gagne var(--duree) ease-in-out forwards; }
-.bw-evasion.poursuite.arrete .bw-defile .bw-voiture.baron { animation: bw-rebond 0.38s ease-in-out infinite alternate, bw-baron-ralentit var(--duree) ease-in forwards; }
-@keyframes bw-police-perd { 0%, 55% { left: -4%; } 100% { left: -45%; } }
-@keyframes bw-police-gagne { 0%, 40% { left: -4%; } 100% { left: 26%; } }
-@keyframes bw-baron-ralentit { 0%, 60% { left: 50%; } 100% { left: 58%; } }
-.bw-evasion.revele.evade .bw-defile .bw-voiture.police { left: -45%; }
-.bw-evasion.revele.arrete .bw-route-fond { animation-play-state: paused; }
-.bw-evasion.revele.arrete .bw-defile .bw-voiture { animation: none; }
-.bw-evasion.revele.arrete .bw-defile .bw-voiture.police { left: 26%; }
-.bw-evasion.revele.arrete .bw-defile .bw-voiture.baron { left: 58%; }
-.bw-obstacle { position: absolute; bottom: 4%; z-index: 4; height: 26%; width: auto; max-width: none; left: 110%; visibility: hidden; filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.6)); }
-/* Les obstacles passent derrière les voitures, sur le bord de la route, et seulement pendant la poursuite. */
-.bw-evasion.poursuite .bw-obstacle { visibility: visible; animation: bw-obstacle 2.6s linear both; }
-.bw-obstacle.o1 { animation-delay: 0.8s !important; }
-.bw-obstacle.o2 { animation-delay: 3.4s !important; }
-.bw-obstacle.o3 { animation-delay: 6s !important; }
-@keyframes bw-obstacle { to { left: -40%; } }
-.bw-fumee-pot { position: absolute; left: -6%; bottom: 14%; width: 22%; aspect-ratio: 1.4; border-radius: 50%; background: radial-gradient(closest-side, rgba(200, 200, 200, 0.75), transparent); filter: blur(4px); opacity: 0; }
-.bw-defile .bw-fumee-pot { animation: bw-pot 0.7s ease-out infinite; }
-@keyframes bw-pot { 0% { opacity: 0.8; transform: translateX(0) scale(0.4); } 100% { opacity: 0; transform: translateX(-80%) scale(1.3); } }
-.bw-issue { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
-.bw-issue img { position: absolute; left: 3%; bottom: 0; height: 88%; width: auto; max-width: none; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.8)); animation: bw-entree-gauche 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
-.bw-issue.arrete::before { content: ''; position: absolute; inset: 0; background: rgba(10, 20, 70, 0.35); animation: bw-gyro 0.5s steps(2) 6; }
-.bw-routes-bilan { position: absolute; right: 2%; top: 56px; z-index: 16; list-style: none; margin: 0; padding: 6px; display: grid; gap: 4px; border-radius: 12px; background: rgba(8, 6, 14, 0.88); border: 1px solid rgba(214, 168, 75, 0.55); font-size: 12px; }
-.bw-routes-bilan li { display: flex; justify-content: space-between; gap: 10px; padding: 2px 8px; border-radius: 8px; color: var(--creme-doux); }
-.bw-routes-bilan li strong { font-family: var(--titre); font-weight: 400; font-size: 14px; }
-.bw-routes-bilan li.evade strong { color: #b8f0b4; }
-.bw-routes-bilan li.arrete strong { color: #ff9a8a; }
-.bw-routes-bilan li.mien { background: rgba(214, 168, 75, 0.2); box-shadow: inset 0 0 0 1px #ffcf6b; }
-
 /* LE BRAQUAGE */
 
 /* La fête d'un jackpot */
@@ -372,27 +308,6 @@
   .bw-perso-pick { height: 50%; left: -6%; }
   .bw-butin { left: 50%; top: 16%; }
   .bw-mallettes { left: 3%; right: 3%; bottom: 34%; }
-  .bw-routes { grid-template-columns: minmax(0, 1fr); top: 86px; gap: 6px; left: 6%; right: 6%; }
-  .bw-scene .bw-route { grid-template-columns: 34% minmax(0, 1fr); grid-template-areas: 'v n' 'v r' 'v g'; justify-items: start; text-align: left; padding: 5px 8px 5px 5px; gap: 0 8px; }
-  .bw-route-vignette { grid-area: v; height: 100%; aspect-ratio: auto; min-height: 54px; }
-  .bw-route strong { grid-area: n; }
-  .bw-route small { grid-area: r; }
-  .bw-route em { grid-area: g; }
-  .bw-voiture.baron { width: 62%; left: 36%; bottom: 28%; }
-  .bw-voiture.police { width: 54%; bottom: 28%; left: -22%; }
-  .bw-defile .bw-voiture.baron { width: 62%; left: 38%; }
-  .bw-defile .bw-voiture.police { width: 54%; left: -22%; }
-  @keyframes bw-police-perd { 0%, 55% { left: -22%; } 100% { left: -70%; } }
-  @keyframes bw-police-gagne { 0%, 40% { left: -22%; } 100% { left: 14%; } }
-  @keyframes bw-baron-ralentit { 0%, 60% { left: 38%; } 100% { left: 44%; } }
-  .bw-evasion.revele.arrete .bw-defile .bw-voiture.police { left: 14%; }
-  .bw-evasion.revele.arrete .bw-defile .bw-voiture.baron { left: 44%; }
-  .bw-evasion.revele.evade .bw-defile .bw-voiture.police { left: -70%; }
-  .bw-obstacle { bottom: 24%; height: 17%; }
-  .bw-route-fond { top: 0; bottom: 22%; }
-  .bw-defile::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22%; background: linear-gradient(180deg, #1c1410, #0b0806); }
-  .bw-issue img { height: 62%; bottom: 22%; }
-  .bw-routes-bilan { top: auto; bottom: 108px; right: 50%; transform: translateX(50%); }
   .bw-bonus-resultat { bottom: 12px; }
   .bw-bilan { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Les jackpots en deux rangées : les quatre plaques restent entières à l'écran. */
@@ -411,7 +326,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .bw-ecran *, .bw-fete, .bw-fete * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
-  .bw-route-fond { animation: none !important; }
 }
 @media (max-width: 520px) {
   .bw-bandeau-ouverture { gap: 10px; padding: 9px 11px; }
@@ -480,8 +394,5 @@
 .bw-case-sous { align-self: start; justify-self: start; font-size: 11px; font-weight: 800; color: #bfeccf; }
 
 /* Le multiplicateur de la roue compris dès le début des bonus. */
-.bw-route em .bw-route-multi { display: block; flex-basis: 100%; margin-top: 1px; font-family: system-ui, sans-serif; font-size: 10.5px; font-weight: 800; color: #ff9a8a; letter-spacing: 0.02em; }
-/* Les gains tiennent dans leur cadre : la fourchette d'une route passe sur deux lignes, le nombre d'une carte se règle sur sa largeur. */
-.bw-route em { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 0 0.3em; }
 .bw-carte-face { container-type: inline-size; }
 .bw-carte-face .bw-valeur { font-size: min(1em, calc(86cqw / (var(--n, 4) * 0.62))); }

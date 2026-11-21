@@ -204,7 +204,7 @@ beforeAll(async () => {
       jeuALaffiche: () => null,
       cadeaux: [],
       delaiEcriture: 30,
-      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
+      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
       arretBaronWheel: () => arretImpose,
       multiplicateursBaronWheel: () => multiplicateursImposes,
       ouvertureBaronWheel: () => ouverture,

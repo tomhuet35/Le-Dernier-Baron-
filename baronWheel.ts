@@ -189,6 +189,12 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
     ],
   },
 };
+/**
+ * Le calendrier de la course à trois (millisecondes depuis le début de la poursuite, pour une poursuite de 21 s) :
+ * les trois voitures démarrent ensemble ; la caméra suit chacune à son tour (plan) ; puis le dénouement, voiture après
+ * voiture, du plus sûr au plus risqué : le saut par-dessus la Seine, ou le barrage de police.
+ */
+export const COURSE_BW = { depart: 2_600, plan: 4_000, denouement: 15_400, issue: 1_700 };
 export interface IssueRouteBW {
   evade: boolean;
   /** Le butin du Baron s'il s'évade (et celui qu'il aurait eu s'il est arrêté). */
@@ -396,6 +402,8 @@ export interface DureesBW {
   introExpress: number;
   /** L'intro du Braquage : l'affiche et l'échelle des butins, le temps de les lire. */
   introBraquage: number;
+  /** L'intro de la Grande Évasion : l'affiche et les trois voitures. */
+  introEvasion: number;
   gare: number;
   tunnel: number;
   traversee: number;
@@ -411,10 +419,12 @@ export const DUREES_BW: DureesBW = {
   choix: 10_000,
   descente: descenteCasseBW(5),
   vol: 6_500,
-  poursuite: 9_000,
+  // La course à trois : le départ, un plan sur chaque voiture, puis le dénouement (voir COURSE_BW).
+  poursuite: 21_000,
   revele: 5_500,
   introExpress: 7_000,
   introBraquage: 7_000,
+  introEvasion: 6_000,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
   tunnel: 12_000,
@@ -435,7 +445,7 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
     case 'pickpocket':
       return [e('intro', d.intro), e('vol', d.vol), e('mallettes', d.choix, 3), e('revele', d.revele)];
     case 'evasion':
-      return [e('intro', d.intro), e('route', d.choix, 3), e('poursuite', d.poursuite), e('revele', d.revele)];
+      return [e('intro', d.introEvasion), e('route', d.choix, 3), e('poursuite', d.poursuite), e('revele', d.revele)];
     case 'braquage': {
       const etage = t?.type === 'braquage' ? t.etage : ETAGES_BRAQUAGE.length;
       const descente = Math.round((d.descente * descenteCasseBW(etage)) / descenteCasseBW(ETAGES_BRAQUAGE.length));
