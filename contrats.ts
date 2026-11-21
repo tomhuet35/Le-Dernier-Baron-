@@ -94,6 +94,7 @@ export const CONTRATS_DU_JOUR: ModeleContrat[] = [
   { id: 'roulette-victoires', jeu: 'roulette', mesure: 'victoires', cible: fixe(3), texte: ['Gagner {n} paris à la roulette', 'Win {n} bets at roulette'] },
   { id: 'folle-nuit-tours', jeu: 'folleNuit', mesure: 'tours', cible: tours(5), texte: [`Placer {n} mises à la Folle Nuit`, `Place {n} bets on ${nomJeu('folleNuit')[1]}`] },
   { id: 'coffres-tours', jeu: 'coffres', mesure: 'tours', cible: tours(5), texte: [`Jouer {n} parties aux Coffres du Baron`, `Play {n} rounds of ${nomJeu('coffres')[1]}`] },
+  { id: 'toits-tours', jeu: 'toits', mesure: 'tours', cible: tours(5), texte: [`Jouer {n} parties Sur les toits`, `Play {n} rounds of ${nomJeu('toits')[1]}`] },
   { id: 'couronne-gros', jeu: 'couronne', mesure: 'gros', x: 5, cible: fixe(1), texte: [`Encaisser à ×5 ou plus au Vol de la Couronne`, `Cash out at ×5 or more on ${nomJeu('couronne')[1]}`] },
   { id: 'chute-tours', jeu: 'chute', mesure: 'tours', cible: tours(20), texte: [`Lâcher {n} écus à la Chute des Écus`, `Drop {n} crowns on ${nomJeu('chute')[1]}`] },
   { id: 'course-victoires', jeu: 'course', mesure: 'victoires', cible: fixe(1), texte: [`Parier sur le gagnant à la Course des Écuries`, `Back the winner at ${nomJeu('course')[1]}`] },

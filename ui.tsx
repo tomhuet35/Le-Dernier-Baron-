@@ -616,6 +616,9 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'cf_encaisse'
   | 'cf_gros'
   | 'cf_perdu'
+  | 'tt_pas'
+  | 'tt_saut'
+  | 'tt_atterrit'
   | 'cv_tic'
   | 'cv_envol'
   | 'cv_pie'
@@ -770,6 +773,10 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   cf_encaisse: { fichier: '/cartes/son-cf-encaisse.mp3', volume: 0.82, baisserMusique: true, aLaDemande: true },
   cf_gros: { fichier: '/cartes/son-cf-gros.mp3', volume: 1.0, baisserMusique: true, aLaDemande: true },
   cf_perdu: { fichier: '/cartes/son-cf-perdu.mp3', volume: 0.68, baisserMusique: false, aLaDemande: true },
+  // Sur les toits : les pas sur la tôle, l'élan, l'atterrissage.
+  tt_pas: { fichier: '/cartes/son-tt-pas.mp3', volume: 0.55, baisserMusique: false, aLaDemande: true },
+  tt_saut: { fichier: '/cartes/son-tt-saut.mp3', volume: 0.6, baisserMusique: false, aLaDemande: true },
+  tt_atterrit: { fichier: '/cartes/son-tt-atterrit.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
   // Le Vol de la Couronne : tic du compte à rebours, envol, la pie voleuse, chute, couronne récupérée.
   cv_tic: { fichier: '/cartes/son-cv-tic.mp3', volume: 0.37, baisserMusique: false, aLaDemande: true },
   cv_envol: { fichier: '/cartes/son-cv-envol.mp3', volume: 0.78, baisserMusique: true, aLaDemande: true },
@@ -1142,7 +1149,7 @@ export function musiqueDuSalon(actif: boolean) {
 }
 
 /** Où l'on est dans le Salon privé : le salon lui-même, ou l'un de ses jeux. */
-export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'express';
+export type LieuCasino = 'salon' | 'machine' | 'nuits' | 'blackjack' | 'roulette' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'toits' | 'express';
 
 /** Chaque jeu du salon a sa musique (boucle d'environ une minute), le salon garde son jazz de cabaret. */
 const MUSIQUES_CASINO: Record<LieuCasino, string> = {
@@ -1159,6 +1166,8 @@ const MUSIQUES_CASINO: Record<LieuCasino, string> = {
   baronWheel: '/cartes/musique-baron-wheel.mp3',
   // Les tickets se grattent au Bar : le jazz du salon.
   tickets: '/cartes/musique-casino.mp3',
+  // Sur les toits : la musique du train de nuit.
+  toits: '/cartes/musique-express.mp3',
   express: '/cartes/musique-express.mp3',
 };
 /** Les sons propres à chaque jeu, préparés en entrant dans le jeu. */
@@ -1174,6 +1183,7 @@ const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
   chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
   baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi', 'bw_vapeur', 'bw_sifflet', 'ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'br_moteur', 'br_meule', 'br_meule_long', 'br_percee', 'br_alarme', 'br_sifflet', 'ev_moteur', 'ev_passage', 'ev_fracas', 'ev_saut', 'gd_battage', 'gd_retourne', 'gd_eclat', 'pp_valse', 'pp_glisse', 'bj_carte', 'course_foule', 'lingots_pluie'],
   tickets: ['jeton', 'machine_pieces', 'lingots_pluie'],
+  toits: ['jeton', 'selection', 'tt_pas', 'tt_saut', 'tt_atterrit', 'ex_sifflet', 'ex_decroche', 'ex_tunnel', 'ex_tonnerre', 'cf_encaisse', 'cf_gros', 'cf_perdu', 'lingots_pluie'],
   express: ['ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'bw_menottes', 'bw_coffre', 'bw_multi', 'lingots_pluie'],
   course: ['course_appel', 'course_depart', 'course_sabots', 'course_foule', 'course_gain', 'course_gros', 'course_perdu'],
 };

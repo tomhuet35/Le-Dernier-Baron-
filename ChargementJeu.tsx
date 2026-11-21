@@ -25,6 +25,7 @@ const NOM_DU_JEU: Record<JeuACharger, JeuCasino> = {
   course: 'course',
   baronWheel: 'baronWheel',
   tickets: 'tickets',
+  toits: 'toits',
   blackjack: 'blackjack',
   roulette: 'roulette',
 };

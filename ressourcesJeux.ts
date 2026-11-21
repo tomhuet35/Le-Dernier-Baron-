@@ -2,7 +2,7 @@
  * Ce que chaque jeu du casino charge avant d'ouvrir (écran de chargement du jeu) : images, musique et sons.
  * Fichier généré à partir du code des jeux : relancer le générateur après avoir ajouté des images à un jeu.
  */
-export type JeuACharger = 'machine' | 'nuits' | 'bulles' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'blackjack' | 'roulette';
+export type JeuACharger = 'machine' | 'nuits' | 'bulles' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'toits' | 'blackjack' | 'roulette';
 export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
   machine: [
     '/cartes/machine-bas.webp',
@@ -482,6 +482,42 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bl-rubis.webp',
     '/cartes/musique-bandit.mp3',
     '/cartes/son-bandit-gain.mp3',
+  ],
+  toits: [
+    '/cartes/bw-ex2-alpes-voie.webp',
+    '/cartes/bw-ex2-loco.webp',
+    '/cartes/bw-ex2-wagon-1.webp',
+    '/cartes/bw-ex2-wagon-2.webp',
+    '/cartes/bw-ex2-wagon-3.webp',
+    '/cartes/bw-ex2-wagon-4.webp',
+    '/cartes/bw-ex2-wagon-5.webp',
+    '/cartes/tt-atterrit.webp',
+    '/cartes/tt-attelage.webp',
+    '/cartes/tt-baisse.webp',
+    '/cartes/tt-chute.webp',
+    '/cartes/tt-court.webp',
+    '/cartes/tt-fourgon.webp',
+    '/cartes/tt-niv-baron.webp',
+    '/cartes/tt-niv-express.webp',
+    '/cartes/tt-niv-promenade.webp',
+    '/cartes/tt-niv-rapide.webp',
+    '/cartes/tt-orage.webp',
+    '/cartes/tt-paysage.webp',
+    '/cartes/tt-saut.webp',
+    '/cartes/tt-tunnel.webp',
+    '/cartes/tt-victoire.webp',
+    '/cartes/musique-express.mp3',
+    '/cartes/son-tt-pas.mp3',
+    '/cartes/son-tt-saut.mp3',
+    '/cartes/son-tt-atterrit.mp3',
+    '/cartes/son-ex-sifflet.mp3',
+    '/cartes/son-ex-decroche.mp3',
+    '/cartes/son-ex-tunnel.mp3',
+    '/cartes/son-ex-tonnerre.mp3',
+    '/cartes/son-cf-encaisse.mp3',
+    '/cartes/son-cf-gros.mp3',
+    '/cartes/son-cf-perdu.mp3',
+    '/cartes/son-lingots-pluie.mp3',
   ],
   tickets: [
     '/cartes/musique-casino.mp3',

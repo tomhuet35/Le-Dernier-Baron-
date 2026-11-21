@@ -125,6 +125,8 @@ export interface VueCasino {
   folleNuit?: { enDirect: boolean; spectateurs: number; historique: { case: CaseFN; x: number }[] };
   /** Les Coffres du Baron : une partie attend-elle le joueur ? */
   coffres?: { enCours: boolean };
+  /** Sur les toits : une partie attend-elle le joueur ? */
+  toits?: { enCours: boolean };
   /** Mon profil du casino, en bref : niveau et XP, demandes d'amis et invitations à un défi, défi en cours. */
   profil?: { niveau: number; xp: number; xpNiveau: number; xpSuivant: number | null; bonusSuivant: number | null; demandes: number; invitations: number; defi: VueDefi | null };
   /** Le Vol de la Couronne : en direct ou non, combien regardent, les derniers envols. */
@@ -145,7 +147,7 @@ export interface VueCasino {
 
 export interface AnnonceCasino {
   nom: string;
-  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'plinko' | 'bulles' | 'defi';
+  jeu: 'machine' | 'roue' | 'casse' | 'roueBaron' | 'roulette' | 'nuits' | 'folleNuit' | 'coffres' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'toits' | 'plinko' | 'bulles' | 'defi';
   /** Défi gagné : contre qui. */
   contre?: string;
   gain: number;

@@ -12,7 +12,7 @@ import type { JeuCasino } from './profilCasino';
 
 export const DUREE_AFFICHE = 3 * 3_600_000;
 /** L'ordre de passage (un jeu de table, un jeu de hasard, un live… en alternance). */
-export const ORDRE_AFFICHE: JeuCasino[] = ['chute', 'roulette', 'baronWheel', 'machine', 'course', 'couronne', 'blackjack', 'coffres', 'tickets', 'folleNuit'];
+export const ORDRE_AFFICHE: JeuCasino[] = ['chute', 'roulette', 'baronWheel', 'machine', 'course', 'couronne', 'blackjack', 'coffres', 'tickets', 'toits', 'folleNuit'];
 /** Les mises du jeu à l'affiche comptent deux fois pour l'XP. */
 export const XP_AFFICHE = 2;
 /** Bonus sur les gains du jeu à l'affiche, et plafond de ce bonus par joueur et par créneau. */

@@ -202,7 +202,7 @@ describe('Relecture', () => {
 });
 
 describe('contrats selon le niveau', () => {
-  const barSeul = (j: string) => ['machine', 'nuits', 'coffres', 'tickets'].includes(j);
+  const barSeul = (j: string) => ['machine', 'nuits', 'coffres', 'tickets', 'toits'].includes(j);
   it('au niveau 1, aucun contrat sur un jeu pas encore débloqué', () => {
     for (let k = 0; k < 200; k++) {
       const e = etatSalonVide();
@@ -212,7 +212,7 @@ describe('contrats selon le niveau', () => {
         expect(!j || barSeul(j)).toBe(true);
       }
       const cinq = e.contrats.grosCoups.find((g) => g.id === 'cinq-jeux');
-      expect(cinq!.cible <= 4).toBe(true);
+      expect(cinq!.cible <= 5).toBe(true);
     }
   });
   it('remplace un contrat déjà tiré sur un jeu fermé', () => {
