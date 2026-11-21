@@ -9,6 +9,10 @@
 .eva-course { position: absolute; inset: 0; }
 .eva-course.cache { visibility: hidden; }
 .eva-piste { position: absolute; inset: 0; overflow: hidden; visibility: hidden; isolation: isolate; }
+/* Le plan du saut : le pont posé en bas de l'écran, le ciel au-dessus. */
+.eva-saut { position: absolute; inset: 0; overflow: hidden; visibility: hidden; isolation: isolate; background: radial-gradient(80% 60% at 70% 100%, #1d2a5a, transparent 70%), linear-gradient(180deg, #03050f, #0b1532 70%, #101b3e); }
+.eva-saut .eva-decor { -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%); mask-image: linear-gradient(180deg, transparent, #000 18%); }
+.eva-saut::before { content: ''; position: absolute; inset: 0 0 30% 0; background: radial-gradient(1.5px 1.5px at 12% 20%, #fff, transparent), radial-gradient(1px 1px at 32% 38%, #fff, transparent), radial-gradient(1.5px 1.5px at 58% 14%, #fff, transparent), radial-gradient(1px 1px at 76% 30%, #fff, transparent), radial-gradient(1.5px 1.5px at 90% 12%, #fff, transparent), radial-gradient(1px 1px at 46% 26%, #fff, transparent); opacity: 0.8; }
 .eva-decor { position: absolute; left: 0; top: 0; background-size: 100% 100%; opacity: 0; will-change: transform, opacity; }
 .eva-route { position: absolute; left: 0; background-repeat: repeat-x; will-change: transform; box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.35); }
 .eva-obstacle,
@@ -27,6 +31,12 @@
   50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.1); opacity: 1; }
   100% { transform: translate(-50%, -50%) rotate(360deg) scale(0.85); opacity: 0.75; }
 }
+/* Une voiture immobile (cartes, listes, jauge), avec ses roues. */
+.eva-voiture { position: relative; display: block; line-height: 0; }
+.eva-voiture-caisse { position: relative; z-index: 1; display: block; width: 100%; height: auto; max-width: none; }
+.eva-voiture-roue { position: absolute; z-index: 0; height: auto; max-width: none; }
+.eva-voiture.roule .eva-voiture-roue { animation: eva-tourne 0.45s linear infinite; }
+@keyframes eva-tourne { to { transform: rotate(360deg); } }
 /* Les traits de vitesse, pendant les plans. */
 .eva-vitesse { position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; background: repeating-linear-gradient(180deg, transparent 0 23px, rgba(255, 240, 210, 0.16) 23px 24px, transparent 24px 61px), linear-gradient(90deg, rgba(0, 0, 0, 0.35), transparent 22%, transparent 78%, rgba(0, 0, 0, 0.3)); background-size: 260px 100%, 100% 100%; animation: eva-vitesse 0.28s linear infinite; mask-image: linear-gradient(90deg, #000, transparent 30%, transparent 70%, #000); -webkit-mask-image: linear-gradient(90deg, #000, transparent 30%, transparent 70%, #000); }
 .eva.plan .eva-vitesse { opacity: 1; }
@@ -60,6 +70,7 @@
 .eva-tampon.arretee { color: #ff6a5a; background: rgba(40, 4, 4, 0.92); box-shadow: 0 0 26px rgba(255, 60, 40, 0.7); }
 .eva-tampon.arretee b { color: #fff; letter-spacing: 0.06em; }
 .eva-tampon.mienne { border-width: 4px; }
+.eva-tampon.saut { left: 80%; top: 25%; }
 @keyframes eva-tampon { from { opacity: 0; transform: translate(-50%, -50%) rotate(-6deg) scale(2.4); } }
 .eva-gyro-flash { position: absolute; inset: 0; z-index: 8; pointer-events: none; mix-blend-mode: screen; animation: eva-flash 0.5s steps(2) infinite; }
 @keyframes eva-flash { 0% { background: radial-gradient(70% 90% at 30% 60%, rgba(255, 30, 30, 0.38), transparent 70%); } 100% { background: radial-gradient(70% 90% at 70% 60%, rgba(40, 80, 255, 0.38), transparent 70%); } }
@@ -77,14 +88,16 @@
 .eva-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(19px, 4.2cqw, 34px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.6); }
 .eva-annonce span { font-weight: 800; font-size: clamp(11.5px, 1.9cqw, 15px); color: #fff1c4; }
 @keyframes eva-annonce { from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } }
+.eva-annonce.haut { left: 70%; top: 30%; padding: 6px 18px 8px; }
+.eva-annonce.haut strong { font-size: clamp(17px, 3.4cqw, 28px); }
 
 /* La jauge de distance, pendant les plans. */
 .eva-jauge { position: absolute; left: 50%; top: calc(var(--haut) + 40px); z-index: 12; width: min(46cqw, 430px); transform: translateX(-50%); filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.75)); animation: eva-annonce-bas 0.5s ease-out both; }
 @keyframes eva-annonce-bas { from { opacity: 0; transform: translateX(-50%) translateY(-40%); } }
 .eva-jauge > img { display: block; width: 100%; height: auto; }
 .eva-jauge-canal { position: absolute; left: 20%; right: 20%; top: 44%; bottom: 37%; }
-.eva-jauge-auto { position: absolute; top: 50%; width: auto; height: 150%; max-width: none; transform: translate(-50%, calc(-50% + (var(--k) - 1) * 26%)); transition: left 0.15s linear; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.8)); opacity: 0.8; }
-.eva-jauge-auto.suivie { height: 190%; opacity: 1; z-index: 1; }
+.eva-jauge-auto { position: absolute; top: 50%; width: 15%; transform: translate(-50%, calc(-62% + (var(--k) - 1) * 18%)); transition: left 0.15s linear; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.8)); opacity: 0.8; }
+.eva-jauge-auto.suivie { width: 19%; opacity: 1; z-index: 1; }
 .eva-jauge-auto.mien { filter: drop-shadow(0 0 4px #ffd774) drop-shadow(0 0 8px rgba(255, 210, 110, 0.9)); opacity: 1; }
 
 /* L'intro : l'affiche, les trois voitures. */
@@ -109,7 +122,7 @@
 .eva-liste { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
 .eva-liste li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'img nom' 'img gains'; align-content: center; align-items: center; column-gap: 10px; row-gap: 2px; min-height: 0; padding: 4px 12px 4px 6px; border-radius: 12px; border: 1.5px solid rgba(214, 168, 75, 0.85); background: linear-gradient(90deg, rgba(103, 29, 43, 0.95), rgba(30, 10, 12, 0.95)); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55); animation: eva-ligne 0.55s cubic-bezier(0.3, 1.4, 0.5, 1) both; animation-delay: calc(0.6s + var(--k) * 0.15s); }
 @keyframes eva-ligne { from { opacity: 0; transform: translateX(30%); } }
-.eva-liste li > img { grid-area: img; width: clamp(70px, 13cqw, 140px); height: auto; max-height: 100%; object-fit: contain; filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.6)); }
+.eva-liste-auto { grid-area: img; width: clamp(70px, 13cqw, 140px); margin-bottom: 4px; filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.6)); }
 .eva-liste-nom { grid-area: nom; display: grid; min-width: 0; }
 .eva-liste-nom strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--titre); font-weight: 400; font-size: clamp(13px, 2.3cqw, 21px); color: #ffd774; }
 .eva-liste-nom small { font-size: clamp(9.5px, 1.4cqw, 12px); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #f3e7cf; }
@@ -123,7 +136,7 @@
 .eva-carte:disabled { cursor: default; opacity: 1; color: inherit; }
 .eva-carte-decor { position: relative; display: block; min-height: 0; background-size: cover; background-position: 30% 100%; }
 .eva-carte-decor::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5, 4, 10, 0.1), rgba(5, 4, 10, 0.65)); }
-.eva-carte-auto { position: absolute; left: 6%; width: 88%; top: 18%; height: auto; max-height: 50%; object-fit: contain; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.7)); animation: eva-moteur 0.18s ease-in-out infinite alternate; }
+.eva-carte-auto { position: absolute; left: 10%; width: 80%; top: 24%; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.7)); animation: eva-moteur 0.18s ease-in-out infinite alternate; }
 @keyframes eva-moteur { to { transform: translateY(1.5px); } }
 .eva-carte-texte { display: grid; gap: 2px; min-width: 0; container-type: inline-size; padding: 6px 8px 8px; background: linear-gradient(180deg, rgba(103, 29, 43, 0.97), rgba(40, 10, 16, 0.97)); border-top: 1.5px solid rgba(214, 168, 75, 0.8); }
 .eva-carte-texte strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 2.6cqw, 22px); color: #ffd774; }
@@ -143,11 +156,11 @@
 .eva-fin .cas-pluie { z-index: 1; }
 .eva-bilan { position: absolute; left: 50%; top: calc(var(--haut) + 4px); z-index: 3; display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; transform: translateX(-50%); }
 .eva-bilan li { display: grid; justify-items: center; gap: 1px; min-width: 104px; padding: 4px 12px 6px; border-radius: 12px; border: 1.5px solid rgba(214, 168, 75, 0.85); background: rgba(20, 8, 10, 0.88); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6); animation: eva-pop 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; animation-delay: calc(0.3s + var(--k) * 0.15s); }
-.eva-bilan li img { width: clamp(56px, 10cqw, 92px); height: auto; }
+.eva-bilan-auto { width: clamp(56px, 10cqw, 92px); margin-bottom: 4px; }
 .eva-bilan li > span { font-size: clamp(10px, 1.5cqw, 12.5px); font-weight: 800; color: #f3e7cf; white-space: nowrap; }
 .eva-bilan li strong { font-family: var(--titre); font-weight: 400; font-size: clamp(15px, 2.6cqw, 22px); color: #fff1c4; white-space: nowrap; }
 .eva-bilan li.arretee { opacity: 0.8; }
-.eva-bilan li.arretee img { filter: grayscale(0.7) brightness(0.7); }
+.eva-bilan li.arretee .eva-bilan-auto { filter: grayscale(0.7) brightness(0.7); }
 .eva-bilan li.arretee strong { color: #ff7a6a; font-family: inherit; font-weight: 900; font-size: clamp(11px, 1.8cqw, 14px); letter-spacing: 0.08em; text-transform: uppercase; }
 .eva-bilan li.mienne { border-color: #ffe08a; box-shadow: 0 0 20px rgba(255, 210, 110, 0.7); }
 
@@ -163,14 +176,14 @@
   .eva-accroche span { display: none; }
   .eva-liste { gap: 4px; }
   .eva-liste li { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'img nom gains'; padding: 2px 10px 2px 4px; column-gap: 6px; }
-  .eva-liste li > img { grid-area: img; width: 64px; }
+  .eva-liste-auto { width: 64px; }
   .eva-liste-nom strong { font-size: 13px; }
   .eva-liste-nom small { font-size: 9px; }
   .eva-liste li b { font-size: 14px; }
   .eva-choix { top: 92px; bottom: 74px; grid-template-columns: none; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 7px; }
   .eva-carte { grid-template-rows: none; grid-template-columns: 52% minmax(0, 1fr); }
   .eva-carte-decor { background-position: 25% 100%; }
-  .eva-carte-auto { left: 3%; width: 49%; top: 50%; max-height: 80%; transform: translateY(-40%); animation: none; }
+  .eva-carte-auto { left: 4%; width: 46%; top: 50%; transform: translateY(-55%); animation: none; }
   .eva-carte-texte { align-content: center; padding: 4px 6px; border-top: 0; border-left: 1.5px solid rgba(214, 168, 75, 0.8); }
   .eva-carte-texte strong { font-size: min(15px, 11cqw); white-space: nowrap; }
   .eva-carte-texte small { font-size: min(9.5px, 6.4cqw); }
@@ -178,6 +191,8 @@
   .eva-plaques { left: 5px; gap: 3px; }
   .eva-plaque { gap: 4px; padding: 2px 8px 2px 4px; }
   .eva-tampon { left: 50%; top: 44%; }
+  .eva-annonce.haut { left: 50%; top: 42%; }
+  .eva-tampon.saut { left: 56%; top: 40%; }
   .eva-plaque strong { font-size: 12px; }
   .eva-plaque small { font-size: 9px; }
   .eva-plaque em { font-size: 8.5px; padding: 0 5px; }
@@ -189,5 +204,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eva-vitesse, .eva-gyro, .eva-auto-fumee, .eva-carte-auto, .eva-gyro-flash { animation: none !important; }
+  .eva-vitesse, .eva-gyro, .eva-auto-fumee, .eva-carte-auto, .eva-gyro-flash, .eva-voiture-roue { animation: none !important; }
 }

@@ -190,11 +190,12 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
   },
 };
 /**
- * Le calendrier de la course à trois (millisecondes depuis le début de la poursuite, pour une poursuite de 21 s) :
- * les trois voitures démarrent ensemble ; la caméra suit chacune à son tour (plan) ; puis le dénouement, voiture après
- * voiture, du plus sûr au plus risqué : le saut par-dessus la Seine, ou le barrage de police.
+ * Le calendrier de la course à trois (millisecondes depuis le début de la poursuite, pour une poursuite de 24 s) :
+ * les trois voitures démarrent ensemble ; la caméra suit chacune à son tour (plan) ; puis le dénouement : les voitures
+ * arrêtées, l'une après l'autre, au barrage de police (issue : le temps de chacune) ; enfin le saut par-dessus la Seine
+ * des voitures qui s'échappent, à la suite.
  */
-export const COURSE_BW = { depart: 2_600, plan: 4_000, denouement: 15_400, issue: 1_700 };
+export const COURSE_BW = { depart: 2_600, plan: 3_600, denouement: 14_200, issue: 1_300 };
 export interface IssueRouteBW {
   evade: boolean;
   /** Le butin du Baron s'il s'évade (et celui qu'il aurait eu s'il est arrêté). */
@@ -419,8 +420,8 @@ export const DUREES_BW: DureesBW = {
   choix: 10_000,
   descente: descenteCasseBW(5),
   vol: 6_500,
-  // La course à trois : le départ, un plan sur chaque voiture, puis le dénouement (voir COURSE_BW).
-  poursuite: 21_000,
+  // La course à trois : le départ, un plan sur chaque voiture, les arrestations, puis le saut (voir COURSE_BW).
+  poursuite: 24_000,
   revele: 5_500,
   introExpress: 7_000,
   introBraquage: 7_000,
