@@ -22,7 +22,7 @@ export const NOMS_JEUX_CASINO: Record<JeuCasino, [string, string]> = {
   couronne: ['Le Vol de la Couronne', 'The Crown’s Flight'],
   chute: ['La Chute des Écus', 'The Falling Crowns'],
   course: ['La Course des Écuries', 'The Stables’ Race'],
-  baronWheel: ['The Baron’s Wheel', 'The Baron’s Wheel'],
+  baronWheel: ['Le Baron Express', 'The Baron Express'],
   tickets: ['Les Tickets du Baron', 'The Baron’s Tickets'],
 };
 export const estJeuCasino = (x: unknown): x is JeuCasino => JEUX_CASINO.includes(x as JeuCasino);

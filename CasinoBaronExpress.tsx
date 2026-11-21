@@ -1,5 +1,5 @@
 /**
- * L'Express du Baron (The Baron's Wheel) : la case unique de la roue. Le Baron braque le train de nuit Paris → Istanbul ;
+ * Le Rapide de Minuit (Le Baron Express) : la case unique de la roue. Le Baron braque le train de nuit Paris → Istanbul ;
  * chaque joueur choisit son wagon, et « il n'en restera qu'un ».
  *
  * Le serveur a tout tiré dès le début du bonus (butins de Paris et de Venise, wagons décrochés à chaque embuscade,
@@ -990,7 +990,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         <div className="bwx-intro">
           <div className="bwx-affiche">
             <img src={IMG('affiche')} alt="" draggable={false} />
-            <strong className="bwx-affiche-titre">{tr('L’Express du Baron', 'The Baron Express')}</strong>
+            <strong className="bwx-affiche-titre">{tr('Le Rapide de Minuit', 'The Midnight Flyer')}</strong>
             <i className="bwx-affiche-reflet" />
           </div>
           <img className="bwx-baron" src={IMG('baron')} alt="" draggable={false} />

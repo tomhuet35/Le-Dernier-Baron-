@@ -40,18 +40,19 @@
 .bw-bouton-journal { flex: none; min-height: 34px; padding: 4px 12px; border-radius: 99px; font-size: 13px; }
 
 /* La scène : le décor du casino, la roue au milieu */
-.bw-plateau { position: relative; display: grid; place-items: center; padding: 3% 3% 2%; border-radius: 18px; overflow: hidden; isolation: isolate; border: 2px solid rgba(214, 168, 75, 0.6); background: #090909 url('/cartes/bw-decor.webp') center / cover; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7); min-height: 260px; }
+.bw-plateau { position: relative; display: grid; place-items: center; padding: 3% 3% 2%; border-radius: 18px; overflow: hidden; isolation: isolate; border: 2px solid rgba(214, 168, 75, 0.6); background: #090909 url('/cartes/bw-rl-decor-paysage.webp') 50% 70% / cover; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7); min-height: 260px; }
 .bw-ecran.en-bonus .bw-plateau { padding: 0; }
 .bw-direct { position: absolute; left: 10px; top: 10px; z-index: 40; display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 7px; border-radius: 99px; background: #b3261c; color: #fff3df; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6); }
 .bw-direct::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #fff3df; animation: bw-pouls 1.2s ease-in-out infinite; }
 @keyframes bw-pouls { 50% { opacity: 0.25; } }
 
-/* La roue : le disque (40 cases) tourne sous le cerclage, le centre et l'aiguille, qui restent fixes. */
-.bw-roue { position: relative; width: min(100%, 560px, calc(100vh - 250px)); min-width: 240px; aspect-ratio: 1; }
+/* La roue motrice : le disque (40 cases) et son moyeu tournent sous la jante ; la bielle suit le maneton, le sifflet
+   (l'aiguille) et la glissière restent fixes ; la roue est posée sur les rails. */
+.bw-roue { position: relative; width: min(100%, 560px, calc(100vh - 290px)); min-width: 240px; aspect-ratio: 1; margin: 6% 0 11%; }
 .bw-roue-halo { position: absolute; inset: 6%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 200, 110, 0.35), transparent 75%); filter: blur(6px); }
 .bw-roue.tour .bw-roue-halo { animation: bw-halo 0.6s ease-in-out infinite alternate; }
 @keyframes bw-halo { to { opacity: 0.55; } }
-.bw-disque { position: absolute; left: 13.2%; top: 13.2%; width: 73.6%; height: 73.6%; will-change: transform; }
+.bw-disque { position: absolute; left: 10.9%; top: 10.9%; width: 78.2%; height: 78.2%; z-index: 1; will-change: transform; }
 .bw-disque svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .bw-reflet { fill: none; stroke: rgba(255, 240, 200, 0.16); stroke-width: 2; }
 .bw-filet { stroke: var(--or-bw); stroke-width: 2.6; }
@@ -60,11 +61,16 @@
 .bw-chiffre.x5, .bw-chiffre.x10 { stroke: rgba(255, 255, 255, 0.25); }
 .bw-gagnante { fill: rgba(255, 245, 210, 0.2); stroke: #fff6dc; stroke-width: 7; animation: bw-gagnante 0.5s ease-in-out infinite alternate; }
 @keyframes bw-gagnante { to { fill: rgba(255, 245, 210, 0.45); } }
-.bw-cerclage { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; pointer-events: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6)); }
-.bw-centre { position: absolute; left: 36.5%; top: 36.5%; width: 27%; height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6)); }
-.bw-aiguille { position: absolute; left: 46.25%; top: -1.5%; width: 7.5%; height: auto; max-width: none; z-index: 3; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); transform-origin: 50% 20%; }
+.bw-rl-jante { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; max-width: none; pointer-events: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.65)); }
+.bw-rl-moyeu { position: absolute; left: 33.4%; top: 33.4%; width: 33.2%; height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6)); }
+.bw-rl-rails { position: absolute; left: -6%; top: 93.5%; z-index: 0; width: 112%; height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6)); }
+.bw-rl-glissiere { position: absolute; left: 73%; top: 48.2%; z-index: 3; width: 25.5%; height: 3.6%; border-radius: 4px; background: linear-gradient(180deg, #f6d98a, #b9862f 45%, #6b4716 55%, #c99a42); box-shadow: 0 3px 6px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(60, 30, 4, 0.6); pointer-events: none; }
+.bw-rl-bielle { position: absolute; left: 0; top: 0; z-index: 4; height: auto; max-width: none; pointer-events: none; transform-origin: 10.44% 50%; will-change: transform; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.65)); }
+.bw-rl-vapeur { position: absolute; left: 0; top: 0; z-index: 5; width: 10%; height: auto; max-width: none; opacity: 0; pointer-events: none; will-change: transform, opacity; }
+.bw-aiguille { position: absolute; left: 47.3%; top: -6%; width: 5.4%; height: auto; max-width: none; z-index: 6; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); transform-origin: 50% 8%; }
 .bw-roue.tour .bw-aiguille { animation: bw-aiguille 0.09s ease-in-out infinite alternate; }
-@keyframes bw-aiguille { to { transform: rotate(-4deg); } }
+@keyframes bw-aiguille { to { transform: rotate(-3deg); } }
+@media (max-width: 699px) { .bw-plateau { background-image: url('/cartes/bw-rl-decor-portrait.webp'); } }
 
 /* Le statut, le bilan de la manche */
 .bw-statut { display: grid; justify-items: center; gap: 5px; min-height: 30px; text-align: center; }

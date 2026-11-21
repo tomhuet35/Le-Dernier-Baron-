@@ -1,6 +1,6 @@
 /**
- * The Baron's Wheel (Salon privé) : la roue géante de 40 cases, en direct, et ses cinq bonus (le Choix du Baron, le
- * Pickpocket, l'Évasion, le Braquage et L'Express du Baron ; ces trois derniers ont leur propre écran,
+ * Le Baron Express (Salon privé ; anciennement The Baron's Wheel) : la roue géante de 40 cases, en direct, et ses cinq bonus (le Choix du Baron, le
+ * Pickpocket, l'Évasion, le Braquage et le Rapide de Minuit ; ces trois derniers ont leur propre écran,
  * CasinoEvasion.tsx, CasinoBraquage.tsx et CasinoBaronExpress.tsx).
  *
  * Le serveur tient les manches et diffuse la vue (« casino_bw ») ; il a déjà tiré la case d'arrêt quand la roue part,
@@ -60,14 +60,14 @@ export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string
   pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp' },
   evasion: { nom: ['Évasion', 'Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp' },
   braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp' },
-  express: { nom: ['Express du Baron', 'Baron Express'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
+  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
   pickpocket: ['Le Grand Vol', 'The Big Theft'],
   evasion: ['Évasion', 'The Escape'],
   braquage: ['Le Braquage', 'The Big Heist'],
-  express: ['L’Express du Baron', 'The Baron Express'],
+  express: ['Le Rapide de Minuit', 'The Midnight Flyer'],
 };
 const NOMS_JACKPOTS: Record<JackpotBW, string> = { mini: 'MINI', minor: 'MINOR', major: 'MAJOR', grand: 'GRAND' };
 const nomCase = (c: CaseBW) => (estBonusBW(c) ? tr(...CASES_VISUELS[c].nom) : fx(GAINS_CHIFFRES_BW[c]));
@@ -130,8 +130,27 @@ interface HorlogesRoue {
   numero: number;
 }
 
+/**
+ * La roue motrice (Le Baron Express) : le moyeu tourne avec le disque ; son maneton entraîne la bielle, dont l'autre
+ * bout glisse sur la glissière horizontale (à droite du moyeu). Les mesures sont en part de la largeur de la roue.
+ */
+const MOTRICE = {
+  /** Le maneton : sa distance au centre, son angle (degrés, sens horaire depuis la droite) quand la roue est à 0. */
+  maneton: 0.099,
+  angle: -23.3,
+  /** La bielle : d'un œil à l'autre ; l'image (900 × 218) a ses œils à 94 et 834 px. */
+  bielle: 0.36,
+  oeil: 94 / 900,
+  /** Une bouffée de vapeur par demi-tour de roue. */
+  bouffee: 180,
+};
+const NB_BOUFFEES = 8;
+
 function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRoue> }) {
   const disque = useRef<HTMLDivElement>(null);
+  const roue = useRef<HTMLDivElement>(null);
+  const bielle = useRef<HTMLImageElement>(null);
+  const bouffees = useRef<(HTMLImageElement | null)[]>([]);
   const gagnante = v.phase === 'bonus' || v.phase === 'resultat' ? v.arret : null;
   const boosts = v.multiplicateurs ?? [];
 
@@ -139,6 +158,9 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
     let raf = 0;
     let derniere = -1;
     let dernierTic = 0;
+    // La vapeur : chaque bouffée part d'un côté du bas de la roue (date de départ, côté) ; un souffle par bouffée.
+    const vapeur: { t: number; cote: number; force: number }[] = [];
+    let derniereBouffee: number | null = null;
     const dessiner = () => {
       raf = requestAnimationFrame(dessiner);
       const h = horloges.current;
@@ -152,6 +174,48 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
         vitesse = 4 * (1 - u) ** 3;
       }
       disque.current.style.transform = `rotate(${a}deg)`;
+      const W = roue.current?.clientWidth ?? 0;
+      const b = bielle.current;
+      if (W && b) {
+        const th = ((MOTRICE.angle + a) * Math.PI) / 180;
+        const r = MOTRICE.maneton * W;
+        const L = MOTRICE.bielle * W;
+        const px = W / 2 + r * Math.cos(th);
+        const py = W / 2 + r * Math.sin(th);
+        const qx = px + Math.sqrt(L * L - (py - W / 2) ** 2);
+        const phi = Math.atan2(W / 2 - py, qx - px);
+        const lb = (L * 900) / 740;
+        b.style.width = `${lb}px`;
+        b.style.transform = `translate3d(${px - MOTRICE.oeil * lb}px, ${py - (lb * 218) / 900 / 2}px, 0) rotate(${phi}rad)`;
+      }
+      // La vapeur : une bouffée par demi-tour pendant le tour, de plus en plus espacées.
+      const t = performance.now();
+      if (x.phase === 'tour' && vitesse > 0.02) {
+        const etape = Math.floor(a / MOTRICE.bouffee);
+        if (derniereBouffee === null) derniereBouffee = etape;
+        else if (etape !== derniereBouffee && (!vapeur.length || t - vapeur[vapeur.length - 1].t > 110)) {
+          derniereBouffee = etape;
+          vapeur.push({ t, cote: vapeur.length % 2 ? 1 : -1, force: Math.min(1, 0.35 + vitesse / 3) });
+          if (vapeur.length > NB_BOUFFEES) vapeur.shift();
+          jouerEffet('bw_vapeur', { volume: 0.35 + 0.5 * Math.min(1, vitesse / 3), vitesse: 0.9 + Math.random() * 0.2 });
+        }
+      } else derniereBouffee = null;
+      bouffees.current.forEach((el, k) => {
+        if (!el) return;
+        const bf = vapeur[k];
+        const u = bf ? (t - bf.t) / 1500 : 1;
+        if (!bf || u >= 1 || !W) {
+          el.style.opacity = '0';
+          return;
+        }
+        const e = 1 - (1 - u) ** 2;
+        const w = W * (0.16 + 0.3 * e) * (0.6 + 0.4 * bf.force);
+        const cx = W / 2 + bf.cote * W * (0.28 + 0.3 * e);
+        const cy = W * (0.97 - 0.22 * e);
+        el.style.width = `${w}px`;
+        el.style.opacity = String(Math.min(1, u * 6) * (1 - u) * 0.85 * bf.force);
+        el.style.transform = `translate3d(${cx - w / 2}px, ${cy - w * 0.46}px, 0) scaleX(${bf.cote})`;
+      });
       // Le cliquet de l'aiguille, à chaque case qui passe.
       const sous = Math.floor((((-a % 360) + 360) % 360) / DEGRES_CASE_BW);
       if (sous !== derniere) {
@@ -192,8 +256,9 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
   );
 
   return (
-    <div className={`bw-roue ${v.phase}`}>
+    <div className={`bw-roue ${v.phase}`} ref={roue}>
       <div className="bw-roue-halo" aria-hidden="true" />
+      <img className="bw-rl-rails" src="/cartes/bw-rl-rails.webp" alt="" draggable={false} />
       <div className="bw-disque" ref={disque}>
         <svg viewBox="-370 -370 740 740" aria-hidden="true">
           <circle r="366" fill="#1a0f08" />
@@ -222,10 +287,24 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
           {gagnante !== null && <path className="bw-gagnante" d={secteur(118, 362, gagnante * DEGRES_CASE_BW, (gagnante + 1) * DEGRES_CASE_BW)} />}
           <circle r="120" className="bw-anneau" />
         </svg>
+        <img className="bw-rl-moyeu" src="/cartes/bw-rl-moyeu.webp" alt="" draggable={false} />
       </div>
-      <img className="bw-cerclage" src="/cartes/bw-cerclage.webp" alt="" draggable={false} />
-      <img className="bw-centre" src="/cartes/bw-centre-express.webp" alt="" draggable={false} />
-      <img className="bw-aiguille" src="/cartes/bw-aiguille.webp" alt="" draggable={false} />
+      <img className="bw-rl-jante" src="/cartes/bw-rl-jante.webp" alt="" draggable={false} />
+      <i className="bw-rl-glissiere" aria-hidden="true" />
+      <img className="bw-rl-bielle" ref={bielle} src="/cartes/bw-rl-bielle.webp" alt="" draggable={false} />
+      {Array.from({ length: NB_BOUFFEES }, (_, k) => (
+        <img
+          key={k}
+          className="bw-rl-vapeur"
+          ref={(el) => {
+            bouffees.current[k] = el;
+          }}
+          src="/cartes/bw-rl-vapeur.webp"
+          alt=""
+          draggable={false}
+        />
+      ))}
+      <img className="bw-aiguille" src="/cartes/bw-rl-sifflet.webp" alt="" draggable={false} />
     </div>
   );
 }
@@ -583,7 +662,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     const t = window.setTimeout(prechargerLesBonus, 1500);
     return () => window.clearTimeout(t);
   }, []);
-  // L'Express du Baron a sa propre musique, le temps du voyage.
+  // Le Rapide de Minuit a sa propre musique, le temps du voyage.
   const enExpress = v?.bonus?.type === 'express' && (v.phase === 'bonus' || v.phase === 'resultat');
   useEffect(() => {
     if (!enExpress) return;
@@ -651,7 +730,10 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     const change = avant.numero !== v.numero || avant.phase !== v.phase || etapeNom(avant) !== etapeNom(v);
     if (!change) return;
     if (v.phase === 'multiplicateurs') jouerEffet('bw_multi');
-    if (v.phase === 'tour') jouerEffet('bw_lancer');
+    if (v.phase === 'tour') {
+      jouerEffet('bw_lancer');
+      jouerEffet('bw_sifflet');
+    }
     if (avant.phase === 'tour' && v.phase !== 'tour') jouerEffet('bw_arret');
     if (v.phase === 'bonus' && v.bonus) {
       const n = etapeNom(v);
@@ -764,7 +846,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           ‹ {tr('Salon', 'Lounge')}
         </button>
         <h1 className="bw-titre">
-          <img src="/cartes/bw-logo.webp" alt="The Baron’s Wheel" draggable={false} />
+          <img src="/cartes/bw-logo.webp" alt="Le Baron Express" draggable={false} />
         </h1>
         <span className={`cas-solde-petit bw-solde ${credit ? 'credite' : ''}`}>
           {dollars(solde)}
@@ -948,8 +1030,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Évasion (2) et Braquage (3), et la case unique de L’Express du Baron : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×100) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×30, arrestation 8 %), les Ruelles (×20 à ×100, 61 %) ou les Souterrains (×50 à ×500, 88 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×100 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
-            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Escape (2) and Big Heist (3), and the one-of-a-kind Baron Express spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×100); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×30, 8% arrest), the Alleys (×20 to ×100, 61%) or the Tunnels (×50 to ×500, 88%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×100 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
+            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Évasion (2) et Braquage (3), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×100) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×30, arrestation 8 %), les Ruelles (×20 à ×100, 61 %) ou les Souterrains (×50 à ×500, 88 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×100 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
+            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Escape (2) and Big Heist (3), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×100); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×30, 8% arrest), the Alleys (×20 to ×100, 61%) or the Tunnels (×50 to ×500, 88%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×100 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
           )}
         </p>
       </aside>
@@ -995,7 +1077,7 @@ export function BandeauOuvertureBW({ vue, onOuvrir }: { vue: VueCasino; onOuvrir
   if (fin === null || fin <= Date.now()) return null;
   return (
     <button type="button" className="bw-bandeau-ouverture" onClick={onOuvrir}>
-      <img src="/cartes/bw-logo.webp" alt="The Baron’s Wheel" draggable={false} />
+      <img src="/cartes/bw-logo.webp" alt="Le Baron Express" draggable={false} />
       <span>
         <em>{tr('Grande ouverture', 'Grand opening')}</em>
         <strong>{tr('La nouvelle roue géante du Baron est ouverte\u00a0!', 'The Baron’s new giant wheel is open!')}</strong>

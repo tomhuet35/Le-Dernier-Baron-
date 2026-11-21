@@ -97,7 +97,7 @@ export const CONTRATS_DU_JOUR: ModeleContrat[] = [
   { id: 'couronne-gros', jeu: 'couronne', mesure: 'gros', x: 5, cible: fixe(1), texte: [`Encaisser à ×5 ou plus au Vol de la Couronne`, `Cash out at ×5 or more on ${nomJeu('couronne')[1]}`] },
   { id: 'chute-tours', jeu: 'chute', mesure: 'tours', cible: tours(20), texte: [`Lâcher {n} écus à la Chute des Écus`, `Drop {n} crowns on ${nomJeu('chute')[1]}`] },
   { id: 'course-victoires', jeu: 'course', mesure: 'victoires', cible: fixe(1), texte: [`Parier sur le gagnant à la Course des Écuries`, `Back the winner at ${nomJeu('course')[1]}`] },
-  { id: 'roue-tours', jeu: 'baronWheel', mesure: 'tours', cible: tours(5), texte: [`Placer {n} mises à The Baron’s Wheel`, `Place {n} bets on ${nomJeu('baronWheel')[1]}`] },
+  { id: 'roue-tours', jeu: 'baronWheel', mesure: 'tours', cible: tours(5), texte: [`Placer {n} mises au Baron Express`, `Place {n} bets on ${nomJeu('baronWheel')[1]}`] },
   { id: 'mise-totale', jeu: null, mesure: 'mise', cible: (n) => 2_000_000 * echelleNiveau(n), texte: ['Miser {n} dans le salon', 'Bet {n} in the lounge'] },
   { id: 'gain-total', jeu: null, mesure: 'gain', cible: (n) => 1_000_000 * echelleNiveau(n), texte: ['Gagner {n} dans le salon', 'Win {n} in the lounge'] },
   { id: 'trois-jeux', jeu: null, mesure: 'jeux', cible: fixe(3), texte: ['Jouer à {n} jeux différents', 'Play {n} different games'] },
