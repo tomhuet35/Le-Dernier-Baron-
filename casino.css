@@ -905,3 +905,7 @@
   .gh-soiree li { display: flex; justify-content: space-between; padding: 4px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); }
   .gh-soiree li b { color: #ffd774; } .gh-soiree li small { opacity: 0.75; }
 }
+
+/* Dans un jeu : le profil, le Tailleur ou le Marché noir en plein écran par-dessus la partie, qui continue dessous. */
+.cas.cas-calque { position: fixed; inset: 0; z-index: 19; min-height: 0; overflow-y: auto; overscroll-behavior: contain; background: radial-gradient(120% 80% at 50% 0%, #2a070c, #120204 70%); animation: cas-calque 0.25s ease-out both; }
+@keyframes cas-calque { from { opacity: 0; transform: translateY(12px); } }
