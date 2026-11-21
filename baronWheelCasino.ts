@@ -150,7 +150,7 @@ export function creerBaronWheel(options: {
       choixSalon,
       resultat: j && atteinte('revele') ? (j.resultat ?? null) : null,
     };
-    if (t.type === 'baron') v.cartes = atteinte('revele') ? t.cartes : [null, null, null];
+    if (t.type === 'baron') v.cartes = atteinte('revele') ? t.cartes : t.cartes.map(() => null);
     if (t.type === 'pickpocket') {
       v.butin = atteinte('vol') ? t.butin : null;
       v.mallettes = atteinte('revele') ? t.mallettes : [null, null, null];

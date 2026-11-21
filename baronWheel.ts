@@ -122,7 +122,8 @@ function avecJackpots(t: TableBW<number | 'jackpot'>, jackpots: TableBW<JackpotB
   return t.flatMap(([v, p]): TableBW<RecompenseBW> => (v === 'jackpot' ? jackpots.map(([j, q]) => [jackpot(j), (p * q) / total]) : [[{ x: v }, p]]));
 }
 
-/** LE CHOIX DU BARON : trois cartes dorées, chacune tirée dans cette table (la carte secrète cache un jackpot). */
+/** LE CHOIX DU BARON (la Grande Donne) : le Baron distribue neuf cartes, chacune tirée dans cette table (la carte du Baron cache un jackpot). */
+export const NB_CARTES_BARON = 9;
 export const CARTES_BARON: TableBW<number | 'jackpot'> = [
   [5, 4700],
   [7, 2100],
@@ -196,6 +197,11 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
  * des voitures qui s'échappent, à la suite.
  */
 export const COURSE_BW = { depart: 2_600, plan: 3_600, denouement: 14_200, issue: 1_300 };
+/**
+ * Le calendrier de la Grande Donne (millisecondes depuis le début de chaque étape) : à la donne, le Baron mélange puis
+ * distribue les neuf cartes ; au retournement, les autres cartes se retournent en vague, puis la mienne, au centre.
+ */
+export const DONNE_BW = { melange: 2_600, carte: 290, vol: 420, vague: 500, pas: 300, centre: 3_300, mienne: 4_000 };
 export interface IssueRouteBW {
   evade: boolean;
   /** Le butin du Baron s'il s'évade (et celui qu'il aurait eu s'il est arrêté). */
@@ -312,7 +318,7 @@ function melanger<T>(t: T[], h: Hasard): T[] {
 export function tirerBonusBW(type: BonusBW, h: Hasard): TirageBonusBW {
   switch (type) {
     case 'baron':
-      return { type, cartes: [0, 1, 2].map(() => tirerTable(TABLE_CARTES_BARON, h)) };
+      return { type, cartes: Array.from({ length: NB_CARTES_BARON }, () => tirerTable(TABLE_CARTES_BARON, h)) };
     case 'pickpocket': {
       const butin = tirerTable(BUTIN_PICKPOCKET, h);
       return { type, butin, mallettes: melanger([butin, tirerTable(PETITES_MALLETTES, h), tirerTable(PETITES_MALLETTES, h)], h) };
@@ -362,6 +368,7 @@ export function butinWagon(t: Extract<TirageBonusBW, { type: 'express' }>, k: nu
 export type EtapeBW =
   | 'chargement'
   | 'intro'
+  | 'donne'
   | 'cartes'
   | 'vol'
   | 'mallettes'
@@ -405,6 +412,10 @@ export interface DureesBW {
   introBraquage: number;
   /** L'intro de la Grande Évasion : l'affiche et les trois voitures. */
   introEvasion: number;
+  /** Le Choix du Baron : l'affiche, le mélange et la donne des neuf cartes, puis leur retournement (voir DONNE_BW). */
+  introDonne: number;
+  donne: number;
+  reveleDonne: number;
   gare: number;
   tunnel: number;
   traversee: number;
@@ -426,6 +437,9 @@ export const DUREES_BW: DureesBW = {
   introExpress: 7_000,
   introBraquage: 7_000,
   introEvasion: 6_000,
+  introDonne: 5_000,
+  donne: 6_000,
+  reveleDonne: 7_500,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
   tunnel: 12_000,
@@ -442,7 +456,7 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
   const e = (nom: EtapeBW, duree: number, choix = 0): EtapeBonusBW => ({ nom, choix, duree });
   switch (type) {
     case 'baron':
-      return [e('intro', d.intro), e('cartes', d.choix, 3), e('revele', d.revele)];
+      return [e('intro', d.introDonne), e('donne', d.donne), e('cartes', d.choix, NB_CARTES_BARON), e('revele', d.reveleDonne)];
     case 'pickpocket':
       return [e('intro', d.intro), e('vol', d.vol), e('mallettes', d.choix, 3), e('revele', d.revele)];
     case 'evasion':

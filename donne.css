@@ -1,0 +1,120 @@
+/* Le Choix du Baron (The Baron's Wheel) : la Grande Donne. Le salon, le Baron et les cartes sont placés par
+   CasinoDonne.tsx d'après la taille de la scène ; ici, les habits, les transitions et les animations. */
+
+.bw-bonus.baron { background: #0b0507; }
+.bw-bonus.baron .bw-bonus-annonce-multi { display: none; }
+.gd { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(90% 80% at 50% 40%, #2a0d12, #070304 75%); color: #fff1c4; container-type: size; contain: layout; }
+
+/* Le salon : la table au premier plan, en bas ; son devant (même image, découpée) passe devant le Baron. */
+.gd-salon { position: absolute; inset: 0; background-size: cover; background-position: 50% 100%; }
+.gd-salon.devant { z-index: 3; pointer-events: none; }
+.gd.gd-e-intro .gd-salon { filter: blur(3px) brightness(0.55); }
+
+/* Le Baron, derrière la table. */
+.gd-baron { position: absolute; z-index: 2; height: auto; max-width: none; pointer-events: none; transform-origin: 50% 90%; filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.6)); animation: gd-baron-arrive 0.45s ease-out both, gd-souffle 3.2s ease-in-out 0.45s infinite; }
+.gd.gd-e-intro .gd-baron { visibility: hidden; }
+@keyframes gd-baron-arrive { from { opacity: 0.4; transform: scale(0.97); } }
+@keyframes gd-souffle { 50% { transform: translateY(-0.6%) scale(1.006); } }
+.gd-baron.donne { animation: gd-baron-arrive 0.3s ease-out both, gd-geste 0.29s ease-in-out 0.3s infinite alternate; }
+@keyframes gd-geste { to { transform: rotate(-0.8deg) translateY(-0.4%); } }
+
+/* Le mélange : les cartes volent en arc d'une main à l'autre. */
+.gd-melange { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.gd-melange img { position: absolute; left: 0; top: 0; height: auto; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(255, 200, 90, 0.6)); animation: gd-vole-arc 0.62s linear infinite; animation-delay: calc(var(--i) * -0.0775s); }
+@keyframes gd-vole-arc {
+  0% { transform: translate(var(--ax), var(--ay)) translate(-50%, -50%) rotate(-40deg); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate(var(--bx), var(--by)) translate(-50%, -50%) rotate(15deg); }
+  90% { opacity: 1; }
+  100% { transform: translate(var(--cx), var(--cy)) translate(-50%, -50%) rotate(60deg); opacity: 0; }
+}
+
+/* Les cartes. */
+.gd-table { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.gd-carte { position: absolute; left: 0; top: 0; width: var(--cw); aspect-ratio: 2 / 3; padding: 0; border: 0; background: none; min-height: 0; color: inherit; font: inherit; cursor: pointer; pointer-events: auto; perspective: 900px; isolation: isolate; visibility: hidden; transition: transform 0.42s cubic-bezier(0.25, 0.8, 0.35, 1); }
+.gd-carte:disabled { cursor: default; opacity: 1; }
+.gd-carte.envolee { visibility: visible; }
+.gd-carte-int { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.3, 1.3, 0.5, 1), translate 0.25s, scale 0.25s; }
+.gd-dos, .gd-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6)); }
+.gd-dos img, .gd-face img { display: block; width: 100%; height: 100%; }
+.gd-face { transform: rotateY(180deg); container-type: inline-size; }
+.gd-carte.retournee .gd-carte-int { transform: rotateY(180deg); }
+.gd-face b { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: min(42cqw, calc(150cqw / (var(--n, 3) * 0.62 + 0.4))); line-height: 1; color: #6b0f1c; text-shadow: 0 1px 0 rgba(255, 245, 220, 0.8); }
+.gd-face b .bw-valeur { font-size: inherit; }
+.gd-face.baron b { inset: auto 6% 5% 6%; height: 27%; align-content: center; gap: 2cqw; color: #ffe08a; text-shadow: 0 0 6px rgba(255, 190, 80, 0.9); }
+.gd-face.baron b small { font-family: system-ui, sans-serif; font-size: 9cqw; font-weight: 900; letter-spacing: 0.12em; color: #fff1c4; }
+.gd-face.baron b strong { font-weight: 400; font-size: 22cqw; }
+.gd-carte:not(:disabled):hover .gd-carte-int { translate: 0 -6%; }
+.gd-carte.choisie .gd-carte-int { translate: 0 -9%; scale: 1.07; }
+.gd-carte.choisie .gd-dos, .gd-carte.choisie .gd-face { filter: drop-shadow(0 0 10px rgba(255, 215, 110, 0.95)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6)); }
+.gd.gd-e-cartes .gd-carte.autre { filter: brightness(0.6) saturate(0.7); transition: transform 0.42s, filter 0.4s; }
+.gd-table.gd-revele .gd-carte.retournee:not(.suivie):not(.jackpot) { filter: brightness(0.82) saturate(0.85); }
+.gd-carte.jackpot { z-index: 2; }
+.gd-carte.au-centre { z-index: 8; transition: transform 0.65s cubic-bezier(0.3, 1.25, 0.5, 1); }
+.gd-table.gd-centre .gd-carte:not(.au-centre) { filter: brightness(0.5) saturate(0.6); transition: transform 0.42s, filter 0.5s; }
+.gd-eclat { position: absolute; left: 50%; top: 50%; z-index: -1; width: 230%; height: auto; max-width: none; pointer-events: none; translate: -50% -50%; animation: gd-eclat 0.6s ease-out both, gd-eclat-tourne 9s linear infinite; }
+@keyframes gd-eclat { from { opacity: 0; scale: 0.2; } }
+@keyframes gd-eclat-tourne { to { rotate: 360deg; } }
+.gd-paillettes { position: absolute; left: 50%; top: 50%; z-index: 3; width: 260%; height: auto; max-width: none; pointer-events: none; opacity: 0; translate: -50% -50%; animation: gd-paillettes 1.3s ease-out 0.7s both; }
+@keyframes gd-paillettes { 0% { opacity: 0; scale: 0.3; } 25% { opacity: 1; } 100% { opacity: 0; scale: 1.2; } }
+.gd-nb { position: absolute; right: -5px; top: -5px; z-index: 4; min-width: 20px; padding: 0 5px; border-radius: 99px; background: #ffd774; color: #2a0a04; font-style: normal; font-weight: 900; font-size: 12px; line-height: 20px; text-align: center; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.gd-toi { position: absolute; left: 50%; bottom: -4px; z-index: 4; padding: 0 7px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #c98a1c); color: #2a0a04; font-style: normal; font-size: 10px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; transform: translate(-50%, 50%); white-space: nowrap; }
+
+/* Les annonces. */
+.gd-annonce { position: absolute; left: 50%; top: 50%; z-index: 20; padding: 7px 24px 9px; border-radius: 16px; border: 2px solid #d6a84b; background: radial-gradient(130% 150% at 50% 0%, rgba(80, 22, 26, 0.95), rgba(14, 6, 6, 0.95)); box-shadow: 0 0 30px rgba(255, 200, 110, 0.35), 0 12px 26px rgba(0, 0, 0, 0.7); transform: translate(-50%, -50%); text-align: center; white-space: nowrap; pointer-events: none; animation: gd-annonce 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.gd-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 4cqw, 32px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.6); }
+.gd-annonce.haut { top: calc(var(--haut-gd, 52px) + 4px); transform: translateX(-50%); animation-name: gd-annonce-bas; }
+.gd-annonce.bas { top: auto; bottom: 3%; transform: translateX(-50%); animation-name: gd-annonce-bas; }
+@keyframes gd-annonce { from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } }
+@keyframes gd-annonce-bas { from { opacity: 0; transform: translateX(-50%) scale(0.5); } }
+
+/* L'intro : l'affiche, et ce que cachent les cartes. */
+.gd-intro { position: absolute; inset: 0; z-index: 20; background: radial-gradient(90% 80% at 30% 50%, rgba(50, 12, 18, 0.7), rgba(5, 2, 3, 0.85) 75%); }
+.gd-affiche { position: absolute; left: 3%; top: 54px; bottom: 4%; height: auto; aspect-ratio: 1000 / 1099; border-radius: 6px; overflow: hidden; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.8)); animation: gd-affiche 1s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+.gd-affiche > img { display: block; width: 100%; height: 100%; }
+@keyframes gd-affiche { from { opacity: 0; transform: rotate(-4deg) scale(0.82); } }
+.gd-affiche-titre { position: absolute; left: 7%; width: 86%; top: 2.5%; height: 15%; overflow: visible; }
+.gd-affiche-titre text { font-family: 'Limelight', var(--titre), serif; font-size: 92px; fill: #ffd774; stroke: #2a0206; stroke-width: 5px; paint-order: stroke fill; filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.7)); }
+.gd-affiche-titre text.petit { font-size: 54px; fill: #fff1c4; }
+.gd-affiche-reflet { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255, 245, 210, 0.3) 45%, transparent 60%); transform: translateX(-120%); animation: gd-reflet 3.2s ease-in-out 0.9s infinite; pointer-events: none; }
+@keyframes gd-reflet { 60%, 100% { transform: translateX(120%); } }
+.gd-multi { position: absolute; left: 50%; bottom: 4%; display: grid; justify-items: center; padding: 3px 16px 5px; border-radius: 14px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(140, 24, 18, 0.97), rgba(40, 6, 4, 0.97)); box-shadow: 0 0 26px rgba(255, 120, 90, 0.65); transform: translateX(-50%); animation: gd-multi 0.65s cubic-bezier(0.3, 1.6, 0.5, 1) 1s both; }
+.gd-multi small { font-size: clamp(8px, 1.5cqw, 10.5px); font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: #ffcf6b; white-space: nowrap; }
+.gd-multi strong { font-family: var(--titre); font-weight: 400; font-size: clamp(24px, 6cqh, 40px); line-height: 1; color: #fff1c4; text-shadow: 0 0 18px rgba(255, 180, 110, 1); }
+@keyframes gd-multi { from { opacity: 0; transform: translateX(-50%) scale(0.3); } }
+.gd-infos { position: absolute; left: calc(6cqw + (96cqh - 54px) * 0.91); right: 3%; top: 64px; bottom: 4%; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-width: 0; }
+.gd-accroche { display: grid; gap: 3px; text-align: center; animation: gd-pop 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.4s both; }
+.gd-accroche strong { font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 3.4cqw, 30px); line-height: 1.1; color: #ffd774; text-shadow: 0 0 16px rgba(255, 200, 100, 0.6); }
+.gd-accroche span { font-weight: 800; font-size: clamp(11px, 1.7cqw, 15px); line-height: 1.25; color: #fff1c4; }
+@keyframes gd-pop { from { opacity: 0; transform: scale(0.7); } }
+.gd-valeurs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gd-valeurs li { display: grid; place-items: center; aspect-ratio: 5 / 6; min-width: 0; border-radius: 8px; background: url('/cartes/bw-gd-carte-face.webp') center / 100% 100%; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55); font-family: 'Limelight', var(--titre), serif; font-size: clamp(15px, 3cqw, 28px); color: #6b0f1c; animation: gd-valeur 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; animation-delay: calc(0.6s + var(--i) * 0.09s); }
+@keyframes gd-valeur { from { opacity: 0; transform: rotateY(90deg) scale(0.7); } }
+.gd-valeurs li.baron { grid-column: span 4; aspect-ratio: auto; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px 12px; border: 1.5px solid #ffd774; background: linear-gradient(90deg, rgba(103, 29, 43, 0.96), rgba(40, 10, 16, 0.96)); color: #ffe08a; box-shadow: 0 0 16px rgba(255, 210, 110, 0.45); }
+.gd-valeurs li.baron img { width: clamp(30px, 5cqw, 46px); height: auto; border-radius: 4px; }
+.gd-valeurs li.baron span { display: grid; text-align: left; }
+.gd-valeurs li.baron small { font-family: system-ui, sans-serif; font-size: clamp(9.5px, 1.4cqw, 12px); font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: #fff1c4; }
+.gd-valeurs li.baron strong { font-weight: 400; font-size: clamp(14px, 2.4cqw, 22px); white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .gd { --haut-gd: 90px; }
+  .gd-affiche { left: 50%; top: 88px; bottom: auto; height: 42%; transform: translateX(-50%); animation-name: gd-affiche-tel; }
+  @keyframes gd-affiche-tel { from { opacity: 0; transform: translateX(-50%) rotate(-4deg) scale(0.82); } }
+  .gd-multi { padding: 2px 12px 4px; }
+  .gd-multi small { font-size: 7.5px; letter-spacing: 0.1em; }
+  .gd-multi strong { font-size: 24px; }
+  .gd-infos { left: 3%; right: 3%; top: calc(92px + 42%); bottom: 3%; gap: 6px; justify-content: flex-start; }
+  .gd-accroche strong { font-size: 16px; }
+  .gd-accroche span { display: none; }
+  .gd-valeurs { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .gd-valeurs li { font-size: 13px; border-radius: 5px; }
+  .gd-valeurs li.baron { grid-column: span 7; padding: 4px 10px; }
+  .gd-annonce strong { font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-baron, .gd-melange img, .gd-eclat, .gd-affiche-reflet { animation: none !important; }
+}
+
+/* Le résultat de la manche attend que ma carte soit révélée. */
+.bw-bonus.baron .bw-bonus-resultat { animation-delay: 5.6s; animation-fill-mode: both; }
