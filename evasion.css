@@ -1,0 +1,193 @@
+/* La Grande Évasion (The Baron's Wheel) : la course à trois. Les décors, la chaussée, les voitures, leurs roues, les
+   obstacles et le barrage sont placés par CasinoEvasion.tsx à chaque image ; ici, les habits et les animations. */
+
+.bw-bonus.evasion { background: #05060c; }
+.bw-bonus.evasion .bw-bonus-annonce-multi { display: none; }
+.eva { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(90% 80% at 50% 40%, #12162e, #05060c 75%); color: #fff1c4; container-type: size; contain: layout; --haut: 58px; }
+
+/* La course */
+.eva-course { position: absolute; inset: 0; }
+.eva-course.cache { visibility: hidden; }
+.eva-piste { position: absolute; inset: 0; overflow: hidden; visibility: hidden; isolation: isolate; }
+.eva-decor { position: absolute; left: 0; top: 0; background-size: 100% 100%; opacity: 0; will-change: transform, opacity; }
+.eva-route { position: absolute; left: 0; background-repeat: repeat-x; will-change: transform; box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.35); }
+.eva-obstacle,
+.eva-barrage { position: absolute; left: 0; top: 0; z-index: 2; height: auto; max-width: none; visibility: hidden; will-change: transform; transform-origin: 50% 100%; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.6)); }
+.eva-barrage { z-index: 4; }
+.eva-auto { position: absolute; left: 0; top: 0; z-index: 3; visibility: hidden; transform-origin: 50% 100%; will-change: transform; }
+.eva-auto.police { z-index: 2; }
+.eva-caisse { position: relative; z-index: 1; display: block; width: 100%; height: auto; max-width: none; filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.55)); }
+.eva-roue { position: absolute; z-index: 0; height: auto; max-width: none; will-change: transform; filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.6)); }
+.eva-auto-fumee { position: absolute; right: 80%; bottom: -26%; z-index: 0; width: 95%; height: auto; max-width: none; opacity: 0.35; pointer-events: none; transform-origin: 100% 80%; animation: eva-fumee 0.32s ease-in-out infinite alternate; }
+@keyframes eva-fumee { to { transform: scaleX(1.12) scaleY(0.9) translateY(4%); } }
+.eva-auto-etincelles { position: absolute; right: 72%; bottom: -30%; z-index: 2; width: 70%; height: auto; max-width: none; opacity: 0; mix-blend-mode: screen; pointer-events: none; }
+.eva-gyro { position: absolute; z-index: 2; width: 62%; height: auto; max-width: none; mix-blend-mode: screen; pointer-events: none; transform: translate(-50%, -50%); animation: eva-gyro 0.7s linear infinite; }
+@keyframes eva-gyro {
+  0% { transform: translate(-50%, -50%) rotate(0deg) scale(0.85); opacity: 0.75; }
+  50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(360deg) scale(0.85); opacity: 0.75; }
+}
+/* Les traits de vitesse, pendant les plans. */
+.eva-vitesse { position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; background: repeating-linear-gradient(180deg, transparent 0 23px, rgba(255, 240, 210, 0.16) 23px 24px, transparent 24px 61px), linear-gradient(90deg, rgba(0, 0, 0, 0.35), transparent 22%, transparent 78%, rgba(0, 0, 0, 0.3)); background-size: 260px 100%, 100% 100%; animation: eva-vitesse 0.28s linear infinite; mask-image: linear-gradient(90deg, #000, transparent 30%, transparent 70%, #000); -webkit-mask-image: linear-gradient(90deg, #000, transparent 30%, transparent 70%, #000); }
+.eva.plan .eva-vitesse { opacity: 1; }
+@keyframes eva-vitesse { to { background-position: -260px 0, 0 0; } }
+
+/* Les plaques des voitures, et le tampon de chaque issue. */
+.eva-plaques { position: absolute; left: 8px; top: calc(var(--haut) + 4px); z-index: 10; display: grid; justify-items: start; gap: 4px; pointer-events: none; }
+.eva-plaques.plan { left: 50%; top: calc(var(--haut) + 2px); justify-items: center; transform: translateX(-50%); }
+.eva-plaque { display: flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 99px; border: 1.5px solid rgba(214, 168, 75, 0.9); background: linear-gradient(180deg, rgba(103, 29, 43, 0.94), rgba(30, 8, 12, 0.94)); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); white-space: nowrap; animation: eva-plaque 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.eva-plaque strong { font-family: var(--titre); font-weight: 400; font-size: clamp(12px, 2cqw, 17px); color: #ffd774; }
+.eva-plaque small { font-size: clamp(9.5px, 1.4cqw, 12px); font-weight: 800; color: #f3e7cf; }
+.eva-plaque b { font-family: var(--titre); font-weight: 400; font-size: clamp(13px, 2.1cqw, 18px); color: #fff; text-shadow: 0 0 8px rgba(255, 190, 90, 0.9); }
+.eva-plaque.arretee b { font-family: inherit; font-weight: 900; font-size: clamp(10px, 1.5cqw, 12.5px); letter-spacing: 0.08em; text-transform: uppercase; color: #ff7a6a; text-shadow: none; }
+.eva-plaque.evadee { border-color: #ffe08a; box-shadow: 0 0 16px rgba(255, 210, 110, 0.7); }
+.eva-plaque.arretee { filter: saturate(0.6); opacity: 0.85; }
+.eva-plaque em { padding: 0 7px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #c98a1c); color: #2a0a04; font-style: normal; font-size: clamp(9px, 1.3cqw, 11px); font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; }
+.eva-plaque.mienne { border-color: #ffe08a; }
+.eva-pastille { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #ffd774; flex: none; }
+.eva-pastille.boulevard { background: #7a1022; }
+.eva-pastille.ruelles { background: #0f5a32; }
+.eva-pastille.souterrains { background: #111; }
+.eva-plaques.plan .eva-plaque { padding: 5px 16px 5px 9px; }
+.eva-plaques.plan .eva-plaque strong { font-size: clamp(16px, 3.4cqw, 26px); }
+@keyframes eva-plaque { from { opacity: 0; transform: scale(0.5); } }
+.eva-tampon { position: absolute; left: 62%; top: 40%; z-index: 16; display: grid; justify-items: center; padding: 4px 22px 6px; border-radius: 14px; border: 3px solid currentColor; transform: translate(-50%, -50%) rotate(-6deg); text-align: center; white-space: nowrap; pointer-events: none; animation: eva-tampon 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.eva-tampon small { font-size: clamp(9.5px, 1.6cqw, 13px); font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.eva-tampon b { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: clamp(22px, 4.6cqw, 40px); line-height: 1.05; }
+.eva-tampon em { font-style: normal; font-family: 'Limelight', var(--titre), serif; font-size: clamp(20px, 4cqw, 34px); line-height: 1; color: #fff; text-shadow: 0 0 12px #fff1c4, 0 0 26px rgba(255, 170, 70, 1); }
+.eva-tampon.evadee { color: #ffe08a; background: radial-gradient(120% 140% at 50% 0%, rgba(110, 76, 14, 0.95), rgba(30, 16, 4, 0.95)); box-shadow: 0 0 30px rgba(255, 200, 100, 0.8); }
+.eva-tampon.evadee b { color: #ffe08a; }
+.eva-tampon.arretee { color: #ff6a5a; background: rgba(40, 4, 4, 0.92); box-shadow: 0 0 26px rgba(255, 60, 40, 0.7); }
+.eva-tampon.arretee b { color: #fff; letter-spacing: 0.06em; }
+.eva-tampon.mienne { border-width: 4px; }
+@keyframes eva-tampon { from { opacity: 0; transform: translate(-50%, -50%) rotate(-6deg) scale(2.4); } }
+.eva-gyro-flash { position: absolute; inset: 0; z-index: 8; pointer-events: none; mix-blend-mode: screen; animation: eva-flash 0.5s steps(2) infinite; }
+@keyframes eva-flash { 0% { background: radial-gradient(70% 90% at 30% 60%, rgba(255, 30, 30, 0.38), transparent 70%); } 100% { background: radial-gradient(70% 90% at 70% 60%, rgba(40, 80, 255, 0.38), transparent 70%); } }
+.eva-gerbe { position: absolute; z-index: 7; width: 0; height: 0; pointer-events: none; }
+.eva-gerbe img { position: absolute; left: -14px; top: -14px; width: 28px; height: auto; animation: eva-piece 1.1s cubic-bezier(0.2, 0.8, 0.4, 1) both; animation-delay: calc(var(--i) * 0.04s); }
+@keyframes eva-piece {
+  from { opacity: 1; transform: translate(0, 0) scale(0.4) rotate(0deg); }
+  to { opacity: 0; transform: translate(calc(cos(var(--i) * 36deg) * 120px), calc(sin(var(--i) * 36deg) * 70px - 40px)) scale(1) rotate(400deg); }
+}
+
+/* Les coupes entre les plans, les annonces. */
+.eva-coupe { position: absolute; inset: 0; z-index: 14; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(255, 244, 220, 0.9) 45%, rgba(255, 244, 220, 0.9) 55%, transparent); animation: eva-coupe 0.42s ease-in both; }
+@keyframes eva-coupe { from { transform: translateX(-100%); opacity: 1; } to { transform: translateX(100%); opacity: 0.2; } }
+.eva-annonce { position: absolute; left: 50%; top: 50%; z-index: 20; display: grid; justify-items: center; gap: 2px; width: max-content; max-width: 92%; padding: 8px 26px 10px; border-radius: 16px; border: 2px solid #d6a84b; background: radial-gradient(130% 150% at 50% 0%, rgba(80, 22, 26, 0.95), rgba(14, 6, 6, 0.95)); box-shadow: 0 0 30px rgba(255, 200, 110, 0.35), 0 12px 26px rgba(0, 0, 0, 0.7); transform: translate(-50%, -50%); text-align: center; pointer-events: none; animation: eva-annonce 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.eva-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(19px, 4.2cqw, 34px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.6); }
+.eva-annonce span { font-weight: 800; font-size: clamp(11.5px, 1.9cqw, 15px); color: #fff1c4; }
+@keyframes eva-annonce { from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } }
+
+/* La jauge de distance, pendant les plans. */
+.eva-jauge { position: absolute; left: 50%; top: calc(var(--haut) + 40px); z-index: 12; width: min(46cqw, 430px); transform: translateX(-50%); filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.75)); animation: eva-annonce-bas 0.5s ease-out both; }
+@keyframes eva-annonce-bas { from { opacity: 0; transform: translateX(-50%) translateY(-40%); } }
+.eva-jauge > img { display: block; width: 100%; height: auto; }
+.eva-jauge-canal { position: absolute; left: 20%; right: 20%; top: 44%; bottom: 37%; }
+.eva-jauge-auto { position: absolute; top: 50%; width: auto; height: 150%; max-width: none; transform: translate(-50%, calc(-50% + (var(--k) - 1) * 26%)); transition: left 0.15s linear; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.8)); opacity: 0.8; }
+.eva-jauge-auto.suivie { height: 190%; opacity: 1; z-index: 1; }
+.eva-jauge-auto.mien { filter: drop-shadow(0 0 4px #ffd774) drop-shadow(0 0 8px rgba(255, 210, 110, 0.9)); opacity: 1; }
+
+/* L'intro : l'affiche, les trois voitures. */
+.eva-intro { position: absolute; inset: 0; z-index: 20; background: radial-gradient(90% 80% at 30% 50%, #1c1030, #05060c 75%); }
+.eva-affiche { position: absolute; left: 3%; top: 54px; bottom: 4%; height: auto; aspect-ratio: 1000 / 1099; border-radius: 6px; overflow: hidden; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.8)); animation: eva-affiche 1s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+.eva-affiche > img { display: block; width: 100%; height: 100%; }
+@keyframes eva-affiche { from { opacity: 0; transform: rotate(-4deg) scale(0.82); } }
+.eva-affiche-titre { position: absolute; left: 8%; width: 84%; top: 2.2%; height: 16.4%; overflow: visible; }
+.eva-affiche-titre text { font-family: 'Limelight', var(--titre), serif; font-size: 92px; fill: #ffd774; stroke: #3a0408; stroke-width: 5px; paint-order: stroke fill; filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.7)); }
+.eva-affiche-titre text.petit { font-size: 56px; fill: #fff1c4; }
+.eva-affiche-reflet { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255, 245, 210, 0.3) 45%, transparent 60%); transform: translateX(-120%); animation: eva-reflet 3.2s ease-in-out 0.9s infinite; pointer-events: none; }
+@keyframes eva-reflet { 60%, 100% { transform: translateX(120%); } }
+.eva-multi { position: absolute; left: 50%; bottom: 4%; display: grid; justify-items: center; padding: 3px 16px 5px; border-radius: 14px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(140, 24, 18, 0.97), rgba(40, 6, 4, 0.97)); box-shadow: 0 0 26px rgba(255, 120, 90, 0.65); transform: translateX(-50%); animation: eva-multi 0.65s cubic-bezier(0.3, 1.6, 0.5, 1) 1s both; }
+.eva-multi small { font-size: clamp(8px, 1.5cqw, 10.5px); font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: #ffcf6b; white-space: nowrap; }
+.eva-multi strong { font-family: var(--titre); font-weight: 400; font-size: clamp(24px, 6cqh, 40px); line-height: 1; color: #fff1c4; text-shadow: 0 0 18px rgba(255, 180, 110, 1); }
+@keyframes eva-multi { from { opacity: 0; transform: translateX(-50%) scale(0.3); } }
+.eva-infos { position: absolute; left: calc(6cqw + (96cqh - 54px) * 0.91); right: 3%; top: 54px; bottom: 4%; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.eva-accroche { display: grid; gap: 3px; text-align: center; animation: eva-pop 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.4s both; }
+.eva-accroche strong { font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 3.4cqw, 30px); line-height: 1.1; color: #ffd774; text-shadow: 0 0 16px rgba(255, 200, 100, 0.6); }
+.eva-accroche span { font-weight: 800; font-size: clamp(11px, 1.7cqw, 15px); line-height: 1.25; color: #fff1c4; }
+@keyframes eva-pop { from { opacity: 0; transform: scale(0.7); } }
+.eva-liste { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.eva-liste li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'img nom' 'img gains'; align-content: center; align-items: center; column-gap: 10px; row-gap: 2px; min-height: 0; padding: 4px 12px 4px 6px; border-radius: 12px; border: 1.5px solid rgba(214, 168, 75, 0.85); background: linear-gradient(90deg, rgba(103, 29, 43, 0.95), rgba(30, 10, 12, 0.95)); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55); animation: eva-ligne 0.55s cubic-bezier(0.3, 1.4, 0.5, 1) both; animation-delay: calc(0.6s + var(--k) * 0.15s); }
+@keyframes eva-ligne { from { opacity: 0; transform: translateX(30%); } }
+.eva-liste li > img { grid-area: img; width: clamp(70px, 13cqw, 140px); height: auto; max-height: 100%; object-fit: contain; filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.6)); }
+.eva-liste-nom { grid-area: nom; display: grid; min-width: 0; }
+.eva-liste-nom strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--titre); font-weight: 400; font-size: clamp(13px, 2.3cqw, 21px); color: #ffd774; }
+.eva-liste-nom small { font-size: clamp(9.5px, 1.4cqw, 12px); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #f3e7cf; }
+.eva-liste li b { grid-area: gains; font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 2.4cqw, 22px); line-height: 1; color: #fff1c4; white-space: nowrap; }
+
+/* Le choix : trois cartes, une par voiture. */
+.eva-choix { position: absolute; left: 3%; right: 3%; top: 56px; bottom: 76px; z-index: 10; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.4%; }
+.eva-carte { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; padding: 0; overflow: hidden; border-radius: 14px; border: 2px solid rgba(214, 168, 75, 0.9); background: linear-gradient(180deg, #1d0a10, #0b0507); color: inherit; font: inherit; text-align: center; cursor: pointer; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.65); animation: eva-carte 0.6s cubic-bezier(0.3, 1.45, 0.5, 1) both; animation-delay: calc(var(--k) * 0.12s); transition: transform 0.2s, filter 0.3s, box-shadow 0.3s; }
+@keyframes eva-carte { from { opacity: 0; transform: translateY(26%) scale(0.85); } }
+.eva-carte:not(:disabled):hover { transform: translateY(-3px); box-shadow: 0 0 22px rgba(255, 210, 110, 0.6), 0 12px 24px rgba(0, 0, 0, 0.7); }
+.eva-carte:disabled { cursor: default; opacity: 1; color: inherit; }
+.eva-carte-decor { position: relative; display: block; min-height: 0; background-size: cover; background-position: 30% 100%; }
+.eva-carte-decor::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5, 4, 10, 0.1), rgba(5, 4, 10, 0.65)); }
+.eva-carte-auto { position: absolute; left: 6%; width: 88%; top: 18%; height: auto; max-height: 50%; object-fit: contain; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.7)); animation: eva-moteur 0.18s ease-in-out infinite alternate; }
+@keyframes eva-moteur { to { transform: translateY(1.5px); } }
+.eva-carte-texte { display: grid; gap: 2px; padding: 6px 8px 8px; background: linear-gradient(180deg, rgba(103, 29, 43, 0.97), rgba(40, 10, 16, 0.97)); border-top: 1.5px solid rgba(214, 168, 75, 0.8); }
+.eva-carte-texte strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 2.6cqw, 22px); color: #ffd774; }
+.eva-carte-texte small { font-size: clamp(9.5px, 1.5cqw, 12.5px); font-weight: 800; color: #f3e7cf; }
+.eva-carte-texte em { font-style: normal; font-family: var(--titre); font-size: clamp(14px, 2.4cqw, 21px); color: #fff1c4; white-space: nowrap; }
+.eva-carte.choisie { border-color: #ffe08a; box-shadow: 0 0 0 2px #ffe08a, 0 0 30px rgba(255, 210, 110, 0.85); transform: scale(1.03); }
+.eva-carte.choisie .eva-carte-auto { animation-duration: 0.09s; }
+.eva-carte.autre { filter: saturate(0.4) brightness(0.55); }
+.eva-nb { position: absolute; right: 8px; top: 8px; z-index: 2; min-width: 24px; padding: 1px 7px; border-radius: 99px; background: #ffd774; color: #2a0a04; font-style: normal; font-weight: 900; font-size: 13px; }
+
+/* La fin : l'image de l'évasion (ou de l'arrestation), le bilan des trois voitures. */
+.eva-fin { position: absolute; inset: 0; z-index: 12; overflow: hidden; animation: eva-fondu 0.6s ease-out both; }
+@keyframes eva-fondu { from { opacity: 0; } }
+.eva-fin-image { position: absolute; inset: 0; background-size: cover; background-position: center; animation: eva-fin 7s ease-out both; }
+.eva-fin-image::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(4, 2, 6, 0.6), rgba(4, 2, 6, 0.05) 40%, rgba(4, 2, 6, 0.05) 62%, rgba(4, 2, 6, 0.6)); }
+@keyframes eva-fin { from { transform: scale(1.14) translateX(3%); } to { transform: scale(1.02); } }
+.eva-fin .cas-pluie { z-index: 1; }
+.eva-bilan { position: absolute; left: 50%; top: calc(var(--haut) + 4px); z-index: 3; display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; transform: translateX(-50%); }
+.eva-bilan li { display: grid; justify-items: center; gap: 1px; min-width: 104px; padding: 4px 12px 6px; border-radius: 12px; border: 1.5px solid rgba(214, 168, 75, 0.85); background: rgba(20, 8, 10, 0.88); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6); animation: eva-pop 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; animation-delay: calc(0.3s + var(--k) * 0.15s); }
+.eva-bilan li img { width: clamp(56px, 10cqw, 92px); height: auto; }
+.eva-bilan li > span { font-size: clamp(10px, 1.5cqw, 12.5px); font-weight: 800; color: #f3e7cf; white-space: nowrap; }
+.eva-bilan li strong { font-family: var(--titre); font-weight: 400; font-size: clamp(15px, 2.6cqw, 22px); color: #fff1c4; white-space: nowrap; }
+.eva-bilan li.arretee { opacity: 0.8; }
+.eva-bilan li.arretee img { filter: grayscale(0.7) brightness(0.7); }
+.eva-bilan li.arretee strong { color: #ff7a6a; font-family: inherit; font-weight: 900; font-size: clamp(11px, 1.8cqw, 14px); letter-spacing: 0.08em; text-transform: uppercase; }
+.eva-bilan li.mienne { border-color: #ffe08a; box-shadow: 0 0 20px rgba(255, 210, 110, 0.7); }
+
+@media (max-width: 640px) {
+  .eva { --haut: 92px; }
+  .eva-affiche { left: 50%; top: 88px; bottom: auto; height: 44%; transform: translateX(-50%); animation-name: eva-affiche-tel; }
+  @keyframes eva-affiche-tel { from { opacity: 0; transform: translateX(-50%) rotate(-4deg) scale(0.82); } }
+  .eva-multi { padding: 2px 12px 4px; }
+  .eva-multi small { font-size: 7.5px; letter-spacing: 0.1em; }
+  .eva-multi strong { font-size: 24px; }
+  .eva-infos { left: 3%; right: 3%; top: calc(92px + 44%); bottom: 3%; gap: 5px; }
+  .eva-accroche strong { font-size: 16px; }
+  .eva-accroche span { display: none; }
+  .eva-liste { gap: 4px; }
+  .eva-liste li { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'img nom gains'; padding: 2px 10px 2px 4px; column-gap: 6px; }
+  .eva-liste li > img { grid-area: img; width: 64px; }
+  .eva-liste-nom strong { font-size: 13px; }
+  .eva-liste-nom small { font-size: 9px; }
+  .eva-liste li b { font-size: 14px; }
+  .eva-choix { top: 92px; bottom: 74px; grid-template-columns: none; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .eva-carte { grid-template-rows: none; grid-template-columns: 52% minmax(0, 1fr); }
+  .eva-carte-decor { background-position: 25% 100%; }
+  .eva-carte-auto { left: 3%; width: 49%; top: 50%; max-height: 80%; transform: translateY(-40%); animation: none; }
+  .eva-carte-texte { align-content: center; padding: 4px 6px; border-top: 0; border-left: 1.5px solid rgba(214, 168, 75, 0.8); }
+  .eva-carte-texte strong { font-size: 15px; }
+  .eva-carte-texte small { font-size: 9.5px; }
+  .eva-carte-texte em { font-size: 14px; }
+  .eva-plaques { left: 5px; gap: 3px; }
+  .eva-plaque { gap: 4px; padding: 2px 8px 2px 4px; }
+  .eva-tampon { left: 50%; top: 44%; }
+  .eva-plaque strong { font-size: 12px; }
+  .eva-plaque small { font-size: 9px; }
+  .eva-plaque em { font-size: 8.5px; padding: 0 5px; }
+  .eva-pastille { width: 9px; height: 9px; }
+  .eva-jauge { width: 78cqw; top: calc(var(--haut) + 32px); }
+  .eva-bilan { gap: 5px; width: 96%; justify-content: center; }
+  .eva-bilan li { min-width: 0; flex: 1; padding: 3px 4px 5px; }
+  .eva-bilan li > span { font-size: 9.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eva-vitesse, .eva-gyro, .eva-auto-fumee, .eva-carte-auto, .eva-gyro-flash { animation: none !important; }
+}
