@@ -189,39 +189,6 @@
 .bw-scene button { background: none; border: none; padding: 0; min-height: 0; }
 .bw-scene button:disabled { opacity: 1; cursor: default; }
 
-/* LE CHOIX DU BARON */
-.bw-baron { background-image: url('/cartes/bw-scene-baron.webp'); }
-.bw-rideaux { position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
-.bw-rideaux img { position: absolute; top: 0; width: 52%; height: 100%; max-width: none; object-fit: cover; }
-.bw-rideaux .gauche { left: 0; transform: translateX(-100%); }
-.bw-rideaux .droite { right: 0; transform: translateX(100%) scaleX(-1); }
-.bw-baron.intro .gauche { animation: bw-rideau-g 4.2s ease-in-out both; }
-.bw-baron.intro .droite { animation: bw-rideau-d 4.2s ease-in-out both; }
-@keyframes bw-rideau-g { 0%, 25% { transform: none; } 70%, 100% { transform: translateX(-100%); } }
-@keyframes bw-rideau-d { 0%, 25% { transform: scaleX(-1); } 70%, 100% { transform: translateX(100%) scaleX(-1); } }
-.bw-perso-baron { position: absolute; right: 1%; bottom: 0; z-index: 4; height: 86%; width: auto; max-width: none; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.7)); }
-.bw-baron.intro .bw-perso-baron { animation: bw-entree-droite 1.4s cubic-bezier(0.2, 0.9, 0.3, 1) 1.6s both; }
-@keyframes bw-entree-droite { from { opacity: 0; transform: translateX(60%); } }
-.bw-cartes { position: absolute; left: 3%; right: 30%; top: 17%; bottom: 25%; z-index: 6; display: flex; justify-content: center; align-items: center; gap: 4%; }
-.bw-baron.intro .bw-cartes { opacity: 0; }
-.bw-baron.cartes .bw-carte { animation: bw-carte-arrive 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
-.bw-baron.cartes .bw-carte:nth-child(2) { animation-delay: 0.12s; }
-.bw-baron.cartes .bw-carte:nth-child(3) { animation-delay: 0.24s; }
-@keyframes bw-carte-arrive { from { opacity: 0; transform: translateY(-40%) rotate(-12deg) scale(0.6); } }
-.bw-carte { position: relative; width: 29%; max-height: 100%; aspect-ratio: 400 / 587; perspective: 900px; transition: transform 0.3s; }
-.bw-carte-dos, .bw-carte-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; transition: transform 0.8s cubic-bezier(0.4, 0.2, 0.2, 1) var(--retard, 0ms); filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6)); }
-.bw-carte-dos img, .bw-carte-face img { width: 100%; height: 100%; }
-.bw-carte-face { transform: rotateY(180deg); }
-.bw-carte.retournee .bw-carte-dos { transform: rotateY(-180deg); }
-.bw-carte.retournee .bw-carte-face { transform: rotateY(0deg); }
-.bw-carte-face b { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 2px; font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 6vw, 44px); color: var(--bordeaux-bw); }
-.bw-carte-face b small { font-family: system-ui, sans-serif; font-size: clamp(8px, 2vw, 12px); font-weight: 900; letter-spacing: 0.14em; color: #8a5a10; }
-.bw-carte.jackpot .bw-carte-face { filter: drop-shadow(0 0 18px rgba(255, 215, 110, 0.95)); }
-.bw-carte:not(:disabled):hover { transform: translateY(-4%); }
-.bw-carte.choisie { transform: translateY(-6%) scale(1.06); z-index: 2; }
-.bw-carte.choisie .bw-carte-dos, .bw-carte.choisie .bw-carte-face { filter: drop-shadow(0 0 16px rgba(255, 215, 110, 0.95)) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6)); }
-.bw-baron.revele .bw-carte:not(.choisie) .bw-carte-face { filter: brightness(0.72) saturate(0.8) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6)); }
-
 /* LE PICKPOCKET */
 .bw-pick { background-image: url('/cartes/bw-scene-pickpocket.webp'); }
 .bw-perso-pick { position: absolute; left: 1%; bottom: 0; z-index: 4; height: 86%; width: auto; max-width: none; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.7)); }
@@ -307,8 +274,6 @@
 @media (max-width: 640px) {
   .bw-bonus { aspect-ratio: 4 / 5; }
   .bw-bonus-titre { top: 42px; }
-  .bw-perso-baron { height: 52%; right: -8%; opacity: 0.95; }
-  .bw-cartes { left: 3%; right: 3%; top: 20%; bottom: 36%; gap: 3%; }
   .bw-perso-pick { height: 50%; left: -6%; }
   .bw-butin { left: 50%; top: 16%; }
   .bw-mallettes { left: 3%; right: 3%; bottom: 34%; }
@@ -398,5 +363,3 @@
 .bw-case-sous { align-self: start; justify-self: start; font-size: 11px; font-weight: 800; color: #bfeccf; }
 
 /* Le multiplicateur de la roue compris dès le début des bonus. */
-.bw-carte-face { container-type: inline-size; }
-.bw-carte-face .bw-valeur { font-size: min(1em, calc(86cqw / (var(--n, 4) * 0.62))); }
