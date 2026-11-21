@@ -42,6 +42,7 @@ import { BonusExpress, IMAGES_EXPRESS_NOMS, ValeurMultipliee } from './CasinoBar
 import { BonusBraquage, IMAGES_BRAQUAGE_NOMS } from './CasinoBraquage';
 import { BonusEvasion, IMAGES_EVASION_NOMS } from './CasinoEvasion';
 import { BonusDonne, IMAGES_DONNE_NOMS } from './CasinoDonne';
+import { BonusPickpocket, IMAGES_PICKPOCKET_NOMS } from './CasinoPickpocket';
 import './baronWheel.css';
 
 const court = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(n % 1000 ? 1 : 0)}k` : String(n));
@@ -56,7 +57,7 @@ export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string
   x5: { nom: ['5X', '5X'], fond: '#D6A84B', texte: '#1b120c' },
   x10: { nom: ['10X', '10X'], fond: '#f6d77a', texte: '#3a1810' },
   baron: { nom: ['Baron', 'Baron'], fond: '#0d0b0b', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp' },
-  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket.webp' },
+  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp' },
   evasion: { nom: ['Évasion', 'Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp' },
   braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp' },
   express: { nom: ['Express du Baron', 'Baron Express'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
@@ -370,7 +371,7 @@ const plaques = ['mini', 'minor', 'major', 'grand'].map((j) => `bw-plaque-${j}`)
 const IMAGES_BONUS_BW: Record<BonusBW, string[]> = Object.fromEntries(
   Object.entries({
     baron: ['bw-sym-baron2', ...IMAGES_DONNE_NOMS, ...plaques],
-    pickpocket: ['bw-sym-pickpocket', 'bw-scene-pickpocket', 'bw-pickpocket', 'bw-mallette', 'bw-mallette-ouverte'],
+    pickpocket: ['bw-sym-pickpocket2', ...IMAGES_PICKPOCKET_NOMS],
     evasion: ['bw-sym-evasion2', ...IMAGES_EVASION_NOMS],
     braquage: ['bw-sym-braquage2', ...IMAGES_BRAQUAGE_NOMS, ...plaques],
     express: ['bw-sym-express', ...IMAGES_EXPRESS_NOMS],
@@ -424,7 +425,7 @@ function useChargement(type: BonusBW): number {
 
 const ASTUCES_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Baron mélange et distribue neuf cartes : choisis la tienne. La carte du Baron cache un jackpot.', 'The Baron shuffles and deals nine cards: pick yours. The Baron’s card hides a jackpot.'],
-  pickpocket: ['Suis bien la mallette où le Pickpocket cache son butin\u00a0!', 'Keep your eye on the briefcase where the Pickpocket hides the loot!'],
+  pickpocket: ['Le Pickpocket vole un collier au bal et le cache sous l’un des trois chapeaux : à toi de le retrouver\u00a0!', 'The Pickpocket steals a necklace at the ball and hides it under one of three hats: find it!'],
   evasion: ['Trois voitures, trois itinéraires : monte dans l’une d’elles. Plus la route est risquée, plus le butin est gros.', 'Three cars, three routes: jump into one. The riskier the route, the bigger the loot.'],
   braquage: ['Une seule perceuse pour tout le salon : plus elle descend, plus le butin grossit… jusqu’à l’alarme.', 'One drill for the whole room: the deeper it goes, the bigger the loot… until the alarm.'],
   express: ['5 wagons au départ de Paris : un seul arrivera à Istanbul et ouvrira le Coffre du Baron.', '5 carriages leave Paris: only one will reach Istanbul and open the Baron’s Safe.'],
@@ -462,50 +463,13 @@ interface PropsBonus {
 
 const etiquetteRecompense = (r: RecompenseBW) => (r.jackpot ? NOMS_JACKPOTS[r.jackpot] : fx(r.x));
 
-/** THE BIG THEFT : le Pickpocket vole un gros multiplicateur et le cache dans l'une des trois mallettes. */
-function BonusPickpocket({ b, nom, ouvert, choisir }: PropsBonus) {
-  const choix = b.mesChoix[0];
-  const revele = nom === 'revele' || !!b.mallettes?.[0];
-  return (
-    <div className={`bw-scene bw-pick ${nom}`}>
-      <img className="bw-perso-pick" src="/cartes/bw-pickpocket.webp" alt="" draggable={false} />
-      {b.butin != null && !revele && (
-        <div className="bw-butin" aria-live="polite">
-          <small>{tr('Il vole', 'He steals')}</small>
-          <strong>
-            <ValeurMultipliee x={b.butin} m={b.multiplicateur} son />
-          </strong>
-        </div>
-      )}
-      <div className={`bw-mallettes ${nom === 'vol' ? 'melange' : ''}`}>
-        {[0, 1, 2].map((k) => {
-          const x = b.mallettes?.[k] ?? null;
-          const estButin = revele && x !== null && x === b.butin;
-          return (
-            <button key={k} type="button" className={`bw-mallette ${choix === k ? 'choisie' : ''} ${revele ? 'ouverte' : ''} ${estButin ? 'butin' : ''}`} style={{ '--k': k } as CSSProperties} onClick={() => choisir(k)} disabled={!ouvert || choix !== null} aria-label={tr(`Mallette ${k + 1}`, `Briefcase ${k + 1}`)}>
-              <img src={revele ? '/cartes/bw-mallette-ouverte.webp' : '/cartes/bw-mallette.webp'} alt="" draggable={false} />
-              {revele && x !== null && (
-                <b>
-                  {estButin && <small>{tr('Le butin', 'The loot')}</small>}
-                  <ValeurMultipliee x={x} m={b.multiplicateur} son={choix === k} />
-                </b>
-              )}
-              {b.choixSalon[0]?.[k] ? <i className="bw-nb-choix">{b.choixSalon[0][k]}</i> : null}
-            </button>
-          );
-        })}
-        {nom === 'vol' && <span className="bw-fumee" aria-hidden="true" />}
-      </div>
-    </div>
-  );
-}
 
 const TEXTES_ETAPES: Record<string, [string, string]> = {
   intro: ['', ''],
   donne: ['Le Baron mélange et distribue…', 'The Baron shuffles and deals…'],
   cartes: ['Choisis ta carte parmi les neuf', 'Pick your card among the nine'],
-  vol: ['Le Pickpocket cache le butin dans l’une des mallettes…', 'The Pickpocket hides the loot in one of the briefcases…'],
-  mallettes: ['Où est le butin ? Choisis une mallette', 'Where is the loot? Pick a briefcase'],
+  vol: ['', ''],
+  mallettes: ['Où est le collier ? Choisis un chapeau', 'Where is the necklace? Pick a hat'],
   route: ['La police arrive ! Choisis ta voiture', 'The police are coming! Pick your car'],
   poursuite: ['La course-poursuite\u00a0!', 'The car chase!'],
   wagons: ['Choisis ton wagon : un seul arrivera à Istanbul\u00a0!', 'Pick your carriage: only one will reach Istanbul!'],
@@ -538,7 +502,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
   return (
     <div className={`bw-bonus ${b.type}`}>
       {b.type === 'baron' && <BonusDonne v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
-      {b.type === 'pickpocket' && <BonusPickpocket {...props} />}
+      {b.type === 'pickpocket' && <BonusPickpocket v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       {b.type === 'evasion' && <BonusEvasion v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       {b.type === 'braquage' && <BonusBraquage v={v} b={b} nom={nom} />}
       {b.type === 'express' && <BonusExpress v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
@@ -554,7 +518,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
           <span>{tr('Tous les gains de ce bonus sont multipliés\u00a0!', 'Every win in this bonus is multiplied!')}</span>
         </div>
       )}
-      {nom !== 'revele' && nom !== 'intro' && b.type !== 'braquage' && (b.type !== 'express' || nom === 'wagons') && (b.type !== 'evasion' || nom === 'route') && (b.type !== 'baron' || nom === 'cartes') && (
+      {nom !== 'revele' && nom !== 'intro' && b.type !== 'braquage' && (b.type !== 'express' || nom === 'wagons') && (b.type !== 'evasion' || nom === 'route') && (b.type !== 'baron' || nom === 'cartes') && (b.type !== 'pickpocket' || nom === 'mallettes') && (
         <div className="bw-bonus-consigne">
           <span>{texte}</span>
           {rang >= 0 && (b.mise > 0 ? b.mesChoix[rang] !== null ? <small>{tr('Choix fait : on attend les autres…', 'Done: waiting for the others…')}</small> : <small>{tr(`Ta mise : ${dollars(b.mise)}`, `Your bet: ${dollars(b.mise)}`)}</small> : <small>{tr('Tu regardes : tu n’as pas misé sur ce bonus.', 'Watching: you did not bet on this bonus.')}</small>)}
