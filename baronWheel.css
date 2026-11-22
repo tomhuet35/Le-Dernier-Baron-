@@ -454,7 +454,7 @@
 .bw-palier > b { position: relative; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 8.5vw, 60px); color: #b8f0b4; text-shadow: 0 0 18px rgba(120, 220, 120, 0.7), 0 3px 6px #000; }
 
 /* ---------- Le train qui traverse la gare (sur les rails, devant la roue) ---------- */
-.bw-train-passe { position: absolute; left: 0; z-index: 3; display: flex; align-items: flex-end; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); animation: bw-train-passe 5s cubic-bezier(0.3, 0, 0.7, 1) both; will-change: transform; }
+.bw-train-passe { position: absolute; left: 0; z-index: 3; display: flex; align-items: flex-end; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); animation: bw-train-passe calc(var(--duree-express, 12000) * 1ms) cubic-bezier(0.25, 0.1, 0.75, 0.9) both; will-change: transform; }
 .bw-train-passe img { display: block; flex: none; height: 100%; width: auto; max-width: none; margin-right: -0.4%; }
 .bw-train-passe img.loco { height: 98.3%; margin-right: 0; }
 @keyframes bw-train-passe { from { transform: translateX(var(--de, -100vw)); } to { transform: translateX(var(--a, 100vw)); } }

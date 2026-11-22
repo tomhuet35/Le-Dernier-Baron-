@@ -489,7 +489,7 @@ export interface DureesBW {
   arrivee: number;
 }
 /** Quand le Top Slot tire l'Express, l'Express du Baron traverse la gare avant que les rouleaux ne partent (ms). */
-export const PASSAGE_EXPRESS_BW = 5_000;
+export const PASSAGE_EXPRESS_BW = 12_000;
 /** La durée de la phase des multiplicateurs, selon le tirage du Top Slot. */
 export const dureeMultiplicateursBW = (base: number, t: TirageTopSlotBW[] | null) => base + (t?.some((x) => x.c === 'express') ? PASSAGE_EXPRESS_BW : 0);
 export const DUREES_BW: DureesBW = {
