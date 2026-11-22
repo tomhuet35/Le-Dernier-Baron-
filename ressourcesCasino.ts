@@ -247,6 +247,8 @@ export const IMAGES_JEUX = [
   '/cartes/bw-controleur-tampon.webp',
   '/cartes/bw-tampon.webp',
   '/cartes/bw-tampon-empreinte.webp',
+  '/cartes/bw-express-face.webp',
+  '/cartes/bw-vapeur-face.webp',
   '/cartes/bw-matiere-argent.webp',
   '/cartes/bw-matiere-or.webp',
   '/cartes/bw-matiere-emeraude.webp',

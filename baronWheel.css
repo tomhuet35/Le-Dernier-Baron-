@@ -452,11 +452,28 @@
 .bw-palier.p3 .bw-palier-plaque { width: min(96vw, 720px); }
 .bw-palier > b { position: relative; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 8.5vw, 60px); color: #b8f0b4; text-shadow: 0 0 18px rgba(120, 220, 120, 0.7), 0 3px 6px #000; }
 
-/* ---------- Le train qui traverse la gare (sur les rails, devant la roue) ---------- */
-.bw-train-passe { position: absolute; left: 0; z-index: 3; display: flex; align-items: flex-end; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); animation: bw-train-passe calc(var(--duree-express, 12000) * 1ms) cubic-bezier(0.25, 0.1, 0.75, 0.9) both; will-change: transform; }
-.bw-train-passe img { display: block; flex: none; height: 100%; width: auto; max-width: none; margin-right: -0.4%; }
-.bw-train-passe img.loco { height: 98.3%; margin-right: 0; }
-@keyframes bw-train-passe { from { transform: translateX(var(--de, -100vw)); } to { transform: translateX(var(--a, 100vw)); } }
+/* ---------- L'arrivée de l'Express : la locomotive sort du moyeu et fonce vers le joueur ---------- */
+.bw-arrivee { position: fixed; inset: 0; z-index: 82; pointer-events: none; overflow: hidden; animation: bw-ar-fond var(--duree) ease-in-out both; }
+@keyframes bw-ar-fond { 0% { background: transparent; } 15%, 62% { background: rgba(4, 2, 1, 0.55); } 70% { background: rgba(4, 2, 1, 0.2); } 100% { background: transparent; } }
+.bw-arrivee-loco { position: absolute; left: var(--l); top: var(--t); width: var(--w); height: auto; max-width: none; transform-origin: var(--ox) var(--oy); will-change: transform, opacity; filter: drop-shadow(0 0 30px rgba(255, 200, 100, 0.55)); animation: bw-ar-loco var(--duree) both; }
+/* La porte se pose sur le moyeu (la locomotive apparaît autour), elle s'approche doucement, puis fonce et sort de l'écran. */
+@keyframes bw-ar-loco {
+  0% { opacity: 0; transform: none; filter: brightness(0.4) drop-shadow(0 0 0 rgba(255, 200, 100, 0)); animation-timing-function: ease-out; }
+  14% { opacity: 1; transform: none; filter: brightness(1) drop-shadow(0 0 30px rgba(255, 200, 100, 0.55)); animation-timing-function: ease-in-out; }
+  26% { transform: translate(calc(var(--tx) * 0.15), calc(var(--ty) * 0.15)) scale(1.25); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.6); }
+  64% { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(var(--k)); filter: brightness(1.25) drop-shadow(0 0 30px rgba(255, 200, 100, 0.55)); }
+  70% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(calc(var(--k) * 1.3)); filter: brightness(2) drop-shadow(0 0 30px rgba(255, 200, 100, 0.55)); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(calc(var(--k) * 1.3)); }
+}
+/* La vapeur jaillit des deux côtés de la roue, puis un grand nuage couvre l'écran au passage et se dissipe. */
+.bw-arrivee-vapeur { position: absolute; left: var(--cx); top: var(--cy); width: calc(var(--w) * 1.5); height: auto; max-width: none; translate: -50% -50%; opacity: 0; animation: bw-ar-vapeur var(--duree) ease-out both; }
+.bw-arrivee-vapeur.gauche { --sens: -1; }
+.bw-arrivee-vapeur.droite { --sens: 1; transform: scaleX(-1); }
+@keyframes bw-ar-vapeur { 0% { opacity: 0; translate: -50% -40%; scale: 0.4; } 10% { opacity: 0.95; } 30% { opacity: 0.85; translate: calc(-50% + var(--sens) * var(--w) * 0.9) -55%; scale: 1.3; } 50%, 100% { opacity: 0; translate: calc(-50% + var(--sens) * var(--w) * 1.6) -60%; scale: 1.7; } }
+.bw-arrivee-eclair { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 45%, #fffaf0, rgba(255, 220, 140, 0.9) 35%, rgba(255, 190, 90, 0.4) 70%, transparent); animation: bw-ar-eclair var(--duree) ease-out both; }
+@keyframes bw-ar-eclair { 0%, 62% { opacity: 0; } 66% { opacity: 1; } 78% { opacity: 0.35; } 100% { opacity: 0; } }
+.bw-arrivee-nuage { position: absolute; left: 50%; top: 50%; width: max(180vw, 180vh); height: auto; max-width: none; translate: -50% -50%; opacity: 0; animation: bw-ar-nuage var(--duree) ease-out both; }
+@keyframes bw-ar-nuage { 0%, 63% { opacity: 0; scale: 0.6; } 70% { opacity: 1; scale: 1; } 82% { opacity: 0.8; scale: 1.15; } 100% { opacity: 0; scale: 1.4; } }
 
 /* ---------- Les événements de la gare ---------- */
 .bw-evenements { display: grid; gap: 6px; }
