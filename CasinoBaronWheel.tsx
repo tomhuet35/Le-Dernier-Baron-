@@ -557,23 +557,25 @@ export function TableauDeparts({ historique, onJournal }: { historique: VueBW['h
 const ARRET_TOP_SLOT = { case: 1700, premier: 2400, pause: 900, second: 5100 };
 const NB_DEFILE = 24;
 
-/** Une ligne d'un rouleau : la case (médaillon ou chiffre) ou le multiplicateur (sur son billet). */
+/** Une ligne d'un rouleau : la case (sa plaque rivetée, à sa couleur) ou le multiplicateur (plaque noire, ×N gravé en or). */
 function ElementTopSlot({ c, x }: { c?: CaseBW; x?: number }) {
-  if (x !== undefined) {
-    const r = rangBillet(x);
+  if (x !== undefined)
     return (
-      <span className={`bw-ts-x b-${r}`}>
-        <img src={`/cartes/bw-billet-${r}.webp`} alt="" draggable={false} />
-        <b>×{x}</b>
+      <span className="bw-ts-x">
+        <img src="/cartes/bw-ts-plaque-x.webp" alt="" draggable={false} />
+        <b className="bw-or">×{x}</b>
       </span>
     );
-  }
   if (!c) return <span className="bw-ts-case vide">—</span>;
   const vis = CASES_VISUELS[c];
   return (
-    <span className={`bw-ts-case ${c}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties}>
-      {vis.image ? <img src={vis.image} alt="" draggable={false} /> : <strong>{fx(GAINS_CHIFFRES_BW[c as 'x1'])}</strong>}
-      <em>{estBonusBW(c) ? tr(...NOMS_BONUS[c]) : tr(`Case ${vis.nom[0]}`, `${vis.nom[1]} spot`)}</em>
+    <span className={`bw-ts-case ${c} ${estBonusBW(c) ? 'bonus' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties}>
+      <i className="bw-ts-fond" />
+      <img className="bw-ts-cadre-case" src="/cartes/bw-ts-plaque.webp" alt="" draggable={false} />
+      <span className="bw-ts-contenu">
+        {vis.image ? <img src={vis.image} alt="" draggable={false} /> : <strong className="bw-or">{fx(GAINS_CHIFFRES_BW[c as 'x1'])}</strong>}
+        {vis.image && <em>{tr(...NOMS_BONUS[c as BonusBW])}</em>}
+      </span>
     </span>
   );
 }

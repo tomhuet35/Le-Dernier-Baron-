@@ -395,24 +395,27 @@
 .bw-ts-plaque { z-index: 2; }
 .bw-rouleau, .bw-ts-fixe { position: absolute; inset: 0; display: block; }
 .bw-bande { display: block; height: 100%; transition-property: transform; transition-timing-function: cubic-bezier(0.12, 0.6, 0.18, 1.04); }
-.bw-ts-ligne { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: stretch; height: 100%; padding: 0.8cqw 1.4cqw; overflow: hidden; }
+.bw-ts-ligne { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: stretch; height: 100%; padding: 0.5cqw 1cqw; overflow: hidden; }
 .bw-ts-fixe.n2 { display: grid; grid-template-rows: 1fr 1fr; }
 .bw-ts-fixe.n1 .bw-ts-ligne { height: 100%; }
 .bw-ts-fixe.n2 .bw-ts-ligne { padding: 0.5cqw 1.4cqw; }
 .bw-ts-fixe .bw-ts-ligne { min-height: 0; animation: bw-arrive 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
-.bw-ts-case { display: flex; align-items: center; justify-content: center; gap: 2.2cqw; width: 100%; height: 100%; border-radius: 1cqw; background: radial-gradient(120% 140% at 30% 20%, color-mix(in srgb, var(--fond) 80%, #fff 20%), var(--fond) 60%, color-mix(in srgb, var(--fond) 70%, #000)); box-shadow: inset 0 0 0 0.35cqw rgba(214, 168, 75, 0.7); color: var(--texte, #f3e7cf); }
-.bw-ts-case img { height: 85%; min-height: 0; width: auto; filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)); }
-.bw-ts-case strong { font-family: var(--titre); font-weight: 400; font-size: 7cqw; line-height: 1; color: #ffe08a; text-shadow: 0 0.3cqw 0 rgba(0, 0, 0, 0.6); }
-.bw-ts-case em { font-style: normal; font-weight: 900; font-size: 3.2cqw; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
-.bw-ts-fixe.n2 .bw-ts-case img { height: 90%; }
-.bw-ts-fixe.n2 .bw-ts-case strong { font-size: 4.2cqw; }
-.bw-ts-fixe.n2 .bw-ts-case em { font-size: 2.3cqw; }
-.bw-ts-case.vide { background: none; box-shadow: none; color: rgba(243, 231, 207, 0.4); font-size: 5cqw; }
+.bw-ts-case { position: relative; display: block; height: 100%; aspect-ratio: 900 / 270; max-width: 100%; margin: auto; }
+.bw-ts-fond { position: absolute; left: 4.5%; right: 4.5%; top: 15%; bottom: 15%; background: var(--fond); box-shadow: inset 0 0 2.2cqw rgba(0, 0, 0, 0.45); }
+.bw-ts-cadre-case { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)); }
+.bw-ts-contenu { position: absolute; left: 7%; right: 7%; top: 18%; bottom: 18%; display: flex; align-items: center; justify-content: center; gap: 1.6cqw; color: var(--texte, #f3e7cf); }
+.bw-ts-contenu img { height: 118%; width: auto; filter: drop-shadow(0 0.4cqw 0.5cqw rgba(0, 0, 0, 0.55)); }
+.bw-ts-contenu em { font-style: normal; font-weight: 900; font-size: 3cqw; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Le chiffre et le ×N gravés en or, comme sur la roue. */
+.bw-or { font-family: var(--titre); font-weight: 400; line-height: 1; background: linear-gradient(180deg, #fff3c4, #f0c45e 45%, #c88a2a 55%, #ffe08a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0.25cqw 0 rgba(42, 18, 6, 0.95)) drop-shadow(0 0 0.4cqw rgba(0, 0, 0, 0.6)); }
+.bw-ts-contenu strong { font-size: 7cqw; }
+.bw-ts-fixe.n2 .bw-ts-contenu strong { font-size: 3.6cqw; }
+.bw-ts-fixe.n2 .bw-ts-contenu em { display: none; }
+.bw-ts-case.vide { aspect-ratio: auto; display: grid; place-items: center; color: rgba(243, 231, 207, 0.4); font-size: 5cqw; }
 .bw-ts-x { position: relative; display: grid; place-items: center; width: 100%; height: 100%; }
 .bw-ts-x img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)); }
-.bw-ts-x b { position: relative; margin-left: 9%; font-family: var(--titre); font-weight: 400; font-size: 6.4cqw; line-height: 1; color: #6e0f1a; }
-.bw-ts-x.b-baron b { color: #ffd774; text-shadow: 0 0 1cqw rgba(255, 200, 100, 0.8); }
-.bw-ts-fixe.n2 .bw-ts-x b { font-size: 3.8cqw; }
+.bw-ts-x b { position: relative; font-size: 6.6cqw; }
+.bw-ts-fixe.n2 .bw-ts-x b { font-size: 3.4cqw; }
 .bw-ts-attente { display: grid; place-items: center; height: 100%; font-family: var(--titre); font-size: 4.2cqw; color: rgba(255, 215, 116, 0.55); letter-spacing: 0.06em; }
 .bw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 /* Le filet doré des cases multipliées s'allume quand le rouleau du Top Slot s'arrête. */

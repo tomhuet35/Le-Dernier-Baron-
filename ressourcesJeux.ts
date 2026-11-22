@@ -369,6 +369,8 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bw-mano-aiguille.webp',
     '/cartes/bw-mano-cadran.webp',
     '/cartes/bw-topslot.webp',
+    '/cartes/bw-ts-plaque.webp',
+    '/cartes/bw-ts-plaque-x.webp',
     '/cartes/bw-rl-rail.webp',
     '/cartes/son-bw-palette.mp3',
     '/cartes/son-bw-cloche.mp3',
