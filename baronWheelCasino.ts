@@ -269,7 +269,7 @@ export function creerBaronWheel(options: {
     diffuser();
   }
 
-  /** Les mises sont fermées : le Top Slot tire une case (deux au Double départ) et son multiplicateur (×2 à ×200). */
+  /** Les mises sont fermées : le Top Slot tire une case et son multiplicateur (×2 à ×200). */
   function poserMultiplicateurs() {
     const impose = options.multiplicateurs?.();
     const valides = impose?.filter((b) => Number.isInteger(b.i) && b.i >= 0 && b.i < NB_CASES_BW && b.x >= 1);

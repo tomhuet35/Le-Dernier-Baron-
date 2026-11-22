@@ -80,30 +80,25 @@ describe('The Baron’s Wheel : les règles', () => {
     expect(r.express).toBeLessThan(4.5);
   });
 
-  it('tire au Top Slot une case (deux au Double départ, une manche sur cinq) et un multiplicateur de ×2 à ×200', () => {
+  it('tire au Top Slot une seule case par manche et un multiplicateur de ×2 à ×200', () => {
     const h = graine(21);
     const vus = new Set<number>();
-    let doubles = 0;
     const cases = new Map<string, number>();
     const N = 20000;
     for (let k = 0; k < N; k++) {
       const t = tirerTopSlotBW(h);
-      expect(t.length === 1 || t.length === 2).toBe(true);
-      if (t.length === 2) doubles++;
-      expect(new Set(t.map((x) => x.c)).size).toBe(t.length);
+      expect(t).toHaveLength(1);
       for (const x of t) {
         vus.add(x.x);
         cases.set(x.c, (cases.get(x.c) ?? 0) + 1);
       }
       // Toutes les cases de ce type sur la roue sont multipliées.
       const b = boostsDuTopSlotBW(t);
-      expect(b.length).toBe(t.reduce((s, x) => s + COMPOSITION_BW[x.c], 0));
-      for (const x of b) expect(t.find((y) => y.c === ROUE_BW[x.i])?.x).toBe(x.x);
+      expect(b.length).toBe(COMPOSITION_BW[t[0].c]);
+      for (const x of b) expect(ROUE_BW[x.i]).toBe(t[0].c);
     }
-    expect(doubles / N).toBeGreaterThan(0.18);
-    expect(doubles / N).toBeLessThan(0.22);
     // Autant de chances pour chacune des 9 cases.
-    for (const c of CASES_BW) expect((cases.get(c) ?? 0) / N).toBeCloseTo(1.2 / 9, 1);
+    for (const c of CASES_BW) expect((cases.get(c) ?? 0) / N).toBeCloseTo(1 / 9, 1);
     expect([...vus].sort((a, b) => a - b)).toEqual([2, 3, 5, 10, 20, 50, 100, 200]);
     expect(multiplicateurDe([{ i: 7, x: 25 }], 7)).toBe(25);
   });
@@ -176,15 +171,14 @@ describe('The Baron’s Wheel : les règles', () => {
 
 
 describe('The Baron Express : les événements de la gare', () => {
-  it('à l’heure de pointe, toujours un Double départ, sans changer ce que rend la roue', () => {
+  it('à l’heure de pointe, au moins ×5, sans changer ce que rend la roue', () => {
     expect(Math.abs(facteurMultiplicateursBW(true) / facteurMultiplicateursBW() - 1)).toBeLessThan(0.01);
     let k = 0;
     const h = () => ((k = (k * 9301 + 49297) % 233280) / 233280);
     for (let j = 0; j < 200; j++) {
       const t = tirerTopSlotBW(h, true);
-      expect(t).toHaveLength(2);
-      expect(t[0].c).not.toBe(t[1].c);
-      for (const x of t) expect(x.x).toBeLessThanOrEqual(100);
+      expect(t).toHaveLength(1);
+      expect(t[0].x).toBeGreaterThanOrEqual(5);
     }
   });
 

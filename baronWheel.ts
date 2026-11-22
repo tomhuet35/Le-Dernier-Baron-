@@ -61,20 +61,19 @@ export const MAX_MANCHE_BW = 30_000_000;
 
 /**
  * Le Top Slot : au-dessus de la roue, deux rouleaux s'arrêtent sur une case (l'une des 9, autant de chances pour
- * chacune) et un multiplicateur ; toutes les cases de ce type sur la roue reçoivent ce multiplicateur. Une manche sur
- * cinq, c'est un Double départ : deux cases différentes sont multipliées.
+ * chacune) et un multiplicateur ; toutes les cases de ce type sur la roue reçoivent ce multiplicateur. Un seul
+ * multiplicateur par manche.
  */
-export const DOUBLE_DEPART_BW = 0.2;
-/** Les multiplicateurs du Top Slot (×2 à ×200), et leur poids : ×12,44 en moyenne. */
+/** Les multiplicateurs du Top Slot (×2 à ×200), et leur poids : ×14,68 en moyenne. */
 export const MULTIPLICATEURS_BW: [number, number][] = [
   [2, 30],
   [3, 22],
   [5, 18],
-  [10, 13],
+  [10, 12],
   [20, 8],
-  [50, 5.5],
-  [100, 2.5],
-  [200, 1.07],
+  [50, 6],
+  [100, 3],
+  [200, 1.93],
 ];
 /** Un tirage du Top Slot : la case multipliée et son multiplicateur. */
 export interface TirageTopSlotBW {
@@ -247,13 +246,12 @@ export const perceeCasseBW = (k: number) => CASSE_BW.premiere + (k - 1) * CASSE_
 export const descenteCasseBW = (etage: number) => perceeCasseBW(etage) + (etage >= ETAGES_BRAQUAGE.length ? CASSE_BW.siecle : CASSE_BW.alarme + CASSE_BW.fuite);
 
 /**
- * Le Top Slot d'une manche : une case et son multiplicateur (deux cases différentes au Double départ). À l'heure de
- * pointe, c'est toujours un Double départ, avec une table plus légère : la roue rend autant en moyenne.
+ * Le Top Slot d'une manche : une case et son multiplicateur. À l'heure de pointe, le multiplicateur vaut au moins ×5
+ * (une table sans ×2 ni ×3, avec moins de très gros) : la roue rend autant en moyenne.
  */
 export function tirerTopSlotBW(h: Hasard, pointe = false): TirageTopSlotBW[] {
-  const n = pointe || h() < DOUBLE_DEPART_BW ? 2 : 1;
-  const cases = melanger([...CASES_BW], h).slice(0, n);
-  return cases.map((c) => ({ c, x: tirerTable(pointe ? MULTIPLICATEURS_POINTE_BW : MULTIPLICATEURS_BW, h) }));
+  const c = CASES_BW[Math.min(CASES_BW.length - 1, Math.floor(h() * CASES_BW.length))];
+  return [{ c, x: tirerTable(pointe ? MULTIPLICATEURS_POINTE_BW : MULTIPLICATEURS_BW, h) }];
 }
 /** Les cases de la roue multipliées par le Top Slot (toutes celles du type tiré). */
 export const boostsDuTopSlotBW = (t: TirageTopSlotBW[]): BoostBW[] => ROUE_BW.flatMap((c, i) => t.filter((x) => x.c === c).map((x) => ({ i, x: x.x })));
@@ -269,17 +267,16 @@ export const tirerMultiplicateursBW = (h: Hasard, pointe = false): BoostBW[] => 
 // -------------------------------------------------------------------------------------------------------------
 // Les événements de la gare (heure de Paris)
 
-/** L'heure de pointe : chaque soir de 19 h à 20 h, le Top Slot fait toujours un Double départ. */
+/** L'heure de pointe : chaque soir de 19 h à 20 h, le Top Slot donne toujours au moins ×5. */
 export const HEURE_DE_POINTE_BW = { debut: 19, fin: 20 };
-/** La table du Top Slot à l'heure de pointe : deux cases, des multiplicateurs plus modestes (×7,88 en moyenne). */
+/** La table du Top Slot à l'heure de pointe : jamais moins de ×5, moins de très gros (×14,73 en moyenne). */
 export const MULTIPLICATEURS_POINTE_BW: [number, number][] = [
-  [2, 30.5],
-  [3, 24],
-  [5, 20],
-  [10, 14],
-  [20, 7],
-  [50, 3.5],
-  [100, 1],
+  [5, 52],
+  [10, 25],
+  [20, 12],
+  [50, 8],
+  [100, 2.4],
+  [200, 0.4],
 ];
 /** Le Grand Départ : le samedi et le dimanche de 18 h à 22 h, l'XP compte double sur la roue. */
 export const GRAND_DEPART_BW = { jours: [6, 0], debut: 18, fin: 22 };
@@ -494,7 +491,7 @@ export const PASSAGE_EXPRESS_BW = 12_000;
 export const dureeMultiplicateursBW = (base: number, t: TirageTopSlotBW[] | null) => base + (t?.some((x) => x.c === 'express') ? PASSAGE_EXPRESS_BW : 0);
 export const DUREES_BW: DureesBW = {
   mises: 10_000,
-  multiplicateurs: 6_000,
+  multiplicateurs: 4_000,
   tour: 8_000,
   resultat: 6_000,
   chargement: 3_000,
@@ -628,15 +625,14 @@ export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable
   }
 }
 /**
- * Ce que les multiplicateurs ajoutent en moyenne à une case : le Top Slot tire 1,2 case sur 9 par manche, à ×12,44 en
- * moyenne, soit ×2,53 (à l'heure de pointe : 2 cases à ×7,88, presque autant).
+ * Ce que les multiplicateurs ajoutent en moyenne à une case : le Top Slot tire 1 case sur 9 par manche, à ×14,68 en
+ * moyenne, soit ×2,52 (à l'heure de pointe, au moins ×5 : ×14,73 en moyenne, autant).
  */
 export function facteurMultiplicateursBW(pointe = false): number {
   const table = pointe ? MULTIPLICATEURS_POINTE_BW : MULTIPLICATEURS_BW;
   const e = table.reduce((s, [x, p]) => s + x * p, 0) / table.reduce((s, [, p]) => s + p, 0);
-  // Chacune des 9 cases a autant de chances d'être tirée : 1,2 tirage par manche en moyenne (2 à l'heure de pointe).
-  const n = pointe ? 2 : 1 + DOUBLE_DEPART_BW;
-  return 1 + (n / CASES_BW.length) * (e - 1);
+  // Chacune des 9 cases a autant de chances d'être tirée, une seule par manche.
+  return 1 + (e - 1) / CASES_BW.length;
 }
 /** Ce que rend chaque mise en moyenne (multiplicateurs compris). */
 export function rtpBW(): Record<CaseBW, number> & { routes: Record<RouteBW, number> } {
