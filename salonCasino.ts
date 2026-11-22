@@ -108,7 +108,7 @@ import { creerTickets } from './ticketsCasino';
 import { creerToits } from './toitsCasino';
 import { creerCourse } from './courseCasino';
 import { creerBaronWheel } from './baronWheelCasino';
-import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, type BoostBW, type DureesBW } from '../shared/baronWheel';
+import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, evenementsBW, type BoostBW, type DureesBW } from '../shared/baronWheel';
 import type { DureesCourse } from '../shared/course';
 import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type AfficheCasino } from '../shared/afficheCasino';
 import type { DureesCouronne } from '../shared/couronne';
@@ -457,10 +457,10 @@ export function creerCasino(options: OptionsCasino) {
         p.bonusXp += extra;
         a.bonusXp = (a.bonusXp ?? 0) + extra;
       }
-      // Grande ouverture de The Baron's Wheel : ses mises comptent double pour l'XP (une seule fois si elle est aussi à l'affiche).
+      // Grande ouverture de The Baron's Wheel, ou Grand Départ du week-end : ses mises comptent double pour l'XP (une seule fois si elle est aussi à l'affiche).
       if (jeu === 'baronWheel' && aff?.jeu !== jeu && misee) {
         const fo = finOuvertureBW();
-        if (fo !== null && fo > horloge()) {
+        if ((fo !== null && fo > horloge()) || evenementsBW(horloge()).some((e) => e.type === 'depart')) {
           const extra = misee > 0 ? misee * (XP_AFFICHE - 1) : Math.max(misee * (XP_AFFICHE - 1), -p.bonusXp);
           p.bonusXp += extra;
           a.bonusXp = (a.bonusXp ?? 0) + extra;

@@ -18,6 +18,9 @@ import {
   recompenseBonusBW,
   ROUE_BW,
   rtpBW,
+  evenementsBW,
+  facteurMultiplicateursBW,
+  prochainEvenementBW,
   simulerBW,
   tirerBonusBW,
   estBonusBW,
@@ -161,6 +164,35 @@ describe('The Baron’s Wheel : les règles', () => {
 });
 
 // ---------- En direct ----------
+
+
+describe('The Baron Express : les événements de la gare', () => {
+  it('à l’heure de pointe, plus de cases multipliées, sans changer ce que rend la roue', () => {
+    expect(Math.abs(facteurMultiplicateursBW(true) / facteurMultiplicateursBW() - 1)).toBeLessThan(0.01);
+    let k = 0;
+    const h = () => ((k = (k * 9301 + 49297) % 233280) / 233280);
+    for (let j = 0; j < 200; j++) {
+      const b = tirerMultiplicateursBW(h, true);
+      expect(b.length).toBeGreaterThanOrEqual(5);
+      expect(b.length).toBeLessThanOrEqual(9);
+      expect(new Set(b.map((x) => x.i)).size).toBe(b.length);
+    }
+  });
+
+  it('l’heure de pointe chaque soir à 19 h, le Grand Départ le week-end de 18 h à 22 h (heure de Paris)', () => {
+    // Mardi 24 novembre 2026, 19 h 30 à Paris (18 h 30 UTC).
+    const mardi = Date.UTC(2026, 10, 24, 18, 30);
+    expect(evenementsBW(mardi).map((e) => e.type)).toEqual(['pointe']);
+    expect(evenementsBW(mardi)[0].reste).toBe(30 * 60_000);
+    expect(evenementsBW(Date.UTC(2026, 10, 24, 17, 30))).toEqual([]);
+    expect(prochainEvenementBW(Date.UTC(2026, 10, 24, 17, 45))).toEqual({ type: 'pointe', dans: 15 * 60_000 });
+    // Samedi 28 novembre 2026 : Grand Départ de 18 h à 22 h, l’heure de pointe en même temps à 19 h.
+    expect(evenementsBW(Date.UTC(2026, 10, 28, 17, 0)).map((e) => e.type)).toEqual(['depart']);
+    expect(evenementsBW(Date.UTC(2026, 10, 28, 18, 10)).map((e) => e.type).sort()).toEqual(['depart', 'pointe']);
+    expect(evenementsBW(Date.UTC(2026, 10, 27, 17, 0)).map((e) => e.type)).toEqual([]);
+    expect(prochainEvenementBW(Date.UTC(2026, 10, 29, 16, 20))?.type).toBe('depart');
+  });
+});
 
 const identites = {
   'jeton-a': { uid: 'uid-a', nom: 'Lucas', email: 'a@gmail.com' },

@@ -245,14 +245,69 @@ export const perceeCasseBW = (k: number) => CASSE_BW.premiere + (k - 1) * CASSE_
 /** La durée de la descente quand la perceuse s'arrête au sous-sol `etage` (au calendrier réel). */
 export const descenteCasseBW = (etage: number) => perceeCasseBW(etage) + (etage >= ETAGES_BRAQUAGE.length ? CASSE_BW.siecle : CASSE_BW.alarme + CASSE_BW.fuite);
 
-/** Les multiplicateurs d'une manche : 3 à 7 cases différentes, chacune avec son multiplicateur (×5 à ×100). */
-export function tirerMultiplicateursBW(h: Hasard): BoostBW[] {
-  const n = MIN_MULTIPLICATEURS_BW + Math.min(MAX_MULTIPLICATEURS_BW - MIN_MULTIPLICATEURS_BW, Math.floor(h() * (MAX_MULTIPLICATEURS_BW - MIN_MULTIPLICATEURS_BW + 1)));
+/**
+ * Les multiplicateurs d'une manche : 3 à 7 cases différentes, chacune avec son multiplicateur (×5 à ×100). À l'heure
+ * de pointe, 5 à 9 cases en reçoivent un, tirés d'une table plus légère : la roue en est couverte, sans rien changer à
+ * ce qu'elle rend en moyenne.
+ */
+export function tirerMultiplicateursBW(h: Hasard, pointe = false): BoostBW[] {
+  const min = MIN_MULTIPLICATEURS_BW + (pointe ? HEURE_DE_POINTE_BW.enPlus : 0);
+  const max = MAX_MULTIPLICATEURS_BW + (pointe ? HEURE_DE_POINTE_BW.enPlus : 0);
+  const n = min + Math.min(max - min, Math.floor(h() * (max - min + 1)));
   const cases = melanger(
     Array.from({ length: NB_CASES_BW }, (_, i) => i),
     h,
   );
-  return cases.slice(0, n).map((i) => ({ i, x: tirerTable(MULTIPLICATEURS_BW, h) }));
+  return cases.slice(0, n).map((i) => ({ i, x: tirerTable(pointe ? MULTIPLICATEURS_POINTE_BW : MULTIPLICATEURS_BW, h) }));
+}
+
+// -------------------------------------------------------------------------------------------------------------
+// Les événements de la gare (heure de Paris)
+
+/** L'heure de pointe : chaque soir de 19 h à 20 h, deux cases multipliées de plus par manche. */
+export const HEURE_DE_POINTE_BW = { debut: 19, fin: 20, enPlus: 2 };
+/** La table des multiplicateurs à l'heure de pointe : plus de cases, des multiplicateurs plus modestes (×7,55 en moyenne). */
+export const MULTIPLICATEURS_POINTE_BW: [number, number][] = [
+  [5, 52],
+  [7, 25],
+  [10, 14],
+  [15, 6],
+  [25, 2.4],
+  [50, 0.6],
+];
+/** Le Grand Départ : le samedi et le dimanche de 18 h à 22 h, l'XP compte double sur la roue. */
+export const GRAND_DEPART_BW = { jours: [6, 0], debut: 18, fin: 22 };
+export type EvenementBW = 'pointe' | 'depart';
+export interface EvenementEnCoursBW {
+  type: EvenementBW;
+  /** Millisecondes avant la fin. */
+  reste: number;
+}
+
+const formatParisBW = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hourCycle: 'h23', weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const JOURS_BW: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+/** Le jour de la semaine (0 : dimanche) et l'heure à Paris. */
+function heureParisBW(t: number): { jour: number; heure: number; minute: number; seconde: number } {
+  const p = Object.fromEntries(formatParisBW.formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  return { jour: JOURS_BW[p.weekday] ?? 0, heure: +p.hour, minute: +p.minute, seconde: +p.second };
+}
+/** Millisecondes jusqu'à l'heure pile `h` du même jour (depuis l'instant t, à Paris). */
+const jusquaBW = (p: { heure: number; minute: number; seconde: number }, h: number) => ((h - p.heure) * 3600 - p.minute * 60 - p.seconde) * 1000;
+
+/** Les événements en cours à l'instant t. */
+export function evenementsBW(t: number): EvenementEnCoursBW[] {
+  const p = heureParisBW(t);
+  const e: EvenementEnCoursBW[] = [];
+  if (p.heure >= HEURE_DE_POINTE_BW.debut && p.heure < HEURE_DE_POINTE_BW.fin) e.push({ type: 'pointe', reste: jusquaBW(p, HEURE_DE_POINTE_BW.fin) });
+  if (GRAND_DEPART_BW.jours.includes(p.jour) && p.heure >= GRAND_DEPART_BW.debut && p.heure < GRAND_DEPART_BW.fin) e.push({ type: 'depart', reste: jusquaBW(p, GRAND_DEPART_BW.fin) });
+  return e;
+}
+/** Le prochain événement s'il commence dans l'heure (pour l'annoncer). */
+export function prochainEvenementBW(t: number): { type: EvenementBW; dans: number } | null {
+  const p = heureParisBW(t);
+  if (GRAND_DEPART_BW.jours.includes(p.jour) && p.heure === GRAND_DEPART_BW.debut - 1) return { type: 'depart', dans: jusquaBW(p, GRAND_DEPART_BW.debut) };
+  if (p.heure === HEURE_DE_POINTE_BW.debut - 1) return { type: 'pointe', dans: jusquaBW(p, HEURE_DE_POINTE_BW.debut) };
+  return null;
 }
 /** Le multiplicateur d'une case de la roue (1 si elle n'en a pas). */
 export const multiplicateurDe = (boosts: BoostBW[] | null | undefined, i: number | null) => (i === null ? 1 : (boosts?.find((b) => b.i === i)?.x ?? 1));
@@ -564,11 +619,12 @@ export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable
 }
 /**
  * Ce que les multiplicateurs ajoutent en moyenne à une case : en moyenne 5 cases sur 30 en ont un, qui vaut ×10,15
- * en moyenne, soit ×2,53.
+ * en moyenne, soit ×2,53 (à l'heure de pointe : 7 cases à ×7,55, presque autant).
  */
-export function facteurMultiplicateursBW(): number {
-  const e = MULTIPLICATEURS_BW.reduce((s, [x, p]) => s + x * p, 0) / MULTIPLICATEURS_BW.reduce((s, [, p]) => s + p, 0);
-  const n = (MIN_MULTIPLICATEURS_BW + MAX_MULTIPLICATEURS_BW) / 2;
+export function facteurMultiplicateursBW(pointe = false): number {
+  const table = pointe ? MULTIPLICATEURS_POINTE_BW : MULTIPLICATEURS_BW;
+  const e = table.reduce((s, [x, p]) => s + x * p, 0) / table.reduce((s, [, p]) => s + p, 0);
+  const n = (MIN_MULTIPLICATEURS_BW + MAX_MULTIPLICATEURS_BW) / 2 + (pointe ? HEURE_DE_POINTE_BW.enPlus : 0);
   return 1 + (n / NB_CASES_BW) * (e - 1);
 }
 /** Ce que rend chaque mise en moyenne (multiplicateurs compris). */
@@ -731,6 +787,9 @@ export interface VueBW {
   solde: number;
   /** Grande ouverture en cours : millisecondes avant la fin. */
   ouverture: number | null;
+  /** Les événements de la gare en cours (heure de pointe, Grand Départ), et le prochain s'il commence dans l'heure. */
+  evenements: EvenementEnCoursBW[];
+  prochain: { type: EvenementBW; dans: number } | null;
 }
 
 /** Une ligne du journal d'un joueur (ses 20 dernières manches). */

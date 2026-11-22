@@ -25,6 +25,8 @@ import {
   GAINS_CHIFFRES_BW,
   multiplicateurDe,
   tirerMultiplicateursBW,
+  evenementsBW,
+  prochainEvenementBW,
   JETONS_BW,
   MAX_CASE_BW,
   MAX_MANCHE_BW,
@@ -212,6 +214,8 @@ export function creerBaronWheel(options: {
       spectateurs: uidsSpectateurs().size,
       solde: uid ? banque.solde(uid) : 0,
       ouverture: ouverture === null ? null : ouverture - t,
+      evenements: evenementsBW(t),
+      prochain: prochainEvenementBW(t),
     };
   }
 
@@ -261,7 +265,7 @@ export function creerBaronWheel(options: {
   function poserMultiplicateurs() {
     const impose = options.multiplicateurs?.();
     const valides = impose?.filter((b) => Number.isInteger(b.i) && b.i >= 0 && b.i < NB_CASES_BW && b.x >= 1);
-    boosts = valides ?? tirerMultiplicateursBW(hasard);
+    boosts = valides ?? tirerMultiplicateursBW(hasard, evenementsBW(horloge()).some((e) => e.type === 'pointe'));
     phase = 'multiplicateurs';
     fin = horloge() + D.multiplicateurs;
     duree = D.multiplicateurs;
