@@ -185,18 +185,17 @@ const MOTRICE = {
 const NB_BOUFFEES = 8;
 
 /** Une case de la roue : son panneau de laque, son chiffre gravé ou son médaillon. */
-function CaseRoue({ i, ressort }: { i: number; ressort?: boolean }) {
+function CaseRoue({ i }: { i: number }) {
   const c = ROUE_BW[i];
   const a1 = i * DEGRES_CASE_BW;
   const a2 = a1 + DEGRES_CASE_BW;
   const milieu = a1 + DEGRES_CASE_BW / 2;
   const vis = CASES_VISUELS[c];
   return (
-    <g className={`bw-secteur ${c} ${ressort ? 'bw-ressort' : ''}`}>
+    <g className={`bw-secteur ${c}`}>
       <path d={secteur(118, 362, a1, a2)} fill={vis.fond} />
       <image href={vis.texture} x={-38} y={-363} width={76} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
       <path d={secteur(118, 362, a1, a2)} className="bw-reflet" />
-      {ressort && <path d={secteur(300, 362, a1 + 0.6, a2 - 0.6)} className="bw-eventail" />}
       {vis.image ? (
         <image href={vis.image} x={-34} y={-318} width={68} height={69} transform={`rotate(${milieu})`} />
       ) : (
@@ -215,7 +214,6 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
   const bielle = useRef<HTMLImageElement>(null);
   const crosse = useRef<HTMLImageElement>(null);
   const bouffees = useRef<(HTMLImageElement | null)[]>([]);
-  const gagnante = v.phase === 'bonus' || v.phase === 'resultat' ? v.arret : null;
   const boosts = v.multiplicateurs ?? [];
 
   useEffect(() => {
@@ -376,7 +374,6 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
           {ROUE_BW.map((_, i) => (
             <line key={i} x1="0" y1="-118" x2="0" y2="-363" transform={`rotate(${i * DEGRES_CASE_BW})`} className="bw-filet" />
           ))}
-          {gagnante !== null && <CaseRoue key={`r${v.numero}`} i={gagnante} ressort />}
           {/* Les multiplicateurs : un liseré rouge autour de la case, et son ×N en rouge néon près du centre. */}
           {boosts.map((b, k) => {
             const a1 = b.i * DEGRES_CASE_BW;
@@ -400,7 +397,6 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
             );
           })}
           <path ref={frole} className="bw-frole" d="M0 0" />
-          {gagnante !== null && <path className="bw-gagnante" d={secteur(118, 362, gagnante * DEGRES_CASE_BW, (gagnante + 1) * DEGRES_CASE_BW)} />}
           <circle r="120" className="bw-anneau" />
         </svg>
         <img className="bw-rl-moyeu" src="/cartes/bw-rl-moyeu.webp" alt="" draggable={false} />
@@ -886,8 +882,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   const solde = useSoldeAnime(v?.solde ?? vue.solde);
   const horloges = useRef<HorlogesRoue>({ v: null, debut: null, numero: -1 });
   const lampes = useRef<(HTMLDivElement | null)[]>([]);
-  /** Le médaillon du bonus tiré grossit jusqu'à remplir l'écran, avant que la scène du bonus ne s'ouvre. */
-  const [ouvertureBonus, setOuvertureBonus] = useState<{ type: BonusBW; id: number } | null>(null);
+
   const [finPhase, setFinPhase] = useState<number | null>(null);
   const clePhase = useRef('');
 
@@ -970,11 +965,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       jouerEffet('bw_sifflet');
     }
     if (avant.phase === 'tour' && v.phase !== 'tour') jouerEffet('bw_arret');
-    if (avant.phase === 'tour' && v.phase === 'bonus' && v.bonus && !mouvementReduit()) {
-      const o = { type: v.bonus.type, id: Date.now() };
-      setOuvertureBonus(o);
-      plusTard(() => setOuvertureBonus((x) => (x?.id === o.id ? null : x)), 2300);
-    }
     if (v.phase === 'bonus' && v.bonus) {
       const n = etapeNom(v);
       // L'Express et le Braquage jouent leurs propres sons.
@@ -1076,7 +1066,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         </strong>
       );
   }
-  const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat') && !ouvertureBonus;
+  const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat');
   const gagnante = v && v.arret !== null && v.phase === 'resultat' ? ROUE_BW[v.arret] : null;
 
   return (
@@ -1127,12 +1117,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       <div className="bw-plateau">
         {v && !enBonus && <LampesDecor lampes={lampes} />}
         {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} />)}
-        {ouvertureBonus && (
-          <div className="bw-medaillon-geant" key={ouvertureBonus.id} aria-hidden="true">
-            <img src={CASES_VISUELS[ouvertureBonus.type].image} alt="" draggable={false} />
-            <strong>{tr(...NOMS_BONUS[ouvertureBonus.type])}</strong>
-          </div>
-        )}
         {!v && <div className="chargement">{erreur ?? tr('La roue arrive…', 'The wheel is coming…')}</div>}
         <span className="bw-direct">
           {tr('En direct', 'Live')}
@@ -1145,7 +1129,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         {v?.phase === 'mises' && <Barre v={v} cle={`m${v.numero}`} />}
       </div>
 
-      {v && v.phase === 'resultat' && v.bonus && !ouvertureBonus && <Podium v={v} />}
+      {v && v.phase === 'resultat' && v.bonus && <Podium v={v} />}
 
       {v?.bilan && v.bilan.mise > 0 && (
         <div className={`bw-bilan ${v.bilan.gain > v.bilan.mise ? 'gagne' : v.bilan.gain > 0 ? 'rendu' : 'perdu'}`}>
