@@ -6,8 +6,9 @@
  * choix (chacun les siens), les autres regardent.
  *
  * - La roue : 12 cases « 1X », 9 « 2X », 6 « 5X », 3 « 10X », 3 BARON, 2 PICKPOCKET, 2 GRANDE ÉVASION, 3 BRAQUAGE.
- *   Toutes les cases ont la même chance (1 sur 40). Les cases chiffres paient ×2,5, ×3,3, ×5 et ×10 (mise comprise) ;
- *   les bonus, plus rares, paient gros (×5 à ×500).
+ *   Toutes les cases ont la même chance (1 sur 40). Les cases chiffres paient ×2, ×3, ×5 et ×10 (mise comprise) ;
+ *   les bonus, plus rares, paient gros (×5 à ×1 000) : ce que les petites cases ont perdu en passant de ×2,7 et ×3,3 à
+ *   ×2 et ×3 a été rendu aux bonus, sous forme de nouveaux gros multiples (voir rtpBW).
  * - Les multiplicateurs : une fois les mises fermées, 3 à 8 cases de la roue reçoivent un multiplicateur (×5 à ×100).
  *   Si la roue s'arrête sur l'une d'elles, ses gains sont multipliés (pour un bonus : tous ses multiplicateurs, sauf les
  *   jackpots, qui restent fixes). Choix du créateur : la roue est le jeu généreux du salon ; multiplicateurs compris,
@@ -57,8 +58,8 @@ export const ROUE_BW: CaseBW[] = (() => {
   return chiffres.flatMap((g, i): CaseBW[] => [...g, bonus[i]]);
 })();
 
-/** Ce que paie une case chiffre (mise comprise) : ×2,7 pour 1 000 $ misés sur le 1X, 2 700 $ reçus. */
-export const GAINS_CHIFFRES_BW: Record<ChiffreBW, number> = { x1: 2.7, x2: 3.3, x5: 5, x10: 10 };
+/** Ce que paie une case chiffre (mise comprise) : ×2 pour 1 000 $ misés sur le 1X, 2 000 $ reçus. */
+export const GAINS_CHIFFRES_BW: Record<ChiffreBW, number> = { x1: 2, x2: 3, x5: 5, x10: 10 };
 
 /** Les mises : jetons (jusqu'à 10 000 000 $), plafond par case et par manche (30 000 000 $). */
 export const JETONS_BW = [1_000, 5_000, 25_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000];
@@ -132,6 +133,7 @@ export const CARTES_BARON: TableBW<number | 'jackpot'> = [
   [25, 500],
   [50, 250],
   [100, 75],
+  [250, 36],
   ['jackpot', 125],
 ];
 export const JACKPOTS_BARON: TableBW<JackpotBW> = [
@@ -150,6 +152,7 @@ export const BUTIN_PICKPOCKET: TableBW<number> = [
   [50, 1500],
   [100, 750],
   [200, 250],
+  [500, 85],
 ];
 export const PETITES_MALLETTES: TableBW<number> = [
   [2, 3000],
@@ -169,6 +172,7 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
       [15, 3500],
       [20, 2500],
       [30, 1000],
+      [50, 437],
     ],
   },
   ruelles: {
@@ -178,6 +182,7 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
       [30, 3000],
       [50, 2500],
       [100, 1000],
+      [200, 211],
     ],
   },
   souterrains: {
@@ -187,6 +192,7 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
       [100, 3500],
       [200, 2000],
       [500, 500],
+      [1000, 120],
     ],
   },
 };
@@ -213,7 +219,7 @@ export interface IssueRouteBW {
  * file avec le butin. Le premier sous-sol est toujours atteint ; le cinquième, le Coffre du Siècle, cache en plus un
  * jackpot (sa valeur fixe s'ajoute au multiple).
  */
-export const ETAGES_BRAQUAGE = [3, 6, 12, 30, 100];
+export const ETAGES_BRAQUAGE = [3, 6, 12, 30, 150];
 /** Le sous-sol où s'arrête la perceuse (l'alarme sonne pendant qu'elle perce le suivant) ; 5 : le Coffre du Siècle. */
 export const ARRET_BRAQUAGE: TableBW<number> = [
   [1, 5100],
