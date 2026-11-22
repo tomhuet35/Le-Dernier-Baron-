@@ -80,11 +80,11 @@ const VITESSE: Record<NiveauToits, number> = { promenade: 0.55, express: 0.9, ra
 const T = { course: 380, vol: 520, pose: 200, suite: 420 };
 const DUREE_SAUT = T.course + T.vol + T.pose + T.suite;
 /**
- * Le tunnel (1284 × 720) : une montagne, l'entrée à gauche, la sortie à droite (le même portail en miroir), dessinée
+ * Le tunnel (1774 × 895) : une montagne, l'entrée à gauche, la sortie à droite (le même portail en miroir), dessinée
  * devant le train, qui y disparaît et ressort de l'autre côté. Le haut des rails, le haut des arches, le bord gauche du
  * portail ; l'arche fait un peu plus qu'un wagon de haut.
  */
-const TUNNEL = { w: 1284, h: 720, rails: 496, arche: 276, face: 45, hauteurArche: 1.05 };
+const TUNNEL = { w: 1774, h: 895, rails: 809, arche: 425, face: 150, hauteurArche: 1.05 };
 /** La chute : le moment du choc (tunnel) ou du décrochage, la chute elle-même. */
 const CHUTE = { choc: T.course + T.vol * 0.45, decroche: T.course - 180, duree: 1100 };
 
