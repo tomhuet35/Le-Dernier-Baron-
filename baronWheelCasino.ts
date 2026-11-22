@@ -24,7 +24,10 @@ import {
   gainBW,
   GAINS_CHIFFRES_BW,
   multiplicateurDe,
-  tirerMultiplicateursBW,
+  tirerTopSlotBW,
+  boostsDuTopSlotBW,
+  topSlotDesBoostsBW,
+  type TirageTopSlotBW,
   evenementsBW,
   prochainEvenementBW,
   JETONS_BW,
@@ -117,6 +120,7 @@ export function creerBaronWheel(options: {
   let tour: { depart: number; arrivee: number; debut: number; duree: number } | null = null;
   let arret: number | null = null;
   let boosts: BoostBW[] | null = null;
+  let topSlot: TirageTopSlotBW[] | null = null;
   let tirage: TirageBonusBW | null = null;
   let etapes: EtapeBonusBW[] = [];
   let etape = 0;
@@ -203,6 +207,7 @@ export function creerBaronWheel(options: {
       tour: tour && phase === 'tour' ? { depart: tour.depart, arrivee: tour.arrivee, ecoule: t - tour.debut, duree: tour.duree } : null,
       arret: phase === 'mises' || phase === 'multiplicateurs' ? null : arret,
       multiplicateurs: phase === 'mises' ? null : boosts,
+      topSlot: phase === 'mises' ? null : topSlot,
       bonus: phase === 'bonus' || phase === 'resultat' ? vueBonus(j) : null,
       mesMises: j ? { ...j.mises } : {},
       peutRefaire: !!uid && !!precedentes.get(uid) && totalMises(precedentes.get(uid) ?? {}) > 0,
@@ -249,23 +254,31 @@ export function creerBaronWheel(options: {
       fin = null;
       duree = null;
       boosts = null;
+      topSlot = null;
       return;
     }
     enCours = true;
     numero += 1;
     phase = 'mises';
     boosts = null;
+    topSlot = null;
     fin = horloge() + D.mises;
     duree = D.mises;
     plusTard(poserMultiplicateurs, D.mises);
     diffuser();
   }
 
-  /** Les mises sont fermées : 3 à 7 cases de la roue reçoivent un multiplicateur (×5 à ×100). */
+  /** Les mises sont fermées : le Top Slot tire une case (deux au Double départ) et son multiplicateur (×2 à ×200). */
   function poserMultiplicateurs() {
     const impose = options.multiplicateurs?.();
     const valides = impose?.filter((b) => Number.isInteger(b.i) && b.i >= 0 && b.i < NB_CASES_BW && b.x >= 1);
-    boosts = valides ?? tirerMultiplicateursBW(hasard, evenementsBW(horloge()).some((e) => e.type === 'pointe'));
+    if (valides) {
+      boosts = valides;
+      topSlot = topSlotDesBoostsBW(valides);
+    } else {
+      topSlot = tirerTopSlotBW(hasard, evenementsBW(horloge()).some((e) => e.type === 'pointe'));
+      boosts = boostsDuTopSlotBW(topSlot);
+    }
     phase = 'multiplicateurs';
     fin = horloge() + D.multiplicateurs;
     duree = D.multiplicateurs;

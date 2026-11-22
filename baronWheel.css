@@ -98,7 +98,7 @@
 .bw-podium strong { font-family: var(--titre); font-weight: 400; color: #9fe39a; white-space: nowrap; }
 .bw-rl-jante { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; max-width: none; pointer-events: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.65)); }
 .bw-rl-moyeu { position: absolute; left: 33.4%; top: 33.4%; width: 33.2%; height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6)); }
-.bw-rl-rails { position: absolute; left: -150%; top: 93.5%; z-index: 0; width: 400%; height: 27.8%; background: url('/cartes/bw-rl-rails.webp') 50% 0 / 11.35% auto repeat-x; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6)); }
+.bw-rl-rails { position: absolute; left: -150%; top: 95.2%; z-index: 0; width: 400%; height: 27.7%; background: url('/cartes/bw-rl-rail.webp') 50% 0 / 34.05% auto repeat-x; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6)); }
 .bw-rl-glissiere { position: absolute; left: 53.5%; top: 50%; z-index: 3; width: 52%; height: auto; max-width: none; transform: translateY(-50%); pointer-events: none; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6)); }
 .bw-rl-crosse { position: absolute; left: 0; top: 0; z-index: 4; height: auto; max-width: none; pointer-events: none; will-change: transform; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
 .bw-rl-bielle { position: absolute; left: 0; top: 0; z-index: 5; height: auto; max-width: none; pointer-events: none; transform-origin: 10.44% 50%; will-change: transform; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.65)); }
@@ -314,9 +314,9 @@
 
 /* Les multiplicateurs : posés sur la roue une fois les mises fermées : un filet doré autour de la case, et un billet
    de train poinçonné avec son ×N (2ᵉ classe, 1ʳᵉ classe à ×25, billet du Baron à ×50 et plus). */
-.bw-boost-lisere { fill: none; stroke: #ffd774; stroke-width: 5; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(255, 205, 100, 0.9)); }
-.bw-boost.gros .bw-boost-lisere { stroke-width: 5.5; }
-.bw-boost.enorme .bw-boost-lisere { stroke: #ffe9a8; stroke-width: 6.5; filter: drop-shadow(0 0 6px rgba(255, 215, 110, 1)); }
+.bw-boost-lisere { fill: none; stroke: #ffe9a8; stroke-width: 7; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(255, 205, 100, 1)); }
+.bw-boost.gros .bw-boost-lisere { stroke-width: 7.5; }
+.bw-boost.enorme .bw-boost-lisere { stroke: #ffe9a8; stroke-width: 8.5; filter: drop-shadow(0 0 9px rgba(255, 215, 110, 1)); }
 .bw-boost-etiquette { transform-box: fill-box; transform-origin: center; }
 .bw-boost-etiquette image { filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.75)); }
 .bw-boost-etiquette text { font-family: var(--titre); fill: #6e0f1a; stroke: #6e0f1a; stroke-width: 0.6px; }
@@ -373,29 +373,51 @@
 
 /* Le multiplicateur de la roue compris dès le début des bonus. */
 
-/* ---------- Le tableau des départs ---------- */
-.bw-tableau { container-type: inline-size; position: relative; display: grid; gap: 4px; padding: 6px 8px 8px; border-radius: 10px; border: 2px solid #c8963e; background: linear-gradient(180deg, #17110c, #0b0806); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.8), inset 0 0 0 3px rgba(214, 168, 75, 0.25), 0 6px 14px rgba(0, 0, 0, 0.6); }
+/* ---------- Le cadre des départs (l'historique) ---------- */
+.bw-tableau { position: relative; display: grid; gap: 4px; padding: 6px 10px 8px; border-radius: 10px; border: 2px solid #c8963e; background: linear-gradient(180deg, #17110c, #0b0806); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.8), inset 0 0 0 3px rgba(214, 168, 75, 0.25), 0 6px 14px rgba(0, 0, 0, 0.6); }
 .bw-tableau::before, .bw-tableau::after { content: ''; position: absolute; top: 5px; width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe7a6, #8a5a1a); box-shadow: 0 1px 1px #000; }
 .bw-tableau::before { left: 5px; }
 .bw-tableau::after { right: 5px; }
-.bw-tableau header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0 8px; }
+.bw-tableau header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px; }
 .bw-tableau header strong { font-family: var(--titre); font-weight: 400; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: #ffd774; text-shadow: 0 0 8px rgba(255, 200, 100, 0.5); }
-.bw-tableau-cols { display: grid; grid-template-columns: 10fr 9fr; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(243, 231, 207, 0.55); }
-.bw-tableau-cols i { font-style: normal; }
 .bw-tableau .bw-bouton-journal { padding: 3px 10px; font-size: 11px; }
-.bw-tableau ol { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
-.bw-depart { --lampe: #f3e7cf; display: grid; grid-template-columns: 10fr 9fr; gap: calc(100cqw / 19 * 0.35); }
-.bw-depart-dest, .bw-depart-etat { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 1px; }
-.bw-palette { position: relative; display: grid; place-items: center; aspect-ratio: 160 / 244; overflow: hidden; background: url('/cartes/bw-tableau-palette.webp') center / 100% 100% no-repeat; perspective: 60px; }
-.bw-palette b { display: block; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-weight: 800; font-size: calc(100cqw / 19 * 0.56); line-height: 1; color: #f3e7cf; text-shadow: 0 1px 0 #000; animation: bw-flap 0.07s linear both; }
-@keyframes bw-flap { from { transform: rotateX(70deg) scaleY(0.6); opacity: 0.4; } }
-.bw-depart.rang1 .bw-palette b, .bw-depart.rang2 .bw-palette b { opacity: 0.82; }
-.bw-depart .bw-depart-dest .bw-palette b { color: color-mix(in srgb, var(--lampe) 70%, #f3e7cf); }
-.bw-depart.x1 .bw-depart-dest .bw-palette b, .bw-depart.x2 .bw-depart-dest .bw-palette b, .bw-depart.x5 .bw-depart-dest .bw-palette b, .bw-depart.x10 .bw-depart-dest .bw-palette b { color: #f3e7cf; }
-.bw-depart-etat .bw-palette b { color: #ffcf6b; }
-.bw-depart.multiplie .bw-depart-etat .bw-palette b { color: #ffe9a8; text-shadow: 0 0 6px rgba(255, 210, 110, 0.9); }
-.bw-tableau-suite { display: flex; gap: 4px; overflow: hidden; padding: 4px 6px 0; mask-image: linear-gradient(90deg, #000 80%, transparent); }
-.bw-tableau-suite .bw-pastille { flex: none; transform: scale(0.82); transform-origin: left center; margin-right: -5px; opacity: 0.8; }
+.bw-tableau .bw-historique { padding: 8px 2px 2px; min-height: 36px; }
+
+/* ---------- Le Top Slot, au-dessus de la roue ---------- */
+.bw-topslot { container-type: inline-size; position: relative; order: 4; justify-self: center; width: min(100%, 560px); aspect-ratio: 1200 / 450; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7)); }
+.bw-ts-cadre { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.bw-ts-plaque { position: absolute; left: 37.5%; top: 25.5%; width: 25%; height: 11.5%; display: grid; place-items: center; font-family: var(--titre); font-size: 2.7cqw; letter-spacing: 0.04em; white-space: nowrap; color: #ffd774; text-shadow: 0 0 6px rgba(255, 200, 100, 0.7); }
+.bw-topslot.double .bw-ts-plaque { color: #fff1c4; animation: bw-scintille 0.8s ease-in-out infinite; }
+.bw-ts-fenetre { position: absolute; top: 43.75%; height: 37.6%; overflow: hidden; border-radius: 1.2cqw; z-index: 2; box-shadow: inset 0 0 1.6cqw rgba(0, 0, 0, 0.95); }
+.bw-ts-fenetre.gauche { left: 6.25%; width: 53.8%; }
+.bw-ts-fenetre.droite { left: 64.2%; width: 29.6%; }
+.bw-topslot > .bw-ts-cadre { z-index: 1; }
+.bw-ts-plaque { z-index: 2; }
+.bw-rouleau, .bw-ts-fixe { position: absolute; inset: 0; display: block; }
+.bw-bande { display: block; height: 100%; transition-property: transform; transition-timing-function: cubic-bezier(0.12, 0.6, 0.18, 1.04); }
+.bw-ts-ligne { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: stretch; height: 100%; padding: 0.8cqw 1.4cqw; overflow: hidden; }
+.bw-ts-fixe.n2 { display: grid; grid-template-rows: 1fr 1fr; }
+.bw-ts-fixe.n1 .bw-ts-ligne { height: 100%; }
+.bw-ts-fixe.n2 .bw-ts-ligne { padding: 0.5cqw 1.4cqw; }
+.bw-ts-fixe .bw-ts-ligne { min-height: 0; animation: bw-arrive 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bw-ts-case { display: flex; align-items: center; justify-content: center; gap: 2.2cqw; width: 100%; height: 100%; border-radius: 1cqw; background: radial-gradient(120% 140% at 30% 20%, color-mix(in srgb, var(--fond) 80%, #fff 20%), var(--fond) 60%, color-mix(in srgb, var(--fond) 70%, #000)); box-shadow: inset 0 0 0 0.35cqw rgba(214, 168, 75, 0.7); color: var(--texte, #f3e7cf); }
+.bw-ts-case img { height: 85%; min-height: 0; width: auto; filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)); }
+.bw-ts-case strong { font-family: var(--titre); font-weight: 400; font-size: 7cqw; line-height: 1; color: #ffe08a; text-shadow: 0 0.3cqw 0 rgba(0, 0, 0, 0.6); }
+.bw-ts-case.x5 strong { color: #6e3a0a; text-shadow: none; }
+.bw-ts-case em { font-style: normal; font-weight: 900; font-size: 3.2cqw; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.bw-ts-fixe.n2 .bw-ts-case img { height: 90%; }
+.bw-ts-fixe.n2 .bw-ts-case strong { font-size: 4.2cqw; }
+.bw-ts-fixe.n2 .bw-ts-case em { font-size: 2.3cqw; }
+.bw-ts-case.vide { background: none; box-shadow: none; color: rgba(243, 231, 207, 0.4); font-size: 5cqw; }
+.bw-ts-x { position: relative; display: grid; place-items: center; width: 100%; height: 100%; }
+.bw-ts-x img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)); }
+.bw-ts-x b { position: relative; margin-left: 9%; font-family: var(--titre); font-weight: 400; font-size: 6.4cqw; line-height: 1; color: #6e0f1a; }
+.bw-ts-x.b-baron b { color: #ffd774; text-shadow: 0 0 1cqw rgba(255, 200, 100, 0.8); }
+.bw-ts-fixe.n2 .bw-ts-x b { font-size: 3.8cqw; }
+.bw-ts-attente { display: grid; place-items: center; height: 100%; font-family: var(--titre); font-size: 4.2cqw; color: rgba(255, 215, 116, 0.55); letter-spacing: 0.06em; }
+.bw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+/* Le filet doré des cases multipliées s'allume quand le rouleau du Top Slot s'arrête. */
+.bw-roue.multiplicateurs .bw-boost-lisere { animation: bw-boost-flash 0.8s ease-out calc(var(--d, 0ms) + var(--k) * 40ms) both !important; }
 
 /* ---------- Le manomètre ---------- */
 .bw-mano { position: absolute; top: 3%; right: 2%; z-index: 4; width: clamp(58px, 14%, 120px); aspect-ratio: 1; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); }
@@ -430,7 +452,9 @@
 .bw-palier > b { position: relative; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 8.5vw, 60px); color: #b8f0b4; text-shadow: 0 0 18px rgba(120, 220, 120, 0.7), 0 3px 6px #000; }
 
 /* ---------- Le train qui traverse la gare (sur les rails, devant la roue) ---------- */
-.bw-train-passe { position: absolute; left: 0; z-index: 3; width: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); animation: bw-train-passe 5.5s cubic-bezier(0.45, 0, 0.6, 1) both; }
+.bw-train-passe { position: absolute; left: 0; z-index: 3; display: flex; align-items: flex-end; pointer-events: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); animation: bw-train-passe 9.5s cubic-bezier(0.35, 0, 0.75, 1) both; will-change: transform; }
+.bw-train-passe img { display: block; flex: none; height: 100%; width: auto; max-width: none; margin-right: -0.4%; }
+.bw-train-passe img.loco { height: 98.3%; margin-right: 0; }
 @keyframes bw-train-passe { from { transform: translateX(var(--de, -100vw)); } to { transform: translateX(var(--a, 100vw)); } }
 
 /* ---------- Les événements de la gare ---------- */
@@ -444,11 +468,9 @@
 .bw-evenement.bientot { border-style: dashed; background: rgba(20, 10, 6, 0.85); box-shadow: none; }
 .bw-evenement.bientot strong { animation: none; }
 @media (prefers-reduced-motion: reduce) {
-  .bw-palette b, .bw-poinconnage, .bw-poinconnage *, .bw-train-passe { animation: none !important; }
-}
+  }
 @media (max-width: 699px) {
-  .bw-depart.rang1, .bw-depart.rang2, .bw-tableau-cols { display: none; }
-  .bw-tableau header { display: flex; justify-content: space-between; }
+    .bw-tableau header { display: flex; justify-content: space-between; }
   .bw-tableau { padding: 5px 6px 6px; }
   .bw-tableau header strong { font-size: 14px; }
   .bw-evenement { grid-template-columns: 36px minmax(0, 1fr) auto; padding: 4px 10px 4px 5px; }
