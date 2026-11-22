@@ -4,7 +4,7 @@
  * « Le Bandit du Baron ». Tout l'argent est fictif et tenu par le serveur.
  */
 import { DOLLARS_PAR_RUBIS, MISES_PLINKO, MULTI_MAX_PLINKO, MULTIPLICATEURS_PLINKO, RANGEES_PLINKO, type MisePlinko } from '../../shared/plinko';
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   CASE_VERTE_SALON,
   CASES_ROUE_SALON,
@@ -61,6 +61,7 @@ import { EcranMarche } from './CasinoMarche';
 import { EcranTailleur } from './CasinoTailleur';
 import { cadreSpecial, type VueVentes } from '../../shared/ventes';
 import { AccueilGroom, AnnoncesHotel, CadeauBienvenue, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, Penthouse } from './CasinoHotel';
+import { ContexteSalon, FenetreParametres, IconeParametres, RappelPause } from './CasinoParametres';
 import { etage, etageDuJeu, etageOuvert, ETAGES, type CadeauSemaine, type Etage } from '../../shared/hotel';
 import { MORCEAUX_PAGE, morceauxDe } from '../../shared/contrats';
 import { Depannage, VIGNETTES_ALBUM } from './CasinoContrats';
@@ -72,7 +73,7 @@ import type { EtatCompte } from './Profil';
 import { COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRoue } from './RouletteDuJour';
 import { socket } from './socket';
 import { EN, tr } from './traduction';
-import { BoutonMusique, Celebration, Fenetre, Garde, jouerEffet, mouvementReduit, musiqueDuCasino, musiqueDuSalon, useCompteur } from './ui';
+import { Celebration, Fenetre, Garde, jouerEffet, mouvementReduit, musiqueDuCasino, musiqueDuSalon, useCompteur } from './ui';
 import { dollars, dollarsCourt, GainDefilant, Jeton, LINGOTS_PALIER, OptionsMachine, palierDe, PluieLingots, useSoldeAnime, useToursAuto, type Palier } from './casinoOutils';
 import './casino.css';
 
@@ -2264,6 +2265,8 @@ function Accueil({
 /** Le menu du salon (aussi ouvert depuis un jeu, par-dessus la partie). */
 function MenuSalon(p: { onFermer: () => void; onProfil: () => void; onAmis: () => void; onDefis: () => void; onBureau: () => void; onRiches: () => void; onQuitter: () => void }) {
   const puis = (f: () => void) => () => (p.onFermer(), f());
+  const [parametres, setParametres] = useState(false);
+  if (parametres) return <FenetreParametres onFermer={p.onFermer} onQuitter={p.onQuitter} />;
   return (
     <Fenetre titre={tr('Salon privé', 'Private lounge')} onFermer={p.onFermer}>
       <div className="ac-menu-liste">
@@ -2282,7 +2285,10 @@ function MenuSalon(p: { onFermer: () => void; onProfil: () => void; onAmis: () =
         <button type="button" onClick={puis(p.onRiches)}>
           <img src="/cartes/icone-scores.webp" alt="" /> {tr('Les plus riches', 'Richest players')}
         </button>
-        <BoutonMusique />
+        <button type="button" onClick={() => setParametres(true)}>
+          <IconeParametres /> {tr('Paramètres', 'Settings')}
+          <small className="ac-menu-sous">{tr('Son, animations, pause, compte…', 'Sound, animations, breaks, account…')}</small>
+        </button>
         <button type="button" className="ac-quitter" onClick={puis(p.onQuitter)}>
           ‹ {tr('Quitter le salon', 'Leave the lounge')}
         </button>
@@ -2331,6 +2337,7 @@ export default function Casino({
   onInvitation?: () => void;
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
+  const contexteSalon = useMemo(() => ({ compte, appel }), [compte, appel]);
   const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'bulles' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'toits' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'cercles' | 'bourse' | 'marche' | 'tailleur'>('salon');
   /** Grand Hôtel : l'étage ouvert, l'étage fermé montré par le Groom, la Semaine du Baron. */
   const [etageActif, setEtageActif] = useState<Etage>('bar');
@@ -2751,7 +2758,9 @@ export default function Casino({
         : null;
   if (vue && jeuACharger) contenu = <ChargementJeu key={jeuACharger} jeu={jeuACharger}>{contenu}</ChargementJeu>;
   return (
+    <ContexteSalon.Provider value={contexteSalon}>
     <div className="cas">
+      <RappelPause onQuitter={onQuitter} />
       {vue && ecran !== 'salon' && (
         <div className="ac ac-barre-jeu">
           <BarreHaut
@@ -2855,5 +2864,6 @@ export default function Casino({
       {bienvenue && <CadeauBienvenue cadeau={bienvenue} onFermer={() => setBienvenue(null)} />}
       {fete && vue && <CelebrationNiveau key={fete.id} fete={fete} avatar={vue.avatar} onFermer={() => setFete(null)} />}
     </div>
+    </ContexteSalon.Provider>
   );
 }

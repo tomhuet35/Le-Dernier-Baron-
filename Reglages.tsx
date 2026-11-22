@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { activerNotifications, desactiverNotifications, estIos, useInstallation, useNotifications, type EtatNotifications } from './appli';
 import { abonnerReglages, changerReglages, lireReglages, type Reglages, type TailleCartes, type Vitesse } from './reglages';
+
+// Pour les Paramètres du salon (un seul import, depuis ce fichier).
+export { changerReglages, PAUSES, type Animations, type Pause } from './reglages';
 import { Fenetre, IconeMusique, jouerEffet, useMusique } from './ui';
 import { changerLangue, EN, LANGUE, tr, type Langue } from './traduction';
 
@@ -29,7 +32,7 @@ const LANGUES: [Langue, string][] = [
   ['en', 'English'],
 ];
 
-function Segments<T extends string>({ valeur, options, onChoix, libelle }: { valeur: T; options: [T, string][]; onChoix: (v: T) => void; libelle: string }) {
+export function Segments<T extends string>({ valeur, options, onChoix, libelle }: { valeur: T; options: [T, string][]; onChoix: (v: T) => void; libelle: string }) {
   return (
     <div className="segments" role="radiogroup" aria-label={libelle}>
       {options.map(([v, texte]) => (
@@ -41,7 +44,7 @@ function Segments<T extends string>({ valeur, options, onChoix, libelle }: { val
   );
 }
 
-function Curseur({ id, libelle, valeur, desactive, onChange, onFin }: { id: string; libelle: string; valeur: number; desactive?: boolean; onChange: (v: number) => void; onFin?: () => void }) {
+export function Curseur({ id, libelle, valeur, desactive, onChange, onFin }: { id: string; libelle: string; valeur: number; desactive?: boolean; onChange: (v: number) => void; onFin?: () => void }) {
   return (
     <div className={`curseur ${desactive ? 'desactive' : ''}`}>
       <label htmlFor={id}>{libelle}</label>
@@ -126,7 +129,7 @@ const TEXTE_NOTIFS_FR: Record<EtatNotifications, string> = {
 };
 
 /** Installer le jeu comme une application, et recevoir les invitations par notification. */
-function SectionAppli({ avecCompte }: { avecCompte: boolean }) {
+export function SectionAppli({ avecCompte }: { avecCompte: boolean }) {
   const { etat, installer } = useInstallation();
   const [notifs, setNotifs] = useNotifications();
   const [occupe, setOccupe] = useState(false);

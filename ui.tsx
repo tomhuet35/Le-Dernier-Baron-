@@ -78,6 +78,8 @@ export function Pastille({ id, onClick, choisie }: { id: string; onClick?: () =>
 
 /** Le joueur a demandé moins d'animations (réglage du téléphone). */
 export function mouvementReduit(): boolean {
+  const choix = lireReglages().animations;
+  if (choix !== 'auto') return choix === 'reduites';
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
