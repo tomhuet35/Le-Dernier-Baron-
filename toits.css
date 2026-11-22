@@ -7,27 +7,29 @@
 .tt-titre { line-height: 1; font-size: clamp(20px, 5.4vw, 30px) !important; color: var(--or-vif); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 18px rgba(233, 173, 91, 0.35); }
 
 /* La scène */
-.tt-scene { position: relative; height: clamp(300px, 46vh, 560px); border-radius: 16px; overflow: hidden; isolation: isolate; border: 2px solid rgba(214, 168, 75, 0.6); background: #070b18; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7); }
-.tt-ciel { position: absolute; inset: 0; background: url('/cartes/tt-paysage.webp') 0 100% / auto 100% repeat-x; filter: brightness(0.9); }
-.tt-scene.rapide .tt-ciel { filter: brightness(0.62) saturate(0.85); }
-.tt-scene.baron .tt-ciel { filter: brightness(0.45) saturate(0.7) hue-rotate(-12deg); }
-.tt-orage { position: absolute; inset: 0 0 35% 0; background: url('/cartes/tt-orage.webp') center / cover; opacity: 0.85; mix-blend-mode: screen; -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); animation: tt-orage 7s ease-in-out infinite; }
-@keyframes tt-orage { 50% { opacity: 0.6; } }
-.tt-pluie { position: absolute; inset: -10% 0 0; z-index: 3; pointer-events: none; background: repeating-linear-gradient(105deg, transparent 0 22px, rgba(200, 210, 255, 0.18) 22px 23px); background-size: 120px 120px; animation: tt-pluie 0.35s linear infinite; }
-@keyframes tt-pluie { to { background-position: -36px 120px; } }
-.tt-eclair { position: absolute; inset: 0; z-index: 4; pointer-events: none; background: rgba(210, 200, 255, 0.85); opacity: 0; animation: tt-eclair 9s linear infinite; }
-@keyframes tt-eclair { 0%, 61%, 63.5%, 65%, 100% { opacity: 0; } 62% { opacity: 0.7; } 64% { opacity: 0.45; } }
+.tt-scene { position: relative; height: clamp(300px, 46vh, 560px); border-radius: 16px; overflow: hidden; isolation: isolate; border: 2px solid rgba(214, 168, 75, 0.6); background: #160309; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7); }
+.tt-ciel { position: absolute; left: 0; right: 0; top: 0; background-repeat: repeat-x; background-size: auto 100%; transition: filter 0.15s; }
+.tt-scene.baron .tt-ciel { filter: brightness(0.92); }
+.tt-ciel.eclaire, .tt-scene.baron .tt-ciel.eclaire { filter: brightness(1.8) saturate(1.2) contrast(1.05); }
+.tt-premier { position: absolute; left: 0; right: 0; z-index: 1; background: url('/cartes/tt-premier-plan.webp') 0 100% / auto 100% repeat-x; opacity: 0.9; pointer-events: none; }
+/* La pluie de l'orage du Baron (celle des Balkans du Rapide de Minuit) : derrière le train, et devant. */
+.tt-pluie { position: absolute; left: 0; top: -150px; width: calc(100% + 120px); height: calc(100% + 150px); z-index: 1; pointer-events: none; opacity: 0.55; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='150'%3E%3Cg stroke='%23c8d6ff' stroke-width='1.2' stroke-linecap='round' opacity='0.8'%3E%3Cline x1='14' y1='4' x2='7' y2='30'/%3E%3Cline x1='62' y1='46' x2='55' y2='72'/%3E%3Cline x1='101' y1='98' x2='94' y2='124'/%3E%3Cline x1='38' y1='108' x2='31' y2='134'/%3E%3Cline x1='88' y1='12' x2='81' y2='38'/%3E%3C/g%3E%3C/svg%3E"); animation: tt-pluie 0.42s linear infinite; will-change: transform; }
+.tt-pluie.pres { z-index: 7; opacity: 0.75; background-size: 200px 250px; top: -250px; height: calc(100% + 250px); animation: tt-pluie-pres 0.3s linear infinite; }
+@keyframes tt-pluie { to { transform: translate3d(0, 150px, 0); } }
+@keyframes tt-pluie-pres { to { transform: translate3d(0, 250px, 0); } }
+.tt-eclair { position: absolute; inset: 0; z-index: 8; pointer-events: none; background: radial-gradient(130% 90% at 35% 8%, rgba(235, 240, 255, 0.95), rgba(170, 180, 255, 0.45) 45%, rgba(120, 120, 255, 0.08) 80%); mix-blend-mode: screen; animation: tt-eclair 0.45s ease-out both; }
+@keyframes tt-eclair { 0% { opacity: 0; } 8% { opacity: 1; } 22% { opacity: 0.12; } 34% { opacity: 0.85; } 100% { opacity: 0; } }
 .tt-voie { position: absolute; left: 0; right: 0; z-index: 1; background: url('/cartes/bw-ex2-alpes-voie.webp') 0 0 / auto 100% repeat-x; filter: brightness(0.8); }
 .tt-monde { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 100%; will-change: transform; }
-.tt-voiture, .tt-coureur, .tt-tunnel, .tt-attelage { position: absolute; left: 0; top: 0; height: auto; max-width: none; pointer-events: none; will-change: transform; }
+.tt-voiture, .tt-coureur, .tt-tunnel, .tt-attelage, .tt-portail { position: absolute; left: 0; top: 0; height: auto; max-width: none; pointer-events: none; will-change: transform; }
 .tt-voiture { z-index: 1; filter: brightness(0.82) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
 .tt-scene.rapide .tt-voiture, .tt-scene.baron .tt-voiture { filter: brightness(0.68) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
 .tt-voiture.fourgon { filter: drop-shadow(0 0 18px rgba(255, 200, 100, 0.45)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
-.tt-attelage { z-index: 2; opacity: 0; object-fit: fill; filter: drop-shadow(0 0 12px rgba(255, 190, 90, 0.8)); }
+.tt-attelage { z-index: 2; opacity: 0; filter: drop-shadow(0 0 10px rgba(255, 190, 90, 0.8)); }
 .tt-coureur { z-index: 4; visibility: hidden; transform-origin: 50% 60%; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.6)); }
 .tt-coureur.victoire { filter: drop-shadow(0 0 16px rgba(255, 210, 120, 0.8)) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.6)); }
-.tt-noir { position: absolute; left: 0; top: 0; z-index: 5; visibility: hidden; background: linear-gradient(90deg, #050302, #000 30%); pointer-events: none; }
-.tt-tunnel { z-index: 6; visibility: hidden; filter: drop-shadow(-10px 0 18px rgba(0, 0, 0, 0.7)); }
+.tt-tunnel { z-index: 0; visibility: hidden; }
+.tt-portail { z-index: 6; visibility: hidden; overflow: hidden; background: url('/cartes/tt-tunnel.webp') 0 0 no-repeat; }
 
 /* Les plaques des multiplicateurs, au-dessus de chaque wagon. */
 .tt-plaque { position: absolute; left: 0; top: 0; z-index: 3; padding: 1px 10px 2px; border-radius: 10px; border: 1.5px solid rgba(214, 168, 75, 0.75); background: rgba(14, 8, 6, 0.82); font-family: var(--titre); font-size: clamp(12px, 2.6cqh, 18px); line-height: 1.2; color: #f3e7cf; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55); transition: background 0.3s, color 0.3s, box-shadow 0.3s; }

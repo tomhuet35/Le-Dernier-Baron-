@@ -32,9 +32,13 @@ export const IMAGES_TOITS = [
   'tt-victoire',
   'tt-fourgon',
   'tt-tunnel',
-  'tt-attelage',
-  'tt-orage',
-  'tt-paysage',
+  'tt-attelage-g',
+  'tt-attelage-d',
+  'tt-decor-promenade',
+  'tt-decor-express',
+  'tt-decor-rapide',
+  'tt-decor-baron',
+  'tt-premier-plan',
   'tt-niv-promenade',
   'tt-niv-express',
   'tt-niv-rapide',
@@ -75,6 +79,11 @@ const VITESSE: Record<NiveauToits, number> = { promenade: 0.55, express: 0.9, ra
 /** Le saut : la course jusqu'au bord, le vol, l'atterrissage, la course jusqu'au milieu du wagon suivant. */
 const T = { course: 380, vol: 520, pose: 200, suite: 420 };
 const DUREE_SAUT = T.course + T.vol + T.pose + T.suite;
+/**
+ * Le tunnel en coupe (1800 × 582) : l'arche du portail (bas des rails, haut de l'arche), le bord gauche du portail et
+ * sa largeur (la partie dessinée devant le train) ; l'arche fait un peu plus qu'un wagon de haut.
+ */
+const TUNNEL = { w: 1800, h: 582, rails: 515, arche: 363, face: 52, portail: 290, hauteurArche: 1.1 };
 /** La chute : le moment du choc (tunnel) ou du décrochage, la chute elle-même. */
 const CHUTE = { choc: T.course + T.vol * 0.45, decroche: T.course - 180, duree: 1100 };
 
@@ -121,13 +130,15 @@ interface Refs {
   scene: { current: HTMLDivElement | null };
   monde: { current: HTMLDivElement | null };
   ciel: { current: HTMLDivElement | null };
+  premier: { current: HTMLDivElement | null };
   voie: { current: HTMLDivElement | null };
   voitures: { current: HTMLImageElement | null }[];
   plaques: { current: HTMLSpanElement | null }[];
   poses: Record<Pose, { current: HTMLImageElement | null }>;
   tunnel: { current: HTMLImageElement | null };
-  noir: { current: HTMLDivElement | null };
-  attelage: { current: HTMLImageElement | null };
+  portail: { current: HTMLDivElement | null };
+  attelageG: { current: HTMLImageElement | null };
+  attelageD: { current: HTMLImageElement | null };
 }
 const ref = <T,>() => ({ current: null as T | null });
 
@@ -210,7 +221,8 @@ function useScene(etat: { current: Etat }, r: Refs) {
             }
             // Le tunnel arrive de la droite et le heurte au moment du choc.
             const p = vol(uc);
-            tunnelX = p.x - g.h * 0.25 + (CHUTE.choc - s) * ((W * 1.3) / 1000);
+            const sc = (g.h * TUNNEL.hauteurArche) / (TUNNEL.rails - TUNNEL.arche);
+            tunnelX = p.x + g.h * 0.3 - TUNNEL.face * sc + (CHUTE.choc - s) * ((W * 1.3) / 1000);
           } else if (a.issue === 'attelage') {
             ({ x: rx, y: ry } = vol(Math.min(u, 0.75)));
             pose = 'saut';
@@ -250,8 +262,20 @@ function useScene(etat: { current: Etat }, r: Refs) {
       camera += (cible - camera) * Math.min(1, dt / (a && a.issue !== 'tunnel' && a.issue !== 'attelage' ? 160 : 260));
       const m = r.monde.current;
       if (m) m.style.transform = `translate3d(${-camera}px, 0, 0)`;
+      // Le décor (au-dessus de la voie), le premier plan qui file derrière le train.
+      // Le bas du décor est derrière les wagons (à mi-hauteur) : son paysage se voit au-dessus des toits.
+      const horizon = g.sol - g.h * 0.1;
       const ciel = r.ciel.current;
-      if (ciel) ciel.style.backgroundPosition = `${-(parcours * 0.08 + camera * 0.1)}px 100%`;
+      if (ciel) {
+        ciel.style.height = `${g.sol - g.h * 0.5}px`;
+        ciel.style.backgroundPosition = `${-(parcours * 0.06 + camera * 0.08)}px 100%`;
+      }
+      const premier = r.premier.current;
+      if (premier) {
+        premier.style.top = `${horizon - g.h * 1.45}px`;
+        premier.style.height = `${g.h * 1.5}px`;
+        premier.style.backgroundPosition = `${-(parcours * 0.45 + camera * 0.5)}px 100%`;
+      }
       const voie = r.voie.current;
       if (voie) {
         voie.style.top = `${g.sol - g.h * 0.12}px`;
@@ -272,29 +296,38 @@ function useScene(etat: { current: Etat }, r: Refs) {
         const pl = r.plaques[i]?.current;
         if (pl) pl.style.transform = `translate3d(${xVoiture(g, i) + g.ww / 2 + dx}px, ${yToit(g, i) - g.h * (i === SAUTS_TOITS ? 1.45 : 1.25)}px, 0) translate(-50%, -100%)`;
       });
-      // L'attelage qui casse, entre le wagon k et le suivant.
-      const at = r.attelage.current;
-      if (at) {
-        at.style.opacity = attelage > 0 ? '1' : '0';
-        const aw = g.h * 1.5 + decalage;
-        at.style.width = `${aw}px`;
-        at.style.height = `${g.h * 0.55}px`;
-        at.style.transform = `translate3d(${xVoiture(g, a?.k ?? 0) + g.ww - g.h * 0.55}px, ${g.sol - g.h * 0.78}px, 0)`;
+      // L'attelage qui casse, entre le wagon k et le suivant : chaque moitié part avec son wagon.
+      const ag = r.attelageG.current;
+      const ad = r.attelageD.current;
+      if (ag && ad) {
+        const vu = attelage > 0 ? '1' : '0';
+        ag.style.opacity = ad.style.opacity = vu;
+        const ah = g.h * 0.5;
+        const aw = (ah * 286) / 248;
+        const xg = xVoiture(g, a?.k ?? 0) + g.ww;
+        const xd = xVoiture(g, (a?.k ?? 0) + 1) + decalage;
+        const y = g.sol - g.h * 0.2 - ah / 2;
+        ag.style.width = ad.style.width = `${aw}px`;
+        ag.style.transform = `translate3d(${xg - aw * 0.35}px, ${y}px, 0) rotate(${8 * attelage}deg)`;
+        ad.style.transform = `translate3d(${xd - aw * 0.65}px, ${y}px, 0)`;
       }
-      // Le tunnel : le portail, et le noir de la galerie derrière lui.
+      // Le tunnel en coupe : la galerie derrière le train, le portail devant lui.
       const tu = r.tunnel.current;
-      const noir = r.noir.current;
-      if (tu && noir) {
+      const po = r.portail.current;
+      if (tu && po) {
         const vu = tunnelX !== null && tunnelX < camera + W * 1.2;
-        tu.style.visibility = noir.style.visibility = vu ? 'visible' : 'hidden';
+        tu.style.visibility = po.style.visibility = vu ? 'visible' : 'hidden';
         if (vu && tunnelX !== null) {
-          const ph = g.h * 2.6;
-          const pw = ph * (900 / 883);
-          tu.style.width = `${pw}px`;
-          tu.style.transform = `translate3d(${tunnelX}px, ${g.sol + g.h * 0.08 - ph}px, 0)`;
-          noir.style.width = `${W * 3}px`;
-          noir.style.height = `${g.h * 1.5}px`;
-          noir.style.transform = `translate3d(${tunnelX + pw * 0.35}px, ${g.sol - g.h * 1.4}px, 0)`;
+          const sc = (g.h * TUNNEL.hauteurArche) / (TUNNEL.rails - TUNNEL.arche);
+          const tw = TUNNEL.w * sc;
+          const th = TUNNEL.h * sc;
+          const y = g.sol - TUNNEL.rails * sc;
+          tu.style.width = `${tw}px`;
+          tu.style.transform = `translate3d(${tunnelX}px, ${y}px, 0)`;
+          po.style.width = `${TUNNEL.portail * sc}px`;
+          po.style.height = `${th}px`;
+          po.style.backgroundSize = `${tw}px ${th}px`;
+          po.style.transform = `translate3d(${tunnelX}px, ${y}px, 0)`;
         }
       }
       // Le coureur.
@@ -370,13 +403,15 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
       scene: ref(),
       monde: ref(),
       ciel: ref(),
+      premier: ref(),
       voie: ref(),
       voitures: VOITURES.map(() => ref()),
       plaques: VOITURES.map(() => ref()),
       poses: { court: ref(), saut: ref(), atterrit: ref(), chute: ref(), victoire: ref(), baisse: ref() },
       tunnel: ref(),
-      noir: ref(),
-      attelage: ref(),
+      portail: ref(),
+      attelageG: ref(),
+      attelageD: ref(),
     };
   const r = refs.current;
   useScene(etat, r);
@@ -405,11 +440,25 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
   const echelle = useMemo(() => echelleToits(niveau), [niveau]);
   if (!partie && !etat.current.action) etat.current.niveau = reglages.niveau;
 
-  // L'orage du Baron : un coup de tonnerre de temps en temps.
+  // L'orage du Baron (celui des Balkans du Rapide de Minuit) : un éclair, puis le tonnerre, toutes les 6 à 11 s.
+  const [eclair, setEclair] = useState(0);
   useEffect(() => {
     if (niveau !== 'baron') return;
-    const id = window.setInterval(() => jouerEffet('ex_tonnerre', { volume: 0.35 }), 9_000);
-    return () => window.clearInterval(id);
+    let id = 0;
+    const suivant = () => {
+      id = window.setTimeout(() => {
+        setEclair((n) => n + 1);
+        window.setTimeout(() => setEclair((n) => -Math.abs(n)), 600);
+        window.setTimeout(() => jouerEffet('ex_tonnerre', { volume: 0.4 }), 250);
+        suivant();
+      }, 6_000 + Math.random() * 5_000);
+    };
+    id = window.setTimeout(() => {
+      setEclair(1);
+      window.setTimeout(() => setEclair(-1), 600);
+      suivant();
+    }, 1_500);
+    return () => window.clearTimeout(id);
   }, [niveau]);
 
   const majSolde = (s: unknown, encore: boolean) => {
@@ -479,7 +528,7 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
     plusTard(() => jouerEffet('tt_saut'), depart);
     if (p.etat === 'perdu') {
       plusTard(() => {
-        etat.current = { sauts: p.sauts, niveau: p.niveau, fini: 'perdu', action: null, pret: false };
+        etat.current = { sauts: p.sauts, niveau: p.niveau, fini: 'perdu', action, pret: false };
         setEnSaut(false);
       }, depart + T.vol + CHUTE.duree);
       plusTard(() => {
@@ -567,20 +616,17 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
       </header>
 
       <section className={`tt-scene ${niveau}`} ref={r.scene} aria-label={tr('Le train', 'The train')}>
-        <div className="tt-ciel" ref={r.ciel} />
-        {niveau === 'baron' && (
-          <>
-            <div className="tt-orage" />
-            <div className="tt-pluie" />
-            <div className="tt-eclair" />
-          </>
-        )}
+        <div className={`tt-ciel ${eclair > 0 ? 'eclaire' : ''}`} ref={r.ciel} style={{ backgroundImage: `url(${IMG(`tt-decor-${niveau}`)})` }} />
+        <div className="tt-premier" ref={r.premier} />
+        {niveau === 'baron' && <div className="tt-pluie loin" aria-hidden="true" />}
         <div className="tt-voie" ref={r.voie} />
         <div className="tt-monde" ref={r.monde}>
           {VOITURES.map((v, i) => (
             <img key={`v${i}`} className={`tt-voiture ${i === SAUTS_TOITS ? 'fourgon' : ''}`} ref={r.voitures[i]} src={IMG(v)} alt="" draggable={false} />
           ))}
-          <img className="tt-attelage" ref={r.attelage} src={IMG('tt-attelage')} alt="" draggable={false} />
+          <img className="tt-tunnel" ref={r.tunnel} src={IMG('tt-tunnel')} alt="" draggable={false} />
+          <img className="tt-attelage" ref={r.attelageG} src={IMG('tt-attelage-g')} alt="" draggable={false} />
+          <img className="tt-attelage" ref={r.attelageD} src={IMG('tt-attelage-d')} alt="" draggable={false} />
           {VOITURES.slice(1, SAUTS_TOITS + 1).map((_, j) => {
             const i = j + 1;
             return (
@@ -592,9 +638,10 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
           {(Object.keys(POSES) as Pose[]).map((p) => (
             <img key={p} className={`tt-coureur ${p}`} ref={r.poses[p]} src={IMG(`tt-${p}`)} alt="" draggable={false} />
           ))}
-          <div className="tt-noir" ref={r.noir} />
-          <img className="tt-tunnel" ref={r.tunnel} src={IMG('tt-tunnel')} alt="" draggable={false} />
+          <div className="tt-portail" ref={r.portail} />
         </div>
+        {niveau === 'baron' && <div className="tt-pluie pres" aria-hidden="true" />}
+        {eclair > 0 && <div className="tt-eclair" key={`eclair-${eclair}`} aria-hidden="true" />}
         <span className="tt-niveau-puce">
           <img src={IMG(`tt-niv-${niveau}`)} alt="" draggable={false} />
           {tr(...NOMS_NIVEAUX_TOITS[niveau])}
