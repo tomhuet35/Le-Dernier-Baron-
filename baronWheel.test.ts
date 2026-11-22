@@ -53,19 +53,26 @@ describe('The Baron’s Wheel : les règles', () => {
     for (let i = 0; i < 40; i++) expect(ROUE_BW[i]).not.toBe(ROUE_BW[(i + 1) % 40]);
   });
 
-  it('est le jeu généreux du salon : chaque mise rend environ 1,7 fois sa valeur (calcul exact), l’Express bien plus', () => {
+  it('est le jeu généreux du salon (calcul exact) : les petites cases rendent moins, les bonus davantage, l’Express bien plus', () => {
     const r = rtpBW();
-    for (const c of CASES_BW) {
-      if (c === 'express') continue;
+    // Les petites cases (×2 et ×3) ont cédé une part de leur retour aux bonus ; ×5 et ×10 rendent environ 1,7 fois la mise.
+    expect(r.x1).toBeCloseTo(1.24, 2);
+    expect(r.x2).toBeCloseTo(1.52, 2);
+    for (const c of ['x5', 'x10'] as const) {
       expect(r[c]).toBeGreaterThan(1.6);
       expect(r[c]).toBeLessThan(1.75);
     }
+    // Ce que les petites cases ont perdu est rendu aux quatre bonus (environ 0,15 chacun) : 1,8 à 1,9 fois la mise.
+    for (const c of ['baron', 'pickpocket', 'evasion', 'braquage'] as const) {
+      expect(r[c]).toBeGreaterThan(1.8);
+      expect(r[c]).toBeLessThan(1.9);
+    }
     for (const v of Object.values(r.routes)) {
-      expect(v).toBeGreaterThan(1.6);
-      expect(v).toBeLessThan(1.75);
+      expect(v).toBeGreaterThan(1.8);
+      expect(v).toBeLessThan(1.9);
     }
     // L'Express, le bonus le plus généreux de la roue.
-    for (const c of CASES_BW) if (c !== 'express') expect(r.express).toBeGreaterThan(2 * r[c]);
+    for (const c of CASES_BW) if (c !== 'express') expect(r.express).toBeGreaterThan(1.8 * r[c]);
     expect(r.express).toBeLessThan(4.5);
   });
 
@@ -122,7 +129,7 @@ describe('The Baron’s Wheel : les règles', () => {
       else expect(etapes[2].duree < DUREES_BW.descente).toBe(true);
     }
     expect(choixDuBonusBW('braquage')).toEqual([]);
-    expect(ETAGES_BRAQUAGE).toEqual([3, 6, 12, 30, 100]);
+    expect(ETAGES_BRAQUAGE).toEqual([3, 6, 12, 30, 150]);
     // Le jackpot du Coffre du Siècle s'ajoute au multiple, que la roue multiplie (pas le jackpot).
     expect(valeurRecompenseBW({ x: 100, jackpot: 'grand', fixe: 500 }, 10)).toBe(1500);
     expect(valeurRecompenseBW({ x: 25, jackpot: 'mini' }, 10)).toBe(25);

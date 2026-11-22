@@ -51,19 +51,19 @@ const fx = (x: number) => `×${x.toLocaleString(EN ? 'en-US' : 'fr-FR', { maximu
 const CLE_JETON = 'ldb-bw-jeton';
 
 /**
- * Les cases : nom, couleurs du tapis, et la marqueterie de la roue (un panneau de bois précieux, un vitrail pour les
- * bonus), déjà déformé à la forme d'un secteur (bw-rs-*, préparé par scripts/rs_segments.py).
+ * Les cases : nom, couleurs du tapis, et le panneau de laque Art déco de la roue (sombre pour les multiples, vif pour les
+ * bonus), déjà déformé à la forme d'un secteur (bw-rs-laque-*, préparé par scripts/rs_laques.py).
  */
 export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; image?: string; texture: string }> = {
-  x1: { nom: ['1X', '1X'], fond: '#671D2B', texte: '#F3E7CF', texture: '/cartes/bw-rs-acajou.webp' },
-  x2: { nom: ['2X', '2X'], fond: '#1b2c58', texte: '#F3E7CF', texture: '/cartes/bw-rs-ebene.webp' },
-  x5: { nom: ['5X', '5X'], fond: '#D6A84B', texte: '#1b120c', texture: '/cartes/bw-rs-noyer.webp' },
-  x10: { nom: ['10X', '10X'], fond: '#f6d77a', texte: '#3a1810', texture: '/cartes/bw-rs-laque.webp' },
-  baron: { nom: ['Baron', 'Baron'], fond: '#0d0b0b', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp', texture: '/cartes/bw-rs-vitrail-baron.webp' },
-  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp', texture: '/cartes/bw-rs-vitrail-pickpocket.webp' },
-  evasion: { nom: ['Évasion', 'Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp', texture: '/cartes/bw-rs-vitrail-evasion.webp' },
-  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp', texture: '/cartes/bw-rs-vitrail-braquage.webp' },
-  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp', texture: '/cartes/bw-rs-vitrail-minuit.webp' },
+  x1: { nom: ['1X', '1X'], fond: '#671D2B', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-bordeaux.webp' },
+  x2: { nom: ['2X', '2X'], fond: '#1b2c58', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-nuit.webp' },
+  x5: { nom: ['5X', '5X'], fond: '#D6A84B', texte: '#1b120c', texture: '/cartes/bw-rs-laque-ivoire.webp' },
+  x10: { nom: ['10X', '10X'], fond: '#f6d77a', texte: '#3a1810', texture: '/cartes/bw-rs-laque-noir.webp' },
+  baron: { nom: ['Baron', 'Baron'], fond: '#0d0b0b', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp', texture: '/cartes/bw-rs-laque-baron.webp' },
+  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp', texture: '/cartes/bw-rs-laque-pickpocket.webp' },
+  evasion: { nom: ['Évasion', 'Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp', texture: '/cartes/bw-rs-laque-evasion.webp' },
+  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp', texture: '/cartes/bw-rs-laque-braquage.webp' },
+  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp', texture: '/cartes/bw-rs-laque-minuit.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
@@ -256,7 +256,7 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
             <image href={vis.texture} x={-29} y={-363} width={58} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
             <path d={secteur(118, 362, a1, a2)} className="bw-reflet" />
             {vis.image ? (
-              <image href={vis.image} x={-27} y={-327} width={54} height={55} transform={`rotate(${milieu})`} />
+              <image href={vis.image} x={-27} y={-312} width={54} height={55} transform={`rotate(${milieu})`} />
             ) : (
               <text transform={`rotate(${milieu}) translate(0 -262) rotate(-90)`} fill="url(#bw-or-grave)" className={`bw-chiffre ${c}`} textAnchor="middle" dominantBaseline="central">
                 {fx(GAINS_CHIFFRES_BW[c as 'x1'])}
@@ -1053,8 +1053,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2,7), 9 cases 2X (×3,3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Évasion (2) et Braquage (3), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×100) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×30, arrestation 8 %), les Ruelles (×20 à ×100, 61 %) ou les Souterrains (×50 à ×500, 88 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×100 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
-            '40 spots, all equally likely: 11 1X spots (pay ×2.7), 9 2X (×3.3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Escape (2) and Big Heist (3), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×100); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×30, 8% arrest), the Alleys (×20 to ×100, 61%) or the Tunnels (×50 to ×500, 88%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×100 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
+            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2), 9 cases 2X (×3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Évasion (2) et Braquage (3), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×250) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×50, arrestation 8 %), les Ruelles (×20 à ×200, 61 %) ou les Souterrains (×50 à ×1 000, 88 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×150 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
+            '40 spots, all equally likely: 11 1X spots (pay ×2), 9 2X (×3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Escape (2) and Big Heist (3), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×250); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×50, 8% arrest), the Alleys (×20 to ×200, 61%) or the Tunnels (×50 to ×1,000, 88%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×150 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
           )}
         </p>
       </aside>
