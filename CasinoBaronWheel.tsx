@@ -50,17 +50,20 @@ const imageJeton = (v: number) => (v >= 10_000_000 ? 'or' : v >= 5_000_000 ? 'ar
 const fx = (x: number) => `×${x.toLocaleString(EN ? 'en-US' : 'fr-FR', { maximumFractionDigits: 2 })}`;
 const CLE_JETON = 'ldb-bw-jeton';
 
-/** Les cases : nom, couleurs de la roue et du tapis. */
-export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; image?: string }> = {
-  x1: { nom: ['1X', '1X'], fond: '#671D2B', texte: '#F3E7CF' },
-  x2: { nom: ['2X', '2X'], fond: '#1b2c58', texte: '#F3E7CF' },
-  x5: { nom: ['5X', '5X'], fond: '#D6A84B', texte: '#1b120c' },
-  x10: { nom: ['10X', '10X'], fond: '#f6d77a', texte: '#3a1810' },
-  baron: { nom: ['Baron', 'Baron'], fond: '#0d0b0b', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp' },
-  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp' },
-  evasion: { nom: ['Évasion', 'Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp' },
-  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp' },
-  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
+/**
+ * Les cases : nom, couleurs du tapis, et la marqueterie de la roue (un panneau de bois précieux, un vitrail pour les
+ * bonus), déjà déformé à la forme d'un secteur (bw-rs-*, préparé par scripts/rs_segments.py).
+ */
+export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; image?: string; texture: string }> = {
+  x1: { nom: ['1X', '1X'], fond: '#671D2B', texte: '#F3E7CF', texture: '/cartes/bw-rs-acajou.webp' },
+  x2: { nom: ['2X', '2X'], fond: '#1b2c58', texte: '#F3E7CF', texture: '/cartes/bw-rs-ebene.webp' },
+  x5: { nom: ['5X', '5X'], fond: '#D6A84B', texte: '#1b120c', texture: '/cartes/bw-rs-noyer.webp' },
+  x10: { nom: ['10X', '10X'], fond: '#f6d77a', texte: '#3a1810', texture: '/cartes/bw-rs-laque.webp' },
+  baron: { nom: ['Baron', 'Baron'], fond: '#0d0b0b', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp', texture: '/cartes/bw-rs-vitrail-baron.webp' },
+  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp', texture: '/cartes/bw-rs-vitrail-pickpocket.webp' },
+  evasion: { nom: ['Évasion', 'Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp', texture: '/cartes/bw-rs-vitrail-evasion.webp' },
+  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp', texture: '/cartes/bw-rs-vitrail-braquage.webp' },
+  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp', texture: '/cartes/bw-rs-vitrail-minuit.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
@@ -250,11 +253,12 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
         return (
           <g key={i} className={`bw-secteur ${c}`}>
             <path d={secteur(118, 362, a1, a2)} fill={vis.fond} />
+            <image href={vis.texture} x={-29} y={-363} width={58} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
             <path d={secteur(118, 362, a1, a2)} className="bw-reflet" />
             {vis.image ? (
               <image href={vis.image} x={-27} y={-327} width={54} height={55} transform={`rotate(${milieu})`} />
             ) : (
-              <text transform={`rotate(${milieu}) translate(0 -262) rotate(-90)`} fill={vis.texte} className={`bw-chiffre ${c}`} textAnchor="middle" dominantBaseline="central">
+              <text transform={`rotate(${milieu}) translate(0 -262) rotate(-90)`} fill="url(#bw-or-grave)" className={`bw-chiffre ${c}`} textAnchor="middle" dominantBaseline="central">
                 {fx(GAINS_CHIFFRES_BW[c as 'x1'])}
               </text>
             )}
@@ -270,6 +274,15 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
       <i className="bw-rl-rails" aria-hidden="true" />
       <div className="bw-disque" ref={disque}>
         <svg viewBox="-370 -370 740 740" aria-hidden="true">
+          <defs>
+            {/* Les chiffres gravés en or, en relief. */}
+            <linearGradient id="bw-or-grave" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#fff3c4" />
+              <stop offset="0.45" stopColor="#f0c45e" />
+              <stop offset="0.55" stopColor="#c88a2a" />
+              <stop offset="1" stopColor="#ffe08a" />
+            </linearGradient>
+          </defs>
           <circle r="366" fill="#1a0f08" />
           {cases}
           {ROUE_BW.map((_, i) => (
