@@ -452,28 +452,29 @@
 .bw-palier.p3 .bw-palier-plaque { width: min(96vw, 720px); }
 .bw-palier > b { position: relative; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 8.5vw, 60px); color: #b8f0b4; text-shadow: 0 0 18px rgba(120, 220, 120, 0.7), 0 3px 6px #000; }
 
-/* ---------- L'arrivée de l'Express : la locomotive sort du moyeu et fonce vers le joueur ---------- */
-.bw-arrivee { position: fixed; inset: 0; z-index: 82; pointer-events: none; overflow: hidden; animation: bw-ar-fond var(--duree) ease-in-out both; }
-@keyframes bw-ar-fond { 0% { background: transparent; } 15%, 62% { background: rgba(4, 2, 1, 0.55); } 70% { background: rgba(4, 2, 1, 0.2); } 100% { background: transparent; } }
-.bw-arrivee-loco { position: absolute; left: var(--l); top: var(--t); width: var(--w); height: auto; max-width: none; transform-origin: var(--ox) var(--oy); will-change: transform, opacity; filter: drop-shadow(0 0 30px rgba(255, 200, 100, 0.55)); animation: bw-ar-loco var(--duree) both; }
-/* La porte se pose sur le moyeu (la locomotive apparaît autour), elle s'approche doucement, puis fonce et sort de l'écran. */
+/* ---------- L'arrivée de l'Express, dans le plateau de la roue : la locomotive sort du moyeu et fonce vers le joueur ---------- */
+.bw-arrivee { position: absolute; inset: 0; z-index: 8; pointer-events: none; overflow: hidden; border-radius: inherit; animation: bw-ar-fond var(--duree) ease-in-out both; }
+@keyframes bw-ar-fond { 0% { background-color: rgba(4, 2, 1, 0); } 15%, 62% { background-color: rgba(4, 2, 1, 0.55); } 70% { background-color: rgba(4, 2, 1, 0.2); } 100% { background-color: rgba(4, 2, 1, 0); } }
+.bw-arrivee-loco { position: absolute; left: var(--l); top: var(--t); width: var(--w); height: auto; max-width: none; transform-origin: var(--ox) var(--oy); will-change: transform, opacity; animation: bw-ar-loco var(--duree) both; }
+/* La porte se pose sur le moyeu (la locomotive apparaît autour), elle s'approche doucement, puis fonce et sort du plateau. */
 @keyframes bw-ar-loco {
-  0% { opacity: 0; transform: none; filter: brightness(0.4) drop-shadow(0 0 0 rgba(255, 200, 100, 0)); animation-timing-function: ease-out; }
-  14% { opacity: 1; transform: none; filter: brightness(1) drop-shadow(0 0 30px rgba(255, 200, 100, 0.55)); animation-timing-function: ease-in-out; }
-  26% { transform: translate(calc(var(--tx) * 0.15), calc(var(--ty) * 0.15)) scale(1.25); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.6); }
-  64% { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(var(--k)); filter: brightness(1.25) drop-shadow(0 0 30px rgba(255, 200, 100, 0.55)); }
-  70% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(calc(var(--k) * 1.3)); filter: brightness(2) drop-shadow(0 0 30px rgba(255, 200, 100, 0.55)); }
+  0% { opacity: 0; transform: translate(0, 0) scale(1); animation-timing-function: ease-out; }
+  14% { opacity: 1; transform: translate(0, 0) scale(1); animation-timing-function: ease-in-out; }
+  26% { opacity: 1; transform: translate(calc(var(--tx) * 0.15), calc(var(--ty) * 0.15)) scale(1.25); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.6); }
+  64% { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(var(--k)); }
+  70% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(calc(var(--k) * 1.3)); }
   100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(calc(var(--k) * 1.3)); }
 }
-/* La vapeur jaillit des deux côtés de la roue, puis un grand nuage couvre l'écran au passage et se dissipe. */
-.bw-arrivee-vapeur { position: absolute; left: var(--cx); top: var(--cy); width: calc(var(--w) * 1.5); height: auto; max-width: none; translate: -50% -50%; opacity: 0; animation: bw-ar-vapeur var(--duree) ease-out both; }
-.bw-arrivee-vapeur.gauche { --sens: -1; }
-.bw-arrivee-vapeur.droite { --sens: 1; transform: scaleX(-1); }
-@keyframes bw-ar-vapeur { 0% { opacity: 0; translate: -50% -40%; scale: 0.4; } 10% { opacity: 0.95; } 30% { opacity: 0.85; translate: calc(-50% + var(--sens) * var(--w) * 0.9) -55%; scale: 1.3; } 50%, 100% { opacity: 0; translate: calc(-50% + var(--sens) * var(--w) * 1.6) -60%; scale: 1.7; } }
-.bw-arrivee-eclair { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 45%, #fffaf0, rgba(255, 220, 140, 0.9) 35%, rgba(255, 190, 90, 0.4) 70%, transparent); animation: bw-ar-eclair var(--duree) ease-out both; }
+/* La vapeur jaillit des deux côtés du moyeu, puis un grand nuage couvre le plateau au passage et se dissipe. */
+.bw-arrivee-vapeur { position: absolute; left: calc(var(--cx) - var(--vw) / 2); top: calc(var(--cy) - var(--vw) * 0.3); width: var(--vw); height: auto; max-width: none; opacity: 0; will-change: transform, opacity; }
+.bw-arrivee-vapeur.gauche { animation: bw-ar-vapeur-g var(--duree) ease-out both; }
+.bw-arrivee-vapeur.droite { animation: bw-ar-vapeur-d var(--duree) ease-out both; }
+@keyframes bw-ar-vapeur-g { 0% { opacity: 0; transform: translate(0, 10%) scale(0.4); } 10% { opacity: 0.95; } 30% { opacity: 0.85; transform: translate(-45%, -5%) scale(1.2); } 50%, 100% { opacity: 0; transform: translate(-80%, -10%) scale(1.5); } }
+@keyframes bw-ar-vapeur-d { 0% { opacity: 0; transform: translate(0, 10%) scale(-0.4, 0.4); } 10% { opacity: 0.95; } 30% { opacity: 0.85; transform: translate(45%, -5%) scale(-1.2, 1.2); } 50%, 100% { opacity: 0; transform: translate(80%, -10%) scale(-1.5, 1.5); } }
+.bw-arrivee-eclair { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 50%, #fffaf0, rgba(255, 220, 140, 0.9) 35%, rgba(255, 190, 90, 0.4) 70%, rgba(255, 190, 90, 0)); animation: bw-ar-eclair var(--duree) ease-out both; }
 @keyframes bw-ar-eclair { 0%, 62% { opacity: 0; } 66% { opacity: 1; } 78% { opacity: 0.35; } 100% { opacity: 0; } }
-.bw-arrivee-nuage { position: absolute; left: 50%; top: 50%; width: max(180vw, 180vh); height: auto; max-width: none; translate: -50% -50%; opacity: 0; animation: bw-ar-nuage var(--duree) ease-out both; }
-@keyframes bw-ar-nuage { 0%, 63% { opacity: 0; scale: 0.6; } 70% { opacity: 1; scale: 1; } 82% { opacity: 0.8; scale: 1.15; } 100% { opacity: 0; scale: 1.4; } }
+.bw-arrivee-nuage { position: absolute; left: -40%; top: 0; width: 180%; height: 100%; max-width: none; object-fit: cover; opacity: 0; will-change: transform, opacity; animation: bw-ar-nuage var(--duree) ease-out both; }
+@keyframes bw-ar-nuage { 0%, 63% { opacity: 0; transform: scale(0.6); } 70% { opacity: 1; transform: scale(1); } 82% { opacity: 0.8; transform: scale(1.12); } 100% { opacity: 0; transform: scale(1.3); } }
 
 /* ---------- Les événements de la gare ---------- */
 .bw-evenements { display: grid; gap: 6px; }
