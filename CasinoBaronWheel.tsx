@@ -53,20 +53,17 @@ const imageJeton = (v: number) => (v >= 10_000_000 ? 'or' : v >= 5_000_000 ? 'ar
 const fx = (x: number) => `×${x.toLocaleString(EN ? 'en-US' : 'fr-FR', { maximumFractionDigits: 2 })}`;
 const CLE_JETON = 'ldb-bw-jeton';
 
-/**
- * Les cases : nom, couleurs du tapis, et le panneau de laque Art déco de la roue (sombre pour les multiples, vif pour les
- * bonus), déjà déformé à la forme d'un secteur (bw-rs-laque-*, préparé par scripts/rs_laques.py).
- */
-export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; image?: string; texture: string }> = {
-  x1: { nom: ['1X', '1X'], fond: '#e40109', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-rouge2.webp' },
-  x2: { nom: ['2X', '2X'], fond: '#af010a', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-rouge3.webp' },
-  x5: { nom: ['5X', '5X'], fond: '#73010b', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-rouge5.webp' },
-  x10: { nom: ['10X', '10X'], fond: '#3b0007', texte: '#f6d77a', texture: '/cartes/bw-rs-laque-rouge10.webp' },
-  baron: { nom: ['Baron', 'Baron'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-baron2.webp', texture: '/cartes/bw-rs-laque-champagne.webp' },
-  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-pickpocket2.webp', texture: '/cartes/bw-rs-laque-champagne.webp' },
-  evasion: { nom: ['Évasion', 'Escape'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-evasion2.webp', texture: '/cartes/bw-rs-laque-champagne.webp' },
-  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-braquage2.webp', texture: '/cartes/bw-rs-laque-champagne.webp' },
-  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#023314', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp', texture: '/cartes/bw-rs-laque-vert.webp' },
+/** Les cases : nom, couleur unie (roue, tapis, Top Slot), couleur du texte et médaillon des bonus. */
+export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; image?: string }> = {
+  x1: { nom: ['1X', '1X'], fond: '#e40109', texte: '#F3E7CF' },
+  x2: { nom: ['2X', '2X'], fond: '#af010a', texte: '#F3E7CF' },
+  x5: { nom: ['5X', '5X'], fond: '#73010b', texte: '#F3E7CF' },
+  x10: { nom: ['10X', '10X'], fond: '#3b0007', texte: '#f6d77a' },
+  baron: { nom: ['Baron', 'Baron'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-baron2.webp' },
+  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-pickpocket2.webp' },
+  evasion: { nom: ['Évasion', 'Escape'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-evasion2.webp' },
+  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-braquage2.webp' },
+  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#023314', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
@@ -200,7 +197,6 @@ function CaseRoue({ i }: { i: number }) {
   return (
     <g className={`bw-secteur ${c}`}>
       <path d={secteur(118, 362, a1, a2)} fill={vis.fond} />
-      <image href={vis.texture} x={-38} y={-363} width={76} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
       <path d={secteur(118, 362, a1, a2)} className="bw-reflet" />
       {vis.image ? (
         <image href={vis.image} x={-34} y={-318} width={68} height={69} transform={`rotate(${milieu})`} />
