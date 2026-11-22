@@ -272,8 +272,9 @@ function useScene(etat: { current: Etat }, r: Refs) {
       }
       const premier = r.premier.current;
       if (premier) {
-        premier.style.top = `${horizon - g.h * 1.45}px`;
-        premier.style.height = `${g.h * 1.5}px`;
+        // Le pied des buissons et des poteaux sur le sol, au niveau de la voie ; les poteaux arrivent à hauteur des toits.
+        premier.style.top = `${horizon - g.h * 0.8}px`;
+        premier.style.height = `${g.h * 0.9}px`;
         premier.style.backgroundPosition = `${-(parcours * 0.45 + camera * 0.5)}px 100%`;
       }
       const voie = r.voie.current;
