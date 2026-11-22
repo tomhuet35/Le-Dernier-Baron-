@@ -455,17 +455,8 @@ const LANTERNES = {
   paysage: { w: 1600, h: 900, pos: 0.7, lampes: [[137, 345, 110], [1472, 345, 110], [316, 236, 80], [1279, 236, 80]] },
   portrait: { w: 1000, h: 1250, pos: 0.7, lampes: [[73, 488, 85], [926, 488, 85], [180, 312, 70], [821, 312, 70]] },
 };
-/**
- * L'Express du Baron traverse la gare, lentement, sur le rail sous la roue : sa locomotive et ses 5 wagons,
- * leur hauteur (part de la largeur de la roue) et le haut du rail (part de la hauteur de la bande du rail).
- */
-const PASSAGE_TRAIN = { h: 0.78, rail: 0.03, wagons: 5 };
-const RATIO_WAGON = 1100 / 344;
-const RATIO_LOCO = 1100 / 338;
-
-export function LampesDecor({ lampes, train }: { lampes: MutableRefObject<(HTMLDivElement | null)[]>; train?: number | null }) {
+export function LampesDecor({ lampes }: { lampes: MutableRefObject<(HTMLDivElement | null)[]> }) {
   const boite = useRef<HTMLDivElement>(null);
-  const passage = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = boite.current?.parentElement;
     if (!el) return;
@@ -486,47 +477,90 @@ export function LampesDecor({ lampes, train }: { lampes: MutableRefObject<(HTMLD
         l.style.transform = `translate3d(${cx - r}px, ${cy - r}px, 0)`;
         l.style.display = cx < 4 || cx > W - 4 || cy < 4 || cy > H - 4 ? 'none' : '';
       });
-      const train = passage.current;
-      const rails = el.querySelector('.bw-rl-rails');
-      const roue = el.querySelector('.bw-roue');
-      if (train && rails && roue) {
-        const pr = el.getBoundingClientRect();
-        const rr = rails.getBoundingClientRect();
-        const h = PASSAGE_TRAIN.h * (roue as HTMLElement).offsetWidth;
-        const w = h * (RATIO_LOCO + PASSAGE_TRAIN.wagons * RATIO_WAGON);
-        train.style.height = `${h}px`;
-        train.style.top = `${rr.top - pr.top + PASSAGE_TRAIN.rail * rr.height - h}px`;
-        train.style.setProperty('--de', `${-w}px`);
-        train.style.setProperty('--a', `${W}px`);
-      }
     };
     placer();
     const ro = new ResizeObserver(placer);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [lampes, train]);
+  }, [lampes]);
   return (
-    <>
-      <div className="bw-lampes" ref={boite} aria-hidden="true">
-        {[0, 1, 2, 3].map((k) => (
-          <div
-            key={k}
-            className="bw-lampe"
-            ref={(el) => {
-              lampes.current[k] = el;
-            }}
-          />
-        ))}
-      </div>
-      {train ? (
-        <div key={train} ref={passage} className="bw-train-passe" style={{ '--duree-express': PASSAGE_EXPRESS_BW - 400 } as CSSProperties} aria-hidden="true">
-          {Array.from({ length: PASSAGE_TRAIN.wagons }, (_, k) => (
-            <img key={k} src={`/cartes/bw-ex2-wagon-${5 - (k % 5)}.webp`} alt="" draggable={false} />
-          ))}
-          <img className="loco" src="/cartes/bw-ex2-loco.webp" alt="" draggable={false} />
-        </div>
-      ) : null}
-    </>
+    <div className="bw-lampes" ref={boite} aria-hidden="true">
+      {[0, 1, 2, 3].map((k) => (
+        <div
+          key={k}
+          className="bw-lampe"
+          ref={(el) => {
+            lampes.current[k] = el;
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// L'arrivée de l'Express : la locomotive sort du moyeu de la roue et fonce vers le joueur
+
+/** La porte de la boîte à fumée dans l'image de la locomotive (centre et rayon, en pixels), et la taille de l'image. */
+const LOCO_FACE = { w: 1016, h: 1341, cx: 499, cy: 657, r: 258 };
+/** Le cercle d'acier du moyeu dans son image (part de sa demi-largeur). */
+const MOYEU_ANNEAU = 205 / 210;
+
+/**
+ * Quand le Top Slot tire l'Express : de la vapeur jaillit autour de la roue, la locomotive apparaît, sa porte posée
+ * exactement sur le moyeu, puis elle fonce vers le joueur jusqu'à remplir l'écran ; un éclair, la vapeur, et la roue
+ * revient.
+ */
+export function ArriveeExpress() {
+  const [g, setG] = useState<CSSProperties | null>(null);
+  useEffect(() => {
+    const m = document.querySelector('.bw-rl-moyeu')?.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const cx = m && m.width ? m.left + m.width / 2 : vw / 2;
+    const cy = m && m.width ? m.top + m.height / 2 : vh / 2;
+    const r = m && m.width ? (m.width / 2) * MOYEU_ANNEAU : Math.min(vw, vh) * 0.1;
+    const w = (LOCO_FACE.w / LOCO_FACE.r) * r;
+    const h = (w * LOCO_FACE.h) / LOCO_FACE.w;
+    // À la fin, la locomotive déborde largement de l'écran, sa porte au centre.
+    const k = Math.max((vw * 2.4) / w, (vh * 1.9) / h);
+    setG({
+      '--l': `${cx - (LOCO_FACE.cx / LOCO_FACE.w) * w}px`,
+      '--t': `${cy - (LOCO_FACE.cy / LOCO_FACE.h) * h}px`,
+      '--w': `${w}px`,
+      '--cx': `${cx}px`,
+      '--cy': `${cy}px`,
+      '--tx': `${vw / 2 - cx}px`,
+      '--ty': `${vh * 0.45 - cy}px`,
+      '--k': k,
+      '--duree': `${PASSAGE_EXPRESS_BW}ms`,
+      '--ox': `${(LOCO_FACE.cx / LOCO_FACE.w) * 100}%`,
+      '--oy': `${(LOCO_FACE.cy / LOCO_FACE.h) * 100}%`,
+    } as CSSProperties);
+    const ids = [
+      window.setTimeout(() => jouerEffet('bw_sifflet', { volume: 0.9 }), 150),
+      window.setTimeout(() => jouerEffet('bw_vapeur', { volume: 0.8 }), 250),
+      window.setTimeout(() => jouerEffet('bw_train_passe', { volume: 1 }), 1200),
+      window.setTimeout(() => jouerEffet('bw_sifflet', { volume: 1, vitesse: 0.9 }), PASSAGE_EXPRESS_BW * 0.52),
+      window.setTimeout(() => {
+        jouerEffet('bw_vapeur', { volume: 1 });
+        document.querySelector('.bw-ecran')?.animate(
+          [{ transform: 'none' }, { transform: 'translate(-6px, 4px)' }, { transform: 'translate(5px, -3px)' }, { transform: 'translate(-3px, 2px)' }, { transform: 'none' }],
+          { duration: 420, easing: 'ease-out' },
+        );
+      }, PASSAGE_EXPRESS_BW * 0.66),
+    ];
+    return () => ids.forEach((i) => window.clearTimeout(i));
+  }, []);
+  if (!g) return null;
+  return (
+    <div className="bw-arrivee" style={g} aria-hidden="true">
+      <img className="bw-arrivee-vapeur gauche" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
+      <img className="bw-arrivee-vapeur droite" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
+      <img className="bw-arrivee-loco" src="/cartes/bw-express-face.webp" alt="" draggable={false} />
+      <i className="bw-arrivee-eclair" />
+      <img className="bw-arrivee-nuage" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
+    </div>
   );
 }
 
@@ -655,7 +689,7 @@ export function TopSlot({ v }: { v: VueBW }) {
   let gauche: ReactNode;
   let droite: ReactNode;
   if (!t || etape === -1) {
-    gauche = <span className="bw-ts-attente">{t ? tr('L’Express passe…', 'The Express is passing…') : tr('Faites vos jeux', 'Place your bets')}</span>;
+    gauche = <span className="bw-ts-attente">{t ? tr('L’Express arrive…', 'The Express is coming…') : tr('Faites vos jeux', 'Place your bets')}</span>;
     droite = <span className="bw-ts-attente">×?</span>;
   } else if (etape === 3 || !anime) {
     gauche = (
@@ -1275,14 +1309,11 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     const change = avant.numero !== v.numero || avant.phase !== v.phase || etapeNom(avant) !== etapeNom(v);
     if (!change) return;
     if (v.phase === 'multiplicateurs') jouerEffet('bw_cloche');
-    // Le Top Slot a tiré l'Express : l'Express du Baron traverse la gare avant que les rouleaux ne partent.
+    // Le Top Slot a tiré l'Express : l'Express du Baron sort de la roue et fonce vers le joueur, avant les rouleaux.
     if (v.phase === 'multiplicateurs' && v.topSlot?.some((x) => x.c === 'express') && !mouvementReduit()) {
       const id = Date.now();
       setTrain(id);
-      jouerEffet('bw_train_passe');
-      plusTard(() => jouerEffet('bw_train_passe'), 5500);
-      plusTard(() => jouerEffet('bw_sifflet', { volume: 0.8 }), 300);
-      plusTard(() => setTrain((x) => (x === id ? null : x)), PASSAGE_EXPRESS_BW + 300);
+      plusTard(() => setTrain((x) => (x === id ? null : x)), PASSAGE_EXPRESS_BW + 200);
     }
     // Arrêt sur une case multipliée : le contrôleur valide la plaque ×N du Top Slot d'un coup de tampon.
     if (avant.phase === 'tour' && v.phase === 'resultat' && v.arret !== null && !mouvementReduit()) {
@@ -1446,7 +1477,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       <div className="bw-gauche">
       {v && !enBonus && <TopSlot v={v} />}
       <div className="bw-plateau">
-        {v && !enBonus && <LampesDecor lampes={lampes} train={train} />}
+        {v && !enBonus && <LampesDecor lampes={lampes} />}
         {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} aiguille={aiguille} />)}
         {v && !enBonus && <Manometre aiguille={aiguille} />}
         {!v && <div className="chargement">{erreur ?? tr('La roue arrive…', 'The wheel is coming…')}</div>}
@@ -1626,6 +1657,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           <b>+{dollars(fete.gain)}</b>
         </div>
       )}
+      {train && !enBonus && <ArriveeExpress key={train} />}
       {tampon && <Tampon key={tampon.id} coup={tampon} />}
       {palier && <PalierGain key={palier.id} n={palier.n} gain={palier.gain} onFermer={() => setPalier(null)} />}
       {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={BUTIN_PLUIE} />}
