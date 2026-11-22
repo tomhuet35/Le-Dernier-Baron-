@@ -53,17 +53,20 @@ const imageJeton = (v: number) => (v >= 10_000_000 ? 'or' : v >= 5_000_000 ? 'ar
 const fx = (x: number) => `×${x.toLocaleString(EN ? 'en-US' : 'fr-FR', { maximumFractionDigits: 2 })}`;
 const CLE_JETON = 'ldb-bw-jeton';
 
-/** Les cases : nom, couleur unie (roue, tapis, Top Slot), couleur du texte et médaillon des bonus. */
-export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; image?: string }> = {
-  x1: { nom: ['1X', '1X'], fond: '#e40109', texte: '#F3E7CF' },
-  x2: { nom: ['2X', '2X'], fond: '#af010a', texte: '#F3E7CF' },
-  x5: { nom: ['5X', '5X'], fond: '#73010b', texte: '#F3E7CF' },
-  x10: { nom: ['10X', '10X'], fond: '#3b0007', texte: '#f6d77a' },
-  baron: { nom: ['Baron', 'Baron'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-baron2.webp' },
-  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-pickpocket2.webp' },
-  evasion: { nom: ['Évasion', 'Escape'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-evasion2.webp' },
-  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-braquage2.webp' },
-  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#023314', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp' },
+/** Les cases : nom, matière (argent brossé pour les multiples, or brossé pour les bonus, émeraude pour l'Express) à plat et
+    déformée en secteur pour la roue, couleur du texte et médaillon des bonus. */
+const ARGENT = { fond: '#a7a9ae', texte: '#1d1a1a', matiere: '/cartes/bw-matiere-argent.webp', texture: '/cartes/bw-rs-argent.webp' };
+const OR = { fond: '#d4a73c', texte: '#3a1a06', matiere: '/cartes/bw-matiere-or.webp', texture: '/cartes/bw-rs-or.webp' };
+export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; matiere: string; texture: string; image?: string }> = {
+  x1: { nom: ['1X', '1X'], ...ARGENT },
+  x2: { nom: ['2X', '2X'], ...ARGENT },
+  x5: { nom: ['5X', '5X'], ...ARGENT },
+  x10: { nom: ['10X', '10X'], ...ARGENT },
+  baron: { nom: ['Baron', 'Baron'], ...OR, image: '/cartes/bw-sym-baron2.webp' },
+  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], ...OR, image: '/cartes/bw-sym-pickpocket2.webp' },
+  evasion: { nom: ['Évasion', 'Escape'], ...OR, image: '/cartes/bw-sym-evasion2.webp' },
+  braquage: { nom: ['Braquage', 'Big Heist'], ...OR, image: '/cartes/bw-sym-braquage2.webp' },
+  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0b6b3a', texte: '#F3E7CF', matiere: '/cartes/bw-matiere-emeraude.webp', texture: '/cartes/bw-rs-emeraude.webp', image: '/cartes/bw-sym-express.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
@@ -148,14 +151,14 @@ const lisseBW = (u: number) => {
 
 /** Les lanternes des piliers du décor prennent la couleur de la case sous le sifflet, puis de la case gagnante. */
 const LUMIERES: Record<CaseBW, string> = {
-  x1: '#ff3a3a',
-  x2: '#ff2a1a',
-  x5: '#e0102a',
-  x10: '#b0001a',
-  baron: '#fff1c4',
-  pickpocket: '#fff1c4',
-  evasion: '#fff1c4',
-  braquage: '#fff1c4',
+  x1: '#e8f0ff',
+  x2: '#e8f0ff',
+  x5: '#e8f0ff',
+  x10: '#e8f0ff',
+  baron: '#ffd774',
+  pickpocket: '#ffd774',
+  evasion: '#ffd774',
+  braquage: '#ffd774',
   express: '#2ee38c',
 };
 
@@ -197,6 +200,7 @@ function CaseRoue({ i }: { i: number }) {
   return (
     <g className={`bw-secteur ${c}`}>
       <path d={secteur(118, 362, a1, a2)} fill={vis.fond} />
+      <image href={vis.texture} x={-38} y={-363} width={76} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
       <path d={secteur(118, 362, a1, a2)} className="bw-reflet" />
       {vis.image ? (
         <image href={vis.image} x={-34} y={-318} width={68} height={69} transform={`rotate(${milieu})`} />
@@ -569,7 +573,7 @@ function ElementTopSlot({ c, x }: { c?: CaseBW; x?: number }) {
   if (!c) return <span className="bw-ts-case vide">—</span>;
   const vis = CASES_VISUELS[c];
   return (
-    <span className={`bw-ts-case ${c} ${estBonusBW(c) ? 'bonus' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties}>
+    <span className={`bw-ts-case ${c} ${estBonusBW(c) ? 'bonus' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte, '--matiere': `url(${vis.matiere})` } as CSSProperties}>
       <i className="bw-ts-fond" />
       <img className="bw-ts-cadre-case" src="/cartes/bw-ts-plaque.webp" alt="" draggable={false} />
       <span className="bw-ts-contenu">
@@ -841,7 +845,7 @@ export function Podium({ v }: { v: VueBW }) {
 function Pastille({ c, x }: { c: CaseBW; x?: number }) {
   const vis = CASES_VISUELS[c];
   return (
-    <span className={`bw-pastille ${c} ${x ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} title={nomCase(c)}>
+    <span className={`bw-pastille ${c} ${x ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte, '--matiere': `url(${vis.matiere})` } as CSSProperties} title={nomCase(c)}>
       {vis.image ? <img src={vis.image} alt={nomCase(c)} /> : fx(GAINS_CHIFFRES_BW[c as 'x1'])}
       {x ? <i>×{x}</i> : null}
     </span>
@@ -1452,7 +1456,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
             const m = v?.mesMises[c] ?? 0;
             const multis = [...new Set((v?.multiplicateurs ?? []).filter((b) => ROUE_BW[b.i] === c).map((b) => b.x))];
             return (
-              <button key={c} type="button" className={`bw-case ${c} ${m ? 'misee' : ''} ${gagnante === c ? 'gagnante' : ''} ${multis.length ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} onClick={() => void miser(c)} disabled={!ouvertes} aria-label={`${tr(...vis.nom)} ${m ? dollars(m) : ''}`}>
+              <button key={c} type="button" className={`bw-case ${c} ${m ? 'misee' : ''} ${gagnante === c ? 'gagnante' : ''} ${multis.length ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte, '--matiere': `url(${vis.matiere})` } as CSSProperties} onClick={() => void miser(c)} disabled={!ouvertes} aria-label={`${tr(...vis.nom)} ${m ? dollars(m) : ''}`}>
                 {vis.image ? <img src={vis.image} alt="" draggable={false} /> : <strong>{fx(GAINS_CHIFFRES_BW[c as 'x1'])}</strong>}
                 <NomCase texte={estBonusBW(c) ? tr(...vis.nom) : tr(`case ${vis.nom[0]}`, `${vis.nom[1]} spot`)} />
                 {multis.length > 0 && (

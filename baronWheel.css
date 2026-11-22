@@ -35,7 +35,7 @@
 .bw-historique::-webkit-scrollbar { display: none; }
 .bw-historique li:first-child { animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1); }
 @keyframes bw-arrive { from { opacity: 0; transform: scale(0.5); } }
-.bw-pastille { flex: none; display: inline-grid; place-items: center; min-width: 42px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1.5px solid var(--or-bw); background: var(--fond); color: var(--texte); font-family: var(--titre); font-size: 13px; line-height: 1; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+.bw-pastille { flex: none; display: inline-grid; place-items: center; min-width: 42px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1.5px solid var(--or-bw); background: var(--matiere, none) center / cover, var(--fond); color: var(--texte); font-family: var(--titre); font-size: 13px; line-height: 1; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
 .bw-pastille img { width: 26px; height: 26px; }
 .bw-bouton-journal { flex: none; min-height: 34px; padding: 4px 12px; border-radius: 99px; font-size: 13px; }
 
@@ -126,7 +126,7 @@
 /* Le tapis : huit cases */
 .bw-commandes { display: grid; gap: 10px; padding: 10px; border-radius: 16px; border: 1px solid var(--filet); background: rgba(22, 16, 12, 0.92); align-content: start; }
 .bw-tapis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.bw-case { --cadre: url(/cartes/bw-cadre-chiffres.webp); --tranche: 115; --cw: 24px; position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 80px; padding: 10px 9px; border-radius: 10px; border: none; background: var(--fond); background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0, rgba(255, 255, 255, 0) 16%, rgba(0, 0, 0, 0.22) 50%, rgba(255, 255, 255, 0) 84%, rgba(255, 255, 255, 0.2) 100%), linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.3)); color: var(--texte); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); transition: transform 0.12s, box-shadow 0.2s; }
+.bw-case { --cadre: url(/cartes/bw-cadre-chiffres.webp); --tranche: 115; --cw: 24px; position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 80px; padding: 10px 9px; border-radius: 10px; border: none; background: var(--fond); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.25)), var(--matiere, none); background-size: auto, cover; background-position: center; color: var(--texte); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); transition: transform 0.12s, box-shadow 0.2s; }
 /* Le cadre Art déco de la case : coins ornés, côtés qui s'étirent avec elle (chiffres, bonus, Express). */
 .bw-case::after { content: ''; position: absolute; inset: -3px; z-index: 1; border: var(--cw) solid transparent; border-image: var(--cadre) var(--tranche) / var(--cw) stretch; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); transition: filter 0.2s; }
 .bw-case.baron, .bw-case.pickpocket, .bw-case.evasion, .bw-case.braquage { --cadre: url(/cartes/bw-cadre-bonus.webp); --tranche: 120; }
@@ -366,7 +366,7 @@
 .bw-commandes .bj-boutons { flex-wrap: wrap; }
 
 /* L'Express du Baron : sa case unique prend toute la largeur du tapis. */
-.bw-case.express { grid-column: 1 / -1; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 12px; row-gap: 0; justify-content: center; min-height: 64px; background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.3)), radial-gradient(120% 160% at 50% 0%, rgba(255, 210, 120, 0.18), transparent 60%); }
+.bw-case.express { grid-column: 1 / -1; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 12px; row-gap: 0; justify-content: center; min-height: 64px; background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.3)), radial-gradient(120% 160% at 50% 0%, rgba(255, 210, 120, 0.18), transparent 60%), var(--matiere, none); background-size: auto, auto, cover; }
 .bw-case.express > img { grid-row: 1 / 3; width: clamp(40px, 10vw, 52px); }
 .bw-case.express .bw-case-nom { align-self: end; justify-self: start; white-space: nowrap; text-align: left; font-family: var(--titre); font-size: clamp(15px, 4vw, 19px); color: #ffd774; }
 .bw-case-sous { align-self: start; justify-self: start; font-size: 11px; font-weight: 800; color: #bfeccf; }
@@ -401,7 +401,7 @@
 .bw-ts-fixe.n2 .bw-ts-ligne { padding: 0.5cqw 1.4cqw; }
 .bw-ts-fixe .bw-ts-ligne { min-height: 0; animation: bw-arrive 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
 .bw-ts-case { position: relative; display: block; height: 100%; aspect-ratio: 900 / 270; max-width: 100%; margin: auto; }
-.bw-ts-fond { position: absolute; left: 4.5%; right: 4.5%; top: 15%; bottom: 15%; background: var(--fond); box-shadow: inset 0 0 2.2cqw rgba(0, 0, 0, 0.45); }
+.bw-ts-fond { position: absolute; left: 4.5%; right: 4.5%; top: 15%; bottom: 15%; background: var(--matiere, none) center / cover, var(--fond); box-shadow: inset 0 0 2.2cqw rgba(0, 0, 0, 0.45); }
 .bw-ts-cadre-case { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)); }
 .bw-ts-contenu { position: absolute; left: 7%; right: 7%; top: 18%; bottom: 18%; display: flex; align-items: center; justify-content: center; gap: 1.6cqw; color: var(--texte, #f3e7cf); }
 .bw-ts-contenu img { height: 118%; width: auto; filter: drop-shadow(0 0.4cqw 0.5cqw rgba(0, 0, 0, 0.55)); }
