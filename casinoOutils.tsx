@@ -5,7 +5,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { formatDollars, MULTIPLE_GROS_GAIN } from '../../shared/casino';
 import { EN, tr } from './traduction';
-import { jouerEffet, useCompteur } from './ui';
+import { lireReglages } from './reglages';
+import { jouerEffet, mouvementReduit, useCompteur } from './ui';
 
 export const dollars = (n: number) => formatDollars(n, EN);
 /** Le solde en bref pour la barre du haut : 1,52 Md $, 48,3 M $ (en entier sous le million). */
@@ -85,6 +86,16 @@ export function PluieLingots({ n, objets = ['lingot'] }: { n: number; objets?: O
       };
     }),
   );
+  // Paramètres du salon : une courte vibration à chaque gain fêté (Android), et la pluie seulement si on la veut.
+  useEffect(() => {
+    if (!lireReglages().vibration) return;
+    try {
+      navigator.vibrate?.([30, 40, 60]);
+    } catch {
+      /* vibration indisponible */
+    }
+  }, []);
+  if (!lireReglages().celebrations || mouvementReduit()) return null;
   return (
     <div className="cas-pluie" aria-hidden="true">
       {lingots.map((l, k) => (

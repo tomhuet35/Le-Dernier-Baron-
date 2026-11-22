@@ -48,6 +48,8 @@ export function Groom({ pose, children, onFermer, action }: { pose: 'accueil' | 
 }
 
 const CLE_ACCUEIL = 'baron-groom-accueil';
+/** Les Paramètres demandent de revoir l'accueil du Groom. */
+export const EVT_REVOIR_ACCUEIL = 'bf-revoir-accueil';
 /** Le premier passage à l'hôtel : le Groom accueille le joueur (une fois par téléphone). */
 /** Le cadeau de bienvenue du compte, remis par le Groom à la première entrée au salon. */
 export function CadeauBienvenue({ cadeau, onFermer }: { cadeau: CadeauSemaine; onFermer: () => void }) {
@@ -71,6 +73,12 @@ export function AccueilGroom() {
       return false;
     }
   });
+  // Paramètres → « Revoir l'accueil du Groom ».
+  useEffect(() => {
+    const revoir = () => setOuvert(true);
+    window.addEventListener(EVT_REVOIR_ACCUEIL, revoir);
+    return () => window.removeEventListener(EVT_REVOIR_ACCUEIL, revoir);
+  }, []);
   if (!ouvert) return null;
   const fermer = () => {
     try {

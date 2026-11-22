@@ -1524,3 +1524,6 @@ body > .voile.popup-installation { z-index: 300; }
 .popup-installation-partage { display: inline-block; padding: 0 6px; border: 1px solid currentColor; border-radius: 6px; font-size: 12px; line-height: 1.5; }
 .popup-installation-bouton { min-width: 200px; margin-top: 4px; padding: 12px 24px; border-radius: 99px; border: 2px solid #ffd774; background: linear-gradient(180deg, #c8222f, #7a0d17); color: #fff4d6; font-size: 17px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); }
 .popup-installation-plus-tard { border: 0; background: none; color: #e7c27a; text-decoration: underline; font-size: 14px; padding: 6px; cursor: pointer; }
+
+/* Réglage « Animations réduites » (Paramètres du salon) : comme le réglage du téléphone, partout. */
+html[data-animations='reduites'] *, html[data-animations='reduites'] *::before, html[data-animations='reduites'] *::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
