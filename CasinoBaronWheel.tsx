@@ -514,16 +514,19 @@ const MOYEU_ANNEAU = 205 / 210;
 export function ArriveeExpress() {
   const [g, setG] = useState<CSSProperties | null>(null);
   useEffect(() => {
-    const m = document.querySelector('.bw-rl-moyeu')?.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const cx = m && m.width ? m.left + m.width / 2 : vw / 2;
-    const cy = m && m.width ? m.top + m.height / 2 : vh / 2;
-    const r = m && m.width ? (m.width / 2) * MOYEU_ANNEAU : Math.min(vw, vh) * 0.1;
+    // Tout se passe dans le plateau de la roue : les positions sont prises par rapport à lui.
+    const p = document.querySelector('.bw-plateau')?.getBoundingClientRect();
+    const mo = document.querySelector('.bw-rl-moyeu')?.getBoundingClientRect();
+    if (!p || !p.width) return;
+    const vw = p.width;
+    const vh = p.height;
+    const cx = mo && mo.width ? mo.left - p.left + mo.width / 2 : vw / 2;
+    const cy = mo && mo.width ? mo.top - p.top + mo.height / 2 : vh / 2;
+    const r = mo && mo.width ? (mo.width / 2) * MOYEU_ANNEAU : Math.min(vw, vh) * 0.1;
     const w = (LOCO_FACE.w / LOCO_FACE.r) * r;
     const h = (w * LOCO_FACE.h) / LOCO_FACE.w;
-    // À la fin, la locomotive déborde largement de l'écran, sa porte au centre.
-    const k = Math.max((vw * 2.4) / w, (vh * 1.9) / h);
+    // À la fin, la locomotive déborde du plateau, sa porte au centre.
+    const k = Math.max((vw * 2.2) / w, (vh * 1.8) / h);
     setG({
       '--l': `${cx - (LOCO_FACE.cx / LOCO_FACE.w) * w}px`,
       '--t': `${cy - (LOCO_FACE.cy / LOCO_FACE.h) * h}px`,
@@ -531,7 +534,8 @@ export function ArriveeExpress() {
       '--cx': `${cx}px`,
       '--cy': `${cy}px`,
       '--tx': `${vw / 2 - cx}px`,
-      '--ty': `${vh * 0.45 - cy}px`,
+      '--ty': `${vh * 0.5 - cy}px`,
+      '--vw': `${w * 1.5}px`,
       '--k': k,
       '--duree': `${PASSAGE_EXPRESS_BW}ms`,
       '--ox': `${(LOCO_FACE.cx / LOCO_FACE.w) * 100}%`,
@@ -544,7 +548,7 @@ export function ArriveeExpress() {
       window.setTimeout(() => jouerEffet('bw_sifflet', { volume: 1, vitesse: 0.9 }), PASSAGE_EXPRESS_BW * 0.52),
       window.setTimeout(() => {
         jouerEffet('bw_vapeur', { volume: 1 });
-        document.querySelector('.bw-ecran')?.animate(
+        document.querySelector('.bw-plateau')?.animate(
           [{ transform: 'none' }, { transform: 'translate(-6px, 4px)' }, { transform: 'translate(5px, -3px)' }, { transform: 'translate(-3px, 2px)' }, { transform: 'none' }],
           { duration: 420, easing: 'ease-out' },
         );
@@ -1480,6 +1484,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         {v && !enBonus && <LampesDecor lampes={lampes} />}
         {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} aiguille={aiguille} />)}
         {v && !enBonus && <Manometre aiguille={aiguille} />}
+        {train && !enBonus && <ArriveeExpress key={train} />}
         {!v && <div className="chargement">{erreur ?? tr('La roue arrive…', 'The wheel is coming…')}</div>}
         <span className="bw-direct">
           {tr('En direct', 'Live')}
@@ -1657,7 +1662,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           <b>+{dollars(fete.gain)}</b>
         </div>
       )}
-      {train && !enBonus && <ArriveeExpress key={train} />}
       {tampon && <Tampon key={tampon.id} coup={tampon} />}
       {palier && <PalierGain key={palier.id} n={palier.n} gain={palier.gain} onFermer={() => setPalier(null)} />}
       {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={BUTIN_PLUIE} />}
