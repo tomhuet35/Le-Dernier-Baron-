@@ -124,12 +124,47 @@ function secteur(r1: number, r2: number, a1: number, a2: number) {
   const p = (r: number, a: number) => `${(r * Math.sin((a * Math.PI) / 180)).toFixed(2)} ${(-r * Math.cos((a * Math.PI) / 180)).toFixed(2)}`;
   return `M${p(r1, a1)} L${p(r2, a1)} A${r2} ${r2} 0 0 1 ${p(r2, a2)} L${p(r1, a2)} A${r1} ${r1} 0 0 0 ${p(r1, a1)} Z`;
 }
-const facile = (u: number) => 1 - (1 - u) ** 4;
+/**
+ * Le tour : la roue file, puis la finale au ralenti (le dernier quart du tour, environ 2 s) où elle ne passe plus que
+ * quelques cases, de plus en plus lentement. Rend la part de l'angle parcourue (0 à 1) et la vitesse (part par unité de u).
+ */
+const FINALE = 0.75;
+const CASES_FINALE = 3.5;
+function courseTour(u: number, total: number): { part: number; vitesse: number } {
+  const d = Math.min(CASES_FINALE * DEGRES_CASE_BW, total * 0.1);
+  const b = 6 * d;
+  const a = total - d - b;
+  if (u < FINALE) {
+    const p = u / FINALE;
+    return { part: (a * (1 - (1 - p) ** 4) + b * p) / total, vitesse: (a * 4 * (1 - p) ** 3 + b) / FINALE / total };
+  }
+  const w = Math.min(1, (u - FINALE) / (1 - FINALE));
+  return { part: (total - d + d * (1 - (1 - w) ** 2)) / total, vitesse: (2 * d * (1 - w)) / (1 - FINALE) / total };
+}
+const lisseBW = (u: number) => {
+  const x = u <= 0 ? 0 : u >= 1 ? 1 : u;
+  return x * x * (3 - 2 * x);
+};
+
+/** Les lanternes des piliers du décor prennent la couleur de la case sous le sifflet, puis de la case gagnante. */
+const LUMIERES: Record<CaseBW, string> = {
+  x1: '#ff3a52',
+  x2: '#4d7dff',
+  x5: '#fff3d6',
+  x10: '#ffd36a',
+  baron: '#ff2626',
+  pickpocket: '#b552ff',
+  evasion: '#2e86ff',
+  braquage: '#ff8a1e',
+  express: '#2ee38c',
+};
 
 interface HorlogesRoue {
   v: VueBW | null;
   /** Départ du tour (performance.now()). */
   debut: number | null;
+  /** Début de la pose des multiplicateurs (performance.now()). */
+  debutMulti: number | null;
   numero: number;
 }
 
@@ -151,8 +186,44 @@ const MOTRICE = {
 };
 const NB_BOUFFEES = 8;
 
-function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRoue> }) {
+/** Une case de la roue : son panneau de laque, son chiffre gravé ou son médaillon. */
+function CaseRoue({ i, ressort }: { i: number; ressort?: boolean }) {
+  const c = ROUE_BW[i];
+  const a1 = i * DEGRES_CASE_BW;
+  const a2 = a1 + DEGRES_CASE_BW;
+  const milieu = a1 + DEGRES_CASE_BW / 2;
+  const vis = CASES_VISUELS[c];
+  return (
+    <g className={`bw-secteur ${c} ${ressort ? 'bw-ressort' : ''}`}>
+      <path d={secteur(118, 362, a1, a2)} fill={vis.fond} />
+      <image href={vis.texture} x={-38} y={-363} width={76} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
+      <path d={secteur(118, 362, a1, a2)} className="bw-reflet" />
+      {ressort && <path d={secteur(300, 362, a1 + 0.6, a2 - 0.6)} className="bw-eventail" />}
+      {vis.image ? (
+        <image href={vis.image} x={-34} y={-318} width={68} height={69} transform={`rotate(${milieu})`} />
+      ) : (
+        <text transform={`rotate(${milieu}) translate(0 -262) rotate(-90)`} fill="url(#bw-or-grave)" className={`bw-chiffre ${c}`} textAnchor="middle" dominantBaseline="central">
+          {fx(GAINS_CHIFFRES_BW[c as 'x1'])}
+        </text>
+      )}
+    </g>
+  );
+}
+
+/** Le petit train doré qui pose les multiplicateurs : la locomotive et deux wagons (largeur, part de la roue). */
+const TRAIN_DORE = [
+  { img: 'bw-ex2-loco', l: 0.17, ratio: 338 / 1100 },
+  { img: 'bw-ex2-wagon-1', l: 0.13, ratio: 344 / 1100 },
+  { img: 'bw-ex2-wagon-3', l: 0.13, ratio: 344 / 1100 },
+];
+/** Le tour du train : il part de derrière le sifflet et fait le tour de la jante en 2,8 s. */
+const TOUR_TRAIN = { depart: 250, duree: 2800, rayon: 0.448 };
+
+function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<HorlogesRoue>; lampes: MutableRefObject<(HTMLDivElement | null)[]> }) {
   const disque = useRef<HTMLDivElement>(null);
+  const frole = useRef<SVGPathElement>(null);
+  const wagons = useRef<(HTMLImageElement | null)[]>([]);
+  const boostsRef = useRef<(SVGGElement | null)[]>([]);
   const roue = useRef<HTMLDivElement>(null);
   const bielle = useRef<HTMLImageElement>(null);
   const crosse = useRef<HTMLImageElement>(null);
@@ -164,6 +235,12 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
     let raf = 0;
     let derniere = -1;
     let dernierTic = 0;
+    let phasePrec = '';
+    let arretT: number | null = null;
+    let froleT = -1e9;
+    let flash = -1e9;
+    let numeroPose = -1;
+    const poses = new Set<number>();
     // La vapeur : chaque bouffée part d'un côté du bas de la roue (date de départ, côté) ; un souffle par bouffée.
     const vapeur: { t: number; cote: number; force: number }[] = [];
     let derniereBouffee: number | null = null;
@@ -174,12 +251,33 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
       if (!x || !disque.current) return;
       let a = x.angle;
       let vitesse = 0;
+      let u = 0;
+      const now = performance.now();
+      const reduit = mouvementReduit();
       if (x.phase === 'tour' && x.tour && h.debut !== null) {
-        const u = Math.min(1, (performance.now() - h.debut) / x.tour.duree);
-        a = x.tour.depart + (x.tour.arrivee - x.tour.depart) * facile(u);
-        vitesse = 4 * (1 - u) ** 3;
+        u = Math.min(1, (now - h.debut) / x.tour.duree);
+        const c = courseTour(u, x.tour.arrivee - x.tour.depart);
+        a = x.tour.depart + (x.tour.arrivee - x.tour.depart) * c.part;
+        vitesse = c.vitesse;
       }
       disque.current.style.transform = `rotate(${a}deg)`;
+      // L'arrêt : le sifflet de la locomotive et un grand jet de vapeur ; la caméra revient.
+      if (phasePrec === 'tour' && x.phase !== 'tour' && x.arret !== null) {
+        arretT = now;
+        for (const cote of [-1, 1, -1, 1]) {
+          vapeur.push({ t: now + (cote > 0 ? 120 : 0), cote, force: 1 });
+          if (vapeur.length > NB_BOUFFEES) vapeur.shift();
+        }
+        window.setTimeout(() => jouerEffet('bw_sifflet', { volume: 0.8 }), 180);
+      }
+      if (x.phase === 'mises') arretT = null;
+      phasePrec = x.phase;
+      // La caméra : pendant la finale, elle s'approche du sifflet ; après l'arrêt, elle recule.
+      const R = roue.current;
+      if (R) {
+        const z = reduit ? 0 : x.phase === 'tour' ? lisseBW((u - FINALE + 0.04) / 0.1) : arretT !== null ? 1 - lisseBW((now - arretT - 900) / 700) : 0;
+        R.style.transform = z > 0.001 ? `scale(${1 + 0.32 * z})` : '';
+      }
       const W = roue.current?.clientWidth ?? 0;
       const b = bielle.current;
       if (W && b) {
@@ -216,7 +314,7 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
         if (!el) return;
         const bf = vapeur[k];
         const u = bf ? (t - bf.t) / 1500 : 1;
-        if (!bf || u >= 1 || !W) {
+        if (!bf || u >= 1 || u < 0 || !W) {
           el.style.opacity = '0';
           return;
         }
@@ -228,45 +326,80 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
         el.style.opacity = String(Math.min(1, u * 6) * (1 - u) * 0.85 * bf.force);
         el.style.transform = `translate3d(${cx - w / 2}px, ${cy - w * 0.46}px, 0) scaleX(${bf.cote})`;
       });
-      // Le cliquet de l'aiguille, à chaque case qui passe.
+      // Le cliquet de l'aiguille, à chaque case qui passe ; pendant la finale, un « clac » franc à chaque case, et le
+      // bonus que la roue frôle s'allume un instant.
       const sous = Math.floor((((-a % 360) + 360) % 360) / DEGRES_CASE_BW);
+      const finale = x.phase === 'tour' && u >= FINALE - 0.02;
       if (sous !== derniere) {
         const t = performance.now();
         if (derniere >= 0 && x.phase === 'tour' && t - dernierTic > 45) {
           dernierTic = t;
-          jouerEffet('bw_tic', { volume: 0.45 + 0.55 * Math.min(1, 1 - vitesse / 4 + 0.2), vitesse: 0.9 + Math.random() * 0.2 });
+          flash = t;
+          if (finale) jouerEffet('bw_tic', { volume: 1, vitesse: 0.8 });
+          else jouerEffet('bw_tic', { volume: 0.45 + 0.55 * Math.min(1, 1 - vitesse / 4 + 0.2), vitesse: 0.9 + Math.random() * 0.2 });
+          if (finale && estBonusBW(ROUE_BW[sous]) && sous !== x.arret) {
+            froleT = t;
+            frole.current?.setAttribute('d', secteur(118, 362, sous * DEGRES_CASE_BW, (sous + 1) * DEGRES_CASE_BW));
+            jouerEffet('gd_eclat', { volume: 0.3 });
+          }
         }
         derniere = sous;
       }
+      if (frole.current) frole.current.style.opacity = String(Math.max(0, 1 - (now - froleT) / 520));
+      // Les lanternes des piliers : la couleur de la case sous le sifflet, un éclat à chaque case ; à l'arrêt, elles
+      // clignotent à la couleur de la case gagnante, puis restent allumées.
+      const caseLampe = x.phase === 'tour' ? ROUE_BW[sous] : x.arret !== null && (x.phase === 'bonus' || x.phase === 'resultat') ? ROUE_BW[x.arret] : null;
+      lampes.current.forEach((l, k) => {
+        if (!l) return;
+        let force = 0.45;
+        let couleur = '#ffc46a';
+        if (caseLampe) {
+          couleur = LUMIERES[caseLampe];
+          if (x.phase === 'tour') force = 0.55 + 0.45 * Math.max(0, 1 - (now - flash) / 160);
+          else {
+            const e = arretT !== null ? now - arretT : 9999;
+            force = e < 3200 && !reduit ? (Math.floor(e / 220 + k) % 2 ? 1 : 0.15) : 0.85 + 0.15 * Math.sin(now / 300);
+          }
+        } else force = 0.4 + 0.08 * Math.sin(now / 700 + k * 2);
+        l.style.setProperty('--lampe', couleur);
+        l.style.opacity = String(force);
+      });
+      // Le petit train doré : il fait le tour de la jante et pose chaque multiplicateur en passant sur sa case.
+      if (x.numero !== numeroPose) {
+        numeroPose = x.numero;
+        poses.clear();
+      }
+      const tm = x.phase === 'multiplicateurs' && h.debutMulti !== null && !reduit ? (now - h.debutMulti - TOUR_TRAIN.depart) / TOUR_TRAIN.duree : -1;
+      const theta = -25 + 410 * lisseBW(tm);
+      wagons.current.forEach((el, k) => {
+        if (!el) return;
+        const vu = tm > -0.05 && tm < 1.05 && W > 0;
+        el.style.opacity = vu ? String(Math.min(1, (tm + 0.05) * 8, (1.05 - tm) * 8)) : '0';
+        if (!vu) return;
+        const T = TRAIN_DORE[k];
+        const r = TOUR_TRAIN.rayon * W;
+        const ecart = TRAIN_DORE.slice(0, k).reduce((s2, c2, j) => s2 + (c2.l + TRAIN_DORE[j + 1].l) / 2 + 0.008, 0) * W;
+        const th = ((theta * Math.PI) / 180) - ecart / r;
+        const w = T.l * W;
+        el.style.width = `${w}px`;
+        el.style.transform = `translate3d(${W / 2 + r * Math.sin(th) - w / 2}px, ${W / 2 - r * Math.cos(th) - (w * T.ratio) / 2}px, 0) rotate(${th}rad)`;
+      });
+      (x.multiplicateurs ?? []).forEach((bo, k) => {
+        const g = boostsRef.current[k];
+        if (!g || poses.has(k)) return;
+        const phi = (((bo.i + 0.5) * DEGRES_CASE_BW + a) % 360 + 360) % 360;
+        if (x.phase !== 'multiplicateurs' || reduit || h.debutMulti === null || theta >= phi) {
+          poses.add(k);
+          g.dataset.pose = '1';
+          if (x.phase === 'multiplicateurs' && !reduit) jouerEffet('jeton', { vitesse: 1.5, volume: 0.8 });
+        }
+      });
     };
     raf = requestAnimationFrame(dessiner);
     return () => cancelAnimationFrame(raf);
-  }, [horloges]);
+  }, [horloges, lampes]);
 
-  const cases = useMemo(
-    () =>
-      ROUE_BW.map((c, i) => {
-        const a1 = i * DEGRES_CASE_BW;
-        const a2 = a1 + DEGRES_CASE_BW;
-        const milieu = a1 + DEGRES_CASE_BW / 2;
-        const vis = CASES_VISUELS[c];
-        return (
-          <g key={i} className={`bw-secteur ${c}`}>
-            <path d={secteur(118, 362, a1, a2)} fill={vis.fond} />
-            <image href={vis.texture} x={-38} y={-363} width={76} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
-            <path d={secteur(118, 362, a1, a2)} className="bw-reflet" />
-            {vis.image ? (
-              <image href={vis.image} x={-34} y={-318} width={68} height={69} transform={`rotate(${milieu})`} />
-            ) : (
-              <text transform={`rotate(${milieu}) translate(0 -262) rotate(-90)`} fill="url(#bw-or-grave)" className={`bw-chiffre ${c}`} textAnchor="middle" dominantBaseline="central">
-                {fx(GAINS_CHIFFRES_BW[c as 'x1'])}
-              </text>
-            )}
-          </g>
-        );
-      }),
-    [],
-  );
+  const cases = useMemo(() => ROUE_BW.map((c, i) => <CaseRoue key={i} i={i} />), []);
 
   return (
     <div className={`bw-roue ${v.phase}`} ref={roue}>
@@ -288,12 +421,20 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
           {ROUE_BW.map((_, i) => (
             <line key={i} x1="0" y1="-118" x2="0" y2="-363" transform={`rotate(${i * DEGRES_CASE_BW})`} className="bw-filet" />
           ))}
+          {gagnante !== null && <CaseRoue key={`r${v.numero}`} i={gagnante} ressort />}
           {/* Les multiplicateurs : un liseré rouge autour de la case, et son ×N en rouge néon près du centre. */}
           {boosts.map((b, k) => {
             const a1 = b.i * DEGRES_CASE_BW;
             const largeur = 24 + 15 * String(b.x).length;
             return (
-              <g key={`${v.numero}-${b.i}`} className={`bw-boost ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`} style={{ '--k': k } as CSSProperties}>
+              <g
+                key={`${v.numero}-${b.i}`}
+                ref={(el) => {
+                  boostsRef.current[k] = el;
+                }}
+                className={`bw-boost ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`}
+                style={{ '--k': k } as CSSProperties}
+              >
                 <path className="bw-boost-lisere" d={secteur(122, 358, a1 + 0.35, a1 + DEGRES_CASE_BW - 0.35)} />
                 <g transform={`rotate(${a1 + DEGRES_CASE_BW / 2}) translate(0 -190) rotate(-90)`}>
                   <g className="bw-boost-etiquette">
@@ -306,6 +447,7 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
               </g>
             );
           })}
+          <path ref={frole} className="bw-frole" d="M0 0" />
           {gagnante !== null && <path className="bw-gagnante" d={secteur(118, 362, gagnante * DEGRES_CASE_BW, (gagnante + 1) * DEGRES_CASE_BW)} />}
           <circle r="120" className="bw-anneau" />
         </svg>
@@ -327,13 +469,140 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
           draggable={false}
         />
       ))}
+      {TRAIN_DORE.map((t, k) => (
+        <img
+          key={t.img + k}
+          className="bw-train-dore"
+          ref={(el) => {
+            wagons.current[k] = el;
+          }}
+          src={`/cartes/${t.img}.webp`}
+          alt=""
+          draggable={false}
+        />
+      ))}
       <img className="bw-aiguille" src="/cartes/bw-rl-sifflet.webp" alt="" draggable={false} />
+    </div>
+  );
+}
+
+/**
+ * Les lanternes des piliers du décor (position dans l'image du décor, et rayon du halo) : celles du bas des piliers, et
+ * celles des chapiteaux des arches ; on n'allume que celles qui sont visibles dans le plateau.
+ */
+const LANTERNES = {
+  paysage: { w: 1600, h: 900, pos: 0.7, lampes: [[137, 345, 110], [1472, 345, 110], [316, 236, 80], [1279, 236, 80]] },
+  portrait: { w: 1000, h: 1250, pos: 0.7, lampes: [[73, 488, 85], [926, 488, 85], [180, 312, 70], [821, 312, 70]] },
+};
+export function LampesDecor({ lampes }: { lampes: MutableRefObject<(HTMLDivElement | null)[]> }) {
+  const boite = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = boite.current?.parentElement;
+    if (!el) return;
+    const placer = () => {
+      const W = el.clientWidth;
+      const H = el.clientHeight;
+      const d = window.matchMedia('(max-width: 699px)').matches ? LANTERNES.portrait : LANTERNES.paysage;
+      const sc = Math.max(W / d.w, H / d.h);
+      const ox = (W - d.w * sc) * 0.5;
+      const oy = (H - d.h * sc) * d.pos;
+      d.lampes.forEach(([x, y, rr], k) => {
+        const l = lampes.current[k];
+        if (!l) return;
+        const r = rr * sc;
+        const cx = ox + x * sc;
+        const cy = oy + y * sc;
+        l.style.width = l.style.height = `${2 * r}px`;
+        l.style.transform = `translate3d(${cx - r}px, ${cy - r}px, 0)`;
+        l.style.display = cx < 4 || cx > W - 4 || cy < 4 || cy > H - 4 ? 'none' : '';
+      });
+    };
+    placer();
+    const ro = new ResizeObserver(placer);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [lampes]);
+  return (
+    <div className="bw-lampes" ref={boite} aria-hidden="true">
+      {[0, 1, 2, 3].map((k) => (
+        <div
+          key={k}
+          className="bw-lampe"
+          ref={(el) => {
+            lampes.current[k] = el;
+          }}
+        />
+      ))}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 // Les jackpots, l'historique, le journal
+
+/** Combien de manches depuis chaque bonus, et le plus gros gain du jour. */
+export function Compteurs({ v }: { v: VueBW }) {
+  const ordre: BonusBW[] = ['express', 'baron', 'pickpocket', 'evasion', 'braquage'];
+  return (
+    <div className="bw-compteurs" aria-label={tr('Depuis le dernier bonus', 'Since the last bonus')}>
+      {ordre.map((b) => {
+        const n = v.depuis?.[b] ?? null;
+        return (
+          <span key={b} className={`bw-compteur ${b} ${n !== null && n >= 40 ? 'chaud' : ''}`} title={tr(...NOMS_BONUS[b])}>
+            <img src={CASES_VISUELS[b].image} alt="" draggable={false} />
+            <b>{n === null ? '—' : n === 0 ? tr('à l’instant', 'just now') : tr(`il y a ${n}`, `${n} ago`)}</b>
+          </span>
+        );
+      })}
+      {v.record && (
+        <span className="bw-compteur record" title={tr('Le plus gros gain du jour', 'Biggest win today')}>
+          <img src={`/cartes/avatar-${v.record.avatar}.webp`} alt="" draggable={false} />
+          <span>
+            <small>{tr('Record du jour', 'Today’s best')}</small>
+            <b>
+              {v.record.nom} · {court(v.record.gain)}
+            </b>
+          </span>
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Les avatars des autres joueurs qui ont misé sur cette case (trois au plus, puis « +N »). */
+export function AvatarsCase({ v, c }: { v: VueBW | null; c: CaseBW }) {
+  const autres = (v?.joueurs ?? []).filter((j) => !j.moi && j.cases?.includes(c));
+  if (!autres.length) return null;
+  return (
+    <span className="bw-case-avatars" aria-label={tr(`${autres.length} joueur(s) ont misé ici`, `${autres.length} player(s) bet here`)}>
+      {autres.slice(0, 3).map((j, k) => (
+        <img key={k} src={`/cartes/avatar-${j.avatar}.webp`} alt="" draggable={false} title={j.nom} />
+      ))}
+      {autres.length > 3 && <i>+{autres.length - 3}</i>}
+    </span>
+  );
+}
+
+/** Après un bonus : les trois plus gros gains de la manche. */
+export function Podium({ v }: { v: VueBW }) {
+  const top = v.joueurs.filter((j) => (j.gain ?? 0) > 0).slice(0, 3);
+  if (!top.length || !v.bonus) return null;
+  return (
+    <section className="bw-podium" aria-label={tr('Les plus gros gains du bonus', 'Biggest bonus wins')}>
+      <h3>{tr(`Les gagnants · ${NOMS_BONUS[v.bonus.type][0]}`, `Winners · ${NOMS_BONUS[v.bonus.type][1]}`)}</h3>
+      <ol>
+        {top.map((j, k) => (
+          <li key={k} className={`${j.moi ? 'moi' : ''} rang${k + 1}`} style={{ '--k': k } as CSSProperties}>
+            <em>{k + 1}</em>
+            <img src={`/cartes/avatar-${j.avatar}.webp`} alt="" draggable={false} />
+            <span>{j.nom}</span>
+            <strong>+{dollars(j.gain ?? 0)}</strong>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
 function Jackpots() {
   return (
@@ -675,7 +944,10 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
   useEffect(() => () => minuteries.current.forEach((m) => window.clearTimeout(m)), []);
   const solde = useSoldeAnime(v?.solde ?? vue.solde);
-  const horloges = useRef<HorlogesRoue>({ v: null, debut: null, numero: -1 });
+  const horloges = useRef<HorlogesRoue>({ v: null, debut: null, debutMulti: null, numero: -1 });
+  const lampes = useRef<(HTMLDivElement | null)[]>([]);
+  /** Le médaillon du bonus tiré grossit jusqu'à remplir l'écran, avant que la scène du bonus ne s'ouvre. */
+  const [ouvertureBonus, setOuvertureBonus] = useState<{ type: BonusBW; id: number } | null>(null);
   const [finPhase, setFinPhase] = useState<number | null>(null);
   const clePhase = useRef('');
 
@@ -736,6 +1008,10 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       const estime = maintenant - v.tour.ecoule;
       h.debut = h.debut === null ? estime : Math.min(h.debut, estime);
     }
+    if (v.phase === 'multiplicateurs' && v.duree !== null && v.reste !== null) {
+      const estime = maintenant - (v.duree - v.reste);
+      h.debutMulti = h.numero !== v.numero || h.debutMulti === null ? estime : Math.min(h.debutMulti, estime);
+    } else if (v.phase === 'mises') h.debutMulti = null;
     h.numero = v.numero;
     h.v = v;
     // La fin de la phase, calée une fois par phase : on garde l'estimation la plus tôt (la moins retardée par le
@@ -758,6 +1034,11 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       jouerEffet('bw_sifflet');
     }
     if (avant.phase === 'tour' && v.phase !== 'tour') jouerEffet('bw_arret');
+    if (avant.phase === 'tour' && v.phase === 'bonus' && v.bonus && !mouvementReduit()) {
+      const o = { type: v.bonus.type, id: Date.now() };
+      setOuvertureBonus(o);
+      plusTard(() => setOuvertureBonus((x) => (x?.id === o.id ? null : x)), 2300);
+    }
     if (v.phase === 'bonus' && v.bonus) {
       const n = etapeNom(v);
       // L'Express et le Braquage jouent leurs propres sons.
@@ -859,7 +1140,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         </strong>
       );
   }
-  const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat');
+  const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat') && !ouvertureBonus;
   const gagnante = v && v.arret !== null && v.phase === 'resultat' ? ROUE_BW[v.arret] : null;
 
   return (
@@ -903,11 +1184,19 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           {tr('Historique', 'History')}
         </button>
       </div>
+      {v && <Compteurs v={v} />}
       </div>
 
       <div className="bw-gauche">
       <div className="bw-plateau">
-        {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} />)}
+        {v && !enBonus && <LampesDecor lampes={lampes} />}
+        {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} />)}
+        {ouvertureBonus && (
+          <div className="bw-medaillon-geant" key={ouvertureBonus.id} aria-hidden="true">
+            <img src={CASES_VISUELS[ouvertureBonus.type].image} alt="" draggable={false} />
+            <strong>{tr(...NOMS_BONUS[ouvertureBonus.type])}</strong>
+          </div>
+        )}
         {!v && <div className="chargement">{erreur ?? tr('La roue arrive…', 'The wheel is coming…')}</div>}
         <span className="bw-direct">
           {tr('En direct', 'Live')}
@@ -919,6 +1208,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         {statut}
         {v?.phase === 'mises' && <Barre v={v} cle={`m${v.numero}`} />}
       </div>
+
+      {v && v.phase === 'resultat' && v.bonus && !ouvertureBonus && <Podium v={v} />}
 
       {v?.bilan && v.bilan.mise > 0 && (
         <div className={`bw-bilan ${v.bilan.gain > v.bilan.mise ? 'gagne' : v.bilan.gain > 0 ? 'rendu' : 'perdu'}`}>
@@ -957,6 +1248,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
                 <NomCase texte={estBonusBW(c) ? tr(...vis.nom) : tr(`case ${vis.nom[0]}`, `${vis.nom[1]} spot`)} />
                 {multis.length > 0 && <span className="bw-case-multi">{[...multis].sort((a, b) => b - a).map((x) => `×${x}`).join(' ')}</span>}
                 {c === 'express' && <small className="bw-case-sous">{tr('Case unique · ×10 à ×10 000', 'One spot · ×10 to ×10,000')}</small>}
+                <AvatarsCase v={v} c={c} />
                 {m > 0 && (
                   <span className="bw-case-mise">
                     <img src={`/cartes/jeton-${imageJeton(m)}.webp`} alt="" />

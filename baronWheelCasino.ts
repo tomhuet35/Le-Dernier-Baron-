@@ -48,6 +48,7 @@ import {
   type VueBonusBW,
   type VueBW,
 } from '../shared/baronWheel';
+import { jourParis } from '../shared/roulette';
 import type { Identite } from './comptes';
 import type { BanqueCasino } from './tablesCasino';
 
@@ -121,6 +122,8 @@ export function creerBaronWheel(options: {
   let minuterie: ReturnType<typeof setTimeout> | null = null;
   let enCours = false;
   let historique: VueBW['historique'] = [];
+  const depuis: VueBW['depuis'] = { baron: null, pickpocket: null, evasion: null, braquage: null, express: null };
+  let record: (NonNullable<VueBW['record']> & { jour: string }) | null = null;
 
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
   const bonusCourant = (): BonusBW | null => (tirage ? tirage.type : null);
@@ -178,7 +181,15 @@ export function creerBaronWheel(options: {
     const j = uid ? joueurs.get(uid) : undefined;
     const liste: JoueurBW[] = [...joueurs.values()]
       .filter((x) => totalMises(x.mises) > 0)
-      .map((x) => ({ nom: x.nom, avatar: x.avatar, mise: totalMises(x.mises), gain: x.gain, ...(x.jackpot ? { jackpot: x.jackpot } : {}), ...(x.uid === uid ? { moi: true as const } : {}) }))
+      .map((x) => ({
+        nom: x.nom,
+        avatar: x.avatar,
+        mise: totalMises(x.mises),
+        gain: x.gain,
+        cases: CASES_BW.filter((c) => (x.mises[c] ?? 0) > 0),
+        ...(x.jackpot ? { jackpot: x.jackpot } : {}),
+        ...(x.uid === uid ? { moi: true as const } : {}),
+      }))
       .sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0) || b.mise - a.mise);
     const ouverture = finOuverture();
     return {
@@ -196,6 +207,8 @@ export function creerBaronWheel(options: {
       bilan: phase === 'resultat' && j && j.gain !== null ? { mise: totalMises(j.mises), gain: j.gain } : null,
       joueurs: liste.slice(0, 20),
       historique,
+      depuis: { ...depuis },
+      record: record && record.jour === jourParis(t) ? { nom: record.nom, avatar: record.avatar, gain: record.gain, c: record.c } : null,
       spectateurs: uidsSpectateurs().size,
       solde: uid ? banque.solde(uid) : 0,
       ouverture: ouverture === null ? null : ouverture - t,
@@ -278,6 +291,7 @@ export function creerBaronWheel(options: {
     const c = ROUE_BW[arret];
     const m = multiplicateurDe(boosts, arret);
     historique = [{ c, ...(m > 1 ? { x: m } : {}) }, ...historique].slice(0, 20);
+    for (const b of Object.keys(depuis) as BonusBW[]) depuis[b] = b === c ? 0 : depuis[b] === null ? null : (depuis[b] as number) + 1;
     salon.manches++;
     salon.cases[c]++;
     if (estBonusBW(c)) {
@@ -349,6 +363,8 @@ export function creerBaronWheel(options: {
       }
       j.gain = gain;
       if (gain > 0) banque.crediter(j.uid, gain);
+      const jour = jourParis(horloge());
+      if (gain > 0 && (!record || record.jour !== jour || gain > record.gain)) record = { nom: j.nom, avatar: j.avatar, gain, c, jour };
       const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, evasion: 0, braquage: 0, express: 0 } };
       mt.manches++;
       mt.mise += mise;
