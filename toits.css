@@ -21,15 +21,14 @@
 @keyframes tt-eclair { 0% { opacity: 0; } 8% { opacity: 1; } 22% { opacity: 0.12; } 34% { opacity: 0.85; } 100% { opacity: 0; } }
 .tt-voie { position: absolute; left: 0; right: 0; z-index: 1; background: url('/cartes/bw-ex2-alpes-voie.webp') 0 0 / auto 100% repeat-x; filter: brightness(0.8); }
 .tt-monde { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 100%; will-change: transform; }
-.tt-voiture, .tt-coureur, .tt-tunnel, .tt-attelage, .tt-portail { position: absolute; left: 0; top: 0; height: auto; max-width: none; pointer-events: none; will-change: transform; }
+.tt-voiture, .tt-coureur, .tt-tunnel, .tt-attelage { position: absolute; left: 0; top: 0; height: auto; max-width: none; pointer-events: none; will-change: transform; }
 .tt-voiture { z-index: 1; filter: brightness(0.82) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
 .tt-scene.rapide .tt-voiture, .tt-scene.baron .tt-voiture { filter: brightness(0.68) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
 .tt-voiture.fourgon { filter: drop-shadow(0 0 18px rgba(255, 200, 100, 0.45)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
 .tt-attelage { z-index: 2; opacity: 0; filter: drop-shadow(0 0 10px rgba(255, 190, 90, 0.8)); }
-.tt-coureur { z-index: 4; visibility: hidden; transform-origin: 50% 60%; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.6)); }
+.tt-coureur { z-index: 5; visibility: hidden; transform-origin: 50% 60%; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.6)); }
 .tt-coureur.victoire { filter: drop-shadow(0 0 16px rgba(255, 210, 120, 0.8)) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.6)); }
-.tt-tunnel { z-index: 0; visibility: hidden; }
-.tt-portail { z-index: 6; visibility: hidden; overflow: hidden; background: url('/cartes/tt-tunnel.webp') 0 0 no-repeat; }
+.tt-tunnel { z-index: 4; visibility: hidden; filter: drop-shadow(-8px 0 14px rgba(0, 0, 0, 0.6)); }
 
 /* Les plaques des multiplicateurs, au-dessus de chaque wagon. */
 .tt-plaque { position: absolute; left: 0; top: 0; z-index: 3; opacity: 0; padding: 1px 10px 2px; border-radius: 10px; border: 1.5px solid rgba(214, 168, 75, 0.75); background: rgba(14, 8, 6, 0.82); font-family: var(--titre); font-size: clamp(12px, 2.6cqh, 18px); line-height: 1.2; color: #f3e7cf; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55); transition: background 0.3s, color 0.3s, box-shadow 0.3s; }

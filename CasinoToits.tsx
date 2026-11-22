@@ -80,10 +80,11 @@ const VITESSE: Record<NiveauToits, number> = { promenade: 0.55, express: 0.9, ra
 const T = { course: 380, vol: 520, pose: 200, suite: 420 };
 const DUREE_SAUT = T.course + T.vol + T.pose + T.suite;
 /**
- * Le tunnel en coupe (1800 × 582) : l'arche du portail (bas des rails, haut de l'arche), le bord gauche du portail et
- * sa largeur (la partie dessinée devant le train) ; l'arche fait un peu plus qu'un wagon de haut.
+ * Le tunnel (1284 × 720) : une montagne, l'entrée à gauche, la sortie à droite (le même portail en miroir), dessinée
+ * devant le train, qui y disparaît et ressort de l'autre côté. Le haut des rails, le haut des arches, le bord gauche du
+ * portail ; l'arche fait un peu plus qu'un wagon de haut.
  */
-const TUNNEL = { w: 1800, h: 582, rails: 515, arche: 363, face: 52, portail: 290, hauteurArche: 1.1 };
+const TUNNEL = { w: 1284, h: 720, rails: 496, arche: 276, face: 45, hauteurArche: 1.05 };
 /** La chute : le moment du choc (tunnel) ou du décrochage, la chute elle-même. */
 const CHUTE = { choc: T.course + T.vol * 0.45, decroche: T.course - 180, duree: 1100 };
 
@@ -136,7 +137,6 @@ interface Refs {
   plaques: { current: HTMLSpanElement | null }[];
   poses: Record<Pose, { current: HTMLImageElement | null }>;
   tunnel: { current: HTMLImageElement | null };
-  portail: { current: HTMLDivElement | null };
   attelageG: { current: HTMLImageElement | null };
   attelageD: { current: HTMLImageElement | null };
 }
@@ -222,7 +222,7 @@ function useScene(etat: { current: Etat }, r: Refs) {
             // Le tunnel arrive de la droite et le heurte au moment du choc.
             const p = vol(uc);
             const sc = (g.h * TUNNEL.hauteurArche) / (TUNNEL.rails - TUNNEL.arche);
-            tunnelX = p.x + g.h * 0.3 - TUNNEL.face * sc + (CHUTE.choc - s) * ((W * 1.3) / 1000);
+            tunnelX = p.x + g.h * 0.3 - TUNNEL.face * sc + (CHUTE.choc - s) * ((Math.max(1, VITESSE[e.niveau]) * W) / 1000);
           } else if (a.issue === 'attelage') {
             ({ x: rx, y: ry } = vol(Math.min(u, 0.75)));
             pose = 'saut';
@@ -263,11 +263,11 @@ function useScene(etat: { current: Etat }, r: Refs) {
       const m = r.monde.current;
       if (m) m.style.transform = `translate3d(${-camera}px, 0, 0)`;
       // Le décor (au-dessus de la voie), le premier plan qui file derrière le train.
-      // Le bas du décor est derrière les wagons (à mi-hauteur) : son paysage se voit au-dessus des toits.
+      // Le décor descend jusqu'à la voie : entre deux wagons, on voit son sol (et pas le fond de la scène).
       const horizon = g.sol - g.h * 0.1;
       const ciel = r.ciel.current;
       if (ciel) {
-        ciel.style.height = `${g.sol - g.h * 0.5}px`;
+        ciel.style.height = `${horizon + 2}px`;
         ciel.style.backgroundPosition = `${-(parcours * 0.06 + camera * 0.08)}px 100%`;
       }
       const premier = r.premier.current;
@@ -315,23 +315,15 @@ function useScene(etat: { current: Etat }, r: Refs) {
         ag.style.transform = `translate3d(${xg - aw * 0.35}px, ${y}px, 0) rotate(${8 * attelage}deg)`;
         ad.style.transform = `translate3d(${xd - aw * 0.65}px, ${y}px, 0)`;
       }
-      // Le tunnel en coupe : la galerie derrière le train, le portail devant lui.
+      // Le tunnel : la montagne passe devant le train, qui y disparaît et ressort de l'autre côté.
       const tu = r.tunnel.current;
-      const po = r.portail.current;
-      if (tu && po) {
+      if (tu) {
         const vu = tunnelX !== null && tunnelX < camera + W * 1.2;
-        tu.style.visibility = po.style.visibility = vu ? 'visible' : 'hidden';
+        tu.style.visibility = vu ? 'visible' : 'hidden';
         if (vu && tunnelX !== null) {
           const sc = (g.h * TUNNEL.hauteurArche) / (TUNNEL.rails - TUNNEL.arche);
-          const tw = TUNNEL.w * sc;
-          const th = TUNNEL.h * sc;
-          const y = g.sol - TUNNEL.rails * sc;
-          tu.style.width = `${tw}px`;
-          tu.style.transform = `translate3d(${tunnelX}px, ${y}px, 0)`;
-          po.style.width = `${TUNNEL.portail * sc}px`;
-          po.style.height = `${th}px`;
-          po.style.backgroundSize = `${tw}px ${th}px`;
-          po.style.transform = `translate3d(${tunnelX}px, ${y}px, 0)`;
+          tu.style.width = `${TUNNEL.w * sc}px`;
+          tu.style.transform = `translate3d(${tunnelX}px, ${g.sol - TUNNEL.rails * sc}px, 0)`;
         }
       }
       // Le coureur.
@@ -413,7 +405,6 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
       plaques: VOITURES.map(() => ref()),
       poses: { court: ref(), saut: ref(), atterrit: ref(), chute: ref(), victoire: ref(), baisse: ref() },
       tunnel: ref(),
-      portail: ref(),
       attelageG: ref(),
       attelageD: ref(),
     };
@@ -628,7 +619,6 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
           {VOITURES.map((v, i) => (
             <img key={`v${i}`} className={`tt-voiture ${i === SAUTS_TOITS ? 'fourgon' : ''}`} ref={r.voitures[i]} src={IMG(v)} alt="" draggable={false} />
           ))}
-          <img className="tt-tunnel" ref={r.tunnel} src={IMG('tt-tunnel')} alt="" draggable={false} />
           <img className="tt-attelage" ref={r.attelageG} src={IMG('tt-attelage-g')} alt="" draggable={false} />
           <img className="tt-attelage" ref={r.attelageD} src={IMG('tt-attelage-d')} alt="" draggable={false} />
           {VOITURES.slice(1, SAUTS_TOITS + 1).map((_, j) => {
@@ -642,7 +632,7 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
           {(Object.keys(POSES) as Pose[]).map((p) => (
             <img key={p} className={`tt-coureur ${p}`} ref={r.poses[p]} src={IMG(`tt-${p}`)} alt="" draggable={false} />
           ))}
-          <div className="tt-portail" ref={r.portail} />
+          <img className="tt-tunnel" ref={r.tunnel} src={IMG('tt-tunnel')} alt="" draggable={false} />
         </div>
         {niveau === 'baron' && <div className="tt-pluie pres" aria-hidden="true" />}
         {eclair > 0 && <div className="tt-eclair" key={`eclair-${eclair}`} aria-hidden="true" />}
