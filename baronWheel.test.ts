@@ -111,8 +111,10 @@ describe('The Baron’s Wheel : les règles', () => {
   it('simule 100 000 manches : fréquences, retour, jackpots rares', () => {
     const s = simulerBW(100_000, graine(5));
     for (const c of CASES_BW) expect(s.frequences[c] / s.manches).toBeCloseTo(COMPOSITION_BW[c] / 30, 2);
-    expect(s.retourTotal).toBeGreaterThan(1.7);
-    expect(s.retourTotal).toBeLessThan(2.1);
+    // Le Top Slot (jusqu'à ×200 sur une seule case) rend la simulation plus dispersée : la moyenne exacte est vérifiée
+    // par le calcul plus haut.
+    expect(s.retourTotal).toBeGreaterThan(1.6);
+    expect(s.retourTotal).toBeLessThan(2.5);
     expect(s.jackpots.grand).toBeLessThan(s.jackpots.mini);
     expect(s.volatilite).toBeGreaterThan(1);
   });

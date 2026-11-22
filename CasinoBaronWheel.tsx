@@ -22,6 +22,7 @@ import {
   MAX_CASE_BW,
   MAX_MANCHE_BW,
   NB_CASES_BW,
+  PASSAGE_EXPRESS_BW,
   ROUE_BW,
   VALEUR_JACKPOT_BW,
   type BonusBW,
@@ -57,15 +58,15 @@ const CLE_JETON = 'ldb-bw-jeton';
  * bonus), déjà déformé à la forme d'un secteur (bw-rs-laque-*, préparé par scripts/rs_laques.py).
  */
 export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; image?: string; texture: string }> = {
-  x1: { nom: ['1X', '1X'], fond: '#5a0a14', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-bordeaux.webp' },
-  x2: { nom: ['2X', '2X'], fond: '#0e1a46', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-nuit.webp' },
-  x5: { nom: ['5X', '5X'], fond: '#f1dcb8', texte: '#3a1a06', texture: '/cartes/bw-rs-laque-ivoire.webp' },
-  x10: { nom: ['10X', '10X'], fond: '#151113', texte: '#f6d77a', texture: '/cartes/bw-rs-laque-noir.webp' },
-  baron: { nom: ['Baron', 'Baron'], fond: '#9b0f14', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp', texture: '/cartes/bw-rs-laque-baron.webp' },
-  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#5b1a8c', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp', texture: '/cartes/bw-rs-laque-pickpocket.webp' },
-  evasion: { nom: ['Évasion', 'Escape'], fond: '#0f2c9c', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp', texture: '/cartes/bw-rs-laque-evasion.webp' },
-  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#c2490c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp', texture: '/cartes/bw-rs-laque-braquage.webp' },
-  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0c4429', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp', texture: '/cartes/bw-rs-laque-minuit.webp' },
+  x1: { nom: ['1X', '1X'], fond: '#e40109', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-rouge2.webp' },
+  x2: { nom: ['2X', '2X'], fond: '#af010a', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-rouge3.webp' },
+  x5: { nom: ['5X', '5X'], fond: '#73010b', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-rouge5.webp' },
+  x10: { nom: ['10X', '10X'], fond: '#3b0007', texte: '#f6d77a', texture: '/cartes/bw-rs-laque-rouge10.webp' },
+  baron: { nom: ['Baron', 'Baron'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-baron2.webp', texture: '/cartes/bw-rs-laque-champagne.webp' },
+  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-pickpocket2.webp', texture: '/cartes/bw-rs-laque-champagne.webp' },
+  evasion: { nom: ['Évasion', 'Escape'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-evasion2.webp', texture: '/cartes/bw-rs-laque-champagne.webp' },
+  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#fdf7e9', texte: '#5a0a14', image: '/cartes/bw-sym-braquage2.webp', texture: '/cartes/bw-rs-laque-champagne.webp' },
+  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#023314', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp', texture: '/cartes/bw-rs-laque-vert.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
@@ -150,14 +151,14 @@ const lisseBW = (u: number) => {
 
 /** Les lanternes des piliers du décor prennent la couleur de la case sous le sifflet, puis de la case gagnante. */
 const LUMIERES: Record<CaseBW, string> = {
-  x1: '#ff3a52',
-  x2: '#4d7dff',
-  x5: '#fff3d6',
-  x10: '#ffd36a',
-  baron: '#ff2626',
-  pickpocket: '#b552ff',
-  evasion: '#2e86ff',
-  braquage: '#ff8a1e',
+  x1: '#ff3a3a',
+  x2: '#ff2a1a',
+  x5: '#e0102a',
+  x10: '#b0001a',
+  baron: '#fff1c4',
+  pickpocket: '#fff1c4',
+  evasion: '#fff1c4',
+  braquage: '#fff1c4',
   express: '#2ee38c',
 };
 
@@ -414,7 +415,7 @@ function Roue({ v, horloges, lampes, aiguille }: { v: VueBW; horloges: MutableRe
               <g
                 key={`${v.numero}-${b.i}`}
                 className={`bw-boost ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`}
-                style={{ '--k': k, '--d': `${rang ? ARRET_TOP_SLOT.second : ARRET_TOP_SLOT.premier}ms` } as CSSProperties}
+                style={{ '--k': k, '--d': `${(rang ? ARRET_TOP_SLOT.second : ARRET_TOP_SLOT.premier) + (v.topSlot?.some((t) => t.c === 'express') ? PASSAGE_EXPRESS_BW : 0)}ms` } as CSSProperties}
               >
                 <path className="bw-boost-lisere" d={secteur(122, 358, a1 + 0.35, a1 + DEGRES_CASE_BW - 0.35)} />
               </g>
@@ -458,7 +459,7 @@ const LANTERNES = {
  * L'Express du Baron traverse la gare entre deux manches, sur le rail sous la roue : sa locomotive et ses 23 wagons,
  * leur hauteur (part de la largeur de la roue) et le haut du rail (part de la hauteur de la bande du rail).
  */
-const PASSAGE_TRAIN = { h: 0.27, rail: 0.04, wagons: 23 };
+const PASSAGE_TRAIN = { h: 0.78, rail: 0.03, wagons: 23 };
 const RATIO_WAGON = 1100 / 344;
 const RATIO_LOCO = 1100 / 338;
 
@@ -628,32 +629,31 @@ export function TopSlot({ v }: { v: VueBW }) {
   // Depuis combien de temps les mises sont fermées : on ne fait défiler les rouleaux que si l'on a vu le tirage commencer.
   const [depart] = useState(() => ({ numero: v.numero, ecoule: v.phase === 'multiplicateurs' && v.duree !== null && v.reste !== null ? v.duree - v.reste : Infinity }));
   const anime = !mouvementReduit() && depart.numero === v.numero ? depart.ecoule < 400 : !mouvementReduit() && v.phase === 'multiplicateurs';
+  // Si l'Express est tiré, son train traverse d'abord la gare : les rouleaux partent après lui.
+  const avance = t?.some((x) => x.c === 'express') ? PASSAGE_EXPRESS_BW : 0;
   const [etape, setEtape] = useState(0);
   useEffect(() => {
-    setEtape(0);
+    setEtape(avance && anime ? -1 : 0);
     if (!t) return;
     if (!anime) {
       setEtape(3);
       return;
     }
-    const ids = [window.setTimeout(() => setEtape(1), ARRET_TOP_SLOT.premier)];
+    const ids = [window.setTimeout(() => setEtape(0), avance), window.setTimeout(() => setEtape(1), avance + ARRET_TOP_SLOT.premier)];
     if (double) {
-      ids.push(window.setTimeout(() => setEtape(2), ARRET_TOP_SLOT.premier + ARRET_TOP_SLOT.pause));
-      ids.push(window.setTimeout(() => setEtape(3), ARRET_TOP_SLOT.second));
-    } else ids.push(window.setTimeout(() => setEtape(3), ARRET_TOP_SLOT.premier + 100));
+      ids.push(window.setTimeout(() => setEtape(2), avance + ARRET_TOP_SLOT.premier + ARRET_TOP_SLOT.pause));
+      ids.push(window.setTimeout(() => setEtape(3), avance + ARRET_TOP_SLOT.second));
+    } else ids.push(window.setTimeout(() => setEtape(3), avance + ARRET_TOP_SLOT.premier + 100));
     return () => ids.forEach((i) => window.clearTimeout(i));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [v.numero, !!t]);
-  useEffect(() => {
-    if (etape === 1 || (etape === 3 && anime)) jouerEffet('bw_multi');
-  }, [etape, anime]);
 
-  const plaque = !t ? tr('Top Slot', 'Top Slot') : double && etape >= 1 ? tr('Double départ !', 'Double departure!') : tr('Top Slot', 'Top Slot');
+  const plaque = !t ? tr('Top Slot', 'Top Slot') : etape === -1 ? tr('En voiture !', 'All aboard!') : double && etape >= 1 ? tr('Double départ !', 'Double departure!') : tr('Top Slot', 'Top Slot');
   // Ce que montrent les fenêtres : les rouleaux qui défilent, ou le tirage arrêté (deux lignes au Double départ).
   let gauche: ReactNode;
   let droite: ReactNode;
-  if (!t) {
-    gauche = <span className="bw-ts-attente">{tr('Faites vos jeux', 'Place your bets')}</span>;
+  if (!t || etape === -1) {
+    gauche = <span className="bw-ts-attente">{t ? tr('L’Express passe…', 'The Express is passing…') : tr('Faites vos jeux', 'Place your bets')}</span>;
     droite = <span className="bw-ts-attente">×?</span>;
   } else if (etape === 3 || !anime) {
     gauche = (
@@ -1235,17 +1235,13 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     const change = avant.numero !== v.numero || avant.phase !== v.phase || etapeNom(avant) !== etapeNom(v);
     if (!change) return;
     if (v.phase === 'multiplicateurs') jouerEffet('bw_cloche');
-    // Le quai : la foule, les pas, une cloche au loin ; une manche sur trois, un train traverse la gare.
-    if (v.phase === 'mises' && avant.phase !== 'mises') {
-      jouerEffet('bw_quai');
-      if (v.numero % 3 === 0 && !mouvementReduit()) {
-        const id = Date.now();
-        plusTard(() => {
-          setTrain(id);
-          jouerEffet('bw_train_passe');
-        }, 1800);
-        plusTard(() => setTrain((x) => (x === id ? null : x)), 1800 + 10_000);
-      }
+    // Le Top Slot a tiré l'Express : l'Express du Baron traverse la gare avant que les rouleaux ne partent.
+    if (v.phase === 'multiplicateurs' && v.topSlot?.some((x) => x.c === 'express') && !mouvementReduit()) {
+      const id = Date.now();
+      setTrain(id);
+      jouerEffet('bw_train_passe');
+      plusTard(() => jouerEffet('bw_sifflet', { volume: 0.8 }), 300);
+      plusTard(() => setTrain((x) => (x === id ? null : x)), PASSAGE_EXPRESS_BW + 300);
     }
     // Arrêt sur une case multipliée : le contrôleur poinçonne le billet.
     if (avant.phase === 'tour' && v.phase === 'resultat' && v.arret !== null && !mouvementReduit()) {

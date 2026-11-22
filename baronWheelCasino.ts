@@ -25,6 +25,7 @@ import {
   GAINS_CHIFFRES_BW,
   multiplicateurDe,
   tirerTopSlotBW,
+  dureeMultiplicateursBW,
   boostsDuTopSlotBW,
   topSlotDesBoostsBW,
   type TirageTopSlotBW,
@@ -280,9 +281,10 @@ export function creerBaronWheel(options: {
       boosts = boostsDuTopSlotBW(topSlot);
     }
     phase = 'multiplicateurs';
-    fin = horloge() + D.multiplicateurs;
-    duree = D.multiplicateurs;
-    plusTard(lancer, D.multiplicateurs);
+    const d = dureeMultiplicateursBW(D.multiplicateurs, topSlot);
+    fin = horloge() + d;
+    duree = d;
+    plusTard(lancer, d);
     diffuser();
   }
 
