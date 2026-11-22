@@ -456,10 +456,10 @@ const LANTERNES = {
   portrait: { w: 1000, h: 1250, pos: 0.7, lampes: [[73, 488, 85], [926, 488, 85], [180, 312, 70], [821, 312, 70]] },
 };
 /**
- * L'Express du Baron traverse la gare entre deux manches, sur le rail sous la roue : sa locomotive et ses 23 wagons,
+ * L'Express du Baron traverse la gare, lentement, sur le rail sous la roue : sa locomotive et ses 5 wagons,
  * leur hauteur (part de la largeur de la roue) et le haut du rail (part de la hauteur de la bande du rail).
  */
-const PASSAGE_TRAIN = { h: 0.78, rail: 0.03, wagons: 23 };
+const PASSAGE_TRAIN = { h: 0.78, rail: 0.03, wagons: 5 };
 const RATIO_WAGON = 1100 / 344;
 const RATIO_LOCO = 1100 / 338;
 
@@ -519,7 +519,7 @@ export function LampesDecor({ lampes, train }: { lampes: MutableRefObject<(HTMLD
         ))}
       </div>
       {train ? (
-        <div key={train} ref={passage} className="bw-train-passe" aria-hidden="true">
+        <div key={train} ref={passage} className="bw-train-passe" style={{ '--duree-express': PASSAGE_EXPRESS_BW - 400 } as CSSProperties} aria-hidden="true">
           {Array.from({ length: PASSAGE_TRAIN.wagons }, (_, k) => (
             <img key={k} src={`/cartes/bw-ex2-wagon-${5 - (k % 5)}.webp`} alt="" draggable={false} />
           ))}
@@ -1242,6 +1242,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       const id = Date.now();
       setTrain(id);
       jouerEffet('bw_train_passe');
+      plusTard(() => jouerEffet('bw_train_passe'), 5500);
       plusTard(() => jouerEffet('bw_sifflet', { volume: 0.8 }), 300);
       plusTard(() => setTrain((x) => (x === id ? null : x)), PASSAGE_EXPRESS_BW + 300);
     }
