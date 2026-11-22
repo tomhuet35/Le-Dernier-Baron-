@@ -43,21 +43,21 @@ function graine(n: number) {
 }
 
 describe('The Baron’s Wheel : les règles', () => {
-  it('a exactement 40 cases de 9° (29 chiffres, 10 bonus et la case unique de l’Express), sans deux cases pareilles côte à côte', () => {
+  it('a exactement 30 cases de 12° (21 chiffres, 8 bonus et la case unique de l’Express), sans deux cases pareilles côte à côte', () => {
     expect(ROUE_BW).toHaveLength(NB_CASES_BW);
-    expect(DEGRES_CASE_BW).toBe(9);
+    expect(DEGRES_CASE_BW).toBe(12);
     for (const c of CASES_BW) expect(ROUE_BW.filter((x) => x === c)).toHaveLength(COMPOSITION_BW[c]);
-    expect(Object.values(COMPOSITION_BW).reduce((s, x) => s + x, 0)).toBe(40);
-    expect(ROUE_BW.filter((c) => estBonusBW(c))).toHaveLength(11);
+    expect(Object.values(COMPOSITION_BW).reduce((s, x) => s + x, 0)).toBe(30);
+    expect(ROUE_BW.filter((c) => estBonusBW(c))).toHaveLength(9);
     expect(ROUE_BW.filter((c) => c === 'express')).toHaveLength(1);
-    for (let i = 0; i < 40; i++) expect(ROUE_BW[i]).not.toBe(ROUE_BW[(i + 1) % 40]);
+    for (let i = 0; i < 30; i++) expect(ROUE_BW[i]).not.toBe(ROUE_BW[(i + 1) % 30]);
   });
 
   it('est le jeu généreux du salon (calcul exact) : les petites cases rendent moins, les bonus davantage, l’Express bien plus', () => {
     const r = rtpBW();
     // Les petites cases (×2 et ×3) ont cédé une part de leur retour aux bonus ; ×5 et ×10 rendent environ 1,7 fois la mise.
-    expect(r.x1).toBeCloseTo(1.24, 2);
-    expect(r.x2).toBeCloseTo(1.52, 2);
+    expect(r.x1).toBeCloseTo(1.515, 2);
+    expect(r.x2).toBeCloseTo(1.515, 2);
     for (const c of ['x5', 'x10'] as const) {
       expect(r[c]).toBeGreaterThan(1.6);
       expect(r[c]).toBeLessThan(1.75);
@@ -76,14 +76,14 @@ describe('The Baron’s Wheel : les règles', () => {
     expect(r.express).toBeLessThan(4.5);
   });
 
-  it('pose de 3 à 8 multiplicateurs (×5 au moins) sur des cases différentes', () => {
+  it('pose de 3 à 7 multiplicateurs (×5 au moins) sur des cases différentes', () => {
     const h = graine(21);
     const vus = new Set<number>();
     const tailles = new Set<number>();
     for (let k = 0; k < 4000; k++) {
       const m = tirerMultiplicateursBW(h);
       expect(m.length).toBeGreaterThanOrEqual(3);
-      expect(m.length).toBeLessThanOrEqual(8);
+      expect(m.length).toBeLessThanOrEqual(7);
       tailles.add(m.length);
       expect(new Set(m.map((b) => b.i)).size).toBe(m.length);
       for (const b of m) {
@@ -92,7 +92,7 @@ describe('The Baron’s Wheel : les règles', () => {
         vus.add(b.x);
       }
     }
-    expect([...tailles].sort((a, b) => a - b)).toEqual([3, 4, 5, 6, 7, 8]);
+    expect([...tailles].sort((a, b) => a - b)).toEqual([3, 4, 5, 6, 7]);
     expect([...vus].sort((a, b) => a - b)).toEqual([5, 7, 10, 15, 25, 50, 100]);
     expect(multiplicateurDe([{ i: 7, x: 25 }], 7)).toBe(25);
     expect(multiplicateurDe([{ i: 7, x: 25 }], 8)).toBe(1);
@@ -100,7 +100,7 @@ describe('The Baron’s Wheel : les règles', () => {
 
   it('simule 100 000 manches : fréquences, retour, jackpots rares', () => {
     const s = simulerBW(100_000, graine(5));
-    for (const c of CASES_BW) expect(s.frequences[c] / s.manches).toBeCloseTo(COMPOSITION_BW[c] / 40, 2);
+    for (const c of CASES_BW) expect(s.frequences[c] / s.manches).toBeCloseTo(COMPOSITION_BW[c] / 30, 2);
     expect(s.retourTotal).toBeGreaterThan(1.7);
     expect(s.retourTotal).toBeLessThan(2.1);
     expect(s.jackpots.grand).toBeLessThan(s.jackpots.mini);
@@ -345,7 +345,7 @@ describe('The Baron’s Wheel en direct', () => {
     await emettre(a, 'casino_entrer');
     await emettre(a, 'casino_bw_entrer');
     const v = await nouvelleManche(a);
-    arretImpose = indice('braquage', 2);
+    arretImpose = indice('braquage', 1);
     await emettre(a, 'casino_bw_miser', { case: 'braquage', montant: 25_000 });
     // L'intro ne dit rien de la descente ; la perceuse partie, tout est connu (aucun choix à faire).
     const intro = await attendre(a, (y) => etape(y) === 'intro');
@@ -445,7 +445,7 @@ describe('The Baron’s Wheel en direct', () => {
     await pause(50);
     expect(annonces.some((x) => x.jeu === 'baronWheel' && x.gain === 50_000_000)).toBe(true);
 
-    // Grande ouverture : les multiplicateurs tirés au hasard (3 à 8, ×5 au moins), sans multiplicateur doré.
+    // Grande ouverture : les multiplicateurs tirés au hasard (3 à 7, ×5 au moins), sans multiplicateur doré.
     ouverture = Date.now() + 3_600_000;
     multiplicateursImposes = undefined;
     arretImpose = undefined;

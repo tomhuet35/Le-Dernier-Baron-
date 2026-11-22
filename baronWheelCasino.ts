@@ -244,7 +244,7 @@ export function creerBaronWheel(options: {
     diffuser();
   }
 
-  /** Les mises sont fermées : 3 à 8 cases de la roue reçoivent un multiplicateur (×5 à ×100). */
+  /** Les mises sont fermées : 3 à 7 cases de la roue reçoivent un multiplicateur (×5 à ×100). */
   function poserMultiplicateurs() {
     const impose = options.multiplicateurs?.();
     const valides = impose?.filter((b) => Number.isInteger(b.i) && b.i >= 0 && b.i < NB_CASES_BW && b.x >= 1);
