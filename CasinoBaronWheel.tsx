@@ -707,18 +707,56 @@ export function Manometre({ aiguille }: { aiguille: MutableRefObject<HTMLImageEl
   );
 }
 
-/** La case gagnante était multipliée : le contrôleur arrive et poinçonne le billet. */
-export function Poinconnage({ x }: { x: number }) {
-  const r = rangBillet(x);
+/** Le coup de tampon : où frapper (la plaque ×N du Top Slot) et où s'envole le ×N (le solde), en pixels de l'écran. */
+export interface CoupDeTampon {
+  x: number;
+  id: number;
+  cx: number;
+  cy: number;
+  w: number;
+  dx: number;
+  dy: number;
+}
+export const DUREE_TAMPON = 3400;
+/** La plaque ×N de la case d'arrêt (sa ligne au Top Slot), et le solde vers lequel le ×N s'envole. */
+export function viserTampon(v: VueBW, x: number): CoupDeTampon | null {
+  const k = Math.max(0, (v.topSlot ?? []).findIndex((t) => v.arret !== null && t.c === ROUE_BW[v.arret]));
+  const lignes = document.querySelectorAll('.bw-ts-fenetre.droite .bw-ts-ligne');
+  const cible = (lignes[k] ?? document.querySelector('.bw-ts-fenetre.droite'))?.getBoundingClientRect();
+  if (!cible || !cible.width) return null;
+  const solde = document.querySelector('.bw-solde')?.getBoundingClientRect();
+  const cx = cible.left + cible.width / 2;
+  const cy = cible.top + cible.height / 2;
+  return { x, id: Date.now(), cx, cy, w: Math.max(130, cible.width * 1.12), dx: solde ? solde.left + solde.width / 2 - cx : 0, dy: solde ? solde.top + solde.height / 2 - cy : -200 };
+}
+
+/** La case gagnante était multipliée : le contrôleur arrive, frappe « VALIDÉ » sur la plaque ×N du Top Slot, et le ×N s'envole vers le solde. */
+export function Tampon({ coup }: { coup: CoupDeTampon }) {
+  useEffect(() => {
+    const ids = [
+      window.setTimeout(() => {
+        jouerEffet('bw_poincon', { vitesse: 0.7, volume: 0.9 });
+        document.querySelector('.bw-topslot')?.animate(
+          [{ transform: 'none' }, { transform: 'translateY(4px) scale(0.99)' }, { transform: 'translateY(-2px)' }, { transform: 'none' }],
+          { duration: 260, easing: 'ease-out' },
+        );
+      }, DUREE_TAMPON * 0.3),
+    ];
+    return () => ids.forEach((i) => window.clearTimeout(i));
+  }, []);
   return (
-    <div className="bw-poinconnage" aria-hidden="true">
-      <img className="bw-controleur" src="/cartes/bw-controleur.webp" alt="" draggable={false} />
-      <div className={`bw-billet-geant b-${r}`}>
-        <img src={`/cartes/bw-billet-${r}.webp`} alt="" draggable={false} />
-        <strong>×{x}</strong>
-        <i className="bw-trou" />
-      </div>
-      <img className="bw-poinconneuse" src="/cartes/bw-poinconneuse.webp" alt="" draggable={false} />
+    <div
+      className="bw-tampon-scene"
+      style={{ '--cx': `${coup.cx}px`, '--cy': `${coup.cy}px`, '--w': `${coup.w}px`, '--dx': `${coup.dx}px`, '--dy': `${coup.dy}px`, '--duree': `${DUREE_TAMPON}ms` } as CSSProperties}
+      aria-hidden="true"
+    >
+      <img className="bw-controleur-tampon" src="/cartes/bw-controleur-tampon.webp" alt="" draggable={false} />
+      <span className="bw-empreinte">
+        <img src="/cartes/bw-tampon-empreinte.webp" alt="" draggable={false} />
+        <b>{tr('VALIDÉ', 'VALID')}</b>
+      </span>
+      <img className="bw-tampon-objet" src="/cartes/bw-tampon.webp" alt="" draggable={false} />
+      <b className="bw-tampon-x bw-or">×{coup.x}</b>
     </div>
   );
 }
@@ -1150,7 +1188,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   const [credit, setCredit] = useState<{ montant: number; id: number } | null>(null);
   const [fete, setFete] = useState<{ jackpot: JackpotBW; gain: number; id: number } | null>(null);
   const [palier, setPalier] = useState<{ n: number; gain: number; id: number } | null>(null);
-  const [poincon, setPoincon] = useState<{ x: number; id: number } | null>(null);
+  const [tampon, setTampon] = useState<CoupDeTampon | null>(null);
   const [train, setTrain] = useState<number | null>(null);
   const aiguille = useRef<HTMLImageElement | null>(null);
   const minuteries = useRef<number[]>([]);
@@ -1246,15 +1284,16 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       plusTard(() => jouerEffet('bw_sifflet', { volume: 0.8 }), 300);
       plusTard(() => setTrain((x) => (x === id ? null : x)), PASSAGE_EXPRESS_BW + 300);
     }
-    // Arrêt sur une case multipliée : le contrôleur poinçonne le billet.
+    // Arrêt sur une case multipliée : le contrôleur valide la plaque ×N du Top Slot d'un coup de tampon.
     if (avant.phase === 'tour' && v.phase === 'resultat' && v.arret !== null && !mouvementReduit()) {
       const x = v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1;
-      if (x > 1) {
-        const id = Date.now();
-        plusTard(() => setPoincon({ x, id }), 450);
-        plusTard(() => jouerEffet('bw_poincon'), 450 + 1050);
-        plusTard(() => setPoincon((p) => (p?.id === id ? null : p)), 450 + 2900);
-      }
+      if (x > 1)
+        plusTard(() => {
+          const coup = viserTampon(v, x);
+          if (!coup) return;
+          setTampon(coup);
+          plusTard(() => setTampon((p) => (p?.id === coup.id ? null : p)), DUREE_TAMPON + 100);
+        }, 450);
     }
     if (v.phase === 'tour') {
       jouerEffet('bw_lancer');
@@ -1290,7 +1329,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         jouerEffet(np >= 3 ? 'bw_jackpot' : 'bw_gros');
         const id = Date.now();
         // Après le poinçon du contrôleur s'il y en a un.
-        const attente = (v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1) > 1 && !mouvementReduit() ? 3000 : 300;
+        const attente = (v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1) > 1 && !mouvementReduit() ? DUREE_TAMPON + 500 : 300;
         plusTard(() => setPalier({ n: np, gain, id }), attente);
         plusTard(() => setPalier((p) => (p?.id === id ? null : p)), attente + 5200);
       } else if (gain >= 10 * mise && gain >= 500_000) jouerEffet('bw_gros');
@@ -1410,7 +1449,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         {v && !enBonus && <LampesDecor lampes={lampes} train={train} />}
         {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} aiguille={aiguille} />)}
         {v && !enBonus && <Manometre aiguille={aiguille} />}
-        {poincon && !enBonus && <Poinconnage key={poincon.id} x={poincon.x} />}
         {!v && <div className="chargement">{erreur ?? tr('La roue arrive…', 'The wheel is coming…')}</div>}
         <span className="bw-direct">
           {tr('En direct', 'Live')}
@@ -1588,6 +1626,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           <b>+{dollars(fete.gain)}</b>
         </div>
       )}
+      {tampon && <Tampon key={tampon.id} coup={tampon} />}
       {palier && <PalierGain key={palier.id} n={palier.n} gain={palier.gain} onFermer={() => setPalier(null)} />}
       {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={BUTIN_PLUIE} />}
     </div>
