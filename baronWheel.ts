@@ -42,18 +42,10 @@ export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
  * l'Express parmi les chiffres.
  */
 export const ROUE_BW: CaseBW[] = (() => {
-  const chiffres: CaseBW[][] = [
-    ['x1', 'x2', 'x1'],
-    ['x5', 'x1', 'x2'],
-    ['x1', 'x10', 'x1'],
-    ['x5', 'x2'],
-    ['express', 'x1', 'x2'],
-    ['x5', 'x1', 'x2'],
-    ['x1', 'x10', 'x1'],
-    ['x5', 'x2'],
-  ];
-  const bonus: BonusBW[] = ['baron', 'braquage', 'pickpocket', 'evasion', 'baron', 'braquage', 'pickpocket', 'evasion'];
-  return chiffres.flatMap((g, i): CaseBW[] => [...g, bonus[i]]);
+  // La roue est symétrique autour de l'Express (en haut, entre deux Baron) : la moitié droite, puis son miroir ; le ×2
+  // du bas, face à l'Express, fait le lien. Les bonus reviennent toutes les 4 cases.
+  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'pickpocket', 'x5', 'x1', 'x2', 'evasion', 'x1', 'x10', 'x2', 'braquage', 'x5'];
+  return ['express', ...moitie, 'x1', ...[...moitie].reverse()];
 })();
 
 /** Ce que paie une case chiffre (mise comprise) : ×2 pour 1 000 $ misés sur le 1X, 2 000 $ reçus. */
@@ -496,6 +488,10 @@ export interface DureesBW {
   traversee: number;
   arrivee: number;
 }
+/** Quand le Top Slot tire l'Express, l'Express du Baron traverse la gare avant que les rouleaux ne partent (ms). */
+export const PASSAGE_EXPRESS_BW = 5_000;
+/** La durée de la phase des multiplicateurs, selon le tirage du Top Slot. */
+export const dureeMultiplicateursBW = (base: number, t: TirageTopSlotBW[] | null) => base + (t?.some((x) => x.c === 'express') ? PASSAGE_EXPRESS_BW : 0);
 export const DUREES_BW: DureesBW = {
   mises: 10_000,
   multiplicateurs: 6_000,
