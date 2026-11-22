@@ -55,15 +55,15 @@ const CLE_JETON = 'ldb-bw-jeton';
  * bonus), déjà déformé à la forme d'un secteur (bw-rs-laque-*, préparé par scripts/rs_laques.py).
  */
 export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string; texte: string; image?: string; texture: string }> = {
-  x1: { nom: ['1X', '1X'], fond: '#671D2B', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-bordeaux.webp' },
-  x2: { nom: ['2X', '2X'], fond: '#1b2c58', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-nuit.webp' },
-  x5: { nom: ['5X', '5X'], fond: '#D6A84B', texte: '#1b120c', texture: '/cartes/bw-rs-laque-ivoire.webp' },
-  x10: { nom: ['10X', '10X'], fond: '#f6d77a', texte: '#3a1810', texture: '/cartes/bw-rs-laque-noir.webp' },
-  baron: { nom: ['Baron', 'Baron'], fond: '#0d0b0b', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp', texture: '/cartes/bw-rs-laque-baron.webp' },
-  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#7a1c2e', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp', texture: '/cartes/bw-rs-laque-pickpocket.webp' },
-  evasion: { nom: ['Évasion', 'Escape'], fond: '#132552', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp', texture: '/cartes/bw-rs-laque-evasion.webp' },
-  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#a3241c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp', texture: '/cartes/bw-rs-laque-braquage.webp' },
-  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0f4a35', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp', texture: '/cartes/bw-rs-laque-minuit.webp' },
+  x1: { nom: ['1X', '1X'], fond: '#5a0a14', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-bordeaux.webp' },
+  x2: { nom: ['2X', '2X'], fond: '#0e1a46', texte: '#F3E7CF', texture: '/cartes/bw-rs-laque-nuit.webp' },
+  x5: { nom: ['5X', '5X'], fond: '#f1dcb8', texte: '#3a1a06', texture: '/cartes/bw-rs-laque-ivoire.webp' },
+  x10: { nom: ['10X', '10X'], fond: '#151113', texte: '#f6d77a', texture: '/cartes/bw-rs-laque-noir.webp' },
+  baron: { nom: ['Baron', 'Baron'], fond: '#9b0f14', texte: '#F3E7CF', image: '/cartes/bw-sym-baron2.webp', texture: '/cartes/bw-rs-laque-baron.webp' },
+  pickpocket: { nom: ['Pickpocket', 'Pickpocket'], fond: '#5b1a8c', texte: '#F3E7CF', image: '/cartes/bw-sym-pickpocket2.webp', texture: '/cartes/bw-rs-laque-pickpocket.webp' },
+  evasion: { nom: ['Évasion', 'Escape'], fond: '#0f2c9c', texte: '#F3E7CF', image: '/cartes/bw-sym-evasion2.webp', texture: '/cartes/bw-rs-laque-evasion.webp' },
+  braquage: { nom: ['Braquage', 'Big Heist'], fond: '#c2490c', texte: '#F3E7CF', image: '/cartes/bw-sym-braquage2.webp', texture: '/cartes/bw-rs-laque-braquage.webp' },
+  express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0c4429', texte: '#F3E7CF', image: '/cartes/bw-sym-express.webp', texture: '/cartes/bw-rs-laque-minuit.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
