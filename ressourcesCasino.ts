@@ -244,6 +244,8 @@ export const IMAGES_JEUX = [
   '/cartes/bw-mano-aiguille.webp',
   '/cartes/bw-mano-cadran.webp',
   '/cartes/bw-topslot.webp',
+  '/cartes/bw-ts-plaque.webp',
+  '/cartes/bw-ts-plaque-x.webp',
   '/cartes/bw-rl-rail.webp',
   '/cartes/bw-rl-glissiere.webp',
   '/cartes/bw-rl-crosse.webp',
