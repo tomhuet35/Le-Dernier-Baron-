@@ -20,6 +20,7 @@ export const IMAGES_SALON = [
   '/cartes/casino-baron-wheel-affiche.webp',
   '/cartes/casino-folle-nuit-affiche.webp',
   '/cartes/icone-riches.webp',
+  '/cartes/icone-parametres.webp',
   '/cartes/barre-haut.webp',
   '/cartes/barre-bas.webp',
   '/cartes/compteur.webp',

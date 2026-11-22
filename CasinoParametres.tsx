@@ -29,31 +29,9 @@ const LANGUES: [Langue, string][] = [
   ['en', 'English'],
 ];
 
-/** L'icône des Paramètres : un engrenage doré dans un médaillon bordeaux. */
+/** L'icône des Paramètres : les engrenages dorés dans un médaillon bordeaux. */
 export function IconeParametres() {
-  return (
-    <svg className="icone-parametres" viewBox="0 0 48 48" aria-hidden="true">
-      <defs>
-        <radialGradient id="pm-fond" cx="40%" cy="32%" r="70%">
-          <stop offset="0" stopColor="#a3242b" />
-          <stop offset="1" stopColor="#3c070c" />
-        </radialGradient>
-        <linearGradient id="pm-or" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffe9a8" />
-          <stop offset="0.5" stopColor="#e3ac4f" />
-          <stop offset="1" stopColor="#9c6a22" />
-        </linearGradient>
-      </defs>
-      <circle cx="24" cy="24" r="22.5" fill="url(#pm-fond)" stroke="url(#pm-or)" strokeWidth="2.5" />
-      <g transform="translate(24 24)" fill="url(#pm-or)">
-        {Array.from({ length: 8 }, (_, k) => (
-          <rect key={k} x="-3.2" y="-15" width="6.4" height="7" rx="1.2" transform={`rotate(${k * 45})`} />
-        ))}
-        <circle r="10.5" />
-      </g>
-      <circle cx="24" cy="24" r="4.6" fill="#3c070c" stroke="#ffe9a8" strokeWidth="1" />
-    </svg>
-  );
+  return <img className="icone-parametres" src="/cartes/icone-parametres.webp" alt="" draggable={false} />;
 }
 
 function Section({ titre, children }: { titre: string; children: React.ReactNode }) {

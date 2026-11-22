@@ -101,7 +101,7 @@
 .ac-menu-liste { display: grid; gap: 8px; }
 .ac-menu-liste > button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; text-align: left; }
 .ac-menu-liste img { width: 34px; height: 34px; object-fit: contain; }
-.ac-menu-liste .icone-parametres { flex: none; width: 34px; height: 34px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)); }
+.ac-menu-liste .icone-parametres { flex: none; width: 34px; height: 34px; object-fit: contain; }
 .ac-menu-liste > button { flex-wrap: wrap; }
 .ac-menu-sous { flex-basis: 100%; margin: -6px 0 0 46px; font-size: 12px; color: var(--creme-doux); }
 /* Paramètres du salon */
