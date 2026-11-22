@@ -671,6 +671,8 @@ export interface JoueurBW {
   gain: number | null;
   jackpot?: JackpotBW;
   moi?: true;
+  /** Les cases où il a misé (ses avatars s'affichent dessus). */
+  cases: CaseBW[];
 }
 
 export interface VueBonusBW {
@@ -721,6 +723,10 @@ export interface VueBW {
   joueurs: JoueurBW[];
   /** Les derniers résultats : la case, et son multiplicateur s'il en avait un. */
   historique: { c: CaseBW; x?: number }[];
+  /** Combien de manches depuis la dernière sortie de chaque bonus (null : pas encore sorti depuis le démarrage). */
+  depuis: Record<BonusBW, number | null>;
+  /** Le plus gros gain du jour sur la roue (heure de Paris). */
+  record: { nom: string; avatar: number; gain: number; c: CaseBW } | null;
   spectateurs: number;
   solde: number;
   /** Grande ouverture en cours : millisecondes avant la fin. */
