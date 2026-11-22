@@ -1,15 +1,15 @@
 /**
- * The Baron's Wheel (Salon privé) : une roue géante de 40 cases, en direct pour tout le salon, avec quatre bonus.
+ * The Baron's Wheel (Salon privé) : une roue géante de 30 cases, en direct pour tout le salon, avec quatre bonus.
  *
- * Une manche : mises (10 s) → les multiplicateurs (3 à 8 cases de la roue, au hasard, ×5 à ×100) → la roue tourne (8 s) →
+ * Une manche : mises (10 s) → les multiplicateurs (3 à 7 cases de la roue, au hasard, ×5 à ×100) → la roue tourne (8 s) →
  * le résultat. Si la roue s'arrête sur un bonus, son mini-jeu commence ; ceux qui ont misé sur ce bonus font leurs
  * choix (chacun les siens), les autres regardent.
  *
- * - La roue : 12 cases « 1X », 9 « 2X », 6 « 5X », 3 « 10X », 3 BARON, 2 PICKPOCKET, 2 GRANDE ÉVASION, 3 BRAQUAGE.
- *   Toutes les cases ont la même chance (1 sur 40). Les cases chiffres paient ×2, ×3, ×5 et ×10 (mise comprise) ;
+ * - La roue : 9 cases « 1X », 6 « 2X », 4 « 5X », 2 « 10X », 2 BARON, 2 PICKPOCKET, 2 ÉVASION, 2 BRAQUAGE, 1 EXPRESS.
+ *   Toutes les cases ont la même chance (1 sur 30). Les cases chiffres paient ×2, ×3, ×5 et ×10 (mise comprise) ;
  *   les bonus, plus rares, paient gros (×5 à ×1 000) : ce que les petites cases ont perdu en passant de ×2,7 et ×3,3 à
  *   ×2 et ×3 a été rendu aux bonus, sous forme de nouveaux gros multiples (voir rtpBW).
- * - Les multiplicateurs : une fois les mises fermées, 3 à 8 cases de la roue reçoivent un multiplicateur (×5 à ×100).
+ * - Les multiplicateurs : une fois les mises fermées, 3 à 7 cases de la roue reçoivent un multiplicateur (×5 à ×100).
  *   Si la roue s'arrête sur l'une d'elles, ses gains sont multipliés (pour un bonus : tous ses multiplicateurs, sauf les
  *   jackpots, qui restent fixes). Choix du créateur : la roue est le jeu généreux du salon ; multiplicateurs compris,
  *   chaque mise rend en moyenne environ 1,7 fois ce qu'elle coûte (rtpBW).
@@ -32,29 +32,27 @@ export const BONUS_BW: BonusBW[] = ['baron', 'pickpocket', 'evasion', 'braquage'
 export const CASES_BW: CaseBW[] = [...CHIFFRES_BW, ...BONUS_BW];
 export const estBonusBW = (c: CaseBW): c is BonusBW => (BONUS_BW as string[]).includes(c);
 
-/** Combien de cases de chaque sorte sur la roue (40 en tout). */
-export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 11, x2: 9, x5: 6, x10: 3, baron: 3, pickpocket: 2, evasion: 2, braquage: 3, express: 1 };
-export const NB_CASES_BW = 40;
+/** Combien de cases de chaque sorte sur la roue (30 en tout). */
+export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, pickpocket: 2, evasion: 2, braquage: 2, express: 1 };
+export const NB_CASES_BW = 30;
 export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 /**
- * L'ordre des 40 cases, dans le sens des aiguilles d'une montre depuis le haut (la roue ne change jamais) : trois
- * chiffres, un bonus, trois chiffres, un bonus… Jamais deux cases pareilles côte à côte, les 10X bien répartis, et la
- * case unique de l'Express à la place d'un 1X.
+ * L'ordre des 30 cases, dans le sens des aiguilles d'une montre depuis le haut (la roue ne change jamais) : deux ou
+ * trois chiffres, un bonus… Jamais deux cases pareilles côte à côte, les deux 10X face à face, et la case unique de
+ * l'Express parmi les chiffres.
  */
 export const ROUE_BW: CaseBW[] = (() => {
   const chiffres: CaseBW[][] = [
     ['x1', 'x2', 'x1'],
     ['x5', 'x1', 'x2'],
-    ['x1', 'x10', 'x2'],
+    ['x1', 'x10', 'x1'],
+    ['x5', 'x2'],
+    ['express', 'x1', 'x2'],
     ['x5', 'x1', 'x2'],
-    ['express', 'x5', 'x1'],
-    ['x2', 'x10', 'x1'],
-    ['x5', 'x2', 'x1'],
-    ['x2', 'x5', 'x1'],
-    ['x10', 'x1', 'x2'],
-    ['x5', 'x1', 'x2'],
+    ['x1', 'x10', 'x1'],
+    ['x5', 'x2'],
   ];
-  const bonus: BonusBW[] = ['baron', 'braquage', 'pickpocket', 'evasion', 'baron', 'braquage', 'pickpocket', 'evasion', 'baron', 'braquage'];
+  const bonus: BonusBW[] = ['baron', 'braquage', 'pickpocket', 'evasion', 'baron', 'braquage', 'pickpocket', 'evasion'];
   return chiffres.flatMap((g, i): CaseBW[] => [...g, bonus[i]]);
 })();
 
@@ -67,11 +65,11 @@ export const MAX_CASE_BW = 30_000_000;
 export const MAX_MANCHE_BW = 30_000_000;
 
 // ---------------------------------------------------------------------------------------------------------------
-// Les multiplicateurs : 3 à 8 cases de la roue, tirées une fois les mises fermées
+// Les multiplicateurs : 3 à 7 cases de la roue, tirées une fois les mises fermées
 
 /** Combien de cases reçoivent un multiplicateur à chaque manche (autant de chances pour chaque nombre). */
 export const MIN_MULTIPLICATEURS_BW = 3;
-export const MAX_MULTIPLICATEURS_BW = 8;
+export const MAX_MULTIPLICATEURS_BW = 7;
 /** Les multiplicateurs possibles (jamais moins de ×5), et leur poids. */
 export const MULTIPLICATEURS_BW: [number, number][] = [
   [5, 40],
@@ -146,13 +144,13 @@ export const TABLE_CARTES_BARON = avecJackpots(CARTES_BARON, JACKPOTS_BARON);
 
 /** THE BIG THEFT : le Pickpocket vole un gros multiplicateur et le cache dans l'une des trois mallettes ; les deux autres gardent un petit. */
 export const BUTIN_PICKPOCKET: TableBW<number> = [
-  [20, 3600],
-  [25, 2200],
-  [30, 1700],
-  [50, 1500],
-  [100, 750],
-  [200, 250],
-  [500, 85],
+  [15, 3800],
+  [20, 2600],
+  [25, 1800],
+  [35, 1200],
+  [60, 450],
+  [150, 110],
+  [500, 30],
 ];
 export const PETITES_MALLETTES: TableBW<number> = [
   [2, 3000],
@@ -166,7 +164,7 @@ export type RouteBW = 'boulevard' | 'ruelles' | 'souterrains';
 export const ROUTES_BW: RouteBW[] = ['boulevard', 'ruelles', 'souterrains'];
 export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: TableBW<number> }> = {
   boulevard: {
-    arrestation: 0.08,
+    arrestation: 0.39,
     gains: [
       [10, 3000],
       [15, 3500],
@@ -176,7 +174,7 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
     ],
   },
   ruelles: {
-    arrestation: 0.61,
+    arrestation: 0.74,
     gains: [
       [20, 3500],
       [30, 3000],
@@ -186,7 +184,7 @@ export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: Table
     ],
   },
   souterrains: {
-    arrestation: 0.875,
+    arrestation: 0.917,
     gains: [
       [50, 4000],
       [100, 3500],
@@ -247,7 +245,7 @@ export const perceeCasseBW = (k: number) => CASSE_BW.premiere + (k - 1) * CASSE_
 /** La durée de la descente quand la perceuse s'arrête au sous-sol `etage` (au calendrier réel). */
 export const descenteCasseBW = (etage: number) => perceeCasseBW(etage) + (etage >= ETAGES_BRAQUAGE.length ? CASSE_BW.siecle : CASSE_BW.alarme + CASSE_BW.fuite);
 
-/** Les multiplicateurs d'une manche : 3 à 8 cases différentes, chacune avec son multiplicateur (×5 à ×100). */
+/** Les multiplicateurs d'une manche : 3 à 7 cases différentes, chacune avec son multiplicateur (×5 à ×100). */
 export function tirerMultiplicateursBW(h: Hasard): BoostBW[] {
   const n = MIN_MULTIPLICATEURS_BW + Math.min(MAX_MULTIPLICATEURS_BW - MIN_MULTIPLICATEURS_BW, Math.floor(h() * (MAX_MULTIPLICATEURS_BW - MIN_MULTIPLICATEURS_BW + 1)));
   const cases = melanger(
@@ -280,23 +278,23 @@ export const BUTIN_PARIS: TableBW<number> = [
   [100, 1],
 ];
 export const COFFRES_VENISE: TableBW<number> = [
-  [10, 60],
-  [25, 25],
-  [50, 9],
-  [100, 4],
-  [250, 1.5],
-  [500, 0.4],
-  [1000, 0.1],
+  [10, 75],
+  [25, 18],
+  [50, 5],
+  [100, 1.5],
+  [250, 0.4],
+  [500, 0.1],
+  [1000, 0.03],
 ];
 export const COFFRE_DU_BARON: TableBW<number> = [
-  [50, 55],
-  [100, 25],
-  [250, 11],
-  [500, 5],
-  [1000, 2.7],
-  [2500, 1],
-  [5000, 0.25],
-  [10000, 0.05],
+  [50, 72],
+  [100, 18],
+  [250, 6],
+  [500, 2.3],
+  [1000, 1],
+  [2500, 0.3],
+  [5000, 0.08],
+  [10000, 0.02],
 ];
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -565,8 +563,8 @@ export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable
   }
 }
 /**
- * Ce que les multiplicateurs ajoutent en moyenne à une case : en moyenne 5,5 cases sur 40 en ont un, qui vaut ×10,15
- * en moyenne, soit ×2,26.
+ * Ce que les multiplicateurs ajoutent en moyenne à une case : en moyenne 5 cases sur 30 en ont un, qui vaut ×10,15
+ * en moyenne, soit ×2,53.
  */
 export function facteurMultiplicateursBW(): number {
   const e = MULTIPLICATEURS_BW.reduce((s, [x, p]) => s + x * p, 0) / MULTIPLICATEURS_BW.reduce((s, [, p]) => s + p, 0);

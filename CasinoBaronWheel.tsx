@@ -1,5 +1,5 @@
 /**
- * Le Baron Express (Salon privé ; anciennement The Baron's Wheel) : la roue géante de 40 cases, en direct, et ses cinq bonus (le Choix du Baron, le
+ * Le Baron Express (Salon privé ; anciennement The Baron's Wheel) : la roue géante de 30 cases, en direct, et ses cinq bonus (le Choix du Baron, le
  * Pickpocket, l'Évasion, le Braquage et le Rapide de Minuit ; ces trois derniers ont leur propre écran,
  * CasinoEvasion.tsx, CasinoBraquage.tsx et CasinoBaronExpress.tsx).
  *
@@ -253,10 +253,10 @@ function Roue({ v, horloges }: { v: VueBW; horloges: MutableRefObject<HorlogesRo
         return (
           <g key={i} className={`bw-secteur ${c}`}>
             <path d={secteur(118, 362, a1, a2)} fill={vis.fond} />
-            <image href={vis.texture} x={-29} y={-363} width={58} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
+            <image href={vis.texture} x={-38} y={-363} width={76} height={246} transform={`rotate(${milieu})`} preserveAspectRatio="none" />
             <path d={secteur(118, 362, a1, a2)} className="bw-reflet" />
             {vis.image ? (
-              <image href={vis.image} x={-27} y={-312} width={54} height={55} transform={`rotate(${milieu})`} />
+              <image href={vis.image} x={-34} y={-318} width={68} height={69} transform={`rotate(${milieu})`} />
             ) : (
               <text transform={`rotate(${milieu}) translate(0 -262) rotate(-90)`} fill="url(#bw-or-grave)" className={`bw-chiffre ${c}`} textAnchor="middle" dominantBaseline="central">
                 {fx(GAINS_CHIFFRES_BW[c as 'x1'])}
@@ -1053,8 +1053,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '40 cases, toutes avec la même chance : 11 cases 1X (paient ×2), 9 cases 2X (×3), 6 cases 5X (×5), 3 cases 10X (×10), 10 cases bonus : Baron (3), Pickpocket (2), Évasion (2) et Braquage (3), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×250) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×50, arrestation 8 %), les Ruelles (×20 à ×200, 61 %) ou les Souterrains (×50 à ×1 000, 88 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×150 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 8 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
-            '40 spots, all equally likely: 11 1X spots (pay ×2), 9 2X (×3), 6 5X (×5), 3 10X (×10), 10 bonus spots: Baron (3), Pickpocket (2), Escape (2) and Big Heist (3), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×250); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×50, 8% arrest), the Alleys (×20 to ×200, 61%) or the Tunnels (×50 to ×1,000, 88%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×150 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 8 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
+            '30 cases, toutes avec la même chance : 9 cases 1X (paient ×2), 6 cases 2X (×3), 4 cases 5X (×5), 2 cases 10X (×10), 8 cases bonus : Baron (2), Pickpocket (2), Évasion (2) et Braquage (2), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×250) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×50, arrestation 39 %), les Ruelles (×20 à ×200, 74 %) ou les Souterrains (×50 à ×1 000, 92 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×150 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 7 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
+            '30 spots, all equally likely: 9 1X spots (pay ×2), 6 2X (×3), 4 5X (×5), 2 10X (×10), 8 bonus spots: Baron (2), Pickpocket (2), Escape (2) and Big Heist (2), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×250); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×50, 39% arrest), the Alleys (×20 to ×200, 74%) or the Tunnels (×50 to ×1,000, 92%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×150 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 7 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
           )}
         </p>
       </aside>
