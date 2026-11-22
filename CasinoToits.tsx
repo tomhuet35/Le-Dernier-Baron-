@@ -294,6 +294,10 @@ function useScene(etat: { current: Etat }, r: Refs) {
         v.style.width = `${g.ww}px`;
         v.style.transform = `translate3d(${xVoiture(g, i) + dx}px, ${g.sol - hv + bob}px, 0)`;
         const pl = r.plaques[i]?.current;
+        // Une plaque coupée par le bord de la scène ne se montre pas (elle apparaît en entrant).
+        const xc = xVoiture(g, i) + g.ww / 2 + dx - (camera ?? 0);
+        const demi = g.h * (i === SAUTS_TOITS ? 0.6 : 0.45);
+        if (pl) pl.style.opacity = String(borne(Math.min(xc - demi, W - xc - demi) / (g.h * 0.3)));
         if (pl) pl.style.transform = `translate3d(${xVoiture(g, i) + g.ww / 2 + dx}px, ${yToit(g, i) - g.h * (i === SAUTS_TOITS ? 1.45 : 1.25)}px, 0) translate(-50%, -100%)`;
       });
       // L'attelage qui casse, entre le wagon k et le suivant : chaque moitié part avec son wagon.
