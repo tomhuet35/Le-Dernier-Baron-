@@ -28,7 +28,11 @@
 .tt-attelage { z-index: 2; opacity: 0; filter: drop-shadow(0 0 10px rgba(255, 190, 90, 0.8)); }
 .tt-coureur { z-index: 5; visibility: hidden; transform-origin: 50% 60%; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.6)); }
 .tt-coureur.victoire { filter: drop-shadow(0 0 16px rgba(255, 210, 120, 0.8)) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.6)); }
+.tt-ravin { position: absolute; left: 0; top: 0; z-index: 0; visibility: hidden; pointer-events: none; will-change: transform; background: radial-gradient(70% 40% at 50% 30%, rgba(120, 130, 170, 0.18), transparent 70%), linear-gradient(180deg, rgba(6, 8, 18, 0) 0, rgba(8, 10, 22, 0.92) 9%, #04050c 45%, #010103); }
 .tt-tunnel { z-index: 4; visibility: hidden; filter: drop-shadow(-8px 0 14px rgba(0, 0, 0, 0.6)); }
+/* La montagne seule devant le train (les ponts, eux, sont derrière : leur copie .pont). */
+.tt-tunnel:not(.pont) { clip-path: inset(0 27.8% 0 27.8%); }
+.tt-tunnel.pont { z-index: 0; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.5)); }
 
 /* Les plaques des multiplicateurs, au-dessus de chaque wagon. */
 .tt-plaque { position: absolute; left: 0; top: 0; z-index: 3; opacity: 0; padding: 1px 10px 2px; border-radius: 10px; border: 1.5px solid rgba(214, 168, 75, 0.75); background: rgba(14, 8, 6, 0.82); font-family: var(--titre); font-size: clamp(12px, 2.6cqh, 18px); line-height: 1.2; color: #f3e7cf; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55); transition: background 0.3s, color 0.3s, box-shadow 0.3s; }

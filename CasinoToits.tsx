@@ -80,11 +80,14 @@ const VITESSE: Record<NiveauToits, number> = { promenade: 0.55, express: 0.9, ra
 const T = { course: 380, vol: 520, pose: 200, suite: 420 };
 const DUREE_SAUT = T.course + T.vol + T.pose + T.suite;
 /**
- * Le tunnel (1774 × 895) : une montagne, l'entrée à gauche, la sortie à droite (le même portail en miroir), dessinée
- * devant le train, qui y disparaît et ressort de l'autre côté. Le haut des rails, le haut des arches, le bord gauche du
- * portail ; l'arche fait un peu plus qu'un wagon de haut.
+ * Le tunnel (2516 × 555) : un pont, l'entrée du tunnel et la montagne, puis la même chose en miroir (la sortie et le
+ * second pont). Il passe devant le train, qui y disparaît et ressort de l'autre côté. Le haut des rails (aligné sur
+ * ceux du jeu), le haut des arches, le bord gauche du portail, et le pont de gauche (de son bout à la montagne) : là,
+ * la voie et le premier plan du jeu s'effacent, et le ravin se voit sous le pont. L'arche fait un wagon de haut.
  */
-const TUNNEL = { w: 1774, h: 895, rails: 809, arche: 425, face: 150, hauteurArche: 1.05 };
+const TUNNEL = { w: 2516, h: 555, rails: 367, arche: 239, face: 840, pont: [15, 1000] as const, montagne: 700, hauteurArche: 1.02 };
+/** Le haut des rails du jeu (le haut de la voie), où se calent les rails des ponts (part de h au-dessus du bas des roues). */
+const RAILS_JEU = 0.12;
 /** La chute : le moment du choc (tunnel) ou du décrochage, la chute elle-même. */
 const CHUTE = { choc: T.course + T.vol * 0.45, decroche: T.course - 180, duree: 1100 };
 
@@ -125,18 +128,27 @@ interface Action {
   issue: 'ok' | ObstacleToits | null;
   /** Quand l'issue est arrivée après le bord : le temps passé à attendre au bord. */
   attente: number;
+  /** Le tunnel : son arrivée (son bout gauche juste hors de l'écran, à droite) et l'instant où il s'élance. */
+  entree?: { x: number; t: number };
 }
+/**
+ * Avant un tunnel, le coureur reste au bord du wagon (il court sur place) le temps que le pont et la montagne arrivent
+ * de la droite : on les voit venir, puis il saute droit dans le portail.
+ */
+const ATTENTE_TUNNEL = 1100;
 
 interface Refs {
   scene: { current: HTMLDivElement | null };
   monde: { current: HTMLDivElement | null };
   ciel: { current: HTMLDivElement | null };
   premier: { current: HTMLDivElement | null };
+  ravins: { current: HTMLDivElement | null }[];
   voie: { current: HTMLDivElement | null };
   voitures: { current: HTMLImageElement | null }[];
   plaques: { current: HTMLSpanElement | null }[];
   poses: Record<Pose, { current: HTMLImageElement | null }>;
   tunnel: { current: HTMLImageElement | null };
+  pont: { current: HTMLImageElement | null };
   attelageG: { current: HTMLImageElement | null };
   attelageD: { current: HTMLImageElement | null };
 }
@@ -194,6 +206,7 @@ function useScene(etat: { current: Etat }, r: Refs) {
         // Au bord, il attend la réponse du serveur (en courant sur place).
         if (a.issue === null) s = Math.min(s, T.course);
         else s -= a.attente;
+        if (a.issue === 'tunnel') s = s < T.course ? s : s < T.course + ATTENTE_TUNNEL ? T.course - 1 : s - ATTENTE_TUNNEL;
         const sv = s - T.course;
         if (s < T.course) {
           const u = s / T.course;
@@ -219,10 +232,6 @@ function useScene(etat: { current: Etat }, r: Refs) {
               pose = 'chute';
               visible = q < 1;
             }
-            // Le tunnel arrive de la droite et le heurte au moment du choc.
-            const p = vol(uc);
-            const sc = (g.h * TUNNEL.hauteurArche) / (TUNNEL.rails - TUNNEL.arche);
-            tunnelX = p.x + g.h * 0.3 - TUNNEL.face * sc + (CHUTE.choc - s) * ((Math.max(1, VITESSE[e.niveau]) * W) / 1000);
           } else if (a.issue === 'attelage') {
             ({ x: rx, y: ry } = vol(Math.min(u, 0.75)));
             pose = 'saut';
@@ -247,6 +256,17 @@ function useScene(etat: { current: Etat }, r: Refs) {
             ry = y1 - (reduit ? 0 : Math.abs(Math.sin(now / 90)) * g.h * 0.04) * (q < 1 ? 1 : 0);
             pose = q < 1 ? 'court' : 'atterrit';
           }
+        }
+        // Le tunnel : il entre par la droite (le pont d'abord) dès que l'issue est connue, et son portail atteint le
+        // coureur au moment du choc ; il continue ensuite sa route à la même vitesse.
+        if (a.issue === 'tunnel') {
+          const sc = (g.h * TUNNEL.hauteurArche) / (TUNNEL.rails - TUNNEL.arche);
+          const uc = (CHUTE.choc - T.course) / T.vol;
+          const cible = xBord(g, k) + (xPose(g, k) - xBord(g, k)) * uc + g.h * 0.3 - TUNNEL.face * sc;
+          if (!a.entree) a.entree = { x: Math.max(cible + W * 0.4, (camera ?? 0) + W - TUNNEL.pont[0] * sc + 4), t: now };
+          const choc = a.debut + a.attente + ATTENTE_TUNNEL + CHUTE.choc;
+          const v = (a.entree.x - cible) / Math.max(300, choc - a.entree.t);
+          tunnelX = a.entree.x - v * (now - a.entree.t);
         }
         // L'attelage cède : l'avant du train s'éloigne.
         if (a.issue === 'attelage') {
@@ -316,15 +336,48 @@ function useScene(etat: { current: Etat }, r: Refs) {
         ag.style.transform = `translate3d(${xg - aw * 0.35}px, ${y}px, 0) rotate(${8 * attelage}deg)`;
         ad.style.transform = `translate3d(${xd - aw * 0.65}px, ${y}px, 0)`;
       }
-      // Le tunnel : la montagne passe devant le train, qui y disparaît et ressort de l'autre côté.
+      // Le tunnel : les ponts et la montagne passent devant le train, qui y disparaît et ressort de l'autre côté. Sur
+      // les ponts, la voie et le premier plan du jeu s'effacent (masque) et le ravin se voit dessous.
       const tu = r.tunnel.current;
       if (tu) {
-        const vu = tunnelX !== null && tunnelX < camera + W * 1.2;
+        const sc = (g.h * TUNNEL.hauteurArche) / (TUNNEL.rails - TUNNEL.arche);
+        const tw = TUNNEL.w * sc;
+        const vu = tunnelX !== null && tunnelX < camera + W * 1.2 && tunnelX + tw > camera - W * 0.2;
+        const pt = r.pont.current;
         tu.style.visibility = vu ? 'visible' : 'hidden';
+        if (pt) pt.style.visibility = tu.style.visibility;
+        let masque = 'none';
+        r.ravins.forEach((rv) => {
+          if (rv.current) rv.current.style.visibility = vu ? 'visible' : 'hidden';
+        });
         if (vu && tunnelX !== null) {
-          const sc = (g.h * TUNNEL.hauteurArche) / (TUNNEL.rails - TUNNEL.arche);
-          tu.style.width = `${TUNNEL.w * sc}px`;
-          tu.style.transform = `translate3d(${tunnelX}px, ${g.sol - TUNNEL.rails * sc}px, 0)`;
+          // Les ponts derrière le train (ses roues passent devant, comme sur la voie), la montagne devant lui ; les
+          // rails des ponts au niveau de ceux du jeu.
+          const y = g.sol - g.h * RAILS_JEU - TUNNEL.rails * sc;
+          for (const el of [tu, pt]) {
+            if (!el) continue;
+            el.style.width = `${tw}px`;
+            el.style.transform = `translate3d(${tunnelX}px, ${y}px, 0)`;
+          }
+          const ponts: [number, number][] = [
+            [tunnelX + TUNNEL.pont[0] * sc, tunnelX + TUNNEL.pont[1] * sc],
+            [tunnelX + tw - TUNNEL.pont[1] * sc, tunnelX + tw - TUNNEL.pont[0] * sc],
+          ];
+          const haut = g.sol - g.h * RAILS_JEU;
+          ponts.forEach(([a0, a1], i) => {
+            const rv = r.ravins[i].current;
+            if (!rv) return;
+            rv.style.width = `${a1 - a0}px`;
+            rv.style.height = `${H - haut + 4}px`;
+            rv.style.transform = `translate3d(${a0}px, ${haut}px, 0)`;
+          });
+          const [[x0, x1], [x2, x3]] = ponts.map(([a0, a1]) => [a0 - camera!, a1 - camera!]);
+          masque = `linear-gradient(90deg, #000 ${x0}px, transparent ${x0}px, transparent ${x1}px, #000 ${x1}px, #000 ${x2}px, transparent ${x2}px, transparent ${x3}px, #000 ${x3}px)`;
+        }
+        for (const el of [r.voie.current, r.premier.current]) {
+          if (!el) continue;
+          el.style.maskImage = masque;
+          el.style.setProperty('-webkit-mask-image', masque);
         }
       }
       // Le coureur.
@@ -401,11 +454,13 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
       monde: ref(),
       ciel: ref(),
       premier: ref(),
+      ravins: [ref(), ref()],
       voie: ref(),
       voitures: VOITURES.map(() => ref()),
       plaques: VOITURES.map(() => ref()),
       poses: { court: ref(), saut: ref(), atterrit: ref(), chute: ref(), victoire: ref(), baisse: ref() },
       tunnel: ref(),
+      pont: ref(),
       attelageG: ref(),
       attelageD: ref(),
     };
@@ -520,7 +575,9 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
     const ecoule = performance.now() - action.debut;
     action.attente = Math.max(0, ecoule - T.course);
     action.issue = p.etat === 'perdu' ? (p.obstacle ?? 'attelage') : 'ok';
-    const depart = Math.max(0, T.course - ecoule);
+    // Avant un tunnel, il attend au bord que la montagne arrive.
+    const depart = Math.max(0, T.course - ecoule) + (p.obstacle === 'tunnel' && p.etat === 'perdu' ? ATTENTE_TUNNEL : 0);
+    if (p.obstacle === 'tunnel' && p.etat === 'perdu') plusTard(() => jouerEffet('ex_sifflet', { volume: 0.45 }), 100);
     plusTard(() => jouerEffet('tt_saut'), depart);
     if (p.etat === 'perdu') {
       plusTard(() => {
@@ -617,6 +674,9 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
         {niveau === 'baron' && <div className="tt-pluie loin" aria-hidden="true" />}
         <div className="tt-voie" ref={r.voie} />
         <div className="tt-monde" ref={r.monde}>
+          <div className="tt-ravin" ref={r.ravins[0]} />
+          <div className="tt-ravin" ref={r.ravins[1]} />
+          <img className="tt-tunnel pont" ref={r.pont} src={IMG('tt-tunnel')} alt="" draggable={false} />
           {VOITURES.map((v, i) => (
             <img key={`v${i}`} className={`tt-voiture ${i === SAUTS_TOITS ? 'fourgon' : ''}`} ref={r.voitures[i]} src={IMG(v)} alt="" draggable={false} />
           ))}
