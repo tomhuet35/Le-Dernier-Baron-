@@ -21,11 +21,13 @@ import {
   JETONS_BW,
   MAX_CASE_BW,
   MAX_MANCHE_BW,
+  NB_CASES_BW,
   ROUE_BW,
   VALEUR_JACKPOT_BW,
   type BonusBW,
   type BoostBW,
   type CaseBW,
+  type EvenementBW,
   type JackpotBW,
   type JournalBW,
   type RecompenseBW,
@@ -37,7 +39,7 @@ import type { Appel } from './App';
 import { BUTIN_PLUIE, CHOIX_AUTO, dollars, PluieLingots, useSoldeAnime } from './casinoOutils';
 import { socket } from './socket';
 import { EN, tr } from './traduction';
-import { jouerEffet, mouvementReduit, musiqueDuCasino } from './ui';
+import { jouerEffet, mouvementReduit, musiqueDuCasino, useCompteur } from './ui';
 import { BonusExpress, IMAGES_EXPRESS_NOMS, ValeurMultipliee } from './CasinoBaronExpress';
 import { BonusBraquage, IMAGES_BRAQUAGE_NOMS } from './CasinoBraquage';
 import { BonusEvasion, IMAGES_EVASION_NOMS } from './CasinoEvasion';
@@ -210,7 +212,7 @@ function CaseRoue({ i }: { i: number }) {
   );
 }
 
-function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<HorlogesRoue>; lampes: MutableRefObject<(HTMLDivElement | null)[]> }) {
+function Roue({ v, horloges, lampes, aiguille }: { v: VueBW; horloges: MutableRefObject<HorlogesRoue>; lampes: MutableRefObject<(HTMLDivElement | null)[]>; aiguille?: MutableRefObject<HTMLImageElement | null> }) {
   const disque = useRef<HTMLDivElement>(null);
   const frole = useRef<SVGPathElement>(null);
   const roue = useRef<HTMLDivElement>(null);
@@ -227,6 +229,8 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
     let arretT: number | null = null;
     let froleT = -1e9;
     let flash = -1e9;
+    let pression = 0.12;
+    let pressionNumero = -1;
     // La vapeur : chaque bouffée part d'un côté du bas de la roue (date de départ, côté) ; un souffle par bouffée.
     const vapeur: { t: number; cote: number; force: number }[] = [];
     let derniereBouffee: number | null = null;
@@ -332,6 +336,30 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
         derniere = sous;
       }
       if (frole.current) frole.current.style.opacity = String(Math.max(0, 1 - (now - froleT) / 520));
+      // Le manomètre : la pression monte pendant le tour ; dans la finale, si la roue passe près d'un bonus, l'aiguille
+      // s'affole dans le rouge et la vapeur siffle.
+      const ai = aiguille?.current;
+      if (ai) {
+        let cible = 0.12 + 0.02 * Math.sin(now / 900);
+        let tremble = 0.004;
+        if (x.phase === 'multiplicateurs') cible = 0.3;
+        else if (x.phase === 'tour') {
+          cible = 0.3 + 0.5 * Math.min(1, u / 0.45);
+          tremble = 0.012;
+          if (finale) {
+            const proche = estBonusBW(ROUE_BW[sous]) || estBonusBW(ROUE_BW[(sous + 1) % NB_CASES_BW]) || estBonusBW(ROUE_BW[(sous + NB_CASES_BW - 1) % NB_CASES_BW]);
+            cible = proche ? 0.95 : 0.74;
+            tremble = proche ? 0.035 : 0.012;
+            if (proche && pressionNumero !== x.numero) {
+              pressionNumero = x.numero;
+              jouerEffet('bw_pression');
+            }
+          }
+        } else if (x.phase === 'bonus' || x.phase === 'resultat') cible = 0.22;
+        pression += (cible - pression) * (x.phase === 'tour' ? 0.08 : 0.035);
+        const p = Math.max(0, Math.min(1.02, pression + (reduit ? 0 : (Math.random() - 0.5) * 2 * tremble)));
+        ai.style.transform = `rotate(${-124 + 248 * p}deg)`;
+      }
       // Les lanternes des piliers : la couleur de la case sous le sifflet, un éclat à chaque case ; à l'arrêt, elles
       // clignotent à la couleur de la case gagnante, puis restent allumées.
       const caseLampe = x.phase === 'tour' ? ROUE_BW[sous] : x.arret !== null && (x.phase === 'bonus' || x.phase === 'resultat') ? ROUE_BW[x.arret] : null;
@@ -353,7 +381,7 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
     };
     raf = requestAnimationFrame(dessiner);
     return () => cancelAnimationFrame(raf);
-  }, [horloges, lampes]);
+  }, [horloges, lampes, aiguille]);
 
   const cases = useMemo(() => ROUE_BW.map((c, i) => <CaseRoue key={i} i={i} />), []);
 
@@ -432,8 +460,13 @@ const LANTERNES = {
   paysage: { w: 1600, h: 900, pos: 0.7, lampes: [[137, 345, 110], [1472, 345, 110], [316, 236, 80], [1279, 236, 80]] },
   portrait: { w: 1000, h: 1250, pos: 0.7, lampes: [[73, 488, 85], [926, 488, 85], [180, 312, 70], [821, 312, 70]] },
 };
-export function LampesDecor({ lampes }: { lampes: MutableRefObject<(HTMLDivElement | null)[]> }) {
+/** Le train qui traverse la gare entre deux manches, sur les rails sous la roue : sa hauteur (part de la largeur de la
+    roue) et le haut du rail (part de la hauteur de la bande des rails). */
+const PASSAGE_TRAIN = { h: 0.15, rail: 0.1 };
+
+export function LampesDecor({ lampes, train }: { lampes: MutableRefObject<(HTMLDivElement | null)[]>; train?: number | null }) {
   const boite = useRef<HTMLDivElement>(null);
+  const passage = useRef<HTMLImageElement>(null);
   useEffect(() => {
     const el = boite.current?.parentElement;
     if (!el) return;
@@ -454,29 +487,255 @@ export function LampesDecor({ lampes }: { lampes: MutableRefObject<(HTMLDivEleme
         l.style.transform = `translate3d(${cx - r}px, ${cy - r}px, 0)`;
         l.style.display = cx < 4 || cx > W - 4 || cy < 4 || cy > H - 4 ? 'none' : '';
       });
+      const train = passage.current;
+      const rails = el.querySelector('.bw-rl-rails');
+      const roue = el.querySelector('.bw-roue');
+      if (train && rails && roue) {
+        const pr = el.getBoundingClientRect();
+        const rr = rails.getBoundingClientRect();
+        const h = PASSAGE_TRAIN.h * (roue as HTMLElement).offsetWidth;
+        const w = (h * 1800) / 223;
+        train.style.height = `${h}px`;
+        train.style.top = `${rr.top - pr.top + PASSAGE_TRAIN.rail * rr.height - h}px`;
+        train.style.setProperty('--de', `${-w}px`);
+        train.style.setProperty('--a', `${W}px`);
+      }
     };
     placer();
     const ro = new ResizeObserver(placer);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [lampes]);
+  }, [lampes, train]);
   return (
-    <div className="bw-lampes" ref={boite} aria-hidden="true">
-      {[0, 1, 2, 3].map((k) => (
-        <div
-          key={k}
-          className="bw-lampe"
-          ref={(el) => {
-            lampes.current[k] = el;
-          }}
-        />
-      ))}
-    </div>
+    <>
+      <div className="bw-lampes" ref={boite} aria-hidden="true">
+        {[0, 1, 2, 3].map((k) => (
+          <div
+            key={k}
+            className="bw-lampe"
+            ref={(el) => {
+              lampes.current[k] = el;
+            }}
+          />
+        ))}
+      </div>
+      {train ? <img key={train} ref={passage} className="bw-train-passe" src="/cartes/bw-train-passage.webp" alt="" aria-hidden="true" draggable={false} /> : null}
+    </>
   );
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 // Les jackpots, l'historique, le journal
+
+// ---------------------------------------------------------------------------------------------------------------
+// Le tableau des départs : les derniers résultats, sur des palettes qui tournent en claquant
+
+const LETTRES_PALETTE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789×';
+/** Les noms des cases sur le tableau (10 lettres au plus) et l'état du départ (9 lettres au plus). */
+const DESTINATIONS: Record<CaseBW, [string, string]> = {
+  x1: ['×2', '×2'],
+  x2: ['×3', '×3'],
+  x5: ['×5', '×5'],
+  x10: ['×10', '×10'],
+  baron: ['LE BARON', 'THE BARON'],
+  pickpocket: ['PICKPOCKET', 'PICKPOCKET'],
+  evasion: ['ÉVASION', 'ESCAPE'],
+  braquage: ['BRAQUAGE', 'BIG HEIST'],
+  express: ['MINUIT', 'MIDNIGHT'],
+};
+const ETATS_DEPART: Record<CaseBW, [string, string]> = {
+  x1: ['À L’HEURE', 'ON TIME'],
+  x2: ['À L’HEURE', 'ON TIME'],
+  x5: ['À L’HEURE', 'ON TIME'],
+  x10: ['À L’HEURE', 'ON TIME'],
+  baron: ['SALON VIP', 'VIP ROOM'],
+  pickpocket: ['VOLÉ !', 'ROBBED!'],
+  evasion: ['RETARDÉ', 'DELAYED'],
+  braquage: ['ATTAQUÉ', 'HELD UP'],
+  express: ['ISTANBUL', 'ISTANBUL'],
+};
+const LARGEUR_DESTINATION = 10;
+const LARGEUR_ETAT = 9;
+let dernierClac = 0;
+
+/** Une palette : quand sa lettre change, elle fait défiler quelques lettres avant de s'arrêter, en claquant. */
+function Palette({ ch, delai }: { ch: string; delai: number }) {
+  const [vu, setVu] = useState(ch);
+  const [tic, setTic] = useState(0);
+  const premier = useRef(true);
+  useEffect(() => {
+    if (premier.current) {
+      premier.current = false;
+      setVu(ch);
+      return;
+    }
+    if (mouvementReduit()) {
+      setVu(ch);
+      return;
+    }
+    const pas = 3 + Math.floor(Math.random() * 4);
+    const ids: number[] = [];
+    for (let k = 0; k <= pas; k++) {
+      ids.push(
+        window.setTimeout(() => {
+          setVu(k === pas ? ch : LETTRES_PALETTE[Math.floor(Math.random() * LETTRES_PALETTE.length)]);
+          setTic((t) => t + 1);
+          const n = performance.now();
+          if (n - dernierClac > 40) {
+            dernierClac = n;
+            jouerEffet('bw_palette', { vitesse: 0.9 + Math.random() * 0.25 });
+          }
+        }, delai + k * 70),
+      );
+    }
+    return () => ids.forEach((i) => window.clearTimeout(i));
+  }, [ch, delai]);
+  return (
+    <span className="bw-palette">
+      <b key={tic}>{vu === ' ' ? '\u00a0' : vu}</b>
+    </span>
+  );
+}
+
+function LigneDepart({ h, rang }: { h: { c: CaseBW; x?: number } | undefined; rang: number }) {
+  const dest = h ? tr(...DESTINATIONS[h.c]) : '';
+  const etat = h ? (h.x ? `×${h.x} !` : tr(...ETATS_DEPART[h.c])) : '';
+  const lettres = (t: string, n: number) => Array.from(t.padEnd(n).slice(0, n));
+  return (
+    <li className={`bw-depart ${h?.c ?? ''} ${h?.x ? 'multiplie' : ''} rang${rang}`} style={h ? ({ '--lampe': LUMIERES[h.c] } as CSSProperties) : undefined}>
+      <span className="bw-depart-dest">
+        {lettres(dest, LARGEUR_DESTINATION).map((ch, k) => (
+          <Palette key={k} ch={ch} delai={rang * 260 + k * 45} />
+        ))}
+      </span>
+      <span className="bw-depart-etat">
+        {lettres(etat, LARGEUR_ETAT).map((ch, k) => (
+          <Palette key={k} ch={ch} delai={rang * 260 + (LARGEUR_DESTINATION + k) * 45} />
+        ))}
+      </span>
+    </li>
+  );
+}
+
+/** Le tableau des départs : les trois derniers résultats, le plus récent en haut. */
+export function TableauDeparts({ historique, onJournal }: { historique: VueBW['historique']; onJournal: () => void }) {
+  return (
+    <section className="bw-tableau" aria-label={tr('Les derniers résultats', 'Latest results')}>
+      <header>
+        <strong>{tr('Départs', 'Departures')}</strong>
+        <span className="bw-tableau-cols" aria-hidden="true">
+          <i>{tr('Destination', 'Destination')}</i>
+          <i>{tr('État', 'Status')}</i>
+        </span>
+        <button type="button" className="bw-bouton-journal" onClick={onJournal}>
+          {tr('Historique', 'History')}
+        </button>
+      </header>
+      <ol>
+        {[0, 1, 2].map((k) => (
+          <LigneDepart key={k} h={historique[k]} rang={k} />
+        ))}
+      </ol>
+      <span className="bw-tableau-suite" aria-hidden="true">
+        {historique.slice(3, 15).map((h, k) => (
+          <Pastille key={k} c={h.c} x={h.x} />
+        ))}
+      </span>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Le manomètre, le contrôleur, les gros gains, les événements
+
+/** Le manomètre de la locomotive, à côté de la roue : la roue pilote son aiguille. */
+export function Manometre({ aiguille }: { aiguille: MutableRefObject<HTMLImageElement | null> }) {
+  return (
+    <div className="bw-mano" aria-hidden="true">
+      <img className="bw-mano-cadran" src="/cartes/bw-mano-cadran.webp" alt="" draggable={false} />
+      <img className="bw-mano-aiguille" ref={aiguille} src="/cartes/bw-mano-aiguille.webp" alt="" draggable={false} />
+    </div>
+  );
+}
+
+/** La case gagnante était multipliée : le contrôleur arrive et poinçonne le billet. */
+export function Poinconnage({ x }: { x: number }) {
+  const r = rangBillet(x);
+  return (
+    <div className="bw-poinconnage" aria-hidden="true">
+      <img className="bw-controleur" src="/cartes/bw-controleur.webp" alt="" draggable={false} />
+      <div className={`bw-billet-geant b-${r}`}>
+        <img src={`/cartes/bw-billet-${r}.webp`} alt="" draggable={false} />
+        <strong>×{x}</strong>
+        <i className="bw-trou" />
+      </div>
+      <img className="bw-poinconneuse" src="/cartes/bw-poinconneuse.webp" alt="" draggable={false} />
+    </div>
+  );
+}
+
+/** Les paliers des gros gains (en multiples de la mise) et leur nom. */
+const PALIERS_GAIN: { x: number; nom: [string, string] }[] = [
+  { x: 50, nom: ['Grand Voyage', 'Grand Voyage'] },
+  { x: 200, nom: ['Train de Luxe', 'Luxury Train'] },
+  { x: 1000, nom: ['Orient-Express', 'Orient Express'] },
+];
+export const palierGainBW = (gain: number, mise: number) => (mise <= 0 ? 0 : PALIERS_GAIN.filter((p) => gain >= p.x * mise).length);
+
+function GainQuiDefile({ gain }: { gain: number }) {
+  const v = useCompteur(gain, 0, 500, 2600);
+  return <b>+{dollars(v)}</b>;
+}
+
+export function PalierGain({ n, gain, onFermer }: { n: number; gain: number; onFermer: () => void }) {
+  const p = PALIERS_GAIN[n - 1];
+  return (
+    <div className={`bw-palier p${n}`} role="status" onClick={onFermer}>
+      <div className="bw-fete-rayons" aria-hidden="true" />
+      <span className="bw-palier-plaque">
+        <img src={`/cartes/bw-palier-${n}.webp`} alt="" draggable={false} />
+        <strong>{tr(...p.nom)}</strong>
+      </span>
+      <GainQuiDefile gain={gain} />
+    </div>
+  );
+}
+
+const EVENEMENTS: Record<EvenementBW, { nom: [string, string]; effet: [string, string]; image: string }> = {
+  pointe: { nom: ['Heure de pointe', 'Rush hour'], effet: ['Plus de cases multipliées à chaque manche', 'More multiplied spots every round'], image: '/cartes/bw-evt-pointe.webp' },
+  depart: { nom: ['Grand Départ', 'Grand Departure'], effet: ['XP ×2 sur la roue', 'XP ×2 on the wheel'], image: '/cartes/bw-evt-depart.webp' },
+};
+const minutes = (ms: number) => Math.max(1, Math.ceil(ms / 60_000));
+
+/** Les événements de la gare en cours, ou le prochain s'il commence dans l'heure. */
+export function BandeauEvenements({ v }: { v: VueBW }) {
+  const en = v.evenements ?? [];
+  if (!en.length && !v.prochain) return null;
+  return (
+    <div className="bw-evenements">
+      {en.map((e) => (
+        <p key={e.type} className={`bw-evenement ${e.type}`} role="status">
+          <img src={EVENEMENTS[e.type].image} alt="" draggable={false} />
+          <span>
+            <strong>{tr(...EVENEMENTS[e.type].nom)}</strong>
+            <small>{tr(...EVENEMENTS[e.type].effet)}</small>
+          </span>
+          <em>{tr(`encore ${minutes(e.reste)} min`, `${minutes(e.reste)} min left`)}</em>
+        </p>
+      ))}
+      {!en.length && v.prochain && (
+        <p className={`bw-evenement bientot ${v.prochain.type}`} role="status">
+          <img src={EVENEMENTS[v.prochain.type].image} alt="" draggable={false} />
+          <span>
+            <strong>{tr(...EVENEMENTS[v.prochain.type].nom)}</strong>
+            <small>{tr(...EVENEMENTS[v.prochain.type].effet)}</small>
+          </span>
+          <em>{tr(`dans ${minutes(v.prochain.dans)} min`, `in ${minutes(v.prochain.dans)} min`)}</em>
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** Combien de manches depuis chaque bonus, et le plus gros gain du jour. */
 export function Compteurs({ v }: { v: VueBW }) {
@@ -878,6 +1137,10 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   useEffect(() => () => window.clearTimeout(minuterieAuto.current), []);
   const [credit, setCredit] = useState<{ montant: number; id: number } | null>(null);
   const [fete, setFete] = useState<{ jackpot: JackpotBW; gain: number; id: number } | null>(null);
+  const [palier, setPalier] = useState<{ n: number; gain: number; id: number } | null>(null);
+  const [poincon, setPoincon] = useState<{ x: number; id: number } | null>(null);
+  const [train, setTrain] = useState<number | null>(null);
+  const aiguille = useRef<HTMLImageElement | null>(null);
   const minuteries = useRef<number[]>([]);
   const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
   useEffect(() => () => minuteries.current.forEach((m) => window.clearTimeout(m)), []);
@@ -961,7 +1224,32 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     const etapeNom = (x: VueBW) => (x.bonus ? x.bonus.etapes[x.bonus.etape].nom : '');
     const change = avant.numero !== v.numero || avant.phase !== v.phase || etapeNom(avant) !== etapeNom(v);
     if (!change) return;
-    if (v.phase === 'multiplicateurs') jouerEffet('bw_multi');
+    if (v.phase === 'multiplicateurs') {
+      jouerEffet('bw_cloche');
+      jouerEffet('bw_multi');
+    }
+    // Le quai : la foule, les pas, une cloche au loin ; une manche sur trois, un train traverse la gare.
+    if (v.phase === 'mises' && avant.phase !== 'mises') {
+      jouerEffet('bw_quai');
+      if (v.numero % 3 === 0 && !mouvementReduit()) {
+        const id = Date.now();
+        plusTard(() => {
+          setTrain(id);
+          jouerEffet('bw_train_passe');
+        }, 1800);
+        plusTard(() => setTrain((x) => (x === id ? null : x)), 9000);
+      }
+    }
+    // Arrêt sur une case multipliée : le contrôleur poinçonne le billet.
+    if (avant.phase === 'tour' && v.phase === 'resultat' && v.arret !== null && !mouvementReduit()) {
+      const x = v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1;
+      if (x > 1) {
+        const id = Date.now();
+        plusTard(() => setPoincon({ x, id }), 450);
+        plusTard(() => jouerEffet('bw_poincon'), 450 + 1050);
+        plusTard(() => setPoincon((p) => (p?.id === id ? null : p)), 450 + 2900);
+      }
+    }
     if (v.phase === 'tour') {
       jouerEffet('bw_lancer');
       jouerEffet('bw_sifflet');
@@ -987,15 +1275,23 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         setCredit({ montant: gain, id: Date.now() });
         plusTard(() => setCredit(null), 2700);
       }
+      const np = palierGainBW(gain, mise);
       if (jp) {
         jouerEffet('bw_jackpot');
         setFete({ jackpot: jp, gain, id: Date.now() });
         plusTard(() => setFete(null), 5200);
+      } else if (np > 0) {
+        jouerEffet(np >= 3 ? 'bw_jackpot' : 'bw_gros');
+        const id = Date.now();
+        // Après le poinçon du contrôleur s'il y en a un.
+        const attente = (v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1) > 1 && !mouvementReduit() ? 3000 : 300;
+        plusTard(() => setPalier({ n: np, gain, id }), attente);
+        plusTard(() => setPalier((p) => (p?.id === id ? null : p)), attente + 5200);
       } else if (gain >= 10 * mise && gain >= 500_000) jouerEffet('bw_gros');
       else if (gain > 0) jouerEffet('bw_gain');
       else jouerEffet('bw_perdu');
       if ((jp || gain >= 10 * mise) && gain > 0 && !mouvementReduit()) {
-        setPluie({ n: jp ? 60 : gain >= 50 * mise ? 46 : 28, id: Date.now() });
+        setPluie({ n: jp || gain >= 1000 * mise ? 64 : gain >= 50 * mise ? 46 : 28, id: Date.now() });
         plusTard(() => setPluie(null), 3800);
       }
     }
@@ -1090,6 +1386,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         </span>
       </header>
 
+      {v && <BandeauEvenements v={v} />}
       {v?.ouverture ? (
         <p className="bw-ouverture" role="status">
           <strong>{tr('Grande ouverture', 'Grand opening')}</strong>
@@ -1100,25 +1397,16 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       <div className="bw-droite">
       <Jackpots />
 
-      <div className="bw-ligne-historique">
-        <ol className="bw-historique" aria-label={tr('Les derniers résultats', 'Latest results')}>
-          {(v?.historique ?? []).map((h, k) => (
-            <li key={`${v?.numero}-${k}`}>
-              <Pastille c={h.c} x={h.x} />
-            </li>
-          ))}
-        </ol>
-        <button type="button" className="bw-bouton-journal" onClick={() => setJournal(true)}>
-          {tr('Historique', 'History')}
-        </button>
-      </div>
+      <TableauDeparts historique={v?.historique ?? []} onJournal={() => setJournal(true)} />
       {v && <Compteurs v={v} />}
       </div>
 
       <div className="bw-gauche">
       <div className="bw-plateau">
-        {v && !enBonus && <LampesDecor lampes={lampes} />}
-        {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} />)}
+        {v && !enBonus && <LampesDecor lampes={lampes} train={train} />}
+        {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} aiguille={aiguille} />)}
+        {v && !enBonus && <Manometre aiguille={aiguille} />}
+        {poincon && !enBonus && <Poinconnage key={poincon.id} x={poincon.x} />}
         {!v && <div className="chargement">{erreur ?? tr('La roue arrive…', 'The wheel is coming…')}</div>}
         <span className="bw-direct">
           {tr('En direct', 'Live')}
@@ -1277,8 +1565,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '30 cases, toutes avec la même chance : 9 cases 1X (paient ×2), 6 cases 2X (×3), 4 cases 5X (×5), 2 cases 10X (×10), 8 cases bonus : Baron (2), Pickpocket (2), Évasion (2) et Braquage (2), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×250) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×50, arrestation 39 %), les Ruelles (×20 à ×200, 74 %) ou les Souterrains (×50 à ×1 000, 92 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×150 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 7 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche.',
-            '30 spots, all equally likely: 9 1X spots (pay ×2), 6 2X (×3), 4 5X (×5), 2 10X (×10), 8 bonus spots: Baron (2), Pickpocket (2), Escape (2) and Big Heist (2), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×250); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×50, 39% arrest), the Alleys (×20 to ×200, 74%) or the Tunnels (×50 to ×1,000, 92%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×150 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 7 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round.',
+            '30 cases, toutes avec la même chance : 9 cases 1X (paient ×2), 6 cases 2X (×3), 4 cases 5X (×5), 2 cases 10X (×10), 8 cases bonus : Baron (2), Pickpocket (2), Évasion (2) et Braquage (2), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×250) ; la carte du Baron cache un jackpot. À l’Évasion, trois voitures s’enfuient : le Boulevard (×10 à ×50, arrestation 39 %), les Ruelles (×20 à ×200, 74 %) ou les Souterrains (×50 à ×1 000, 92 %). Au Braquage, une seule perceuse pour tout le salon : chaque sous-sol percé paie ×3, ×6, ×12, ×30, puis ×150 au Coffre du Siècle, jusqu’à ce que l’alarme sonne. Une fois les mises fermées, 3 à 7 cases reçoivent un multiplicateur de ×5 à ×100, qui multiplie aussi les bonus. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Baron et au Coffre du Siècle. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche. Heure de pointe, chaque soir de 19 h à 20 h : 5 à 9 cases multipliées par manche, des multiplicateurs plus modestes (×5 à ×50). Grand Départ, le samedi et le dimanche de 18 h à 22 h : l’XP compte double sur la roue.',
+            '30 spots, all equally likely: 9 1X spots (pay ×2), 6 2X (×3), 4 5X (×5), 2 10X (×10), 8 bonus spots: Baron (2), Pickpocket (2), Escape (2) and Big Heist (2), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×250); the Baron’s card hides a jackpot. In the Escape, three cars flee: the Boulevard (×10 to ×50, 39% arrest), the Alleys (×20 to ×200, 74%) or the Tunnels (×50 to ×1,000, 92%). In the Big Heist, one drill for the whole room: each basement drilled pays ×3, ×6, ×12, ×30, then ×150 at the Vault of the Century, until the alarm rings. Once bets close, 3 to 7 spots get a ×5 to ×100 multiplier, which also multiplies bonuses. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron and the Vault of the Century. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round. Rush hour, every evening from 7 to 8 pm (Paris time): 5 to 9 multiplied spots per round, with smaller multipliers (×5 to ×50). Grand Departure, Saturday and Sunday from 6 to 10 pm: XP counts double on the wheel.',
           )}
         </p>
       </aside>
@@ -1296,6 +1584,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           <b>+{dollars(fete.gain)}</b>
         </div>
       )}
+      {palier && <PalierGain key={palier.id} n={palier.n} gain={palier.gain} onFermer={() => setPalier(null)} />}
       {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={BUTIN_PLUIE} />}
     </div>
   );
