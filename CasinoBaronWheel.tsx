@@ -163,8 +163,6 @@ interface HorlogesRoue {
   v: VueBW | null;
   /** Départ du tour (performance.now()). */
   debut: number | null;
-  /** Début de la pose des multiplicateurs (performance.now()). */
-  debutMulti: number | null;
   numero: number;
 }
 
@@ -210,20 +208,9 @@ function CaseRoue({ i, ressort }: { i: number; ressort?: boolean }) {
   );
 }
 
-/** Le petit train doré qui pose les multiplicateurs : la locomotive et deux wagons (largeur, part de la roue). */
-const TRAIN_DORE = [
-  { img: 'bw-ex2-loco', l: 0.17, ratio: 338 / 1100 },
-  { img: 'bw-ex2-wagon-1', l: 0.13, ratio: 344 / 1100 },
-  { img: 'bw-ex2-wagon-3', l: 0.13, ratio: 344 / 1100 },
-];
-/** Le tour du train : il part de derrière le sifflet et fait le tour de la jante en 2,8 s. */
-const TOUR_TRAIN = { depart: 250, duree: 2800, rayon: 0.448 };
-
 function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<HorlogesRoue>; lampes: MutableRefObject<(HTMLDivElement | null)[]> }) {
   const disque = useRef<HTMLDivElement>(null);
   const frole = useRef<SVGPathElement>(null);
-  const wagons = useRef<(HTMLImageElement | null)[]>([]);
-  const boostsRef = useRef<(SVGGElement | null)[]>([]);
   const roue = useRef<HTMLDivElement>(null);
   const bielle = useRef<HTMLImageElement>(null);
   const crosse = useRef<HTMLImageElement>(null);
@@ -239,8 +226,6 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
     let arretT: number | null = null;
     let froleT = -1e9;
     let flash = -1e9;
-    let numeroPose = -1;
-    const poses = new Set<number>();
     // La vapeur : chaque bouffée part d'un côté du bas de la roue (date de départ, côté) ; un souffle par bouffée.
     const vapeur: { t: number; cote: number; force: number }[] = [];
     let derniereBouffee: number | null = null;
@@ -364,36 +349,6 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
         l.style.setProperty('--lampe', couleur);
         l.style.opacity = String(force);
       });
-      // Le petit train doré : il fait le tour de la jante et pose chaque multiplicateur en passant sur sa case.
-      if (x.numero !== numeroPose) {
-        numeroPose = x.numero;
-        poses.clear();
-      }
-      const tm = x.phase === 'multiplicateurs' && h.debutMulti !== null && !reduit ? (now - h.debutMulti - TOUR_TRAIN.depart) / TOUR_TRAIN.duree : -1;
-      const theta = -25 + 410 * lisseBW(tm);
-      wagons.current.forEach((el, k) => {
-        if (!el) return;
-        const vu = tm > -0.05 && tm < 1.05 && W > 0;
-        el.style.opacity = vu ? String(Math.min(1, (tm + 0.05) * 8, (1.05 - tm) * 8)) : '0';
-        if (!vu) return;
-        const T = TRAIN_DORE[k];
-        const r = TOUR_TRAIN.rayon * W;
-        const ecart = TRAIN_DORE.slice(0, k).reduce((s2, c2, j) => s2 + (c2.l + TRAIN_DORE[j + 1].l) / 2 + 0.008, 0) * W;
-        const th = ((theta * Math.PI) / 180) - ecart / r;
-        const w = T.l * W;
-        el.style.width = `${w}px`;
-        el.style.transform = `translate3d(${W / 2 + r * Math.sin(th) - w / 2}px, ${W / 2 - r * Math.cos(th) - (w * T.ratio) / 2}px, 0) rotate(${th}rad)`;
-      });
-      (x.multiplicateurs ?? []).forEach((bo, k) => {
-        const g = boostsRef.current[k];
-        if (!g || poses.has(k)) return;
-        const phi = (((bo.i + 0.5) * DEGRES_CASE_BW + a) % 360 + 360) % 360;
-        if (x.phase !== 'multiplicateurs' || reduit || h.debutMulti === null || theta >= phi) {
-          poses.add(k);
-          g.dataset.pose = '1';
-          if (x.phase === 'multiplicateurs' && !reduit) jouerEffet('jeton', { vitesse: 1.5, volume: 0.8 });
-        }
-      });
     };
     raf = requestAnimationFrame(dessiner);
     return () => cancelAnimationFrame(raf);
@@ -429,9 +384,6 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
             return (
               <g
                 key={`${v.numero}-${b.i}`}
-                ref={(el) => {
-                  boostsRef.current[k] = el;
-                }}
                 className={`bw-boost ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`}
                 style={{ '--k': k } as CSSProperties}
               >
@@ -465,18 +417,6 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
             bouffees.current[k] = el;
           }}
           src="/cartes/bw-rl-vapeur.webp"
-          alt=""
-          draggable={false}
-        />
-      ))}
-      {TRAIN_DORE.map((t, k) => (
-        <img
-          key={t.img + k}
-          className="bw-train-dore"
-          ref={(el) => {
-            wagons.current[k] = el;
-          }}
-          src={`/cartes/${t.img}.webp`}
           alt=""
           draggable={false}
         />
@@ -944,7 +884,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
   useEffect(() => () => minuteries.current.forEach((m) => window.clearTimeout(m)), []);
   const solde = useSoldeAnime(v?.solde ?? vue.solde);
-  const horloges = useRef<HorlogesRoue>({ v: null, debut: null, debutMulti: null, numero: -1 });
+  const horloges = useRef<HorlogesRoue>({ v: null, debut: null, numero: -1 });
   const lampes = useRef<(HTMLDivElement | null)[]>([]);
   /** Le médaillon du bonus tiré grossit jusqu'à remplir l'écran, avant que la scène du bonus ne s'ouvre. */
   const [ouvertureBonus, setOuvertureBonus] = useState<{ type: BonusBW; id: number } | null>(null);
@@ -1008,10 +948,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       const estime = maintenant - v.tour.ecoule;
       h.debut = h.debut === null ? estime : Math.min(h.debut, estime);
     }
-    if (v.phase === 'multiplicateurs' && v.duree !== null && v.reste !== null) {
-      const estime = maintenant - (v.duree - v.reste);
-      h.debutMulti = h.numero !== v.numero || h.debutMulti === null ? estime : Math.min(h.debutMulti, estime);
-    } else if (v.phase === 'mises') h.debutMulti = null;
     h.numero = v.numero;
     h.v = v;
     // La fin de la phase, calée une fois par phase : on garde l'estimation la plus tôt (la moins retardée par le

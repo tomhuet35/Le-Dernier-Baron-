@@ -61,19 +61,16 @@
 .bw-chiffre.x5 { stroke: #3a1a06; stroke-width: 4.5px; }
 .bw-gagnante { fill: none; stroke: #fff6dc; stroke-width: 6; filter: drop-shadow(0 0 8px rgba(255, 230, 160, 0.9)); animation: bw-gagnante 0.5s ease-in-out infinite alternate; pointer-events: none; }
 /* La case gagnante ressort de la roue (elle grandit depuis le centre) ; son éventail doré s'allume. */
-.bw-ressort { transform-box: view-box; transform-origin: 50% 50%; filter: drop-shadow(0 0 4px rgba(255, 215, 120, 0.75)) drop-shadow(0 5px 8px rgba(0, 0, 0, 0.75)); animation: bw-ressort 0.55s cubic-bezier(0.3, 1.6, 0.5, 1) 0.25s both; }
-@keyframes bw-ressort { from { transform: scale(1); filter: none; } to { transform: scale(1.055); } }
+.bw-ressort { animation: bw-ressort 0.9s ease-in-out 0.3s infinite alternate both; }
+@keyframes bw-ressort { from { filter: brightness(1); } to { filter: brightness(1.35) saturate(1.15); } }
 .bw-eventail { fill: rgba(255, 226, 140, 0.55); mix-blend-mode: screen; animation: bw-eventail 0.9s ease-in-out 0.5s infinite alternate both; }
 @keyframes bw-eventail { from { fill: rgba(255, 226, 140, 0.15); } to { fill: rgba(255, 240, 190, 0.7); } }
 /* Le bonus frôlé pendant la finale s'allume un instant. */
 .bw-frole { fill: rgba(255, 236, 170, 0.45); stroke: #fff1c4; stroke-width: 4; opacity: 0; pointer-events: none; mix-blend-mode: screen; }
 /* La caméra s'approche du sifflet pendant la finale (le zoom est posé par la roue). */
 .bw-roue { transform-origin: 50% 2%; will-change: transform; }
-/* Le petit train doré des multiplicateurs. */
-.bw-train-dore { position: absolute; left: 0; top: 0; z-index: 6; height: auto; max-width: none; opacity: 0; pointer-events: none; transform-origin: 50% 50%; filter: sepia(1) saturate(2.6) brightness(1.15) hue-rotate(-8deg) drop-shadow(0 0 6px rgba(255, 210, 110, 0.9)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.7)); will-change: transform; }
-.bw-roue.multiplicateurs .bw-boost:not([data-pose]) { opacity: 0; }
-.bw-roue.multiplicateurs .bw-boost[data-pose] .bw-boost-lisere { animation: bw-boost-flash 0.8s ease-out both; }
-.bw-roue.multiplicateurs .bw-boost[data-pose] .bw-boost-etiquette { animation: bw-boost-pose 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.bw-roue.multiplicateurs .bw-boost-lisere { animation: bw-boost-flash 0.8s ease-out calc(var(--k) * 0.32s + 0.15s) both; }
+.bw-roue.multiplicateurs .bw-boost-etiquette { animation: bw-boost-pose 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) calc(var(--k) * 0.32s + 0.25s) both; }
 /* Les lanternes des piliers du décor, aux couleurs de la roue. */
 .bw-lampes { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .bw-lampe { --lampe: #ffc46a; position: absolute; left: 0; top: 0; border-radius: 50%; opacity: 0.4; mix-blend-mode: screen; background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 5%, var(--lampe) 16%, color-mix(in srgb, var(--lampe) 45%, transparent) 34%, transparent 68%); transition: background 0.08s; }
