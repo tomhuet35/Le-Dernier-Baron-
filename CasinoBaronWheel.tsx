@@ -502,7 +502,7 @@ export function LampesDecor({ lampes }: { lampes: MutableRefObject<(HTMLDivEleme
 // L'arrivée de l'Express : la locomotive sort du moyeu de la roue et fonce vers le joueur
 
 /** La porte de la boîte à fumée dans l'image de la locomotive (centre et rayon, en pixels), et la taille de l'image. */
-const LOCO_FACE = { w: 1016, h: 1341, cx: 499, cy: 657, r: 258 };
+const LOCO_FACE = { w: 1036, h: 1341, cx: 511, cy: 657, r: 262 };
 /** Le cercle d'acier du moyeu dans son image (part de sa demi-largeur). */
 const MOYEU_ANNEAU = 205 / 210;
 
