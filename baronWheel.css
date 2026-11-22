@@ -299,7 +299,7 @@
   .bw-tapis { gap: 5px; }
   .bw-case { --cw: 20px; min-height: 72px; padding: 10px 6px 7px; border-radius: 8px; }
   .bw-case.express { --cw: 24px; }
-  .bw-case-multi { font-size: 10px; }
+  .bw-billet { width: 30px; height: 13px; font-size: 9px; padding-left: 5px; }
   .bw-commandes .bj-jetons { gap: 4px; }
   .bw-pastille { min-width: 38px; height: 28px; font-size: 12px; }
 }
@@ -311,24 +311,21 @@
   .bw-bandeau-ouverture small { display: none; }
 }
 
-/* Les multiplicateurs : posés sur la roue une fois les mises fermées : un liseré rouge autour de la case et son ×N,
-   discret, près du centre de la roue. */
-.bw-boost-lisere { fill: rgba(225, 30, 30, 0.1); stroke: #ff2b2b; stroke-width: 6; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(255, 40, 40, 0.85)); }
-.bw-boost.gros .bw-boost-lisere { stroke-width: 7; }
-.bw-boost.enorme .bw-boost-lisere { stroke: #ff3b2b; stroke-width: 8; filter: drop-shadow(0 0 10px rgba(255, 60, 40, 1)); }
+/* Les multiplicateurs : posés sur la roue une fois les mises fermées : un filet doré autour de la case, et un billet
+   de train poinçonné avec son ×N (2ᵉ classe, 1ʳᵉ classe à ×25, billet du Baron à ×50 et plus). */
+.bw-boost-lisere { fill: none; stroke: #ffd774; stroke-width: 5; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(255, 205, 100, 0.9)); }
+.bw-boost.gros .bw-boost-lisere { stroke-width: 5.5; }
+.bw-boost.enorme .bw-boost-lisere { stroke: #ffe9a8; stroke-width: 6.5; filter: drop-shadow(0 0 6px rgba(255, 215, 110, 1)); }
 .bw-boost-etiquette { transform-box: fill-box; transform-origin: center; }
-.bw-boost-etiquette rect { fill: rgba(14, 2, 4, 0.86); stroke: rgba(255, 50, 50, 0.55); stroke-width: 1.5; }
-/* Le ×N en rouge néon : un cœur clair, un halo rouge. */
-.bw-boost-etiquette text { font-family: var(--titre); font-size: 25px; fill: #ff5a5a; stroke: #ffd2d2; stroke-width: 0.6px; paint-order: fill; filter: drop-shadow(0 0 1.5px #ff2020) drop-shadow(0 0 5px rgba(255, 0, 0, 0.95)) drop-shadow(0 0 10px rgba(255, 30, 30, 0.7)); }
-.bw-boost.enorme .bw-boost-etiquette rect { stroke: rgba(255, 70, 70, 0.9); }
-@keyframes bw-boost-pose { from { opacity: 0; transform: scale(0.3); } }
-@keyframes bw-boost-flash { from { fill: rgba(255, 90, 70, 0.75); stroke-width: 14; opacity: 0; } 20% { opacity: 1; } }
+.bw-boost-etiquette image { filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.75)); }
+.bw-boost-etiquette text { font-family: var(--titre); fill: #6e0f1a; stroke: #6e0f1a; stroke-width: 0.6px; }
+.bw-boost-etiquette text.or { fill: #ffd774; stroke: #ffd774; }
+@keyframes bw-boost-pose { from { opacity: 0; transform: translateY(-30px) rotate(-25deg) scale(0.4); } }
+@keyframes bw-boost-flash { from { stroke-width: 12; opacity: 0; } 20% { opacity: 1; } }
 .bw-roue.tour .bw-boost-lisere { animation: bw-boost-lueur 0.7s ease-in-out infinite alternate; }
-.bw-roue.tour .bw-boost-etiquette text, .bw-roue.multiplicateurs .bw-boost-etiquette text { animation: bw-neon 1.6s ease-in-out infinite; }
-@keyframes bw-neon { 0%, 100% { opacity: 1; } 47% { opacity: 1; } 50% { opacity: 0.55; } 53% { opacity: 1; } }
-@keyframes bw-boost-lueur { to { filter: drop-shadow(0 0 12px rgba(255, 70, 50, 1)); } }
+@keyframes bw-boost-lueur { to { filter: drop-shadow(0 0 8px rgba(255, 220, 120, 1)); } }
 .bw-liste-multi { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 5px; max-width: 520px; }
-.bw-multi { display: inline-flex; align-items: center; gap: 3px; padding: 1px 2px 1px 7px; border-radius: 99px; border: 1px solid rgba(255, 60, 50, 0.85); background: rgba(26, 8, 6, 0.85); animation: bw-arrive 0.4s cubic-bezier(0.3, 1.6, 0.5, 1) calc(var(--k, 0) * 0.32s) both; }
+.bw-multi { display: inline-flex; align-items: center; gap: 3px; padding: 1px 2px 1px 7px; border-radius: 99px; border: 1px solid rgba(243, 199, 102, 0.85); background: rgba(26, 8, 6, 0.85); animation: bw-arrive 0.4s cubic-bezier(0.3, 1.6, 0.5, 1) calc(var(--k, 0) * 0.32s) both; }
 .bw-multi b { font-family: var(--titre); font-weight: 400; font-size: 14px; color: #fff1c4; }
 .bw-multi.enorme { border-color: #ffcf6b; background: #7c1214; }
 .bw-multi .bw-pastille { min-width: 28px; height: 20px; font-size: 10px; }
@@ -338,15 +335,18 @@
 .bw-pastille > i { position: absolute; left: 50%; top: -8px; transform: translateX(-50%); white-space: nowrap; padding: 0 4px; border-radius: 99px; background: #b3261c; border: 1px solid #ffcf6b; color: #fff1c4; font-family: system-ui, sans-serif; font-style: normal; font-size: 9.5px; font-weight: 900; line-height: 1.4; }
 .bw-pastille.multipliee { box-shadow: 0 0 0 1px #ffcf6b, 0 0 10px rgba(255, 210, 120, 0.7); }
 .bw-historique { padding-top: 8px; }
-/* Les multiplicateurs d'une case du tapis : une petite ligne en rouge néon sous son nom (en pastille sur l'Express). */
-.bw-case-multi { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 6px 0; border-radius: 99px; background: rgba(14, 2, 4, 0.88); font-family: var(--titre); font-size: 11px; line-height: 1.25; color: #ff6a6a; text-shadow: 0 0 2px #ff1f1f, 0 0 6px rgba(255, 0, 0, 0.9); animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+/* Les multiplicateurs d'une case du tapis : de petits billets de train sous son nom (en haut à gauche sur l'Express). */
+.bw-case-multi { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px 2px; max-width: 100%; animation: bw-arrive 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.bw-billet { flex: none; display: grid; place-items: center; width: 40px; height: 16px; padding-left: 7px; background: url('/cartes/bw-billet-2e.webp') center / 100% 100% no-repeat; font-family: var(--titre); font-weight: 400; font-size: 10.5px; line-height: 1; color: #6e0f1a; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
+.bw-billet.b-1re { background-image: url('/cartes/bw-billet-1re.webp'); }
+.bw-billet.b-baron { background-image: url('/cartes/bw-billet-baron.webp'); color: #ffd774; }
 .bw-case.multipliee > img { width: clamp(32px, 9vw, 48px); }
 .bw-case.multipliee strong { font-size: clamp(17px, 4.8vw, 24px); }
-.bw-case.express .bw-case-multi { position: absolute; left: -4px; top: -7px; max-width: 60%; padding: 0 6px; border-radius: 99px; background: rgba(14, 2, 4, 0.92); border: 1px solid rgba(255, 50, 50, 0.8); line-height: 1.45; }
-.bw-case.multipliee { box-shadow: 0 0 14px rgba(255, 40, 40, 0.7); }
-.bw-case.multipliee::after { filter: drop-shadow(0 0 3px #ff2b2b) drop-shadow(0 0 6px rgba(255, 40, 40, 0.8)); }
-.bw-case.multipliee.misee { box-shadow: 0 0 20px rgba(255, 60, 50, 0.85); }
-.bw-case.multipliee.misee::after { filter: brightness(1.2) drop-shadow(0 0 3px #ff2b2b) drop-shadow(0 0 5px rgba(255, 241, 196, 0.9)); }
+.bw-case.express .bw-case-multi { position: absolute; left: -2px; top: -8px; max-width: 60%; }
+.bw-case.multipliee { box-shadow: 0 0 14px rgba(255, 205, 100, 0.6); }
+.bw-case.multipliee::after { filter: drop-shadow(0 0 3px #ffd774) drop-shadow(0 0 6px rgba(255, 200, 90, 0.8)); }
+.bw-case.multipliee.misee { box-shadow: 0 0 20px rgba(255, 210, 110, 0.85); }
+.bw-case.multipliee.misee::after { filter: brightness(1.2) drop-shadow(0 0 3px #ffd774) drop-shadow(0 0 5px rgba(255, 241, 196, 0.9)); }
 .bw-bonus-multi { padding: 0 8px; border-radius: 99px; background: linear-gradient(180deg, #ff7a6b, #b3261c); border: 1px solid #fff1c4; color: #fff1c4; font-family: var(--titre); font-style: normal; font-size: clamp(14px, 3.6vw, 19px); }
 .bw-bonus-annonce-multi { position: absolute; left: 50%; top: 50%; z-index: 32; display: grid; justify-items: center; gap: 2px; padding: 10px 26px 12px; border-radius: 20px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(140, 24, 18, 0.97), rgba(40, 6, 4, 0.97)); box-shadow: 0 0 40px rgba(255, 120, 90, 0.6); transform: translate(-50%, -50%); text-align: center; animation: bw-resultat-fixe 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.3s both; }
 .bw-bonus-annonce-multi small { font-size: 11px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: #ffcf6b; }

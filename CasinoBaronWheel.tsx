@@ -184,6 +184,9 @@ const MOTRICE = {
 };
 const NB_BOUFFEES = 8;
 
+/** Le billet de train d'un multiplicateur : 2ᵉ classe, 1ʳᵉ classe (×25), billet du Baron (×50 et plus). */
+const rangBillet = (x: number) => (x >= 50 ? 'baron' : x >= 25 ? '1re' : '2e');
+
 /** Une case de la roue : son panneau de laque, son chiffre gravé ou son médaillon. */
 function CaseRoue({ i }: { i: number }) {
   const c = ROUE_BW[i];
@@ -377,7 +380,6 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
           {/* Les multiplicateurs : un liseré rouge autour de la case, et son ×N en rouge néon près du centre. */}
           {boosts.map((b, k) => {
             const a1 = b.i * DEGRES_CASE_BW;
-            const largeur = 24 + 15 * String(b.x).length;
             return (
               <g
                 key={`${v.numero}-${b.i}`}
@@ -386,9 +388,9 @@ function Roue({ v, horloges, lampes }: { v: VueBW; horloges: MutableRefObject<Ho
               >
                 <path className="bw-boost-lisere" d={secteur(122, 358, a1 + 0.35, a1 + DEGRES_CASE_BW - 0.35)} />
                 <g transform={`rotate(${a1 + DEGRES_CASE_BW / 2}) translate(0 -190) rotate(-90)`}>
-                  <g className="bw-boost-etiquette">
-                    <rect x={-largeur / 2} y={-13.5} width={largeur} height={27} rx={6} />
-                    <text textAnchor="middle" dominantBaseline="central">
+                  <g className="bw-boost-etiquette" transform={`rotate(${k % 2 ? 5 : -5})`}>
+                    <image href={`/cartes/bw-billet-${rangBillet(b.x)}.webp`} x={-50} y={-20} width={100} height={40} preserveAspectRatio="none" />
+                    <text x={8} textAnchor="middle" dominantBaseline="central" fontSize={String(b.x).length >= 3 ? 29 : 36} className={rangBillet(b.x) === 'baron' ? 'or' : undefined}>
                       ×{b.x}
                     </text>
                   </g>
@@ -1166,7 +1168,17 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
               <button key={c} type="button" className={`bw-case ${c} ${m ? 'misee' : ''} ${gagnante === c ? 'gagnante' : ''} ${multis.length ? 'multipliee' : ''}`} style={{ '--fond': vis.fond, '--texte': vis.texte } as CSSProperties} onClick={() => void miser(c)} disabled={!ouvertes} aria-label={`${tr(...vis.nom)} ${m ? dollars(m) : ''}`}>
                 {vis.image ? <img src={vis.image} alt="" draggable={false} /> : <strong>{fx(GAINS_CHIFFRES_BW[c as 'x1'])}</strong>}
                 <NomCase texte={estBonusBW(c) ? tr(...vis.nom) : tr(`case ${vis.nom[0]}`, `${vis.nom[1]} spot`)} />
-                {multis.length > 0 && <span className="bw-case-multi">{[...multis].sort((a, b) => b - a).map((x) => `×${x}`).join(' ')}</span>}
+                {multis.length > 0 && (
+                  <span className="bw-case-multi">
+                    {[...multis]
+                      .sort((a, b) => b - a)
+                      .map((x, k) => (
+                        <b key={k} className={`bw-billet b-${rangBillet(x)}`}>
+                          ×{x}
+                        </b>
+                      ))}
+                  </span>
+                )}
                 {c === 'express' && <small className="bw-case-sous">{tr('Case unique · ×10 à ×10 000', 'One spot · ×10 to ×10,000')}</small>}
                 <AvatarsCase v={v} c={c} />
                 {m > 0 && (
