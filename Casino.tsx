@@ -2274,16 +2274,16 @@ function MenuSalon(p: { onFermer: () => void; onProfil: () => void; onAmis: () =
           <img src="/cartes/icone-profil.webp" alt="" /> {tr('Mon profil', 'My profile')}
         </button>
         <button type="button" onClick={puis(p.onAmis)}>
-          <img src="/cartes/icone-amis.webp" alt="" /> {tr('Amis', 'Friends')}
+          <img src="/cartes/icone-amis-dock.webp" alt="" /> {tr('Amis', 'Friends')}
         </button>
         <button type="button" onClick={puis(p.onDefis)}>
-          <img src="/cartes/icone-invitation.webp" alt="" /> {tr('Défis', 'Challenges')}
+          <img src="/cartes/icone-defis.webp" alt="" /> {tr('Défis', 'Challenges')}
         </button>
         <button type="button" onClick={puis(p.onBureau)}>
-          <img src="/cartes/objet-globe.webp" alt="" /> {tr('Mon bureau', 'My office')}
+          <img src="/cartes/icone-bureau.webp" alt="" /> {tr('Mon bureau', 'My office')}
         </button>
         <button type="button" onClick={puis(p.onRiches)}>
-          <img src="/cartes/icone-scores.webp" alt="" /> {tr('Les plus riches', 'Richest players')}
+          <img src="/cartes/icone-riches.webp" alt="" /> {tr('Les plus riches', 'Richest players')}
         </button>
         <button type="button" onClick={() => setParametres(true)}>
           <IconeParametres /> {tr('Paramètres', 'Settings')}
