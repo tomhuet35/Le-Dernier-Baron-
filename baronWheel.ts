@@ -17,7 +17,7 @@
  *   cachées d'un bonus dès qu'il commence. Les choix du joueur désignent l'une de ces récompenses cachées ; aucune
  *   animation ne décide de rien.
  * - Les jackpots (MINI ×25, MINOR ×50, MAJOR ×100, GRAND ×500 la mise) sont des récompenses fixes, rares, cachées dans
- *   le bonus du Baron et au fond du Braquage (le Coffre du Siècle). Ils ne sont pas progressifs.
+ *   le bonus du Baron. Ils ne sont pas progressifs.
  * - Grande ouverture (la première semaine) : l'XP compte double sur la roue (et un cadeau d'ouverture dans le salon).
  */
 
@@ -25,15 +25,15 @@
 // La roue
 
 export type ChiffreBW = 'x1' | 'x2' | 'x5' | 'x10';
-export type BonusBW = 'baron' | 'course' | 'chaudiere' | 'braquage' | 'express';
+export type BonusBW = 'baron' | 'course' | 'chaudiere' | 'restaurant' | 'express';
 export type CaseBW = ChiffreBW | BonusBW;
 export const CHIFFRES_BW: ChiffreBW[] = ['x1', 'x2', 'x5', 'x10'];
-export const BONUS_BW: BonusBW[] = ['baron', 'course', 'chaudiere', 'braquage', 'express'];
+export const BONUS_BW: BonusBW[] = ['baron', 'course', 'chaudiere', 'restaurant', 'express'];
 export const CASES_BW: CaseBW[] = [...CHIFFRES_BW, ...BONUS_BW];
 export const estBonusBW = (c: CaseBW): c is BonusBW => (BONUS_BW as string[]).includes(c);
 
 /** Combien de cases de chaque sorte sur la roue (30 en tout). */
-export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, course: 2, chaudiere: 2, braquage: 2, express: 1 };
+export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, course: 2, chaudiere: 2, restaurant: 2, express: 1 };
 export const NB_CASES_BW = 30;
 export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 /**
@@ -44,7 +44,7 @@ export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 export const ROUE_BW: CaseBW[] = (() => {
   // La roue est symétrique autour de l'Express (en haut, entre deux Baron) : la moitié droite, puis son miroir ; le ×2
   // du bas, face à l'Express, fait le lien. Les bonus reviennent toutes les 4 cases.
-  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'course', 'x5', 'x1', 'x2', 'chaudiere', 'x1', 'x10', 'x2', 'braquage', 'x5'];
+  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'course', 'x5', 'x1', 'x2', 'chaudiere', 'x1', 'x10', 'x2', 'restaurant', 'x5'];
   return ['express', ...moitie, 'x1', ...[...moitie].reverse()];
 })();
 
@@ -385,7 +385,30 @@ export function gainChaudiere(t: TirageChaudiereBW, sifflet: number | null): num
 }
 
 /**
- * LE BRAQUAGE : une seule perceuse pour tout le salon, et aucun choix. Elle perce la banque sous-sol après sous-sol ;
+ * LE WAGON-RESTAURANT : le chef pose six cloches d'argent sur la table ; chacun choisit la sienne. Sous chaque cloche,
+ * un plat du menu (le même tirage pour tous), et le Baron passe parfois dorer une cloche : son plat compte double. Le
+ * chef soulève ensuite les cloches de la moins chère à la plus chère (le meilleur pour la fin).
+ */
+export const NB_CLOCHES = 6;
+/** Les plats du menu et leur multiplicateur, du velouté au Plat du Baron. */
+export const PLATS_RESTAURANT = ['veloute', 'coq', 'homard', 'caviar', 'piece', 'faisan', 'baron'] as const;
+export type PlatBW = (typeof PLATS_RESTAURANT)[number];
+export const MENU_RESTAURANT: Record<PlatBW, number> = { veloute: 3, coq: 5, homard: 10, caviar: 25, piece: 50, faisan: 150, baron: 500 };
+export const TABLE_RESTAURANT: TableBW<PlatBW> = [
+  ['veloute', 4600],
+  ['coq', 2950],
+  ['homard', 1450],
+  ['caviar', 620],
+  ['piece', 250],
+  ['faisan', 105],
+  ['baron', 25],
+];
+/** La chance que le Baron passe dorer une cloche (son plat compte double). */
+export const DOUBLE_RESTAURANT = 0.6;
+
+/**
+ * LE BRAQUAGE (il a quitté la roue de l'Express : le Wagon-Restaurant a pris ses cases ; il rejoindra la roue du Casse,
+ * son écran CasinoBraquage et ses tables restent ici en attendant) : une seule perceuse pour tout le salon, et aucun choix. Elle perce la banque sous-sol après sous-sol ;
  * chaque sous-sol atteint vaut son multiple, le même pour tout le monde, jusqu'à ce que l'alarme sonne et que la bande
  * file avec le butin. Le premier sous-sol est toujours atteint ; le cinquième, le Coffre du Siècle, cache en plus un
  * jackpot (sa valeur fixe s'ajoute au multiple).
@@ -536,8 +559,8 @@ export type TirageBonusBW =
   /** cotes : celle de chaque draisine ; deraille : celle qui sort de la voie (jamais la gagnante) ; graine : le scénario. */
   | { type: 'course'; cotes: number[]; gagnant: number; deraille: number | null; graine: number }
   | TirageChaudiereBW
-  /** etage : le sous-sol où s'arrête la perceuse (1 à 5) ; jackpot : celui du Coffre du Siècle (au 5e seulement). */
-  | { type: 'braquage'; etage: number; jackpot: JackpotBW | null }
+  /** plats : sous chaque cloche ; double : la cloche dorée par le Baron (ou null) ; ordre : l'ordre où le chef les soulève. */
+  | { type: 'restaurant'; plats: PlatBW[]; double: number | null; ordre: number[] }
   /** decroche[k] : le tunnel (0 ou 1) où le wagon k est décroché, null pour celui qui arrive à Istanbul. */
   | { type: 'express'; paris: number[]; venise: number[]; decroche: (number | null)[]; coffre: number };
 
@@ -573,9 +596,16 @@ export function tirerBonusBW(type: BonusBW, h: Hasard): TirageBonusBW {
     case 'chaudiere':
       // P(explosion > m) = plancher / m : u uniforme dans ]0, 1].
       return { type, explosion: CHAUDIERE_BW.plancher / (1 - h()) };
-    case 'braquage': {
-      const etage = tirerTable(ARRET_BRAQUAGE, h);
-      return { type, etage, jackpot: etage >= ETAGES_BRAQUAGE.length ? tirerTable(JACKPOTS_BRAQUAGE, h) : null };
+    case 'restaurant': {
+      const plats = Array.from({ length: NB_CLOCHES }, () => tirerTable(TABLE_RESTAURANT, h));
+      const double = h() < DOUBLE_RESTAURANT ? Math.floor(h() * NB_CLOCHES) : null;
+      const valeur = (k: number) => MENU_RESTAURANT[plats[k]] * (k === double ? 2 : 1);
+      // Le chef garde le meilleur pour la fin : de la cloche la moins chère à la plus chère (égalités au hasard).
+      const ordre = melanger(
+        Array.from({ length: NB_CLOCHES }, (_, k) => k),
+        h,
+      ).sort((a, b) => valeur(a) - valeur(b));
+      return { type, plats, double, ordre };
     }
     case 'express': {
       // L'ordre dans lequel la police décroche les wagons : 2 au premier tunnel, 2 au second, le dernier arrive.
@@ -616,6 +646,8 @@ export type EtapeBW =
   | 'mallettes'
   | 'grille'
   | 'sprint'
+  | 'cloches'
+  | 'service'
   | 'route'
   | 'poursuite'
   | 'aiguille'
@@ -679,6 +711,9 @@ export interface DureesBW {
   /** La Course des draisines : la présentation des quatre équipages, puis la course (feux, coup de pistolet, sprint). */
   introCourse: number;
   sprint: number;
+  /** Le Wagon-Restaurant : le chef présente le menu, puis le service (le Baron, les cloches soulevées une à une). */
+  introRestaurant: number;
+  service: number;
   gare: number;
   tunnel: number;
   traversee: number;
@@ -716,6 +751,8 @@ export const DUREES_BW: DureesBW = {
   revelePick: 7_000,
   introCourse: 3_000,
   sprint: 15_000,
+  introRestaurant: 3_000,
+  service: 11_000,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
   tunnel: 12_000,
@@ -742,11 +779,8 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
       const pression = Math.round((tempsChaudiere(m) * d.explosion) / DUREES_EXPLOSION_REF);
       return [e('intro', d.introChaudiere), e('pression', pression), e('explosion', d.explosion), e('revele', d.revele)];
     }
-    case 'braquage': {
-      const etage = t?.type === 'braquage' ? t.etage : ETAGES_BRAQUAGE.length;
-      const descente = Math.round((d.descente * descenteCasseBW(etage)) / descenteCasseBW(ETAGES_BRAQUAGE.length));
-      return [e('intro', d.introBraquage), e('descente', descente), e('revele', d.revele)];
-    }
+    case 'restaurant':
+      return [e('intro', d.introRestaurant), e('cloches', d.choix, NB_CLOCHES), e('service', d.service), e('revele', d.revele)];
     case 'express':
       return [
         e('intro', d.introExpress),
@@ -780,8 +814,8 @@ export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: numbe
       const x = gainChaudiere(t, choix[0] ? choix[0] / 100 : null);
       return { x, evade: x > 0 };
     }
-    case 'braquage':
-      return { x: ETAGES_BRAQUAGE[t.etage - 1], ...(t.jackpot ? { jackpot: t.jackpot, fixe: VALEUR_JACKPOT_BW[t.jackpot] } : {}) };
+    case 'restaurant':
+      return { x: MENU_RESTAURANT[t.plats[choix[0]]] * (choix[0] === t.double ? 2 : 1) };
     case 'express':
       return { x: butinWagon(t, choix[0]), evade: t.decroche[choix[0]] === null };
   }
@@ -820,14 +854,11 @@ export function esperanceBonusBW(type: BonusBW): { multipliable: number; jackpot
     case 'chaudiere':
       // Le même quel que soit le moment du sifflet (dès ×11), sifflet automatique compris.
       return { multipliable: CHAUDIERE_BW.plancher, jackpots: 0 };
-    case 'braquage': {
-      const total = ARRET_BRAQUAGE.reduce((s, [, p]) => s + p, 0);
-      const pSiecle = (ARRET_BRAQUAGE.find(([k]) => k === ETAGES_BRAQUAGE.length)?.[1] ?? 0) / total;
-      const totalJ = JACKPOTS_BRAQUAGE.reduce((s, [, p]) => s + p, 0);
-      return {
-        multipliable: ARRET_BRAQUAGE.reduce((s, [k, p]) => s + (p / total) * ETAGES_BRAQUAGE[k - 1], 0),
-        jackpots: pSiecle * JACKPOTS_BRAQUAGE.reduce((s, [j, p]) => s + (p / totalJ) * VALEUR_JACKPOT_BW[j], 0),
-      };
+    case 'restaurant': {
+      // Le plat moyen, et une chance sur six que ma cloche soit celle que le Baron dore (quand il passe).
+      const total = TABLE_RESTAURANT.reduce((s, [, p]) => s + p, 0);
+      const plat = TABLE_RESTAURANT.reduce((s, [p, w]) => s + (w / total) * MENU_RESTAURANT[p], 0);
+      return { multipliable: plat * (1 + DOUBLE_RESTAURANT / NB_CLOCHES), jackpots: 0 };
     }
     case 'express': {
       // Le butin de Paris pour tous ; Venise pour les 3 wagons sur 5 qui passent le premier tunnel ; le Coffre du Baron
@@ -863,7 +894,7 @@ export function rtpBW(): Record<CaseBW, number> {
     baron: bonus('baron'),
     course: bonus('course'),
     chaudiere: bonus('chaudiere'),
-    braquage: bonus('braquage'),
+    restaurant: bonus('restaurant'),
     express: bonus('express'),
   };
 }
@@ -973,6 +1004,11 @@ export interface VueBonusBW {
    * qui déraille et la graine du scénario (tout le monde voit la même course).
    */
   course?: { cotes: number[]; gagnant: number | null; deraille: number | null; graine: number | null };
+  /**
+   * Le Wagon-Restaurant : rien avant le service (les cloches restent fermées pendant le choix) ; au service, le plat de
+   * chaque cloche, celle que le Baron dore et l'ordre où le chef les soulève.
+   */
+  restaurant?: { plats: PlatBW[] | null; double: number | null; ordre: number[] | null };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**

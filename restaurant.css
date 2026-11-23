@@ -1,0 +1,105 @@
+/* Le Wagon-Restaurant (Le Baron Express) : la salle (cadre « cover » qui garde ses proportions), les six cloches, le menu,
+   le chef et le Baron. Les cloches sont placées en part du cadre : --xl/--yl/--wl en largeur, --xh/--yh/--wh en hauteur. */
+
+.bw-bonus.restaurant { background: #140806; }
+.wr { position: absolute; inset: 0; overflow: hidden; container-type: size; color: #fff1c4; background: #140806; }
+.wr-cadre { --lc: max(100cqw, 200cqh); position: absolute; left: 50%; top: 50%; width: var(--lc); height: calc(var(--lc) / 2); translate: -50% -50%; }
+.wr-salle { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wr-salle.haut { display: none; }
+
+/* Une place : l'assiette (le plat), la cloche par-dessus ; le bas de l'assiette est posé sur la nappe. */
+.wr-place { --x: var(--xl); --y: var(--yl); --w: var(--wl); position: absolute; left: var(--x); top: var(--y); width: var(--w); aspect-ratio: 3 / 2; padding: 0; border: 0; background: none; translate: -50% -93%; color: inherit; cursor: pointer; animation: wr-pose 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) calc(var(--k) * 0.09s) both; }
+@keyframes wr-pose { from { transform: translateY(-30%) scale(0.7); opacity: 0; } }
+.wr-place:disabled { cursor: default; opacity: 1; }
+.wr-place > img, .wr-cloche, .wr-cloche > img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.wr-plat { filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.5)); }
+.wr-cloche { transform-origin: 30% 90%; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.55)); }
+.wr-cloche > img { transition: opacity 0.6s; }
+.wr-cloche > .or { opacity: 0; }
+.wr-place.doree .wr-cloche > .or { opacity: 1; }
+.wr-place.doree .wr-cloche > .argent { opacity: 0; }
+.wr-place.doree .wr-cloche { filter: drop-shadow(0 0 calc(var(--lc) * 0.008) rgba(255, 210, 110, 0.9)) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.55)); }
+/* Le chef soulève la cloche : elle monte, bascule et s'efface. */
+.wr-place.levee .wr-cloche { animation: wr-leve 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) both; }
+@keyframes wr-leve { 0% { transform: none; opacity: 1; } 35% { transform: translateY(-38%) rotate(-8deg); opacity: 1; } 100% { transform: translate(-25%, -85%) rotate(-24deg); opacity: 0; } }
+.wr-place.levee .wr-plat { animation: wr-plat 0.6s ease-out both; }
+@keyframes wr-plat { from { filter: brightness(1.8) drop-shadow(0 4px 4px rgba(0, 0, 0, 0.5)); } }
+.wr-eclat { left: -40% !important; top: -70% !important; width: 180% !important; height: auto !important; aspect-ratio: 1; mix-blend-mode: screen; animation: wr-eclat 1.2s ease-out both; }
+@keyframes wr-eclat { 0% { transform: scale(0.2); opacity: 1; } 40% { opacity: 1; } 100% { transform: scale(1.25); opacity: 0.45; } }
+.wr-fumee { left: 32% !important; top: -95% !important; width: 36% !important; height: auto !important; opacity: 0; mix-blend-mode: screen; transform-origin: 50% 100%; animation: wr-fumee 3.2s ease-out 0.3s infinite; }
+@keyframes wr-fumee { 0% { opacity: 0; transform: translateY(20%) scale(0.6, 0.5); } 30% { opacity: 0.75; } 100% { opacity: 0; transform: translateY(-15%) scale(1.15, 1.1); } }
+/* Ce que vaut le plat, sous l'assiette. */
+.wr-etiquette { position: absolute; left: 50%; top: 92%; z-index: 2; display: grid; justify-items: center; padding: 0.1em 0.7em 0.15em; border-radius: 0.6em; border: 1px solid #d6a84b; background: rgba(40, 10, 16, 0.92); font-size: calc(var(--lc) * 0.0095); white-space: nowrap; translate: -50% 0; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6); animation: wr-etiquette 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) 0.25s both; }
+@keyframes wr-etiquette { from { transform: scale(0.3); opacity: 0; } }
+.wr-etiquette small { font-weight: 800; font-size: 0.85em; color: #ecd9b4; }
+.wr-etiquette strong { font-family: var(--titre); font-weight: 400; font-size: 1.7em; line-height: 1; color: #ffd774; }
+.wr-place.gros .wr-etiquette { border-color: #ffe08a; box-shadow: 0 0 16px rgba(255, 210, 110, 0.8), 0 3px 8px rgba(0, 0, 0, 0.6); }
+.wr-double { position: absolute; left: 50%; top: -12%; z-index: 2; padding: 0 0.5em; border-radius: 99px; border: 2px solid #fff1c4; background: linear-gradient(180deg, #ffe9a0, #b8862b); color: #2a1405; font-family: var(--titre); font-weight: 400; font-size: calc(var(--lc) * 0.016); translate: -50% 0; box-shadow: 0 0 14px rgba(255, 210, 110, 0.9); animation: wr-etiquette 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+/* Ma cloche, celles des autres, et combien de joueurs ont choisi chacune. */
+.wr-place.mienne .wr-cloche { filter: drop-shadow(0 0 calc(var(--lc) * 0.006) #ffd774) drop-shadow(0 0 calc(var(--lc) * 0.014) rgba(255, 200, 100, 0.7)); }
+.wr-place.mienne.levee .wr-plat { filter: drop-shadow(0 0 calc(var(--lc) * 0.008) #ffd774); }
+.wr-mien { position: absolute; left: 50%; top: -6%; translate: -50% 0; font-style: normal; font-size: calc(var(--lc) * 0.016); color: #ffd774; text-shadow: 0 0 8px rgba(255, 200, 100, 0.9), 0 2px 3px #000; }
+.wr-nb { position: absolute; right: 2%; top: 4%; min-width: 1.6em; height: 1.6em; padding: 0 0.4em; border-radius: 99px; display: grid; place-items: center; background: #d6a84b; color: #1b120c; font-style: normal; font-weight: 900; font-size: calc(var(--lc) * 0.0085); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.wr.cloches .wr-place:not(:disabled):hover .wr-cloche { transform: translateY(-4%); transition: transform 0.2s; }
+.wr.cloches .wr-place:not(:disabled) .wr-cloche { animation: wr-invite 1.6s ease-in-out calc(var(--k) * 0.2s) infinite; }
+@keyframes wr-invite { 50% { filter: brightness(1.18) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.55)); } }
+.wr-place.autre { filter: brightness(0.5) saturate(0.7); transition: filter 0.6s; }
+
+/* Le Baron, près de la cloche qu'il dore (il vient du côté le plus proche). */
+.wr-baron { position: absolute; left: calc(var(--xl) - 9%); top: 18%; z-index: 3; height: 68%; width: auto; translate: -50% 0; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7)); animation: wr-baron 2.9s ease-in-out both; }
+.wr-baron.droite-l { left: calc(var(--xl) + 9%); transform: scaleX(-1); }
+@keyframes wr-baron { 0% { opacity: 0; translate: -50% 8%; } 15%, 80% { opacity: 1; translate: -50% 0; } 100% { opacity: 0; translate: -50% -4%; } }
+
+/* Le chef : il présente le menu à l'arrivée, il se régale si mon plat est un grand plat. */
+.wr-chef { position: absolute; right: 2%; bottom: 0; z-index: 4; height: 86%; width: auto; filter: drop-shadow(-8px 8px 16px rgba(0, 0, 0, 0.7)); animation: wr-chef 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) both; }
+@keyframes wr-chef { from { transform: translateX(60%); opacity: 0; } }
+.wr-chef.ravi.gauche-l { right: auto; left: 2%; }
+.wr-logo { position: absolute; left: 42%; top: 6%; z-index: 5; width: min(56%, 440px); height: auto; translate: -50% 0; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.85)); animation: wr-logo 3s ease-out both; }
+@keyframes wr-logo { 0% { opacity: 0; transform: scale(0.4); } 12% { opacity: 1; transform: scale(1.06); } 18% { transform: none; } 82% { opacity: 1; } 100% { opacity: 0; transform: translateY(-12%); } }
+
+/* Le menu (pendant le choix). */
+.wr-menu { position: absolute; left: 3%; top: 4%; z-index: 5; height: 56%; aspect-ratio: 520 / 807; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4%; padding: 0 13%; background: url('/cartes/wr-menu.webp') center / 100% 100% no-repeat; color: #3a1810; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.7)); animation: wr-menu 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+@keyframes wr-menu { from { transform: translateY(-20%) rotate(-4deg); opacity: 0; } }
+.wr-menu strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 4.6cqh, 26px); color: #7a1424; letter-spacing: 0.06em; }
+.wr-menu ol { display: grid; gap: 0.25em; width: 100%; margin: 0; padding: 0; list-style: none; }
+.wr-menu li { display: flex; justify-content: space-between; gap: 6px; border-bottom: 1px dotted rgba(122, 20, 36, 0.4); font-size: clamp(9px, 2.3cqh, 14px); font-weight: 700; line-height: 1.3; white-space: nowrap; }
+.wr-menu li b { font-family: var(--titre); font-weight: 400; color: #7a1424; }
+.wr-menu li.baron { color: #8a5a0a; }
+.wr-menu em { font-size: clamp(8px, 2.1cqh, 12px); font-weight: 800; font-style: normal; color: #8a5a0a; text-align: center; }
+
+/* Les annonces. */
+.wr-annonce { position: absolute; left: 50%; top: 7%; z-index: 6; display: grid; justify-items: center; gap: 2px; width: max-content; max-width: 92%; padding: 8px 22px 10px; border-radius: 16px; border: 2px solid #d6a84b; background: rgba(40, 10, 16, 0.92); text-align: center; translate: -50% 0; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7); animation: wr-annonce 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; pointer-events: none; }
+@keyframes wr-annonce { from { transform: scale(0.4); opacity: 0; } }
+.wr-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 5cqw, 38px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.7); }
+.wr-annonce span { font-weight: 800; font-size: clamp(12px, 3cqw, 17px); }
+.wr-annonce.baron { border-color: #ffe08a; box-shadow: 0 0 28px rgba(255, 210, 110, 0.6), 0 10px 24px rgba(0, 0, 0, 0.7); }
+.wr-annonce.gros { border-color: #ffe08a; box-shadow: 0 0 34px rgba(255, 210, 110, 0.8), 0 10px 24px rgba(0, 0, 0, 0.7); }
+
+/* En hauteur (téléphone) : la salle en portrait, deux tables de trois, le bas du cadre ancré en bas. */
+@container (max-aspect-ratio: 1 / 1) {
+  .wr-cadre { --lc: max(100cqw, 66.667cqh); height: calc(var(--lc) * 1.5); top: auto; bottom: 0; translate: -50% 0; }
+  .wr-salle.large { display: none; }
+  .wr-salle.haut { display: block; }
+  .wr-place { --x: var(--xh); --y: var(--yh); --w: var(--wh); }
+  .wr-etiquette { font-size: calc(var(--lc) * 0.022); }
+  .wr-double, .wr-mien { font-size: calc(var(--lc) * 0.04); }
+  .wr-nb { font-size: calc(var(--lc) * 0.022); }
+  .wr-baron { left: calc(var(--xh) - 14%); top: calc(var(--yh) - 40%); height: 36%; }
+  .wr-baron.droite-l { left: calc(var(--xh) - 14%); transform: none; }
+  .wr-baron.droite-h { left: calc(var(--xh) + 14%); transform: scaleX(-1); }
+  .wr-chef { height: 52%; right: -4%; }
+  .wr-chef.ravi.gauche-l { left: auto; right: -4%; }
+  .wr-chef.ravi.gauche-h { right: auto; left: -4%; }
+  .wr-menu em { display: none; }
+  .wr-logo { left: 50%; top: 10%; width: 82%; }
+  .wr-menu { left: 50%; top: 1%; height: 34%; translate: -50% 0; padding: 4% 12% 0; gap: 2%; }
+  .wr-menu strong { font-size: clamp(12px, 3.4cqh, 20px); }
+  .wr-menu li { font-size: clamp(8px, 1.8cqh, 12px); line-height: 1.2; }
+  .wr-menu em { font-size: clamp(7px, 1.6cqh, 10px); }
+  .wr-annonce { top: 4%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wr *, .wr { animation: none !important; }
+}
+/* Pendant le choix et le service, le titre du bonus s'efface : le menu et les annonces prennent le haut. */
+.bw-bonus.restaurant:has(.wr.cloches) .bw-bonus-titre, .bw-bonus.restaurant:has(.wr.service) .bw-bonus-titre { display: none; }

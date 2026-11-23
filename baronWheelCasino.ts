@@ -131,7 +131,7 @@ export function creerBaronWheel(options: {
   let minuterie: ReturnType<typeof setTimeout> | null = null;
   let enCours = false;
   let historique: VueBW['historique'] = [];
-  const depuis: VueBW['depuis'] = { baron: null, course: null, chaudiere: null, braquage: null, express: null };
+  const depuis: VueBW['depuis'] = { baron: null, course: null, chaudiere: null, restaurant: null, express: null };
   let record: (NonNullable<VueBW['record']> & { jour: string }) | null = null;
 
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
@@ -185,8 +185,8 @@ export function creerBaronWheel(options: {
         siffles,
       };
     }
-    // Le Braquage : la descente se joue dès que la perceuse part (aucun choix à faire, rien à deviner).
-    if (t.type === 'braquage') v.casse = atteinte('descente') ? { etage: t.etage, jackpot: t.jackpot } : null;
+    // Le Wagon-Restaurant : les plats restent sous leur cloche jusqu'au service, quand plus personne ne peut choisir.
+    if (t.type === 'restaurant') v.restaurant = atteinte('service') ? { plats: t.plats, double: t.double, ordre: t.ordre } : { plats: null, double: null, ordre: null };
     if (t.type === 'express') {
       // Le voyage se révèle gare après gare : rien de ce qui attend plus loin ne part vers les téléphones.
       const tunnelVu = (n: number) => atteinte(n === 0 ? 'tunnel1' : 'tunnel2');
@@ -404,7 +404,7 @@ export function creerBaronWheel(options: {
       if (gain > 0) banque.crediter(j.uid, gain);
       const jour = jourParis(horloge());
       if (gain > 0 && (!record || record.jour !== jour || gain > record.gain)) record = { nom: j.nom, avatar: j.avatar, gain, c, jour };
-      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, course: 0, chaudiere: 0, braquage: 0, express: 0 } };
+      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, course: 0, chaudiere: 0, restaurant: 0, express: 0 } };
       mt.manches++;
       mt.mise += mise;
       mt.gain += gain;
@@ -571,7 +571,7 @@ export function creerBaronWheel(options: {
       const journal: JournalBW = {
         manches: journaux.get(id.uid) ?? [],
         salon,
-        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, course: 0, chaudiere: 0, braquage: 0, express: 0 } },
+        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, course: 0, chaudiere: 0, restaurant: 0, express: 0 } },
       };
       repondre(rappel, { ok: true, journal });
     });
