@@ -37,7 +37,7 @@ const IMG = (n: string) => `/cartes/ai-${n}.webp`;
 /** Les médaillons des villes (Rome et Istanbul attendent le leur : le médaillon d'aiguillage en attendant). */
 const MEDAILLONS: Record<TerminusAiguillage | 'paris', string> = {
   paris: 'med-paris',
-  rome: 'noeud',
+  rome: 'med-rome',
   venise: 'med-venise',
   istanbul: 'med-istanbul',
   vienne: 'med-vienne',
@@ -62,13 +62,16 @@ export const IMAGES_AIGUILLAGE_NOMS = [
   'med-venise',
   'med-vienne',
   'med-istanbul',
+  'med-rome',
+  'train-34',
+  'vapeur-face',
   'compteur',
   'plaque-prime',
   'etincelles',
   'feux',
   'aiguilleur',
   'aiguilleur-joie',
-].map((n) => `ai-${n}`);
+].map((n) => (n === 'vapeur-face' ? 'bw-vapeur-face' : `ai-${n}`));
 
 // ---------------------------------------------------------------------------------------------------------------
 // Le réseau sur la carte (coordonnées en pixels de l'image de la carte, 1672 × 941)
@@ -468,8 +471,12 @@ export function BonusAiguillage({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
           {/* Le décor garde ses proportions (il couvre l'écran) : le train roule exactement sur son rail. */}
           <div className="ai-voie-cadre">
             <img className="ai-voie-fond" src={IMG('voie')} alt="" draggable={false} />
-            <img className="ai-train-file" src={IMG('train-cote')} alt="" draggable={false} />
-            <img className="ai-etincelles" src={IMG('etincelles')} alt="" draggable={false} />
+            {/* Le train de trois quarts, sur sa propre voie : il fonce vers nous, le paysage défile derrière. */}
+            <span className="ai-train-34">
+              <img src={IMG('train-34')} alt="" draggable={false} />
+              <img className="ai-fumee" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
+              <img className="ai-etincelles" src={IMG('etincelles')} alt="" draggable={false} />
+            </span>
           </div>
         </div>
       ) : (
