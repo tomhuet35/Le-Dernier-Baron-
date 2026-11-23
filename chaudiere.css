@@ -124,3 +124,10 @@
   .ch-siffles li img { width: 22px; height: 22px; }
   .ch-sifflet { padding-left: 50px; }
 }
+/* Le bouton sifflet sous le cadre du jeu (à la place du texte du bonus) : tout le foyer reste visible. */
+.ch-commande { display: contents; }
+.ch-commandes.dehors { display: grid; justify-items: center; gap: 6px; width: 100%; }
+.ch-commandes.dehors .ch-sifflet { position: relative; left: auto; bottom: auto; translate: none; width: min(100%, 420px); }
+.ch-commandes.dehors .ch-auto { position: static; translate: none; order: 2; }
+.ch-commandes.dehors .ch-sifflet b { font-size: clamp(26px, 8vw, 40px); }
+.ch-commandes.dehors.intro .ch-sifflet { opacity: 0.55; animation: none; }

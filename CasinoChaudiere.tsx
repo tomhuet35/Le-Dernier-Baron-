@@ -11,7 +11,8 @@
  * plus fort (vapeur, tremblement), et montre qui a sifflé et à combien. À l'explosion, tout vole en éclats ; à pleine
  * pression, le sifflet de la locomotive salue ceux qui ont tenu.
  */
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { CHAUDIERE_BW, arrondiChaudiere, multiplicateurChaudiere, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
 import { dollars } from './casinoOutils';
 import { tr } from './traduction';
@@ -101,6 +102,11 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
     return () => ids.forEach((i) => window.clearTimeout(i));
   }, [nom, t0]);
 
+  // Le bouton sifflet va sous le cadre du jeu (à la place du texte du bonus), s'il y a sa place.
+  const [dehors, setDehors] = useState<HTMLElement | null>(null);
+  useEffect(() => setDehors(document.getElementById('ch-commande')), [nom]);
+  const sous = (n: ReactNode) => (dehors ? createPortal(n, dehors) : n);
+
   const p = part(affiche);
   const reduit = mouvementReduit();
   const style = { '--p': p, '--secousse': reduit || !montee ? 0 : p, '--t0': `${-t0}ms` } as CSSProperties;
@@ -144,28 +150,32 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
 
       {nom === 'intro' && <p className="ch-consigne">{tr('Tire le sifflet avant que la chaudière explose !', 'Pull the whistle before the boiler blows!')}</p>}
 
-      {(montee || nom === 'intro') && b.mise > 0 && (
-        <button type="button" className={`ch-sifflet ${monSifflet !== null ? 'fait' : ''}`} onClick={siffler} disabled={!peut}>
-          <img className="ch-sifflet-img" src="/cartes/ch-sifflet.webp" alt="" draggable={false} />
-          {monSifflet !== null ? (
-            <>
-              <span>{tr('Sifflé à', 'Whistled at')}</span>
-              <b>{fmt(monSifflet)}</b>
-              <small>+{dollars(Math.floor(b.mise * monSifflet * M))}</small>
-            </>
-          ) : (
-            <>
-              <span>{tr('Tirer le sifflet', 'Pull the whistle')}</span>
-              <b>{fmt(arrondiChaudiere(affiche))}</b>
-              <small>+{dollars(Math.floor(b.mise * arrondiChaudiere(affiche) * M))}</small>
-            </>
+      {sous(
+        <div className={`ch-commandes ${dehors ? 'dehors' : ''} ${nom}`}>
+          {(montee || nom === 'intro') && b.mise > 0 && (
+            <button type="button" className={`ch-sifflet ${monSifflet !== null ? 'fait' : ''}`} onClick={siffler} disabled={!peut}>
+              <img className="ch-sifflet-img" src="/cartes/ch-sifflet.webp" alt="" draggable={false} />
+              {monSifflet !== null ? (
+                <>
+                  <span>{tr('Sifflé à', 'Whistled at')}</span>
+                  <b>{fmt(monSifflet)}</b>
+                  <small>+{dollars(Math.floor(b.mise * monSifflet * M))}</small>
+                </>
+              ) : (
+                <>
+                  <span>{tr('Tirer le sifflet', 'Pull the whistle')}</span>
+                  <b>{fmt(arrondiChaudiere(affiche))}</b>
+                  <small>+{dollars(Math.floor(b.mise * arrondiChaudiere(affiche) * M))}</small>
+                </>
+              )}
+            </button>
           )}
-        </button>
+          {(montee || nom === 'intro') && b.mise > 0 && monSifflet === null && (
+            <p className="ch-auto">{tr(`Sans sifflet : automatique à ${fmt(CHAUDIERE_BW.auto)}`, `No whistle: automatic at ${fmt(CHAUDIERE_BW.auto)}`)}</p>
+          )}
+          {(montee || nom === 'intro') && !b.mise && <p className="ch-auto">{tr('Tu regardes : tu n’as pas misé sur la Chaudière.', 'Watching: you did not bet on the Boiler.')}</p>}
+        </div>,
       )}
-      {(montee || nom === 'intro') && b.mise > 0 && monSifflet === null && (
-        <p className="ch-auto">{tr(`Sans sifflet : automatique à ${fmt(CHAUDIERE_BW.auto)}`, `No whistle: automatic at ${fmt(CHAUDIERE_BW.auto)}`)}</p>
-      )}
-      {(montee || nom === 'intro') && !b.mise && <p className="ch-auto">{tr('Tu regardes : tu n’as pas misé sur la Chaudière.', 'Watching: you did not bet on the Boiler.')}</p>}
 
       {/* Le mécanicien tire la chaîne du sifflet quand j'ai sifflé. */}
       {monSifflet !== null && !explosee && <img className="ch-mecanicien" src="/cartes/ch-mecanicien.webp" alt="" draggable={false} />}

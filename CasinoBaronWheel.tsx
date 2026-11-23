@@ -1276,6 +1276,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           <strong>{tr('La roue tourne…', 'The wheel is spinning…')}</strong>
         </>
       );
+    // La Chaudière : sous le cadre, la place du bouton sifflet (le bonus l'y installe), pour laisser voir tout le foyer.
+    else if (c === 'chaudiere' && v.phase === 'bonus') statut = <div id="ch-commande" className="ch-commande" />;
     else if (c && v.phase === 'bonus') statut = <strong>{tr(`Bonus : ${tr(...NOMS_BONUS[c as BonusBW])}\u00a0!`, `Bonus: ${tr(...NOMS_BONUS[c as BonusBW])}!`)}</strong>;
     else if (c)
       statut = (
