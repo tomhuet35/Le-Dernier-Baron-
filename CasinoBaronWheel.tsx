@@ -1276,8 +1276,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           <strong>{tr('La roue tourne…', 'The wheel is spinning…')}</strong>
         </>
       );
-    // La Chaudière : sous le cadre, la place du bouton sifflet (le bonus l'y installe), pour laisser voir tout le foyer.
-    else if (c === 'chaudiere' && v.phase === 'bonus') statut = <div id="ch-commande" className="ch-commande" />;
+    // La Chaudière : le bouton sifflet a sa place juste au-dessus des mises (voir plus bas), pas de texte ici.
+    else if (c === 'chaudiere' && v.phase === 'bonus') statut = null;
     else if (c && v.phase === 'bonus') statut = <strong>{tr(`Bonus : ${tr(...NOMS_BONUS[c as BonusBW])}\u00a0!`, `Bonus: ${tr(...NOMS_BONUS[c as BonusBW])}!`)}</strong>;
     else if (c)
       statut = (
@@ -1369,6 +1369,9 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       </div>
 
       <div className="bw-droite bas">
+      {/* La Chaudière : le bouton sifflet (le bonus l'y installe), entre le jeu et les mises ; il disparaît ensuite et
+          les mises reprennent leur place. */}
+      {v?.phase === 'bonus' && v.arret !== null && ROUE_BW[v.arret] === 'chaudiere' && <div id="ch-commande" className="ch-commande" />}
       <section className="bw-commandes" role="group" aria-label={tr('Tes mises', 'Your bets')}>
         <div className="bw-tapis">
           {CASES_BW.map((c) => {

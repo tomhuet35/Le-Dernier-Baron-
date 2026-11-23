@@ -167,7 +167,8 @@
   .ch-sifflet { padding-left: 50px; }
 }
 /* Le bouton sifflet sous le cadre du jeu (à la place du texte du bonus) : tout le foyer reste visible. */
-.ch-commande { display: contents; }
+.ch-commande { display: block; order: 6; padding-top: 14px; }
+.ch-commande:empty, .bw-statut:empty { display: none; }
 .ch-commandes.dehors { display: grid; justify-items: center; gap: 6px; width: 100%; }
 .ch-commandes.dehors .ch-sifflet { position: relative; left: auto; bottom: auto; translate: none; width: min(100%, 420px); }
 .ch-commandes.dehors .ch-auto { position: static; translate: none; order: 2; }
