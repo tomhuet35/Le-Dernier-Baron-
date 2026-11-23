@@ -80,10 +80,6 @@
 .bw-compteur.record { border-color: #ffd774; background: linear-gradient(90deg, rgba(110, 76, 14, 0.85), rgba(30, 16, 4, 0.85)); }
 .bw-compteur.record span { display: grid; line-height: 1.1; }
 .bw-compteur.record small { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #ffd774; }
-/* Les avatars des autres joueurs sur les cases. */
-.bw-case-avatars { position: absolute; left: 6px; top: 6px; z-index: 3; display: flex; align-items: center; }
-.bw-case-avatars img { width: 20px; height: 20px; margin-right: -6px; border-radius: 50%; border: 1.5px solid #d6a84b; object-fit: cover; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
-.bw-case-avatars i { margin-left: 8px; padding: 0 5px; border-radius: 99px; background: rgba(0, 0, 0, 0.7); font-style: normal; font-size: 10px; font-weight: 800; color: #fff1c4; }
 /* Le podium des gains après un bonus. */
 .bw-podium { padding: 8px 10px; border-radius: 14px; border: 1.5px solid rgba(214, 168, 75, 0.7); background: linear-gradient(180deg, rgba(103, 29, 43, 0.9), rgba(20, 8, 6, 0.92)); }
 .bw-podium h3 { margin: 0 0 6px; text-align: center; font-family: var(--titre); font-weight: 400; font-size: 18px; color: #ffd774; }

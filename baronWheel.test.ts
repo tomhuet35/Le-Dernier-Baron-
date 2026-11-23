@@ -7,6 +7,7 @@ import {
   BONUS_BW,
   CASES_BW,
   choixDuBonusBW,
+  conseilAiguillage,
   COMPOSITION_BW,
   DEGRES_CASE_BW,
   DUREES_BW,
@@ -67,13 +68,9 @@ describe('The Baron’s Wheel : les règles', () => {
       expect(r[c]).toBeLessThan(1.75);
     }
     // Ce que les petites cases ont perdu est rendu aux quatre bonus (environ 0,15 chacun) : 1,8 à 1,9 fois la mise.
-    for (const c of ['baron', 'pickpocket', 'evasion', 'braquage'] as const) {
+    for (const c of ['baron', 'pickpocket', 'aiguillage', 'braquage'] as const) {
       expect(r[c]).toBeGreaterThan(1.8);
       expect(r[c]).toBeLessThan(1.9);
-    }
-    for (const v of Object.values(r.routes)) {
-      expect(v).toBeGreaterThan(1.8);
-      expect(v).toBeLessThan(1.9);
     }
     // L'Express, le bonus le plus généreux de la roue.
     for (const c of CASES_BW) if (c !== 'express') expect(r.express).toBeGreaterThan(1.8 * r[c]);
@@ -141,10 +138,38 @@ describe('The Baron’s Wheel : les règles', () => {
     expect(valeurRecompenseBW({ x: 100, jackpot: 'grand', fixe: 500 }, 10)).toBe(1500);
     expect(valeurRecompenseBW({ x: 25, jackpot: 'mini' }, 10)).toBe(25);
     expect(valeurRecompenseBW({ x: 12 }, 5)).toBe(60);
-    expect(etapesBonusBW('evasion').map((e) => e.nom)).toEqual(['chargement', 'intro', 'route', 'poursuite', 'revele']);
+    expect(etapesBonusBW('aiguillage').map((e) => e.nom)).toEqual(['chargement', 'intro', 'aiguille', 'trajet', 'aiguille', 'trajet', 'aiguille', 'trajet', 'terminus', 'revele']);
+    expect(choixDuBonusBW('aiguillage')).toEqual([2, 2, 2]);
     // Chaque mini-jeu commence par son écran de chargement.
     for (const t of BONUS_BW) expect(etapesBonusBW(t)[0]).toMatchObject({ nom: 'chargement', choix: 0 });
-    expect(recompenseBonusBW({ type: 'evasion', routes: [{ evade: false, x: 10 }, { evade: true, x: 25 }, { evade: true, x: 100 }] }, [0])).toEqual({ x: 0, evade: false });
+    // L'Aiguillage : (1 + les trois primes) × le multiplicateur du terminus ; gauche, droite, droite → Istanbul (k = 2).
+    const reseau = {
+      type: 'aiguillage' as const,
+      gares: [
+        [2, 0],
+        [1, 10, 3],
+        [0, 2, 5, 1],
+      ],
+      eclairees: [
+        [true, false],
+        [true, false, true],
+        [false, true, false, true],
+      ],
+      terminus: [1, 1.5, 2, 1.25],
+    };
+    expect(recompenseBonusBW(reseau, [0, 1, 1])).toEqual({ x: (1 + 2 + 10 + 5) * 2 });
+    // L'aiguilleur vise le meilleur terminus en moyenne : Istanbul ×2 par la gare éclairée +3 (à droite, puis à droite).
+    expect(conseilAiguillage(reseau, [])).toBe(1);
+    expect(conseilAiguillage(reseau, [1])).toBe(1);
+    expect(conseilAiguillage(reseau, [1, 1])).toBe(0);
+    // Chaque aiguillage propose une gare éclairée et une gare sous bâche ; les terminus du milieu valent ×1,5 et ×2.
+    for (let k = 0; k < 300; k++) {
+      const t = tirerBonusBW('aiguillage', h);
+      if (t.type !== 'aiguillage') throw new Error();
+      t.eclairees.forEach((n) => n.forEach((e, i) => i > 0 && expect(e).not.toBe(n[i - 1])));
+      expect([...t.terminus.slice(1, 3)].sort()).toEqual([1.5, 2]);
+      expect([t.terminus[0], t.terminus[3]].sort()).toEqual([1, 1.25]);
+    }
     expect(gainBW(25_000, 5)).toBe(125_000);
     // L'Express : 5 wagons, 2 décrochés au premier tunnel, 2 au second, un seul arrive ; rien sous ×10.
     for (let k = 0; k < 500; k++) {
@@ -246,7 +271,7 @@ beforeAll(async () => {
       jeuALaffiche: () => null,
       cadeaux: [],
       delaiEcriture: 30,
-      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, introDonne: 80, donne: 80, reveleDonne: 150, introPick: 80, revelePick: 150, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
+      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, introAiguillage: 80, aiguille: 700, trajet: 80, terminus: 80, introDonne: 80, donne: 80, reveleDonne: 150, introPick: 80, revelePick: 150, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
       arretBaronWheel: () => arretImpose,
       multiplicateursBaronWheel: () => multiplicateursImposes,
       ouvertureBaronWheel: () => ouverture,

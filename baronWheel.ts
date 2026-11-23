@@ -5,7 +5,7 @@
  * le résultat. Si la roue s'arrête sur un bonus, son mini-jeu commence ; ceux qui ont misé sur ce bonus font leurs
  * choix (chacun les siens), les autres regardent.
  *
- * - La roue : 9 cases « 1X », 6 « 2X », 4 « 5X », 2 « 10X », 2 BARON, 2 PICKPOCKET, 2 ÉVASION, 2 BRAQUAGE, 1 EXPRESS.
+ * - La roue : 9 cases « 1X », 6 « 2X », 4 « 5X », 2 « 10X », 2 BARON, 2 PICKPOCKET, 2 AIGUILLAGE, 2 BRAQUAGE, 1 EXPRESS.
  *   Toutes les cases ont la même chance (1 sur 30). Les cases chiffres paient ×2, ×3, ×5 et ×10 (mise comprise) ;
  *   les bonus, plus rares, paient gros (×5 à ×1 000) : ce que les petites cases ont perdu en passant de ×2,7 et ×3,3 à
  *   ×2 et ×3 a été rendu aux bonus, sous forme de nouveaux gros multiples (voir rtpBW).
@@ -25,15 +25,15 @@
 // La roue
 
 export type ChiffreBW = 'x1' | 'x2' | 'x5' | 'x10';
-export type BonusBW = 'baron' | 'pickpocket' | 'evasion' | 'braquage' | 'express';
+export type BonusBW = 'baron' | 'pickpocket' | 'aiguillage' | 'braquage' | 'express';
 export type CaseBW = ChiffreBW | BonusBW;
 export const CHIFFRES_BW: ChiffreBW[] = ['x1', 'x2', 'x5', 'x10'];
-export const BONUS_BW: BonusBW[] = ['baron', 'pickpocket', 'evasion', 'braquage', 'express'];
+export const BONUS_BW: BonusBW[] = ['baron', 'pickpocket', 'aiguillage', 'braquage', 'express'];
 export const CASES_BW: CaseBW[] = [...CHIFFRES_BW, ...BONUS_BW];
 export const estBonusBW = (c: CaseBW): c is BonusBW => (BONUS_BW as string[]).includes(c);
 
 /** Combien de cases de chaque sorte sur la roue (30 en tout). */
-export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, pickpocket: 2, evasion: 2, braquage: 2, express: 1 };
+export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, pickpocket: 2, aiguillage: 2, braquage: 2, express: 1 };
 export const NB_CASES_BW = 30;
 export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 /**
@@ -44,7 +44,7 @@ export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 export const ROUE_BW: CaseBW[] = (() => {
   // La roue est symétrique autour de l'Express (en haut, entre deux Baron) : la moitié droite, puis son miroir ; le ×2
   // du bas, face à l'Express, fait le lien. Les bonus reviennent toutes les 4 cases.
-  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'pickpocket', 'x5', 'x1', 'x2', 'evasion', 'x1', 'x10', 'x2', 'braquage', 'x5'];
+  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'pickpocket', 'x5', 'x1', 'x2', 'aiguillage', 'x1', 'x10', 'x2', 'braquage', 'x5'];
   return ['express', ...moitie, 'x1', ...[...moitie].reverse()];
 })();
 
@@ -159,7 +159,11 @@ export const PETITES_MALLETTES: TableBW<number> = [
   [7, 1000],
 ];
 
-/** LA COURSE-POURSUITE : trois itinéraires ; plus le risque d'arrestation est grand, plus le butin l'est aussi. */
+/**
+ * LA COURSE-POURSUITE (l'Évasion) : trois itinéraires ; plus le risque d'arrestation est grand, plus le butin l'est aussi.
+ * Elle a quitté la roue de l'Express (l'Aiguillage a pris ses cases) et rejoindra la roue du Casse : son écran
+ * (CasinoEvasion) et ses tables restent ici en attendant.
+ */
 export type RouteBW = 'boulevard' | 'ruelles' | 'souterrains';
 export const ROUTES_BW: RouteBW[] = ['boulevard', 'ruelles', 'souterrains'];
 export const ITINERAIRES_BW: Record<RouteBW, { arrestation: number; gains: TableBW<number> }> = {
@@ -209,6 +213,121 @@ export interface IssueRouteBW {
   evade: boolean;
   /** Le butin du Baron s'il s'évade (et celui qu'il aurait eu s'il est arrêté). */
   x: number;
+}
+
+/**
+ * L'AIGUILLAGE : le train part de Paris avec ×1 au compteur, passe trois aiguillages et arrive à l'un des quatre
+ * terminus. Le réseau est un treillis : après l'aiguillage n° l (1 à 3), le train est à la gare (l, k), k = le nombre de
+ * fois où il a pris à droite (0 à l). À chaque aiguillage, des deux gares suivantes, l'une est éclairée (sa prime est
+ * visible : +×1 à +×3) et l'autre sous bâche (+×0, « travaux sur la voie », à +×20, révélée au passage du train). Les
+ * gares éclairées alternent d'une case à l'autre d'un même niveau : chaque aiguillage propose une gare de chaque sorte.
+ * Les gares du niveau 3 sont les terminus (Rome, Venise, Istanbul, Vienne) : leur prime s'ajoute, puis leur
+ * multiplicateur (montré dès le départ) multiplie le compteur. Ce soir-là, Venise et Istanbul (au milieu du réseau)
+ * se partagent ×1,5 et ×2, Rome et Vienne (aux bords) ×1 et ×1,25.
+ * Gain = (1 + les primes des trois gares) × le multiplicateur du terminus. Les primes éclairées et sous bâche valent
+ * autant en moyenne : choisir entre elles, c'est choisir son risque ; le vrai choix, c'est la route vers le meilleur
+ * terminus. Le joueur qui ne choisit pas à temps suit le conseil de l'aiguilleur (le meilleur choix en moyenne).
+ */
+export const NB_AIGUILLAGES = 3;
+export const COMPTEUR_DEPART_AIGUILLAGE = 1;
+export const PRIMES_ECLAIREES: TableBW<number> = [
+  [1, 72],
+  [2, 22],
+  [3, 6],
+];
+export const PRIMES_BACHEES: TableBW<number> = [
+  [0, 68],
+  [1, 12],
+  [2, 8],
+  [5, 6],
+  [10, 4],
+  [20, 2],
+];
+/** Les terminus, de gauche à droite (k = 0 à 3), et les multiplicateurs qu'ils se partagent (bords, puis milieu). */
+export const TERMINUS_AIGUILLAGE = ['rome', 'venise', 'istanbul', 'vienne'] as const;
+export type TerminusAiguillage = (typeof TERMINUS_AIGUILLAGE)[number];
+export const MULTIS_BORDS_AIGUILLAGE = [1, 1.25];
+export const MULTIS_MILIEU_AIGUILLAGE = [1.5, 2];
+export interface TirageAiguillageBW {
+  type: 'aiguillage';
+  /** gares[l - 1][k] : la prime de la gare (l, k) ; le niveau 3, ce sont les terminus. */
+  gares: number[][];
+  /** eclairees[l - 1][k] : la gare est-elle éclairée (sa prime visible dès le départ) ? */
+  eclairees: boolean[][];
+  /** Le multiplicateur de chaque terminus (k = 0 à 3). */
+  terminus: number[];
+}
+/** La position (k) du train après les choix faits (0 : à gauche, 1 : à droite). */
+export const positionAiguillage = (choix: number[]) => choix.reduce((k, c) => k + (c ? 1 : 0), 0);
+/** Le compteur du train après les choix faits (sans le multiplicateur du terminus). */
+export function compteurAiguillage(t: TirageAiguillageBW, choix: number[]): number {
+  let k = 0;
+  let s = COMPTEUR_DEPART_AIGUILLAGE;
+  choix.forEach((c, l) => {
+    k += c ? 1 : 0;
+    s += t.gares[l][k];
+  });
+  return s;
+}
+/**
+ * Le conseil de l'aiguilleur au r-ième aiguillage (r = le nombre de choix déjà faits) : la direction (0 ou 1) qui mène
+ * au plus gros gain en moyenne, sachant ce qui est visible (les gares déjà passées et les gares éclairées ; une gare
+ * sous bâche encore à venir vaut sa moyenne).
+ */
+export function conseilAiguillage(t: TirageAiguillageBW, choix: number[]): number {
+  const r = choix.length;
+  const mu = esperanceTable(PRIMES_BACHEES);
+  const k0 = positionAiguillage(choix);
+  const s0 = compteurAiguillage(t, choix);
+  let meilleur = { e: -1, c: 0 };
+  for (let m = 0; m < 1 << (NB_AIGUILLAGES - r); m++) {
+    let k = k0;
+    let s = s0;
+    for (let j = 0; j < NB_AIGUILLAGES - r; j++) {
+      k += (m >> j) & 1;
+      const l = r + j;
+      s += t.eclairees[l][k] ? t.gares[l][k] : mu;
+    }
+    const e = s * t.terminus[k];
+    if (e > meilleur.e + 1e-9) meilleur = { e, c: m & 1 };
+  }
+  return meilleur.c;
+}
+function tirerAiguillage(h: Hasard): TirageAiguillageBW {
+  const eclairees: boolean[][] = [];
+  const gares: number[][] = [];
+  for (let l = 1; l <= NB_AIGUILLAGES; l++) {
+    const decale = h() < 0.5 ? 0 : 1;
+    eclairees.push(Array.from({ length: l + 1 }, (_, k) => (k + decale) % 2 === 0));
+    gares.push(eclairees[l - 1].map((e) => tirerTable(e ? PRIMES_ECLAIREES : PRIMES_BACHEES, h)));
+  }
+  const bords = h() < 0.5 ? [...MULTIS_BORDS_AIGUILLAGE] : [...MULTIS_BORDS_AIGUILLAGE].reverse();
+  const milieu = h() < 0.5 ? [...MULTIS_MILIEU_AIGUILLAGE] : [...MULTIS_MILIEU_AIGUILLAGE].reverse();
+  return { type: 'aiguillage', gares, eclairees, terminus: [bords[0], milieu[0], milieu[1], bords[1]] };
+}
+/** Le multiple gagné à l'Aiguillage d'après les trois choix. */
+export const gainAiguillage = (t: TirageAiguillageBW, choix: number[]) => compteurAiguillage(t, choix) * t.terminus[positionAiguillage(choix)];
+/** L'espérance de l'Aiguillage en suivant les conseils de l'aiguilleur (calculée une fois, sur un tirage fixe). */
+let esperanceAiguillageCache: number | null = null;
+export function esperanceAiguillage(): number {
+  if (esperanceAiguillageCache !== null) return esperanceAiguillageCache;
+  let graine = 20261123;
+  const h: Hasard = () => {
+    graine = (graine + 0x6d2b79f5) | 0;
+    let x = Math.imul(graine ^ (graine >>> 15), 1 | graine);
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+  const N = 200_000;
+  let somme = 0;
+  for (let n = 0; n < N; n++) {
+    const t = tirerAiguillage(h);
+    const choix: number[] = [];
+    for (let r = 0; r < NB_AIGUILLAGES; r++) choix.push(conseilAiguillage(t, choix));
+    somme += gainAiguillage(t, choix);
+  }
+  esperanceAiguillageCache = somme / N;
+  return esperanceAiguillageCache;
 }
 
 /**
@@ -361,7 +480,7 @@ export const COFFRE_DU_BARON: TableBW<number> = [
 export type TirageBonusBW =
   | { type: 'baron'; cartes: RecompenseBW[] }
   | { type: 'pickpocket'; butin: number; mallettes: number[] }
-  | { type: 'evasion'; routes: IssueRouteBW[] }
+  | TirageAiguillageBW
   /** etage : le sous-sol où s'arrête la perceuse (1 à 5) ; jackpot : celui du Coffre du Siècle (au 5e seulement). */
   | { type: 'braquage'; etage: number; jackpot: JackpotBW | null }
   /** decroche[k] : le tunnel (0 ou 1) où le wagon k est décroché, null pour celui qui arrive à Istanbul. */
@@ -384,14 +503,8 @@ export function tirerBonusBW(type: BonusBW, h: Hasard): TirageBonusBW {
       const butin = tirerTable(BUTIN_PICKPOCKET, h);
       return { type, butin, mallettes: melanger([butin, tirerTable(PETITES_MALLETTES, h), tirerTable(PETITES_MALLETTES, h)], h) };
     }
-    case 'evasion':
-      return {
-        type,
-        routes: ROUTES_BW.map((r) => {
-          const evade = h() >= ITINERAIRES_BW[r].arrestation;
-          return { evade, x: tirerTable(ITINERAIRES_BW[r].gains, h) };
-        }),
-      };
+    case 'aiguillage':
+      return tirerAiguillage(h);
     case 'braquage': {
       const etage = tirerTable(ARRET_BRAQUAGE, h);
       return { type, etage, jackpot: etage >= ETAGES_BRAQUAGE.length ? tirerTable(JACKPOTS_BRAQUAGE, h) : null };
@@ -435,6 +548,9 @@ export type EtapeBW =
   | 'mallettes'
   | 'route'
   | 'poursuite'
+  | 'aiguille'
+  | 'trajet'
+  | 'terminus'
   | 'descente'
   | 'wagons'
   | 'paris'
@@ -473,6 +589,11 @@ export interface DureesBW {
   introBraquage: number;
   /** L'intro de l'Évasion : l'affiche et les trois voitures. */
   introEvasion: number;
+  /** L'Aiguillage : l'affiche et la carte, chaque aiguillage (le choix), chaque trajet jusqu'à la gare, l'arrivée. */
+  introAiguillage: number;
+  aiguille: number;
+  trajet: number;
+  terminus: number;
   /** Le Choix du Baron : l'affiche, le mélange et la donne des neuf cartes, puis leur retournement (voir DONNE_BW). */
   introDonne: number;
   donne: number;
@@ -506,6 +627,10 @@ export const DUREES_BW: DureesBW = {
   introExpress: 7_000,
   introBraquage: 7_000,
   introEvasion: 6_000,
+  introAiguillage: 7_000,
+  aiguille: 9_000,
+  trajet: 5_000,
+  terminus: 7_000,
   introDonne: 5_000,
   donne: 6_000,
   reveleDonne: 7_500,
@@ -530,8 +655,13 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
       return [e('intro', d.introDonne), e('donne', d.donne), e('cartes', d.choix, NB_CARTES_BARON), e('revele', d.reveleDonne)];
     case 'pickpocket':
       return [e('intro', d.introPick), e('vol', d.vol), e('mallettes', d.choix, 3), e('revele', d.revelePick)];
-    case 'evasion':
-      return [e('intro', d.introEvasion), e('route', d.choix, 3), e('poursuite', d.poursuite), e('revele', d.revele)];
+    case 'aiguillage':
+      return [
+        e('intro', d.introAiguillage),
+        ...Array.from({ length: NB_AIGUILLAGES }, () => [e('aiguille', d.aiguille, 2), e('trajet', d.trajet)]).flat(),
+        e('terminus', d.terminus),
+        e('revele', d.revele),
+      ];
     case 'braquage': {
       const etage = t?.type === 'braquage' ? t.etage : ETAGES_BRAQUAGE.length;
       const descente = Math.round((d.descente * descenteCasseBW(etage)) / descenteCasseBW(ETAGES_BRAQUAGE.length));
@@ -563,10 +693,8 @@ export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: numbe
       return { ...t.cartes[choix[0]] };
     case 'pickpocket':
       return { x: t.mallettes[choix[0]] };
-    case 'evasion': {
-      const r = t.routes[choix[0]];
-      return { x: r.evade ? r.x : 0, evade: r.evade };
-    }
+    case 'aiguillage':
+      return { x: gainAiguillage(t, choix) };
     case 'braquage':
       return { x: ETAGES_BRAQUAGE[t.etage - 1], ...(t.jackpot ? { jackpot: t.jackpot, fixe: VALEUR_JACKPOT_BW[t.jackpot] } : {}) };
     case 'express':
@@ -590,7 +718,7 @@ export const gainBW = (mise: number, x: number) => Math.floor((mise * Math.round
  * Espérance (mise comprise) de ce que rapporte un bonus, quels que soient les choix : la part que les multiplicateurs
  * de la roue multiplient, et celle des jackpots (fixes).
  */
-export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable: number; jackpots: number } {
+export function esperanceBonusBW(type: BonusBW): { multipliable: number; jackpots: number } {
   const separer = (t: TableBW<RecompenseBW>, facteur = 1) => {
     const total = t.reduce((s, [, p]) => s + p, 0);
     return {
@@ -603,10 +731,9 @@ export function esperanceBonusBW(type: BonusBW, route?: RouteBW): { multipliable
       return separer(TABLE_CARTES_BARON);
     case 'pickpocket':
       return { multipliable: (esperanceTable(BUTIN_PICKPOCKET) + 2 * esperanceTable(PETITES_MALLETTES)) / 3, jackpots: 0 };
-    case 'evasion': {
-      const r = ITINERAIRES_BW[route ?? 'boulevard'];
-      return { multipliable: (1 - r.arrestation) * esperanceTable(r.gains), jackpots: 0 };
-    }
+    case 'aiguillage':
+      // En suivant les conseils de l'aiguilleur (le meilleur choix en moyenne).
+      return { multipliable: esperanceAiguillage(), jackpots: 0 };
     case 'braquage': {
       const total = ARRET_BRAQUAGE.reduce((s, [, p]) => s + p, 0);
       const pSiecle = (ARRET_BRAQUAGE.find(([k]) => k === ETAGES_BRAQUAGE.length)?.[1] ?? 0) / total;
@@ -635,11 +762,11 @@ export function facteurMultiplicateursBW(pointe = false): number {
   return 1 + (e - 1) / CASES_BW.length;
 }
 /** Ce que rend chaque mise en moyenne (multiplicateurs compris). */
-export function rtpBW(): Record<CaseBW, number> & { routes: Record<RouteBW, number> } {
+export function rtpBW(): Record<CaseBW, number> {
   const F = facteurMultiplicateursBW();
   const p = (c: CaseBW) => COMPOSITION_BW[c] / NB_CASES_BW;
-  const bonus = (c: BonusBW, route?: RouteBW) => {
-    const e = esperanceBonusBW(c, route);
+  const bonus = (c: BonusBW) => {
+    const e = esperanceBonusBW(c);
     return p(c) * (e.multipliable * F + e.jackpots);
   };
   return {
@@ -649,10 +776,9 @@ export function rtpBW(): Record<CaseBW, number> & { routes: Record<RouteBW, numb
     x10: p('x10') * GAINS_CHIFFRES_BW.x10 * F,
     baron: bonus('baron'),
     pickpocket: bonus('pickpocket'),
-    evasion: bonus('evasion', 'boulevard'),
+    aiguillage: bonus('aiguillage'),
     braquage: bonus('braquage'),
     express: bonus('express'),
-    routes: { boulevard: bonus('evasion', 'boulevard'), ruelles: bonus('evasion', 'ruelles'), souterrains: bonus('evasion', 'souterrains') },
   };
 }
 
@@ -687,7 +813,9 @@ export function simulerBW(n: number, h: Hasard): SimulationBW {
     if (!estBonusBW(c)) x = GAINS_CHIFFRES_BW[c] * m;
     else {
       const t = tirerBonusBW(c, h);
-      const choix = choixDuBonusBW(c).map((q) => Math.floor(h() * q));
+      // Au hasard (ça ne change rien en moyenne), sauf à l'Aiguillage : les conseils de l'aiguilleur.
+      const choix: number[] = [];
+      for (const q of choixDuBonusBW(c)) choix.push(t.type === 'aiguillage' ? conseilAiguillage(t, choix) : Math.floor(h() * q));
       const r = recompenseBonusBW(t, choix);
       x = valeurRecompenseBW(r, m);
       if (r.jackpot) jackpots[r.jackpot]++;
@@ -734,8 +862,6 @@ export interface JoueurBW {
   gain: number | null;
   jackpot?: JackpotBW;
   moi?: true;
-  /** Les cases où il a misé (ses avatars s'affichent dessus). */
-  cases: CaseBW[];
 }
 
 export interface VueBonusBW {
@@ -747,6 +873,11 @@ export interface VueBonusBW {
   butin?: number | null;
   mallettes?: (number | null)[];
   routes?: (IssueRouteBW | null)[];
+  /**
+   * L'Aiguillage : le multiplicateur des terminus et les gares éclairées (dès le départ), et la prime de chaque gare
+   * (null tant qu'une gare sous bâche n'est pas révélée, au passage du train à son niveau).
+   */
+  aiguillage?: { terminus: number[]; eclairees: boolean[][]; gares: (number | null)[][] };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**
