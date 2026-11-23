@@ -1,0 +1,84 @@
+/* La Chaudière (Le Baron Express) : le manomètre géant, le multiplicateur, le sifflet, la vapeur qui monte avec la
+   pression, l'explosion. --p : la part de la montée (0 à 1) ; --secousse : l'ampleur du tremblement. */
+
+.bw-bonus.chaudiere { background: #0a0504; }
+.ch { --p: 0; --secousse: 0; position: absolute; inset: 0; overflow: hidden; container-type: size; color: #fff1c4; background: radial-gradient(70% 60% at 50% 45%, color-mix(in srgb, #7a1a0a calc(var(--p) * 100%), #2a0d0a), #070302 78%); transition: background 0.4s; }
+.ch-lueur { position: absolute; left: 50%; bottom: -20%; width: 120%; height: 60%; translate: -50% 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 120, 30, calc(0.25 + var(--p) * 0.55)), transparent); filter: blur(10px); animation: ch-feu 0.7s ease-in-out infinite alternate; }
+@keyframes ch-feu { to { opacity: 0.7; transform: scaleX(0.94); } }
+
+/* La vapeur : de plus en plus épaisse et rapide avec la pression. */
+.ch-vapeurs img { position: absolute; bottom: 10%; width: 60%; height: auto; max-width: none; opacity: calc(0.12 + var(--p) * 0.6); animation: ch-vapeur calc(3.2s - var(--p) * 2s) ease-out infinite; animation-delay: calc(var(--k) * -0.8s); pointer-events: none; }
+.ch-vapeurs img:nth-child(odd) { left: -14%; }
+.ch-vapeurs img:nth-child(even) { right: -14%; transform: scaleX(-1); }
+@keyframes ch-vapeur { from { translate: 0 20%; scale: 0.6; opacity: 0; } 30% { opacity: calc(0.12 + var(--p) * 0.6); } to { translate: 0 -70%; scale: 1.3; opacity: 0; } }
+
+/* Le manomètre géant : il tremble de plus en plus fort. */
+.ch-mano { position: absolute; left: 50%; top: 56%; width: min(36cqh, 52cqw); aspect-ratio: 1; translate: -50% -50%; filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.8)); animation: ch-tremble 0.09s steps(2) infinite; }
+@keyframes ch-tremble { 50% { transform: translate(calc(var(--secousse) * 4px), calc(var(--secousse) * -3px)) rotate(calc(var(--secousse) * 0.8deg)); } }
+.ch-mano-cadran { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ch-mano-aiguille { position: absolute; left: 50%; top: 50%; width: 9%; height: auto; translate: -50% -71.8%; transform-origin: 50% 71.8%; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6)); }
+.ch.danger .ch-mano::after { content: ''; position: absolute; inset: -6%; border-radius: 50%; box-shadow: 0 0 calc(10px + var(--p) * 40px) rgba(255, 60, 30, 0.8); animation: ch-clignote 0.35s ease-in-out infinite alternate; }
+@keyframes ch-clignote { to { opacity: 0.3; } }
+
+/* Le multiplicateur. */
+.ch-compteur { position: absolute; left: 50%; top: 58px; z-index: 3; translate: -50% 0; display: grid; justify-items: center; }
+.ch-compteur strong { font-family: var(--titre); font-weight: 400; font-size: clamp(30px, min(12cqw, 15cqh), 80px); line-height: 1; color: color-mix(in srgb, #ff5a3a calc(var(--p) * 100%), #ffd774); text-shadow: 0 0 calc(10px + var(--p) * 30px) rgba(255, 160, 80, 0.9), 0 4px 8px #000; }
+.ch-compteur small { margin-top: 2px; padding: 0 10px; border-radius: 99px; background: rgba(140, 24, 18, 0.9); font-weight: 900; font-size: 12px; }
+.ch-consigne { position: absolute; left: 50%; top: 50%; translate: -50% -50% !important; z-index: 4; translate: -50% 0; width: max-content; max-width: 90%; margin: 0; padding: 8px 16px; border-radius: 14px; border: 2px solid #ffd774; background: rgba(12, 6, 4, 0.9); text-align: center; font-weight: 800; font-size: clamp(13px, 3.8cqw, 18px); animation: ch-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+@keyframes ch-pop { from { transform: scale(0.4); opacity: 0; } }
+
+/* Le sifflet : le gros bouton. */
+.ch-sifflet { position: absolute; left: 50%; bottom: 3%; z-index: 5; translate: -50% 0; display: grid; justify-items: center; gap: 0; min-width: min(70%, 320px); padding: 4px 22px 6px; border-radius: 22px; border: 3px solid #ffe9a8; background: linear-gradient(180deg, #d9302a, #7a0a10); color: #fff1c4; cursor: pointer; box-shadow: 0 0 24px rgba(255, 90, 60, 0.7), 0 10px 22px rgba(0, 0, 0, 0.7); animation: ch-appel 0.8s ease-in-out infinite alternate; }
+@keyframes ch-appel { to { box-shadow: 0 0 40px rgba(255, 120, 80, 1), 0 10px 22px rgba(0, 0, 0, 0.7); transform: scale(1.03); } }
+.ch-sifflet span { font-size: 12px; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; }
+.ch-sifflet b { font-family: var(--titre); font-weight: 400; font-size: clamp(22px, min(7cqw, 9cqh), 40px); line-height: 1.05; }
+.ch-sifflet small { font-weight: 800; font-size: 13px; color: #c9f5c4; }
+.ch-sifflet:disabled { cursor: default; }
+.ch-sifflet.fait { background: linear-gradient(180deg, #2f7a3a, #123d1a); border-color: #b8f0b4; box-shadow: 0 0 24px rgba(120, 230, 120, 0.6), 0 10px 22px rgba(0, 0, 0, 0.7); animation: ch-pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.ch-intro .ch-sifflet, .ch.intro .ch-sifflet { opacity: 0.55; animation: none; }
+.ch-auto { position: absolute; left: 50%; top: calc(56% + min(18cqh, 26cqw) + 2px); z-index: 5; translate: -50% 0; width: max-content; max-width: 90%; margin: 0; padding: 2px 10px; border-radius: 99px; background: rgba(8, 4, 2, 0.75); font-size: 11.5px; font-weight: 700; color: #ecd9b4; }
+
+/* Ceux qui ont sifflé. */
+.ch-siffles { position: absolute; right: 8px; top: 56%; translate: 0 -50%; z-index: 4; display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; max-width: calc(50% - min(18cqh, 26cqw) - 12px); }
+.ch-siffles li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 2px 8px 2px 2px; border-radius: 99px; background: rgba(12, 6, 4, 0.82); border: 1px solid rgba(214, 168, 75, 0.6); font-size: 12px; animation: ch-glisse 0.4s ease-out both; }
+@keyframes ch-glisse { from { transform: translateX(40px); opacity: 0; } }
+.ch-siffles li img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.ch-siffles li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.ch-siffles li b { font-family: var(--titre); font-weight: 400; color: #b8f0b4; }
+.ch-siffles li.moi { border-color: #b8f0b4; }
+.ch.explosee .ch-siffles li:not(.moi) b, .ch.explosee .ch-siffles li b { color: #b8f0b4; }
+
+/* L'explosion, ou la pleine pression. */
+.ch.explosee .ch-mano { animation: ch-explose 0.6s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+@keyframes ch-explose { 0% { transform: scale(1); } 30% { transform: scale(1.25) rotate(-6deg); filter: brightness(3); } 100% { transform: scale(0.85) rotate(14deg) translateY(12%); opacity: 0.25; filter: grayscale(1) brightness(0.5); } }
+.ch-fin { position: absolute; inset: 0; z-index: 6; display: grid; place-content: center; justify-items: center; gap: 6px; text-align: center; pointer-events: none; }
+.ch-fin.boum { animation: ch-flash 1.2s ease-out both; }
+@keyframes ch-flash { 0% { background: rgba(255, 250, 230, 0.95); } 25% { background: rgba(255, 140, 60, 0.6); } 100% { background: rgba(10, 4, 2, 0.55); } }
+.ch-fin strong { position: relative; font-family: var(--titre); font-weight: 400; font-size: clamp(40px, 15cqw, 96px); color: #ff6a3a; text-shadow: 0 0 30px rgba(255, 120, 40, 1), 0 5px 10px #000; animation: ch-pop 0.5s cubic-bezier(0.3, 1.8, 0.5, 1) 0.15s both; }
+.ch-fin span { position: relative; padding: 4px 14px; border-radius: 12px; background: rgba(10, 4, 2, 0.8); font-weight: 800; font-size: clamp(13px, 3.8cqw, 18px); }
+.ch-fin.pleine strong { color: #ffe08a; }
+.ch-fin.pleine { background: radial-gradient(circle, rgba(255, 220, 130, 0.35), transparent 60%); }
+.ch-nuage { position: absolute; left: 50%; top: 50%; width: 170%; height: auto; max-width: none; translate: -50% -50%; animation: ch-nuage 2.4s ease-out both; }
+@keyframes ch-nuage { from { transform: scale(0.2); opacity: 1; } 40% { opacity: 1; } to { transform: scale(1.3); opacity: 0.25; } }
+.ch-eclats { position: absolute; left: 50%; top: 50%; width: 110%; height: auto; max-width: none; translate: -50% -50%; mix-blend-mode: screen; animation: ch-eclats 0.9s ease-out both; }
+@keyframes ch-eclats { from { transform: scale(0.3) rotate(0deg); opacity: 1; } to { transform: scale(1.6) rotate(40deg); opacity: 0; } }
+
+.ch.revele .ch-fin { place-content: start center; padding-top: 18%; }
+.ch.revele .ch-fin.boum { animation: none; background: rgba(10, 4, 2, 0.55); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ch *, .ch { animation: none !important; }
+}
+@container (max-width: 560px) {
+  .ch-siffles li { grid-template-columns: 22px auto; padding-right: 6px; }
+  .ch-siffles li span { display: none; }
+  .ch-siffles li img { width: 22px; height: 22px; }
+}
+/* Sur téléphone, le titre du bonus descend sous le badge « En direct » : le compteur passe dessous. */
+@media (max-width: 699px) {
+  .ch-compteur { top: 92px; }
+  .ch-compteur strong { font-size: clamp(28px, min(11cqw, 12cqh), 60px); }
+  .ch-mano { top: 60%; width: min(32cqh, 50cqw); }
+  .ch-auto { top: calc(60% + min(16cqh, 25cqw) + 2px); }
+  .ch-siffles { top: 60%; max-width: calc(50% - min(16cqh, 25cqw) - 10px); }
+}

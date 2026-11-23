@@ -5,7 +5,7 @@
  * le résultat. Si la roue s'arrête sur un bonus, son mini-jeu commence ; ceux qui ont misé sur ce bonus font leurs
  * choix (chacun les siens), les autres regardent.
  *
- * - La roue : 9 cases « 1X », 6 « 2X », 4 « 5X », 2 « 10X », 2 BARON, 2 PICKPOCKET, 2 AIGUILLAGE, 2 BRAQUAGE, 1 EXPRESS.
+ * - La roue : 9 cases « 1X », 6 « 2X », 4 « 5X », 2 « 10X », 2 BARON, 2 PICKPOCKET, 2 CHAUDIÈRE, 2 BRAQUAGE, 1 EXPRESS.
  *   Toutes les cases ont la même chance (1 sur 30). Les cases chiffres paient ×2, ×3, ×5 et ×10 (mise comprise) ;
  *   les bonus, plus rares, paient gros (×5 à ×1 000) : ce que les petites cases ont perdu en passant de ×2,7 et ×3,3 à
  *   ×2 et ×3 a été rendu aux bonus, sous forme de nouveaux gros multiples (voir rtpBW).
@@ -25,15 +25,15 @@
 // La roue
 
 export type ChiffreBW = 'x1' | 'x2' | 'x5' | 'x10';
-export type BonusBW = 'baron' | 'pickpocket' | 'aiguillage' | 'braquage' | 'express';
+export type BonusBW = 'baron' | 'pickpocket' | 'chaudiere' | 'braquage' | 'express';
 export type CaseBW = ChiffreBW | BonusBW;
 export const CHIFFRES_BW: ChiffreBW[] = ['x1', 'x2', 'x5', 'x10'];
-export const BONUS_BW: BonusBW[] = ['baron', 'pickpocket', 'aiguillage', 'braquage', 'express'];
+export const BONUS_BW: BonusBW[] = ['baron', 'pickpocket', 'chaudiere', 'braquage', 'express'];
 export const CASES_BW: CaseBW[] = [...CHIFFRES_BW, ...BONUS_BW];
 export const estBonusBW = (c: CaseBW): c is BonusBW => (BONUS_BW as string[]).includes(c);
 
 /** Combien de cases de chaque sorte sur la roue (30 en tout). */
-export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, pickpocket: 2, aiguillage: 2, braquage: 2, express: 1 };
+export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, pickpocket: 2, chaudiere: 2, braquage: 2, express: 1 };
 export const NB_CASES_BW = 30;
 export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 /**
@@ -44,7 +44,7 @@ export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 export const ROUE_BW: CaseBW[] = (() => {
   // La roue est symétrique autour de l'Express (en haut, entre deux Baron) : la moitié droite, puis son miroir ; le ×2
   // du bas, face à l'Express, fait le lien. Les bonus reviennent toutes les 4 cases.
-  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'pickpocket', 'x5', 'x1', 'x2', 'aiguillage', 'x1', 'x10', 'x2', 'braquage', 'x5'];
+  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'pickpocket', 'x5', 'x1', 'x2', 'chaudiere', 'x1', 'x10', 'x2', 'braquage', 'x5'];
   return ['express', ...moitie, 'x1', ...[...moitie].reverse()];
 })();
 
@@ -331,6 +331,33 @@ export function esperanceAiguillage(): number {
 }
 
 /**
+ * LA CHAUDIÈRE : la pression monte dans la chaudière de la locomotive, et le multiplicateur avec elle : ×10 au départ,
+ * ×100 au bout de 10 s, ×1 000 (la pleine pression) au bout de 20 s. Chaque joueur tire le sifflet quand il veut pour
+ * encaisser le multiplicateur du moment ; si la chaudière explose avant, il perd. Le serveur a tiré le point
+ * d'explosion dès le début : P(explosion après ×m) = 11 / m (jamais avant ×11). Siffler à ×m rapporte donc ×11 en
+ * moyenne, quel que soit m : siffler tôt ou tard, c'est choisir son risque, pas son rendement. Sans sifflet, il siffle
+ * automatiquement à ×20 ; à pleine pression, tous ceux qui n'ont pas sifflé encaissent ×1 000.
+ * Le joueur ne voit le multiplicateur que là où le serveur en est (le point d'explosion reste caché jusqu'à l'explosion).
+ */
+export const CHAUDIERE_BW = { depart: 10, plancher: 11, max: 1000, auto: 20, decade: 10_000 };
+/** Le multiplicateur de la chaudière au bout de `ms` millisecondes de montée en pression. */
+export const multiplicateurChaudiere = (ms: number) => Math.min(CHAUDIERE_BW.max, CHAUDIERE_BW.depart * 10 ** (Math.max(0, ms) / CHAUDIERE_BW.decade));
+/** Le temps (ms) qu'il faut à la pression pour atteindre le multiplicateur `m`. */
+export const tempsChaudiere = (m: number) => Math.max(0, Math.log10(Math.min(m, CHAUDIERE_BW.max) / CHAUDIERE_BW.depart) * CHAUDIERE_BW.decade);
+/** Le multiplicateur encaissé (arrondi par défaut : au dixième sous ×100, à l'unité au-delà). */
+export const arrondiChaudiere = (m: number) => (m < 100 ? Math.floor(m * 10 + 1e-9) / 10 : Math.floor(m + 1e-9));
+export interface TirageChaudiereBW {
+  type: 'chaudiere';
+  /** Le multiplicateur où la chaudière explose (au-delà de la pleine pression : elle n'explose pas). */
+  explosion: number;
+}
+/** Le multiple gagné à la Chaudière, d'après le sifflet (null : le sifflet automatique). */
+export function gainChaudiere(t: TirageChaudiereBW, sifflet: number | null): number {
+  const cible = Math.min(sifflet ?? CHAUDIERE_BW.auto, CHAUDIERE_BW.max);
+  return cible < t.explosion ? cible : 0;
+}
+
+/**
  * LE BRAQUAGE : une seule perceuse pour tout le salon, et aucun choix. Elle perce la banque sous-sol après sous-sol ;
  * chaque sous-sol atteint vaut son multiple, le même pour tout le monde, jusqu'à ce que l'alarme sonne et que la bande
  * file avec le butin. Le premier sous-sol est toujours atteint ; le cinquième, le Coffre du Siècle, cache en plus un
@@ -480,7 +507,7 @@ export const COFFRE_DU_BARON: TableBW<number> = [
 export type TirageBonusBW =
   | { type: 'baron'; cartes: RecompenseBW[] }
   | { type: 'pickpocket'; butin: number; mallettes: number[] }
-  | TirageAiguillageBW
+  | TirageChaudiereBW
   /** etage : le sous-sol où s'arrête la perceuse (1 à 5) ; jackpot : celui du Coffre du Siècle (au 5e seulement). */
   | { type: 'braquage'; etage: number; jackpot: JackpotBW | null }
   /** decroche[k] : le tunnel (0 ou 1) où le wagon k est décroché, null pour celui qui arrive à Istanbul. */
@@ -503,8 +530,9 @@ export function tirerBonusBW(type: BonusBW, h: Hasard): TirageBonusBW {
       const butin = tirerTable(BUTIN_PICKPOCKET, h);
       return { type, butin, mallettes: melanger([butin, tirerTable(PETITES_MALLETTES, h), tirerTable(PETITES_MALLETTES, h)], h) };
     }
-    case 'aiguillage':
-      return tirerAiguillage(h);
+    case 'chaudiere':
+      // P(explosion > m) = plancher / m : u uniforme dans ]0, 1].
+      return { type, explosion: CHAUDIERE_BW.plancher / (1 - h()) };
     case 'braquage': {
       const etage = tirerTable(ARRET_BRAQUAGE, h);
       return { type, etage, jackpot: etage >= ETAGES_BRAQUAGE.length ? tirerTable(JACKPOTS_BRAQUAGE, h) : null };
@@ -551,6 +579,8 @@ export type EtapeBW =
   | 'aiguille'
   | 'trajet'
   | 'terminus'
+  | 'pression'
+  | 'explosion'
   | 'descente'
   | 'wagons'
   | 'paris'
@@ -591,6 +621,9 @@ export interface DureesBW {
   introEvasion: number;
   /** L'Aiguillage : l'affiche et la carte, chaque aiguillage (le choix), chaque trajet jusqu'à la gare, l'arrivée. */
   introAiguillage: number;
+  /** La Chaudière : l'intro, puis l'explosion (ou la pleine pression) ; la montée en pression dure ce que dit le tirage. */
+  introChaudiere: number;
+  explosion: number;
   aiguille: number;
   trajet: number;
   terminus: number;
@@ -626,6 +659,8 @@ export const DUREES_BW: DureesBW = {
   introBraquage: 2_500,
   introEvasion: 6_000,
   introAiguillage: 7_000,
+  introChaudiere: 3_000,
+  explosion: 3_000,
   aiguille: 6_000,
   trajet: 5_000,
   terminus: 7_000,
@@ -653,13 +688,13 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
       return [e('intro', d.introDonne), e('donne', d.donne), e('cartes', d.choix, NB_CARTES_BARON), e('revele', d.reveleDonne)];
     case 'pickpocket':
       return [e('intro', d.introPick), e('vol', d.vol), e('mallettes', d.choix, 3), e('revele', d.revelePick)];
-    case 'aiguillage':
-      return [
-        e('intro', d.introAiguillage),
-        ...Array.from({ length: NB_AIGUILLAGES }, () => [e('aiguille', d.aiguille, 2), e('trajet', d.trajet)]).flat(),
-        e('terminus', d.terminus),
-        e('revele', d.revele),
-      ];
+    case 'chaudiere': {
+      // La montée en pression dure jusqu'à l'explosion (au plus jusqu'à la pleine pression), au rythme de la chaudière
+      // (raccourci si les durées sont raccourcies, comme dans les tests).
+      const m = t?.type === 'chaudiere' ? t.explosion : CHAUDIERE_BW.max;
+      const pression = Math.round((tempsChaudiere(m) * d.explosion) / DUREES_EXPLOSION_REF);
+      return [e('intro', d.introChaudiere), e('pression', pression), e('explosion', d.explosion), e('revele', d.revele)];
+    }
     case 'braquage': {
       const etage = t?.type === 'braquage' ? t.etage : ETAGES_BRAQUAGE.length;
       const descente = Math.round((d.descente * descenteCasseBW(etage)) / descenteCasseBW(ETAGES_BRAQUAGE.length));
@@ -678,6 +713,8 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
       ];
   }
 }
+/** La durée de référence de l'explosion (la montée en pression suit le même rythme que les durées). */
+const DUREES_EXPLOSION_REF = 3_000;
 /** Le nombre d'options de chaque étape de choix, dans l'ordre (un choix par étape). */
 export const choixDuBonusBW = (type: BonusBW) => etapesBonusBW(type).filter((e) => e.choix > 0).map((e) => e.choix);
 
@@ -691,8 +728,11 @@ export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: numbe
       return { ...t.cartes[choix[0]] };
     case 'pickpocket':
       return { x: t.mallettes[choix[0]] };
-    case 'aiguillage':
-      return { x: gainAiguillage(t, choix) };
+    case 'chaudiere': {
+      // choix[0] : le sifflet, en centièmes de multiplicateur (0 : pas de sifflet, le sifflet automatique).
+      const x = gainChaudiere(t, choix[0] ? choix[0] / 100 : null);
+      return { x, evade: x > 0 };
+    }
     case 'braquage':
       return { x: ETAGES_BRAQUAGE[t.etage - 1], ...(t.jackpot ? { jackpot: t.jackpot, fixe: VALEUR_JACKPOT_BW[t.jackpot] } : {}) };
     case 'express':
@@ -729,9 +769,9 @@ export function esperanceBonusBW(type: BonusBW): { multipliable: number; jackpot
       return separer(TABLE_CARTES_BARON);
     case 'pickpocket':
       return { multipliable: (esperanceTable(BUTIN_PICKPOCKET) + 2 * esperanceTable(PETITES_MALLETTES)) / 3, jackpots: 0 };
-    case 'aiguillage':
-      // En suivant les conseils de l'aiguilleur (le meilleur choix en moyenne).
-      return { multipliable: esperanceAiguillage(), jackpots: 0 };
+    case 'chaudiere':
+      // Le même quel que soit le moment du sifflet (dès ×11), sifflet automatique compris.
+      return { multipliable: CHAUDIERE_BW.plancher, jackpots: 0 };
     case 'braquage': {
       const total = ARRET_BRAQUAGE.reduce((s, [, p]) => s + p, 0);
       const pSiecle = (ARRET_BRAQUAGE.find(([k]) => k === ETAGES_BRAQUAGE.length)?.[1] ?? 0) / total;
@@ -774,7 +814,7 @@ export function rtpBW(): Record<CaseBW, number> {
     x10: p('x10') * GAINS_CHIFFRES_BW.x10 * F,
     baron: bonus('baron'),
     pickpocket: bonus('pickpocket'),
-    aiguillage: bonus('aiguillage'),
+    chaudiere: bonus('chaudiere'),
     braquage: bonus('braquage'),
     express: bonus('express'),
   };
@@ -811,9 +851,8 @@ export function simulerBW(n: number, h: Hasard): SimulationBW {
     if (!estBonusBW(c)) x = GAINS_CHIFFRES_BW[c] * m;
     else {
       const t = tirerBonusBW(c, h);
-      // Au hasard (ça ne change rien en moyenne), sauf à l'Aiguillage : les conseils de l'aiguilleur.
-      const choix: number[] = [];
-      for (const q of choixDuBonusBW(c)) choix.push(t.type === 'aiguillage' ? conseilAiguillage(t, choix) : Math.floor(h() * q));
+      // Au hasard (ça ne change rien en moyenne) ; à la Chaudière, un sifflet entre ×10 et ×200.
+      const choix = t.type === 'chaudiere' ? [Math.round(arrondiChaudiere(10 * 20 ** h()) * 100)] : choixDuBonusBW(c).map((q) => Math.floor(h() * q));
       const r = recompenseBonusBW(t, choix);
       x = valeurRecompenseBW(r, m);
       if (r.jackpot) jackpots[r.jackpot]++;
@@ -876,6 +915,11 @@ export interface VueBonusBW {
    * (null tant qu'une gare sous bâche n'est pas révélée, au passage du train à son niveau).
    */
   aiguillage?: { terminus: number[]; eclairees: boolean[][]; gares: (number | null)[][] };
+  /**
+   * La Chaudière : depuis combien de temps la pression monte (ms, pendant la montée), le point d'explosion (une fois
+   * atteint ; au-delà de la pleine pression : elle n'a pas explosé), mon sifflet et ceux du salon (dans l'ordre).
+   */
+  chaudiere?: { ecoule: number | null; explosion: number | null; monSifflet: number | null; siffles: { nom: string; avatar: number; x: number; moi?: true }[] };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**

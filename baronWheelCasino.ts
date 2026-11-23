@@ -25,8 +25,8 @@ import {
   GAINS_CHIFFRES_BW,
   multiplicateurDe,
   tirerTopSlotBW,
-  conseilAiguillage,
-  NB_AIGUILLAGES,
+  arrondiChaudiere,
+  multiplicateurChaudiere,
   dureeMultiplicateursBW,
   boostsDuTopSlotBW,
   topSlotDesBoostsBW,
@@ -131,13 +131,15 @@ export function creerBaronWheel(options: {
   let minuterie: ReturnType<typeof setTimeout> | null = null;
   let enCours = false;
   let historique: VueBW['historique'] = [];
-  const depuis: VueBW['depuis'] = { baron: null, pickpocket: null, aiguillage: null, braquage: null, express: null };
+  const depuis: VueBW['depuis'] = { baron: null, pickpocket: null, chaudiere: null, braquage: null, express: null };
   let record: (NonNullable<VueBW['record']> & { jour: string }) | null = null;
 
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
   const bonusCourant = (): BonusBW | null => (tirage ? tirage.type : null);
   /** L'indice de l'étape de choix (0, 1, 2) correspondant à l'étape `k` du bonus, ou -1. */
   const rangChoix = (k: number) => (etapes[k]?.choix ? etapes.slice(0, k).filter((e) => e.choix > 0).length : -1);
+  /** La pression monte-t-elle (la Chaudière, pendant sa montée) ? */
+  const enPression = () => phase === 'bonus' && tirage?.type === 'chaudiere' && etapes[etape]?.nom === 'pression';
   /** L'étape `nom` est-elle atteinte (ou dépassée) ? */
   const atteinte = (nom: EtapeBonusBW['nom']) => {
     const k = etapes.findIndex((e) => e.nom === nom);
@@ -167,10 +169,20 @@ export function creerBaronWheel(options: {
       v.butin = atteinte('vol') ? t.butin : null;
       v.mallettes = atteinte('revele') ? t.mallettes : [null, null, null];
     }
-    if (t.type === 'aiguillage') {
-      // Les gares éclairées sont connues dès le départ ; une gare sous bâche se révèle quand le train passe à son niveau.
-      const passes = phase === 'resultat' ? NB_AIGUILLAGES : etapes.slice(0, etape + 1).filter((e) => e.nom === 'trajet').length;
-      v.aiguillage = { terminus: [...t.terminus], eclairees: t.eclairees.map((n) => [...n]), gares: t.gares.map((n, l) => n.map((x, k) => (l < passes || t.eclairees[l][k] ? x : null))) };
+    if (t.type === 'chaudiere') {
+      // Le point d'explosion reste caché jusqu'à l'explosion : la durée de la montée en pression aussi (elle le trahirait).
+      const explosee = atteinte('explosion');
+      if (!explosee) v.etapes = etapes.map((e) => (e.nom === 'pression' ? { ...e, duree: 0 } : e));
+      const siffles = tous
+        .filter((x) => x.choix[0])
+        .map((x) => ({ nom: x.nom, avatar: x.avatar, x: (x.choix[0] as number) / 100, ...(x.uid === j?.uid ? { moi: true as const } : {}) }))
+        .sort((a, b) => a.x - b.x);
+      v.chaudiere = {
+        ecoule: enPression() && fin !== null && duree !== null ? horloge() - (fin - duree) : null,
+        explosion: explosee ? t.explosion : null,
+        monSifflet: j?.choix[0] ? j.choix[0] / 100 : null,
+        siffles,
+      };
     }
     // Le Braquage : la descente se joue dès que la perceuse part (aucun choix à faire, rien à deviner).
     if (t.type === 'braquage') v.casse = atteinte('descente') ? { etage: t.etage, jackpot: t.jackpot } : null;
@@ -207,8 +219,9 @@ export function creerBaronWheel(options: {
     return {
       numero,
       phase,
-      reste: fin === null ? null : Math.max(0, fin - t),
-      duree,
+      // Pendant la montée en pression, la fin de l'étape trahirait le point d'explosion : elle n'est pas envoyée.
+      reste: fin === null || enPression() ? null : Math.max(0, fin - t),
+      duree: enPression() ? null : duree,
       angle,
       tour: tour && phase === 'tour' ? { depart: tour.depart, arrivee: tour.arrivee, ecoule: t - tour.debut, duree: tour.duree } : null,
       arret: phase === 'mises' || phase === 'multiplicateurs' ? null : arret,
@@ -322,7 +335,8 @@ export function creerBaronWheel(options: {
       tirage = tirerBonusBW(c, hasard);
       etapes = etapesBonusBW(c, D, tirage);
       etape = 0;
-      for (const j of joueurs.values()) j.choix = etapes.filter((e) => e.choix > 0).map(() => null);
+      // À la Chaudière, le seul « choix » est le sifflet (en centièmes de multiplicateur), donné pendant la montée.
+      for (const j of joueurs.values()) j.choix = c === 'chaudiere' ? [null] : etapes.filter((e) => e.choix > 0).map(() => null);
       phase = 'bonus';
       lancerEtape();
       return;
@@ -343,10 +357,7 @@ export function creerBaronWheel(options: {
     const r = rangChoix(etape);
     if (r >= 0 && tirage) {
       const n = etapes[etape].choix;
-      // À l'Aiguillage, l'aiguilleur choisit pour lui (son conseil : le meilleur choix en moyenne).
-      const t = tirage;
-      for (const j of joueurs.values())
-        if ((j.mises[t.type] ?? 0) > 0 && j.choix[r] === null) j.choix[r] = t.type === 'aiguillage' ? conseilAiguillage(t, j.choix.slice(0, r).map((x) => x ?? 0)) : Math.floor(hasard() * n);
+      for (const j of joueurs.values()) if ((j.mises[tirage.type] ?? 0) > 0 && j.choix[r] === null) j.choix[r] = Math.floor(hasard() * n);
     }
     // Avant la révélation finale, chaque joueur reçoit sa récompense (calculée une fois, versée à la fin).
     if (etapes[etape + 1]?.nom === 'revele') calculerBonus();
@@ -392,7 +403,7 @@ export function creerBaronWheel(options: {
       if (gain > 0) banque.crediter(j.uid, gain);
       const jour = jourParis(horloge());
       if (gain > 0 && (!record || record.jour !== jour || gain > record.gain)) record = { nom: j.nom, avatar: j.avatar, gain, c, jour };
-      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, aiguillage: 0, braquage: 0, express: 0 } };
+      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, chaudiere: 0, braquage: 0, express: 0 } };
       mt.manches++;
       mt.mise += mise;
       mt.gain += gain;
@@ -536,6 +547,22 @@ export function creerBaronWheel(options: {
       repondre(rappel, { ok: true });
     });
 
+    /** La Chaudière : tirer le sifflet, pour encaisser le multiplicateur du moment (une seule fois). */
+    socket.on('casino_bw_siffler', async (_data: unknown, rappel?: Rappel) => {
+      const id = await regarde(rappel);
+      if (!id) return;
+      const t = tirage;
+      if (!t || t.type !== 'chaudiere' || !enPression() || fin === null || duree === null) return erreur(rappel, 'Trop tard pour siffler.', 'Too late to whistle.');
+      const j = joueurs.get(id.uid);
+      if (!j || !(j.mises.chaudiere ?? 0)) return erreur(rappel, 'Tu n’as pas misé sur la Chaudière.', 'You did not bet on the Boiler.');
+      if (j.choix[0]) return erreur(rappel, 'Tu as déjà sifflé.', 'You have already whistled.');
+      const x = arrondiChaudiere(multiplicateurChaudiere(horloge() - (fin - duree)));
+      if (x >= t.explosion) return erreur(rappel, 'Trop tard : la chaudière a explosé !', 'Too late: the boiler blew up!');
+      j.choix[0] = Math.round(x * 100);
+      diffuser();
+      repondre(rappel, { ok: true, x });
+    });
+
     socket.on('casino_bw_journal', async (_data: unknown, rappel?: Rappel) => {
       const id = await ctx.acces(rappel);
       if (!id) return;
@@ -543,7 +570,7 @@ export function creerBaronWheel(options: {
       const journal: JournalBW = {
         manches: journaux.get(id.uid) ?? [],
         salon,
-        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, aiguillage: 0, braquage: 0, express: 0 } },
+        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, chaudiere: 0, braquage: 0, express: 0 } },
       };
       repondre(rappel, { ok: true, journal });
     });
