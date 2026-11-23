@@ -22,7 +22,6 @@ import {
   MAX_CASE_BW,
   MAX_MANCHE_BW,
   NB_CASES_BW,
-  PASSAGE_EXPRESS_BW,
   ROUE_BW,
   VALEUR_JACKPOT_BW,
   type BonusBW,
@@ -415,7 +414,7 @@ function Roue({ v, horloges, lampes, aiguille }: { v: VueBW; horloges: MutableRe
               <g
                 key={`${v.numero}-${b.i}`}
                 className={`bw-boost ${b.x >= 25 ? 'enorme' : b.x >= 10 ? 'gros' : ''}`}
-                style={{ '--k': k, '--d': `${(rang ? ARRET_TOP_SLOT.second : ARRET_TOP_SLOT.premier) + (v.topSlot?.some((t) => t.c === 'express') ? PASSAGE_EXPRESS_BW : 0)}ms` } as CSSProperties}
+                style={{ '--k': k, '--d': `${(rang ? ARRET_TOP_SLOT.second : ARRET_TOP_SLOT.premier)}ms` } as CSSProperties}
               >
                 <path className="bw-boost-lisere" d={secteur(122, 358, a1 + 0.35, a1 + DEGRES_CASE_BW - 0.35)} />
               </g>
@@ -494,76 +493,6 @@ export function LampesDecor({ lampes }: { lampes: MutableRefObject<(HTMLDivEleme
           }}
         />
       ))}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------------------------------------------
-// L'arrivée de l'Express : la locomotive sort du moyeu de la roue et fonce vers le joueur
-
-/** La porte de la boîte à fumée dans l'image de la locomotive (centre et rayon, en pixels), et la taille de l'image. */
-const LOCO_FACE = { w: 1036, h: 1341, cx: 511, cy: 657, r: 262 };
-/** Le cercle d'acier du moyeu dans son image (part de sa demi-largeur). */
-const MOYEU_ANNEAU = 205 / 210;
-
-/**
- * Quand le Top Slot tire l'Express : de la vapeur jaillit autour de la roue, la locomotive apparaît, sa porte posée
- * exactement sur le moyeu, puis elle fonce vers le joueur jusqu'à remplir l'écran ; un éclair, la vapeur, et la roue
- * revient.
- */
-export function ArriveeExpress() {
-  const [g, setG] = useState<CSSProperties | null>(null);
-  useEffect(() => {
-    // Tout se passe dans le plateau de la roue : les positions sont prises par rapport à lui.
-    const p = document.querySelector('.bw-plateau')?.getBoundingClientRect();
-    const mo = document.querySelector('.bw-rl-moyeu')?.getBoundingClientRect();
-    if (!p || !p.width) return;
-    const vw = p.width;
-    const vh = p.height;
-    const cx = mo && mo.width ? mo.left - p.left + mo.width / 2 : vw / 2;
-    const cy = mo && mo.width ? mo.top - p.top + mo.height / 2 : vh / 2;
-    const r = mo && mo.width ? (mo.width / 2) * MOYEU_ANNEAU : Math.min(vw, vh) * 0.1;
-    const w = (LOCO_FACE.w / LOCO_FACE.r) * r;
-    const h = (w * LOCO_FACE.h) / LOCO_FACE.w;
-    // À la fin, la locomotive déborde du plateau, sa porte au centre.
-    const k = Math.max((vw * 2.2) / w, (vh * 1.8) / h);
-    setG({
-      '--l': `${cx - (LOCO_FACE.cx / LOCO_FACE.w) * w}px`,
-      '--t': `${cy - (LOCO_FACE.cy / LOCO_FACE.h) * h}px`,
-      '--w': `${w}px`,
-      '--cx': `${cx}px`,
-      '--cy': `${cy}px`,
-      '--tx': `${vw / 2 - cx}px`,
-      '--ty': `${vh * 0.5 - cy}px`,
-      '--vw': `${w * 1.5}px`,
-      '--k': k,
-      '--duree': `${PASSAGE_EXPRESS_BW}ms`,
-      '--ox': `${(LOCO_FACE.cx / LOCO_FACE.w) * 100}%`,
-      '--oy': `${(LOCO_FACE.cy / LOCO_FACE.h) * 100}%`,
-    } as CSSProperties);
-    const ids = [
-      window.setTimeout(() => jouerEffet('bw_sifflet', { volume: 0.9 }), 150),
-      window.setTimeout(() => jouerEffet('bw_vapeur', { volume: 0.8 }), 250),
-      window.setTimeout(() => jouerEffet('bw_train_passe', { volume: 1 }), 1200),
-      window.setTimeout(() => jouerEffet('bw_sifflet', { volume: 1, vitesse: 0.9 }), PASSAGE_EXPRESS_BW * 0.52),
-      window.setTimeout(() => {
-        jouerEffet('bw_vapeur', { volume: 1 });
-        document.querySelector('.bw-plateau')?.animate(
-          [{ transform: 'none' }, { transform: 'translate(-6px, 4px)' }, { transform: 'translate(5px, -3px)' }, { transform: 'translate(-3px, 2px)' }, { transform: 'none' }],
-          { duration: 420, easing: 'ease-out' },
-        );
-      }, PASSAGE_EXPRESS_BW * 0.66),
-    ];
-    return () => ids.forEach((i) => window.clearTimeout(i));
-  }, []);
-  if (!g) return null;
-  return (
-    <div className="bw-arrivee" style={g} aria-hidden="true">
-      <img className="bw-arrivee-vapeur gauche" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
-      <img className="bw-arrivee-vapeur droite" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
-      <img className="bw-arrivee-loco" src="/cartes/bw-express-face.webp" alt="" draggable={false} />
-      <i className="bw-arrivee-eclair" />
-      <img className="bw-arrivee-nuage" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
     </div>
   );
 }
@@ -669,31 +598,29 @@ export function TopSlot({ v }: { v: VueBW }) {
   // Depuis combien de temps les mises sont fermées : on ne fait défiler les rouleaux que si l'on a vu le tirage commencer.
   const [depart] = useState(() => ({ numero: v.numero, ecoule: v.phase === 'multiplicateurs' && v.duree !== null && v.reste !== null ? v.duree - v.reste : Infinity }));
   const anime = !mouvementReduit() && depart.numero === v.numero ? depart.ecoule < 400 : !mouvementReduit() && v.phase === 'multiplicateurs';
-  // Si l'Express est tiré, son train traverse d'abord la gare : les rouleaux partent après lui.
-  const avance = t?.some((x) => x.c === 'express') ? PASSAGE_EXPRESS_BW : 0;
   const [etape, setEtape] = useState(0);
   useEffect(() => {
-    setEtape(avance && anime ? -1 : 0);
+    setEtape(0);
     if (!t) return;
     if (!anime) {
       setEtape(3);
       return;
     }
-    const ids = [window.setTimeout(() => setEtape(0), avance), window.setTimeout(() => setEtape(1), avance + ARRET_TOP_SLOT.premier)];
+    const ids = [window.setTimeout(() => setEtape(1), ARRET_TOP_SLOT.premier)];
     if (double) {
-      ids.push(window.setTimeout(() => setEtape(2), avance + ARRET_TOP_SLOT.premier + ARRET_TOP_SLOT.pause));
-      ids.push(window.setTimeout(() => setEtape(3), avance + ARRET_TOP_SLOT.second));
-    } else ids.push(window.setTimeout(() => setEtape(3), avance + ARRET_TOP_SLOT.premier + 100));
+      ids.push(window.setTimeout(() => setEtape(2), ARRET_TOP_SLOT.premier + ARRET_TOP_SLOT.pause));
+      ids.push(window.setTimeout(() => setEtape(3), ARRET_TOP_SLOT.second));
+    } else ids.push(window.setTimeout(() => setEtape(3), ARRET_TOP_SLOT.premier + 100));
     return () => ids.forEach((i) => window.clearTimeout(i));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [v.numero, !!t]);
 
-  const plaque = !t ? tr('Top Slot', 'Top Slot') : etape === -1 ? tr('En voiture !', 'All aboard!') : double && etape >= 1 ? tr('Double départ !', 'Double departure!') : tr('Top Slot', 'Top Slot');
+  const plaque = !t ? tr('Top Slot', 'Top Slot') : double && etape >= 1 ? tr('Double départ !', 'Double departure!') : tr('Top Slot', 'Top Slot');
   // Ce que montrent les fenêtres : les rouleaux qui défilent, ou le tirage arrêté (deux lignes au Double départ).
   let gauche: ReactNode;
   let droite: ReactNode;
-  if (!t || etape === -1) {
-    gauche = <span className="bw-ts-attente">{t ? tr('L’Express arrive…', 'The Express is coming…') : tr('Faites vos jeux', 'Place your bets')}</span>;
+  if (!t) {
+    gauche = <span className="bw-ts-attente">{tr('Faites vos jeux', 'Place your bets')}</span>;
     droite = <span className="bw-ts-attente">×?</span>;
   } else if (etape === 3 || !anime) {
     gauche = (
@@ -1206,7 +1133,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   const [fete, setFete] = useState<{ jackpot: JackpotBW; gain: number; id: number } | null>(null);
   const [palier, setPalier] = useState<{ n: number; gain: number; id: number } | null>(null);
   const [tampon, setTampon] = useState<CoupDeTampon | null>(null);
-  const [train, setTrain] = useState<number | null>(null);
   const aiguille = useRef<HTMLImageElement | null>(null);
   const minuteries = useRef<number[]>([]);
   const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
@@ -1292,12 +1218,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     const change = avant.numero !== v.numero || avant.phase !== v.phase || etapeNom(avant) !== etapeNom(v);
     if (!change) return;
     if (v.phase === 'multiplicateurs') jouerEffet('bw_cloche');
-    // Le Top Slot a tiré l'Express : l'Express du Baron sort de la roue et fonce vers le joueur, avant les rouleaux.
-    if (v.phase === 'multiplicateurs' && v.topSlot?.some((x) => x.c === 'express') && !mouvementReduit()) {
-      const id = Date.now();
-      setTrain(id);
-      plusTard(() => setTrain((x) => (x === id ? null : x)), PASSAGE_EXPRESS_BW + 200);
-    }
     // Arrêt sur une case multipliée : le contrôleur valide la plaque ×N du Top Slot d'un coup de tampon.
     if (avant.phase === 'tour' && v.phase === 'resultat' && v.arret !== null && !mouvementReduit()) {
       const x = v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1;
@@ -1458,7 +1378,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         {v && !enBonus && <LampesDecor lampes={lampes} />}
         {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} aiguille={aiguille} />)}
         {v && !enBonus && <Manometre aiguille={aiguille} />}
-        {train && !enBonus && <ArriveeExpress key={train} />}
         {!v && <div className="chargement">{erreur ?? tr('La roue arrive…', 'The wheel is coming…')}</div>}
         <span className="bw-direct">
           {tr('En direct', 'Live')}
