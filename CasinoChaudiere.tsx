@@ -20,7 +20,21 @@ import { jouerEffet, mouvementReduit } from './ui';
 import './chaudiere.css';
 
 /** Les images de la Chaudière (sans chemin ni extension), préchargées avant le bonus. */
-export const IMAGES_CHAUDIERE_NOMS = ['bw-ex-gare-depart', 'ai-train-34', 'ch-logo', 'ch-cabine', 'ch-sifflet', 'ch-mecanicien', 'ch-explosion', 'bw-mano-cadran', 'bw-mano-aiguille', 'bw-vapeur-face'];
+export const IMAGES_CHAUDIERE_NOMS = ['bw-ex-gare-depart', 'ai-train-34', 'ch-logo', 'ch-cabine-vitres', 'ch-cabine-noire', 'ch-paysage', 'ch-jet', 'ch-mano-brise', 'ch-sifflet', 'ch-mecanicien', 'ch-explosion', 'bw-mano-cadran', 'bw-mano-aiguille', 'bw-vapeur-face'];
+
+/** Les fuites de vapeur aux joints de la chaudière (position dans le décor, orientation), et la part de la montée où
+ *  chacune lâche : la première à ×100, la dernière vers ×700. */
+const FUITES: { x: number; y: number; sens: 1 | -1; r: number; seuil: number }[] = [
+  { x: 29, y: 49.5, sens: -1, r: 0, seuil: 0.5 },
+  { x: 73.8, y: 45.5, sens: 1, r: 0, seuil: 0.62 },
+  { x: 32.2, y: 21, sens: -1, r: 22, seuil: 0.75 },
+  { x: 68.2, y: 22, sens: 1, r: -22, seuil: 0.85 },
+  { x: 37.5, y: 77, sens: -1, r: -18, seuil: 0.93 },
+];
+/** Les paliers du compteur : un éclat et une cloche à chacun. */
+const PALIERS = [50, 100, 200, 500];
+/** Largeur d'un motif du paysage, en hauteur de la bande des fenêtres. */
+const MOTIF_PAYSAGE = 225 / 420;
 
 const fmt = (x: number) => `×${x.toLocaleString(tr('fr-FR', 'en-US'), { maximumFractionDigits: x < 100 ? 1 : 0, minimumFractionDigits: x < 100 ? 1 : 0 })}`;
 /** La part de la montée (0 à 1) : l'échelle du manomètre est logarithmique, de ×10 à ×1 000. */
@@ -44,6 +58,9 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
   }
   const [m, setM] = useState<number>(CHAUDIERE_BW.depart);
   const affiche = fin ? Math.min(explosion ?? CHAUDIERE_BW.max, CHAUDIERE_BW.max) : montee ? m : CHAUDIERE_BW.depart;
+  const valeur = arrondiChaudiere(affiche);
+  const p = part(affiche);
+  const arret = fin && explosee;
   useEffect(() => {
     if (!montee) return;
     let raf = 0;
@@ -54,6 +71,76 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
     raf = requestAnimationFrame(pas);
     return () => cancelAnimationFrame(raf);
   }, [montee, cle]);
+
+  // Le paysage défile derrière les fenêtres, de plus en plus vite ; il s'arrête net à l'explosion.
+  const cadre = useRef<HTMLDivElement>(null);
+  const vitesse = useRef(0);
+  vitesse.current = montee ? p : 0;
+  useEffect(() => {
+    if (arret || mouvementReduit()) return;
+    let raf = 0;
+    let x = 0;
+    let avant = performance.now();
+    const pas = (n: number) => {
+      const el = cadre.current;
+      if (el) {
+        const h = el.offsetHeight * 0.45;
+        const q = vitesse.current;
+        x = (x + ((n - avant) / 1000) * h * (0.5 + 9 * q * q)) % Math.max(1, h * MOTIF_PAYSAGE);
+        el.style.setProperty('--defile', `${x.toFixed(1)}px`);
+      }
+      avant = n;
+      raf = requestAnimationFrame(pas);
+    };
+    raf = requestAnimationFrame(pas);
+    return () => cancelAnimationFrame(raf);
+  }, [arret]);
+
+  // Les paliers du compteur (×50, ×100, ×200, ×500) : la cloche sonne.
+  const nPalier = PALIERS.filter((s) => valeur >= s).length;
+  const palierVu = useRef({ cle: '', n: 0 });
+  useEffect(() => {
+    if (palierVu.current.cle !== cle) palierVu.current = { cle, n: nPalier };
+    else if (montee && nPalier > palierVu.current.n) jouerEffet('bw_cloche', { volume: 0.55 });
+    palierVu.current.n = nPalier;
+  }, [nPalier, cle, montee]);
+  const matiere = valeur >= 200 ? 'rouge' : valeur >= 50 ? 'or' : 'argent';
+
+  // Les fuites de vapeur : un joint lâche de temps en temps quand la pression devient folle.
+  const fuites = montee || (fin && !explosee) ? FUITES.filter((f) => p >= f.seuil) : [];
+  const nFuites = useRef(0);
+  useEffect(() => {
+    if (montee && fuites.length > nFuites.current) jouerEffet('bw_vapeur', { volume: 0.55 });
+    nFuites.current = fuites.length;
+  }, [fuites.length, montee]);
+
+  // Les autres qui sifflent : une bouffée de vapeur et leur portrait s'envolent, en direct.
+  const siffles = c?.siffles ?? [];
+  const [bulles, setBulles] = useState<{ id: number; avatar: number; nom: string; x: number; gx: number; gy: number }[]>([]);
+  const vus = useRef({ cle: '', n: 0, id: 0, son: 0 });
+  useEffect(() => {
+    const vu = vus.current;
+    if (vu.cle !== cle) {
+      vu.cle = cle;
+      vu.n = siffles.length;
+      return;
+    }
+    const nouveaux = siffles.slice(vu.n).filter((s) => !s.moi);
+    vu.n = Math.max(vu.n, siffles.length);
+    if (!montee || !nouveaux.length) return;
+    const ajout = nouveaux.slice(-3).map((s) => {
+      const gauche = (vu.id += 1) % 2 === 0;
+      return { id: vu.id, avatar: s.avatar, nom: s.nom, x: s.x, gx: (gauche ? 8 : 50) + Math.random() * 10, gy: 24 + Math.random() * 24 };
+    });
+    setBulles((l) => [...l, ...ajout].slice(-4));
+    const n = performance.now();
+    if (n - vu.son > 350) {
+      vu.son = n;
+      jouerEffet('bw_sifflet', { volume: 0.3 });
+    }
+    const ids = ajout.map((a) => a.id);
+    window.setTimeout(() => setBulles((l) => l.filter((b2) => !ids.includes(b2.id))), 1900);
+  }, [siffles.length, cle, montee]);
 
   // Les sons : le sifflement de la pression, de plus en plus aigu ; l'explosion ou le grand sifflet.
   const dernier = useRef(0);
@@ -107,7 +194,6 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
   useEffect(() => setDehors(document.getElementById('ch-commande')), [nom]);
   const sous = (n: ReactNode) => (dehors ? createPortal(n, dehors) : n);
 
-  const p = part(affiche);
   const reduit = mouvementReduit();
   const style = { '--p': p, '--secousse': reduit || !montee ? 0 : p, '--t0': `${-t0}ms` } as CSSProperties;
   const aiguille = -124 + 248 * p;
@@ -129,11 +215,34 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
         </div>
       )}
       {/* La cabine : le manomètre géant dans le hublot de la chaudière ; le cadre garde les proportions du décor. */}
-      <div className="ch-cadre">
-        <img className="ch-cabine" src="/cartes/ch-cabine.webp" alt="" draggable={false} />
+      <div className="ch-cadre" ref={cadre}>
+        {/* Le paysage de nuit, derrière les fenêtres (à gauche il file vers l'arrière, à droite aussi, dans l'autre sens). */}
+        <i className="ch-defile g" aria-hidden="true" />
+        <i className="ch-defile d" aria-hidden="true" />
+        <img className="ch-cabine" src="/cartes/ch-cabine-vitres.webp" alt="" draggable={false} />
+        {/* Le foyer, qui s'emballe avec la pression (orange, puis blanc). */}
+        <img className="ch-foyer" src="/cartes/ch-cabine-vitres.webp" alt="" draggable={false} aria-hidden="true" />
+        <i className="ch-foyer-lueur" aria-hidden="true" />
+        {arret && <img className="ch-cabine-noire" src="/cartes/ch-cabine-noire.webp" alt="" draggable={false} />}
+        {fuites.map((f, k) => (
+          <img key={k} className="ch-fuite" src="/cartes/ch-jet.webp" alt="" draggable={false} style={{ '--x': `${f.x}%`, '--y': `${f.y}%`, '--sens': f.sens, '--r': `${f.r}deg` } as CSSProperties} />
+        ))}
+        {/* Mon coup de sifflet : deux jets de vapeur au sommet de la chaudière. */}
+        {monSifflet !== null && !arret && (
+          <span className="ch-jets-sifflet" key={`j-${cle}`} aria-hidden="true">
+            <img src="/cartes/ch-jet.webp" alt="" draggable={false} style={{ '--x': '39%', '--y': '5%', '--sens': -1, '--r': '18deg' } as CSSProperties} />
+            <img src="/cartes/ch-jet.webp" alt="" draggable={false} style={{ '--x': '61%', '--y': '5%', '--sens': 1, '--r': '-18deg' } as CSSProperties} />
+          </span>
+        )}
         <div className="ch-mano">
-          <img className="ch-mano-cadran" src="/cartes/bw-mano-cadran.webp" alt="" draggable={false} />
-          <img className="ch-mano-aiguille" src="/cartes/bw-mano-aiguille.webp" alt="" draggable={false} style={{ transform: `rotate(${aiguille}deg)` }} />
+          {arret ? (
+            <img className="ch-mano-brise" src="/cartes/ch-mano-brise.webp" alt="" draggable={false} />
+          ) : (
+            <>
+              <img className="ch-mano-cadran" src="/cartes/bw-mano-cadran.webp" alt="" draggable={false} />
+              <img className="ch-mano-aiguille" src="/cartes/bw-mano-aiguille.webp" alt="" draggable={false} style={{ transform: `rotate(${aiguille}deg)` }} />
+            </>
+          )}
         </div>
       </div>
       <div className="ch-lueur" aria-hidden="true" />
@@ -144,9 +253,21 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
       </div>
 
       <div className="ch-compteur" role="status" aria-live="off">
-        <strong>{fmt(arrondiChaudiere(affiche))}</strong>
+        {montee && nPalier > 0 && <i key={`f-${nPalier}`} className="ch-palier-flash" aria-hidden="true" />}
+        <strong key={`p-${nPalier}`} className={`${matiere} ${montee && nPalier > 0 ? 'palier' : ''}`}>
+          {fmt(valeur)}
+        </strong>
         {M > 1 && <small>{tr(`× ${M} (roue)`, `× ${M} (wheel)`)}</small>}
+        {monSifflet !== null && <em className="ch-encaisse">{tr(`Encaissé ${fmt(monSifflet)}`, `Cashed ${fmt(monSifflet)}`)}</em>}
       </div>
+
+      {bulles.map((u) => (
+        <div key={u.id} className="ch-bulle" style={{ '--x': `${u.gx}%`, '--y': `${u.gy}%` } as CSSProperties} aria-hidden="true">
+          <img className="ch-bulle-vapeur" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
+          <img className="ch-bulle-avatar" src={`/cartes/avatar-${u.avatar}.webp`} alt="" draggable={false} />
+          <b>{fmt(u.x)}</b>
+        </div>
+      ))}
 
       {nom === 'intro' && <p className="ch-consigne">{tr('Tire le sifflet avant que la chaudière explose !', 'Pull the whistle before the boiler blows!')}</p>}
 

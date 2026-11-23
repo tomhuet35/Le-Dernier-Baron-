@@ -16,18 +16,60 @@
 /* La cabine (16:9, couvre le cadre) et le manomètre géant posé dans le hublot de la chaudière ; il tremble de plus en
    plus fort. */
 .ch-cadre { --lc: max(100cqw, 177.78cqh); position: absolute; left: 50%; top: 50%; width: var(--lc); height: calc(var(--lc) * 0.5625); translate: -50% -50%; animation: ch-cadre-tremble 0.11s steps(2) infinite; }
-@keyframes ch-cadre-tremble { 50% { transform: translate(calc(var(--secousse) * var(--secousse) * 3px), calc(var(--secousse) * var(--secousse) * -2px)); } }
+@keyframes ch-cadre-tremble { 50% { transform: translate(calc(var(--secousse) * var(--secousse) * 7px), calc(var(--secousse) * var(--secousse) * -5px)) rotate(calc(var(--secousse) * var(--secousse) * 0.35deg)); } }
 .ch-cabine { position: absolute; inset: 0; width: 100%; height: 100%; filter: brightness(calc(0.75 + var(--p) * 0.35)) saturate(calc(1 + var(--p) * 0.3)); }
+/* Le paysage derrière les fenêtres (la cabine est percée à leur place). */
+.ch-defile { position: absolute; top: 15%; height: 45%; width: 23%; background: url('/cartes/ch-paysage.webp') repeat-x 0 0 / auto 100%; filter: brightness(0.72) blur(calc(var(--p) * 2.5px)); }
+.ch-defile.g { left: 0; background-position-x: calc(var(--defile, 0px) * -1); }
+.ch-defile.d { right: 0; background-position-x: var(--defile, 0px); }
+/* Le foyer : la même image, découpée à l'ouverture du foyer, qui s'embrase et palpite de plus en plus vite. */
+.ch-foyer { position: absolute; inset: 0; width: 100%; height: 100%; clip-path: inset(70.5% 43% 5.5% 43% round 4% 4% 0 0); filter: brightness(calc(1.05 + var(--p) * 0.9)) saturate(calc(1.1 + var(--p) * 0.6)) contrast(calc(1 + var(--p) * 0.2)); animation: ch-flamme calc(0.75s - var(--p) * 0.5s) ease-in-out infinite alternate; }
+@keyframes ch-flamme { from { opacity: 0.55; } to { opacity: 1; } }
+.ch-foyer-lueur { position: absolute; left: 50%; top: 81%; width: calc(26% + var(--p) * 22%); aspect-ratio: 1.3; translate: -50% -50%; border-radius: 50%; mix-blend-mode: screen; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, rgba(235, 240, 255, 0.95) calc(clamp(0, (var(--p) - 0.75) * 4, 1) * 100%), rgba(255, 140, 40, calc(0.35 + var(--p) * 0.5))), transparent);
+  animation: ch-flamme calc(0.6s - var(--p) * 0.4s) ease-in-out infinite alternate; }
+/* Les fuites : le jet part du joint (bord gauche de l'image), jaillit, puis souffle. */
+.ch-fuite, .ch-jets-sifflet img { position: absolute; left: var(--x); top: var(--y); width: 24%; height: auto; max-width: none; translate: 0 -42.7%; transform-origin: 0 42.7%; transform: rotate(var(--r)) scaleX(var(--sens)); pointer-events: none; animation: ch-jaillit 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both, ch-souffle 0.18s ease-in-out 0.45s infinite alternate; }
+@keyframes ch-jaillit { from { scale: 0.05 0.3; } }
+@keyframes ch-souffle { from { opacity: 0.95; } to { opacity: 0.65; } }
+.ch-jets-sifflet img { width: 34%; animation: ch-jet-sifflet 1.8s ease-out both; }
+@keyframes ch-jet-sifflet { 0% { scale: 0.05 0.3; opacity: 1; } 25% { scale: 1 1; opacity: 1; } 100% { scale: 1.25 1.4; opacity: 0; } }
+/* Après l'explosion : la cabine noircie de suie apparaît quand la fumée retombe. */
+.ch-cabine-noire { position: absolute; inset: 0; width: 100%; height: 100%; filter: brightness(0.85); animation: ch-noircit 1.4s ease-in 0.8s both; }
+@keyframes ch-noircit { from { opacity: 0; } }
+.ch.explosee .ch-foyer, .ch.explosee .ch-foyer-lueur { opacity: 0.35; animation: none; }
 .ch-mano { position: absolute; left: 50%; top: 26%; width: 19.7%; aspect-ratio: 1; translate: -50% -50%; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.8)); animation: ch-tremble 0.09s steps(2) infinite; }
 @keyframes ch-tremble { 50% { transform: translate(calc(var(--secousse) * 4px), calc(var(--secousse) * -3px)) rotate(calc(var(--secousse) * 0.8deg)); } }
 .ch-mano-cadran { position: absolute; inset: 0; width: 100%; height: 100%; }
-.ch-mano-aiguille { position: absolute; left: 50%; top: 50%; width: 9%; height: auto; translate: -50% -71.8%; transform-origin: 50% 71.8%; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6)); }
+.ch-mano-aiguille { position: absolute; left: 50%; top: 50%; width: 9%; height: auto; translate: -50% -71.8%; transform-origin: 50% 71.8%; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6)); animation: ch-aiguille 0.07s steps(2) infinite; }
+@keyframes ch-aiguille { 50% { rotate: calc(var(--secousse) * var(--secousse) * 4deg); } }
+/* Le manomètre éclate : sa vitre vole en morceaux. */
+.ch-mano-brise { position: absolute; left: -0.3%; top: -5.2%; width: 113.6%; height: auto; max-width: none; animation: ch-brise 0.9s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+@keyframes ch-brise { 0% { transform: scale(1.35); filter: brightness(3); } 12% { transform: scale(1.12) rotate(-5deg) translate(2%, -1%); } 24% { transform: scale(1.04) rotate(3deg) translate(-1%, 1%); } 40% { transform: rotate(-1.5deg); } 100% { transform: rotate(-2deg); filter: brightness(0.9); } }
 .ch.danger .ch-mano::after { content: ''; position: absolute; inset: -6%; border-radius: 50%; box-shadow: 0 0 calc(10px + var(--p) * 40px) rgba(255, 60, 30, 0.8); animation: ch-clignote 0.35s ease-in-out infinite alternate; }
 @keyframes ch-clignote { to { opacity: 0.3; } }
 
 /* Le multiplicateur. */
 .ch-compteur { position: absolute; left: 50%; top: calc(50% - min(100cqh, 56.25cqw) * 0.5 + min(100cqh, 56.25cqw) * 0.43); z-index: 3; translate: -50% 0; display: grid; justify-items: center; }
 .ch-compteur strong { font-family: var(--titre); font-weight: 400; font-size: clamp(30px, min(12cqw, 15cqh), 80px); line-height: 1; color: color-mix(in srgb, #ff5a3a calc(var(--p) * 100%), #ffd774); text-shadow: 0 0 calc(10px + var(--p) * 30px) rgba(255, 160, 80, 0.9), 0 4px 8px #000; }
+/* La matière du compteur : argent jusqu'à ×50, or jusqu'à ×200, puis rouge incandescent ; un éclat à chaque palier. */
+.ch-compteur strong.argent, .ch-compteur strong.or, .ch-compteur strong.rouge { -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; text-shadow: none; -webkit-text-stroke: 1px rgba(40, 18, 6, 0.55); }
+.ch-compteur strong.argent { background-image: linear-gradient(180deg, #ffffff 8%, #eef1f5 42%, #b4bcc7 54%, #ffffff 92%); filter: drop-shadow(0 0 8px rgba(210, 225, 255, 0.55)) drop-shadow(0 4px 5px #000); }
+.ch-compteur strong.or { background-image: linear-gradient(180deg, #fffbe6 8%, #ffe08a 42%, #e3a83c 55%, #fff1bd 92%); filter: drop-shadow(0 0 12px rgba(255, 200, 90, 0.75)) drop-shadow(0 4px 5px #000); }
+.ch-compteur strong.rouge { background-image: linear-gradient(180deg, #fff3d6 6%, #ffb347 38%, #ff3d14 58%, #ffc27a 94%); filter: drop-shadow(0 0 calc(12px + var(--p) * 18px) rgba(255, 80, 30, 0.95)) drop-shadow(0 4px 5px #000); animation: ch-incandescent 0.4s ease-in-out infinite alternate; }
+@keyframes ch-incandescent { to { filter: drop-shadow(0 0 6px rgba(255, 80, 30, 0.6)) drop-shadow(0 4px 5px #000); } }
+.ch-compteur strong.palier { animation: ch-palier 0.55s cubic-bezier(0.3, 1.7, 0.5, 1) both; }
+.ch-compteur strong.rouge.palier { animation: ch-palier 0.55s cubic-bezier(0.3, 1.7, 0.5, 1) both, ch-incandescent 0.4s ease-in-out 0.55s infinite alternate; }
+@keyframes ch-palier { 0% { scale: 1.6; } 100% { scale: 1; } }
+.ch-palier-flash { position: absolute; left: 50%; top: 36%; width: 120%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; background: radial-gradient(closest-side, rgba(255, 240, 200, 0.9), rgba(255, 190, 80, 0.35) 45%, transparent 70%); animation: ch-palier-flash 0.7s ease-out both; }
+@keyframes ch-palier-flash { from { scale: 0.2; opacity: 1; } to { scale: 1.8; opacity: 0; } }
+.ch-encaisse { margin-top: 4px; padding: 2px 14px; border-radius: 99px; border: 2px solid #fff1c4; background: linear-gradient(180deg, #ffe9a0, #b8862b); color: #2a1405; font-style: normal; font-weight: 900; font-size: clamp(12px, 3.4cqw, 16px); box-shadow: 0 0 16px rgba(255, 210, 110, 0.8), 0 4px 8px #000; animation: ch-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+/* Les autres qui sifflent : leur portrait s'envole dans une bouffée de vapeur. */
+.ch-bulle { position: absolute; left: var(--x); top: var(--y); z-index: 4; display: grid; justify-items: center; gap: 2px; pointer-events: none; animation: ch-bulle 1.8s ease-out both; }
+@keyframes ch-bulle { 0% { opacity: 0; transform: translateY(24px) scale(0.5); } 14% { opacity: 1; transform: scale(1.08); } 24% { transform: none; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-70px) scale(0.9); } }
+.ch-bulle-vapeur { position: absolute; left: 50%; top: 50%; width: 260%; height: auto; max-width: none; translate: -50% -50%; opacity: 0.7; z-index: -1; }
+.ch-bulle-avatar { width: clamp(32px, 9cqw, 48px); height: clamp(32px, 9cqw, 48px); border-radius: 50%; object-fit: cover; border: 2px solid #ffd774; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7); }
+.ch-bulle b { padding: 0 8px; border-radius: 99px; background: rgba(12, 6, 4, 0.85); font-family: var(--titre); font-weight: 400; font-size: clamp(13px, 3.6cqw, 18px); color: #b8f0b4; }
 .ch-compteur small { margin-top: 2px; padding: 0 10px; border-radius: 99px; background: rgba(140, 24, 18, 0.9); font-weight: 900; font-size: 12px; }
 .ch-consigne { position: absolute; left: 50%; top: 50%; translate: -50% -50% !important; z-index: 4; translate: -50% 0; width: max-content; max-width: 90%; margin: 0; padding: 8px 16px; border-radius: 14px; border: 2px solid #ffd774; background: rgba(12, 6, 4, 0.9); text-align: center; font-weight: 800; font-size: clamp(13px, 3.8cqw, 18px); animation: ch-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
 @keyframes ch-pop { from { transform: scale(0.4); opacity: 0; } }
@@ -79,8 +121,7 @@
 .ch.intro .ch-consigne { animation-delay: calc(5.6s + var(--t0, 0ms)); z-index: 8; }
 
 /* L'explosion, ou la pleine pression. */
-.ch.explosee .ch-mano { animation: ch-explose 0.6s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
-@keyframes ch-explose { 0% { transform: scale(1); } 30% { transform: scale(1.25) rotate(-6deg); filter: brightness(3); } 100% { transform: scale(0.85) rotate(14deg) translateY(12%); opacity: 0.25; filter: grayscale(1) brightness(0.5); } }
+.ch.explosee .ch-mano { animation: none; }
 .ch-fin { position: absolute; inset: 0; z-index: 6; display: grid; place-content: center; justify-items: center; gap: 6px; text-align: center; pointer-events: none; }
 .ch-fin.boum { animation: ch-flash 1.2s ease-out both; }
 @keyframes ch-flash { 0% { background: rgba(255, 250, 230, 0.95); } 25% { background: rgba(255, 140, 60, 0.6); } 100% { background: rgba(10, 4, 2, 0.55); } }
@@ -89,18 +130,19 @@
 .ch-fin.pleine strong { color: #ffe08a; }
 .ch-fin.pleine { background: radial-gradient(circle, rgba(255, 220, 130, 0.35), transparent 60%); }
 .ch-nuage { position: absolute; left: 50%; top: 50%; width: 170%; height: auto; max-width: none; translate: -50% -50%; animation: ch-nuage 2.4s ease-out both; }
-@keyframes ch-nuage { from { transform: scale(0.2); opacity: 0.8; } 40% { opacity: 0.6; } to { transform: scale(1.4); opacity: 0.2; } }
-.ch-eclats { position: absolute; left: 50%; top: 50%; width: 110%; height: auto; max-width: none; translate: -50% -50%; mix-blend-mode: screen; animation: ch-eclats 2.4s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
-@keyframes ch-eclats { 0% { transform: scale(0.2) rotate(-8deg); opacity: 1; } 35% { transform: scale(1) rotate(0deg); opacity: 1; } 100% { transform: scale(1.25) rotate(6deg); opacity: 0.85; } }
+@keyframes ch-nuage { from { transform: scale(0.2); opacity: 0.8; } 40% { opacity: 0.6; } to { transform: scale(1.5); opacity: 0; } }
+.ch-eclats { position: absolute; left: 50%; top: 50%; width: 110%; height: auto; max-width: none; translate: -50% -50%; mix-blend-mode: screen; animation: ch-eclats 2.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+@keyframes ch-eclats { 0% { transform: scale(0.2) rotate(-8deg); opacity: 1; } 35% { transform: scale(1) rotate(0deg); opacity: 1; } 60% { opacity: 0.9; } 100% { transform: scale(1.4) rotate(8deg); opacity: 0; } }
 
 .ch.revele .ch-fin { place-content: start center; padding-top: 18%; }
 .ch.revele .ch-fin.boum { animation: none; background: rgba(10, 4, 2, 0.55); }
 
 @media (prefers-reduced-motion: reduce) {
   .ch *, .ch { animation: none !important; }
+  .ch-eclats, .ch-nuage { display: none; }
 }
 /* Pendant la montée en pression, le titre du bonus s'efface (le manomètre occupe le haut). */
-.bw-bonus.chaudiere:has(.ch.pression) .bw-bonus-titre, .bw-bonus.chaudiere:has(.ch.explosion) .bw-bonus-titre { display: none; }
+.bw-bonus.chaudiere:has(.ch.pression) .bw-bonus-titre, .bw-bonus.chaudiere:has(.ch.explosion) .bw-bonus-titre, .bw-bonus.chaudiere:has(.ch.revele) .bw-bonus-titre { display: none; }
 /* Le logo, pendant l'arrivée du train. */
 .ch-logo { position: absolute; left: 50%; top: 16%; width: min(62%, 460px); height: auto; translate: -50% 0; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.85)); animation: ch-logo 6.5s ease-out var(--t0) both; }
 @keyframes ch-logo { 0% { opacity: 0; transform: scale(0.4); } 6% { opacity: 1; transform: scale(1.06); } 9% { transform: none; } 40% { opacity: 1; } 50%, 100% { opacity: 0; transform: translateY(-20%); } }
@@ -131,3 +173,5 @@
 .ch-commandes.dehors .ch-auto { position: static; translate: none; order: 2; }
 .ch-commandes.dehors .ch-sifflet b { font-size: clamp(26px, 8vw, 40px); }
 .ch-commandes.dehors.intro .ch-sifflet { opacity: 0.55; animation: none; }
+/* Après l'explosion, le compteur s'efface : le message dit à combien elle a sauté. */
+.ch.explosee .ch-compteur { opacity: 0; transition: opacity 0.3s; }
