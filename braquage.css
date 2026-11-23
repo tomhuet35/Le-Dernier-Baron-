@@ -221,3 +221,7 @@
 @media (prefers-reduced-motion: reduce) {
   .brq-affiche-reflet, .brq-scintille i, .brq-rouge, .brq-rouge::before, .brq-siecle-rayons, .brq-siecle.ferme .brq-porte, .brq-siecle.ouvert .brq-siecle-lumiere, .brq-fin-image, .brq-fuite-cadre img, .brq-sirene.sonne, .brq-alveole.perce { animation: none; }
 }
+
+/* L'intro : l'affiche seule, au centre (sans explications). */
+.brq-affiche { left: 50% !important; top: 50% !important; bottom: auto !important; height: min(calc(100% - 70px), 92cqw * 1094 / 1000) !important; width: auto !important; margin-top: 24px; transform: translate(-50%, -50%) !important; animation-name: brq-affiche-seule !important; }
+@keyframes brq-affiche-seule { from { opacity: 0; transform: translate(-50%, -50%) rotate(-4deg) scale(0.82); } }

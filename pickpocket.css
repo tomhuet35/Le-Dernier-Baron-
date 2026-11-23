@@ -113,3 +113,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pp-affiche-reflet, .pp-chapeau > img { animation: none !important; }
 }
+
+/* L'intro : l'affiche seule, au centre (sans explications). */
+.pp-affiche { left: 50% !important; top: 50% !important; bottom: auto !important; height: min(calc(100% - 70px), 92cqw * 1315 / 1196) !important; width: auto !important; margin-top: 24px; transform: translate(-50%, -50%) !important; animation-name: pp-affiche-seule !important; }
+@keyframes pp-affiche-seule { from { opacity: 0; transform: translate(-50%, -50%) rotate(-4deg) scale(0.82); } }

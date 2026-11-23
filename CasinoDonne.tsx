@@ -317,28 +317,6 @@ export function BonusDonne({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueBon
               </span>
             )}
           </div>
-          <div className="gd-infos">
-            <div className="gd-accroche">
-              <strong>{tr('Neuf cartes, une seule pour toi', 'Nine cards, only one for you')}</strong>
-              <span>{tr('Le Baron mélange et distribue : choisis ta carte. Chacune cache un multiple… et la carte du Baron, un jackpot !', 'The Baron shuffles and deals: pick your card. Each hides a multiplier… and the Baron’s card, a jackpot!')}</span>
-            </div>
-            <ul className="gd-valeurs">
-              {gains.map((x, i) => (
-                <li key={x} style={{ '--i': i } as CSSProperties}>
-                  <ValeurMultipliee x={x} m={M} rapide />
-                </li>
-              ))}
-              <li className="baron" style={{ '--i': gains.length } as CSSProperties}>
-                <img src={IMG('carte-baron')} alt="" draggable={false} />
-                <span>
-                  <small>{tr('La carte du Baron', 'The Baron’s card')}</small>
-                  <strong>
-                    JACKPOT {fx(VALEUR_JACKPOT_BW.mini)} → {fx(VALEUR_JACKPOT_BW.grand)}
-                  </strong>
-                </span>
-              </li>
-            </ul>
-          </div>
         </div>
       )}
 

@@ -472,37 +472,6 @@ export function BonusPickpocket({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
               </span>
             )}
           </div>
-          <div className="pp-infos">
-            <div className="pp-accroche">
-              <strong>{tr('Trois chapeaux, un seul collier', 'Three hats, one necklace')}</strong>
-              <span>{tr('Le Pickpocket vole un collier au bal, le cache sous l’un des trois chapeaux et les mélange : à toi de le retrouver !', 'The Pickpocket steals a necklace at the ball, hides it under one of three hats and shuffles them: find it!')}</span>
-            </div>
-            <ul className="pp-liste">
-              <li className="collier">
-                <img src={IMG('collier')} alt="" draggable={false} />
-                <span>
-                  <strong>{tr('Le collier', 'The necklace')}</strong>
-                  <small>{tr('Sous un seul chapeau', 'Under one hat only')}</small>
-                </span>
-                <b>
-                  <ValeurMultipliee x={Math.min(...butin)} m={M} rapide /> → <ValeurMultipliee x={Math.max(...butin)} m={M} rapide />
-                </b>
-              </li>
-              <li>
-                <span className="pp-liste-duo">
-                  <img src={IMG('montre')} alt="" draggable={false} />
-                  <img src={IMG('bague')} alt="" draggable={false} />
-                </span>
-                <span>
-                  <strong>{tr('La montre, la bague', 'The watch, the ring')}</strong>
-                  <small>{tr('Sous les deux autres', 'Under the other two')}</small>
-                </span>
-                <b>
-                  <ValeurMultipliee x={Math.min(...petitsGains)} m={M} rapide /> → <ValeurMultipliee x={Math.max(...petitsGains)} m={M} rapide />
-                </b>
-              </li>
-            </ul>
-          </div>
         </div>
       )}
 

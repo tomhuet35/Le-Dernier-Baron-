@@ -1066,14 +1066,6 @@ function useChargement(type: BonusBW): number {
   return Math.min(1, prets / IMAGES_BONUS_BW[type].length);
 }
 
-const ASTUCES_BONUS: Record<BonusBW, [string, string]> = {
-  baron: ['Le Baron mélange et distribue neuf cartes : choisis la tienne. La carte du Baron cache un jackpot.', 'The Baron shuffles and deals nine cards: pick yours. The Baron’s card hides a jackpot.'],
-  pickpocket: ['Le Pickpocket vole un collier au bal et le cache sous l’un des trois chapeaux : à toi de le retrouver\u00a0!', 'The Pickpocket steals a necklace at the ball and hides it under one of three hats: find it!'],
-  aiguillage: ['Trois aiguillages jusqu’au terminus : à gauche ou à droite ? Les gares éclairées montrent leur prime, les bâches cachent une surprise.', 'Three switches to the terminus: left or right? Lit stations show their bonus, tarps hide a surprise.'],
-  braquage: ['Une seule perceuse pour tout le salon : plus elle descend, plus le butin grossit… jusqu’à l’alarme.', 'One drill for the whole room: the deeper it goes, the bigger the loot… until the alarm.'],
-  express: ['5 wagons au départ de Paris : un seul arrivera à Istanbul et ouvrira le Coffre du Baron.', '5 carriages leave Paris: only one will reach Istanbul and open the Baron’s Safe.'],
-};
-
 /** L'écran de chargement d'un mini-jeu. */
 function EcranChargement({ b, part }: { b: VueBonusBW; part: number }) {
   return (
@@ -1086,7 +1078,6 @@ function EcranChargement({ b, part }: { b: VueBonusBW; part: number }) {
         <i style={{ transform: `scaleX(${Math.max(0.04, part)})` }} />
       </span>
       <span className="bw-chargement-etat">{part < 1 ? tr(`Chargement… ${Math.round(part * 100)} %`, `Loading… ${Math.round(part * 100)}%`) : tr('Prêt\u00a0!', 'Ready!')}</span>
-      <p>{tr(...ASTUCES_BONUS[b.type])}</p>
     </div>
   );
 }
