@@ -85,17 +85,28 @@ const GARES: Record<string, { ville: [string, string]; gare: string; image: stri
 /** Le train repart 2,2 s avant la fin d'une gare et met 2,4 s à prendre sa vitesse. */
 const DEPART = 2200;
 const ACCEL = 2400;
-const FREIN: Record<string, number> = { venise: 2600, istanbul: 3200 };
+/** Le freinage à l'arrivée en gare : il commence dans le tunnel, et le train s'arrête une fois sorti, la gare glissant
+ *  jusqu'à lui pendant qu'on retrouve le jour (début et durée, en ms). */
+const FREIN: Record<string, { debut: number; duree: number }> = { venise: { debut: 1300, duree: 2700 }, istanbul: { debut: 1300, duree: 3000 } };
+const finFrein = (nom: string) => (FREIN[nom] ? FREIN[nom].debut + FREIN[nom].duree : 0);
 /** Les coffres d'une gare : début de la série, et le temps laissé pour lire les butins avant le départ. */
-const COFFRES: Record<'paris' | 'venise', number> = { paris: 900, venise: 3100 };
+const COFFRES: Record<'paris' | 'venise', number> = { paris: 900, venise: 4300 };
 const LECTURE = 900;
 /** L'embuscade : la police apparaît, puis chaque wagon visé est dévié (« CLAC ») l'un après l'autre. */
 const EMBUSCADE = { alerte: 3000, captures: [5400, 8400], approche: 2700, deviation: 3200, fin: 1500 };
 const instantCapture = (i: number) => EMBUSCADE.captures[i] ?? EMBUSCADE.captures[0] + i * 3200;
 /** Istanbul : le panneau Terminus, le Coffre du Baron qui arrive et tremble, qui s'ouvre, puis son butin qui monte. */
-const ISTANBUL = { terminus: 3300, coffre: 5000, ouverture: 6700, compte: 1900 };
+const ISTANBUL = { terminus: 4400, coffre: 6000, ouverture: 7700, compte: 1900 };
 /** Entre deux décors, le train passe un tunnel : l'obscurité monte, les lampes défilent, puis le nouveau décor apparaît. */
-const TUNNEL = { duree: 2800, sortie: 1750 };
+const TUNNEL = { duree: 2800, entree: 340, sortie: 1750 };
+/** L'obscurité du tunnel (0 : le jour, 1 : le noir) à l'instant τ de l'étape : elle tombe vite, puis le jour revient
+ *  progressivement. Le voile du tunnel, l'éclairage du train et l'apparition de la gare suivent tous cette courbe. */
+function nuitTunnel(tau: number): number {
+  if (tau <= 0 || tau >= TUNNEL.duree) return 0;
+  if (tau < TUNNEL.entree) return lisse(tau / TUNNEL.entree);
+  if (tau < TUNNEL.sortie) return 1;
+  return 1 - lisse((tau - TUNNEL.sortie) / (TUNNEL.duree - TUNNEL.sortie));
+}
 /** L'image du tunnel (une tuile de 1627 × 724 qui se répète) : son rail avant est à la rangée 655, comme celui des décors. */
 const TUNNEL_IMG = { tuile: 1568, rail: 603 };
 /** Les éclairs de l'orage des Balkans (deux tombent juste avant les « CLAC »). */
@@ -116,12 +127,17 @@ function allure(nom: string, tau: number, D: number): number {
     case 'tunnel2':
       return 1;
     case 'venise':
-      return tau < FREIN.venise ? 1 - tau / FREIN.venise : repart;
+      return tau < finFrein('venise') ? ralenti('venise', tau) : repart;
     case 'istanbul':
-      return tau < FREIN.istanbul ? 1 - tau / FREIN.istanbul : 0;
+      return ralenti('istanbul', tau);
     default:
       return 0;
   }
+}
+/** La vitesse pendant l'arrivée en gare : pleine vitesse, puis le freinage jusqu'à l'arrêt. */
+function ralenti(nom: string, tau: number): number {
+  const f = FREIN[nom];
+  return tau < f.debut ? 1 : Math.max(0, 1 - (tau - f.debut) / f.duree);
 }
 /** Le chemin parcouru depuis le début de l'étape (en durée × vitesse de croisière), calculé exactement. */
 function parcours(nom: string, tau: number, D: number): number {
@@ -132,7 +148,11 @@ function parcours(nom: string, tau: number, D: number): number {
     if (x <= 0) return 0;
     return x >= 1 ? ACCEL * 0.5 + (t - (D - DEPART) - ACCEL) : ACCEL * (x ** 3 - x ** 4 / 2);
   };
-  const freinage = (F: number) => (t < F ? t - (t * t) / (2 * F) : F / 2);
+  const freinage = (f: { debut: number; duree: number }) => {
+    if (t < f.debut) return t;
+    const u = Math.min(t - f.debut, f.duree);
+    return f.debut + u - (u * u) / (2 * f.duree);
+  };
   switch (nom) {
     case 'paris':
       return depart();
@@ -148,7 +168,7 @@ function parcours(nom: string, tau: number, D: number): number {
   }
 }
 /** Le chemin du freinage : la gare s'arrête pile devant la locomotive. */
-const distanceArret = (nom: string) => (FREIN[nom] ?? 0) / 2;
+const distanceArret = (nom: string) => (FREIN[nom] ? FREIN[nom].debut + FREIN[nom].duree / 2 : 0);
 
 /** L'écart entre deux coffres d'une gare : ils s'ouvrent l'un après l'autre sur toute la durée de l'arrêt. */
 function pasCoffres(gare: 'paris' | 'venise', n: number, D: number): number {
@@ -297,6 +317,8 @@ function Compteur({ valeur, retard = MULTI_RAPIDE.compte }: { valeur: number; re
 interface DonneesScene {
   b: VueBonusBW;
   nom: string;
+  /** L'étape commence par un tunnel (le décor change). */
+  tunnel: boolean;
   /** L'identité de l'étape (manche, étape, phase) : stable, contrairement à son début recalé. */
   cle: string;
   debut: number;
@@ -383,6 +405,8 @@ function useSceneTrain(donnees: { current: DonneesScene | null }, refs: RefsScen
       prochaineFumee: 0,
       fumees: [] as { t0: number; x0: number; vx: number; n: number; el: number }[],
       prochainEl: 0,
+      nuit: -1,
+      panneau: { cle: '', w: 0, h: 0 },
     };
     mesurer();
     const ro = new ResizeObserver(mesurer);
@@ -526,9 +550,16 @@ function useSceneTrain(donnees: { current: DonneesScene | null }, refs: RefsScen
         }
       });
 
+      // L'obscurité du tunnel : le voile, l'éclairage du train et la gare suivent la même courbe, image par image.
+      const nuit = d.tunnel ? nuitTunnel(tau) : 0;
+      if (nuit !== st.nuit) {
+        st.nuit = nuit;
+        scene.style.setProperty('--nuit', nuit.toFixed(3));
+      }
       // Le tunnel : ses murs défilent au pas du train, son rail calé sur celui de la voie.
       const tunnelEl = refs.tunnel.current;
       if (tunnelEl) {
+        if (tunnelEl.parentElement) tunnelEl.parentElement.style.opacity = nuit.toFixed(3);
         dimensionner(tunnelEl, 'tunnel', () => {
           tunnelEl.style.top = `${g.yRail - TUNNEL_IMG.rail * g.ech}px`;
           tunnelEl.style.height = `${DECOR.h * g.ech}px`;
@@ -550,13 +581,19 @@ function useSceneTrain(donnees: { current: DonneesScene | null }, refs: RefsScen
         });
         const xg = centreLoco - g.step * 1.0 + (st.sArret - s);
         gareEl.style.transform = `translate3d(${ecran(xg) - hG * 1.5}px, ${g.ech * GEO[decor].haut + g.ech * 8 - hG}px, 0)`;
+        // Après un tunnel, la gare sort de l'ombre en même temps que le décor (elle glisse déjà jusqu'au train).
+        if (d.tunnel) gareEl.style.opacity = (1 - nuit).toFixed(3);
       }
 
       // Le panneau de la gare : il arrive avec le décor, s'arrête au-dessus de la locomotive, repart.
       const panneau = refs.panneau.current;
       if (panneau) {
+        // Sa taille, mesurée une fois par gare et par mesure de la scène (pas de mise en page à chaque image).
+        const cleP = `${d.nom}-${g.version}`;
+        if (st.panneau.cle !== cleP || !st.panneau.w) st.panneau = { cle: cleP, w: panneau.offsetWidth, h: panneau.offsetHeight };
         const xs = centreLoco + (st.sArret - s);
-        panneau.style.transform = `translate3d(${ecran(xs) - panneau.offsetWidth / 2}px, ${g.yRail - g.hL * 0.12 - panneau.offsetHeight}px, 0)`;
+        panneau.style.transform = `translate3d(${ecran(xs) - st.panneau.w / 2}px, ${g.yRail - g.hL * 0.12 - st.panneau.h}px, 0)`;
+        if (d.tunnel) panneau.style.opacity = (1 - nuit).toFixed(3);
       }
 
       // Le train : la locomotive et les wagons (un petit roulis quand il roule).
@@ -612,8 +649,11 @@ function useSceneTrain(donnees: { current: DonneesScene | null }, refs: RefsScen
           el.src = `/cartes/bw-ex-fumee-${f.n + 1}.webp`;
         }
         el.style.opacity = String(0.8 * (1 - u) * Math.min(1, a / 140));
-        // L'image traîne vers la droite : retournée, la traînée part derrière le train.
-        el.style.transform = `translate3d(${ecran(wx) + el.offsetWidth * sc * 0.5}px, ${g.yRail - hy - el.offsetHeight * sc}px, 0) scale(${-sc}, ${sc})`;
+        // L'image traîne vers la droite : retournée, la traînée part derrière le train. (Sa taille se calcule : lire celle
+        // de l'élément forcerait une mise en page à chaque bouffée.)
+        const fw = g.P * 0.42;
+        const fh = el.naturalWidth ? (fw * el.naturalHeight) / el.naturalWidth : fw * 0.6;
+        el.style.transform = `translate3d(${ecran(wx) + fw * sc * 0.5}px, ${g.yRail - hy - fh * sc}px, 0) scale(${-sc}, ${sc})`;
       }
 
       // Les gendarmes à cheval : chacun rattrape son wagon, le dévie, puis l'escorte sur la voie de garage.
@@ -683,7 +723,7 @@ function Neige({ couche }: { couche: 'loin' | 'pres' }) {
     [couche],
   );
   return (
-    <div className={`bwx-neige ${couche}`} aria-hidden="true">
+    <div className={`bwx-neige ${couche} apres-tunnel`} aria-hidden="true">
       {flocons.map((f, k) => (
         <i key={k} style={{ '--x': `${f.x}%`, '--d': `${f.d}s`, '--r': `${f.r}s`, '--s': `${f.s}px` } as CSSProperties} />
       ))}
@@ -726,7 +766,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
   /** Le tunnel encore à l'écran : la gare, son panneau et la météo attendent qu'il s'efface. */
   const tunnelVisible = tunnel && tau < TUNNEL.duree - 250;
   const donnees = useRef<DonneesScene | null>(null);
-  donnees.current = { b, nom, cle: cleEtape, debut: horloge.current.debut, duree: D, focus, ordre, decor, couches: [...couches.couches], actif: couches.actif };
+  donnees.current = { b, nom, tunnel, cle: cleEtape, debut: horloge.current.debut, duree: D, focus, ordre, decor, couches: [...couches.couches], actif: couches.actif };
   const refsScene = useRef<RefsScene | null>(null);
   if (!refsScene.current)
     refsScene.current = {
@@ -810,8 +850,8 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
       fois('depart', () => jouerEffet('ex_sifflet', { volume: 0.75 }));
       if (tau >= D - DEPART + 250) fois('vapeurDepart', () => jouerEffet('ex_vapeur'));
     }
-    if (nom === 'venise' || nom === 'istanbul') fois('freins', () => jouerEffet('ex_freins'));
-    if (nom === 'istanbul' && tau >= FREIN.istanbul) fois('vapeurArret', () => jouerEffet('ex_vapeur'));
+    if ((nom === 'venise' || nom === 'istanbul') && tau >= FREIN[nom].debut) fois('freins', () => jouerEffet('ex_freins'));
+    if (nom === 'istanbul' && tau >= finFrein('istanbul')) fois('vapeurArret', () => jouerEffet('ex_vapeur'));
     if ((nom === 'paris' || nom === 'venise') && ex) {
       const pas = pasCoffres(nom, etat.attaches.length, D);
       etat.attaches.forEach((k, rang) => {
@@ -900,7 +940,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
             ) : null,
           )}
         {decor === 'alpes' && <Neige couche="loin" />}
-        {decor === 'balkans' && <div className="bwx-pluie loin" aria-hidden="true" />}
+        {decor === 'balkans' && <div className="bwx-pluie loin apres-tunnel" aria-hidden="true" />}
         {tunnel && tau < TUNNEL.duree && (
           <div className="bwx-tunnel" key={`tunnel-${nom}`} aria-hidden="true">
             <div className="bwx-tunnel-murs" ref={refs.tunnel} style={{ backgroundImage: `url(${IMG('tunnel')})` }} />
@@ -908,9 +948,9 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         )}
 
         <div className={`bwx-train ${decor ? '' : 'cache'}`} aria-hidden="true">
-          {gare && <img className="bwx-gare" key={`gare-${gare.ville[0]}`} ref={refs.gare} src={IMG(`gare-${gare.image}`)} alt="" draggable={false} />}
+          {gare && <img className={`bwx-gare ${tunnel ? 'apres-tunnel' : ''}`} key={`gare-${gare.ville[0]}`} ref={refs.gare} src={IMG(`gare-${gare.image}`)} alt="" draggable={false} />}
           {gare && (
-            <div className="bwx-panneau" ref={refs.panneau}>
+            <div className={`bwx-panneau ${tunnel ? 'apres-tunnel' : ''}`} ref={refs.panneau}>
               <span className="bwx-panneau-plaque">
                 <strong>{tr(...gare.ville)}</strong>
                 <small>{gare.gare}</small>
@@ -970,7 +1010,7 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         </div>
 
         {decor === 'alpes' && <Neige couche="pres" />}
-        {decor === 'balkans' && <div className="bwx-pluie pres" aria-hidden="true" />}
+        {decor === 'balkans' && <div className="bwx-pluie pres apres-tunnel" aria-hidden="true" />}
         {eclair >= 0 && <div className="bwx-eclair" key={`eclair-${eclair}`} />}
       </div>
       {gyrophare && <div className="bwx-gyro" aria-hidden="true" />}
