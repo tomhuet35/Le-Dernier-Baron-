@@ -4,7 +4,7 @@
  *
  * Le serveur a tout tiré dès le début du bonus (butins de Paris et de Venise, wagons décrochés à chaque embuscade,
  * Coffre du Baron) et ne le révèle qu'au fil du voyage. Cet écran met le voyage en scène :
- * - l'affiche et le Baron, puis le chef de train qui fait choisir les wagons ;
+ * - le Baron, puis le chef de train qui fait choisir les wagons ;
  * - Paris (gare : un coffre sur chaque toit), les Alpes sous la neige (la police à cheval dévie deux wagons sur une voie
  *   de garage), Venise (gare : les coffres de Venise), les Balkans sous l'orage (seconde embuscade), Istanbul (terminus :
  *   le Coffre du Baron s'ouvre pour le seul wagon arrivé) ;
@@ -44,7 +44,7 @@ const IMG = (n: string) => `/cartes/bw-ex2-${n}.webp`;
 /** Toutes les images de l'Express (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_EXPRESS_NOMS = [
   'bw-ex-gare-depart',
-  ...['affiche', 'baron', 'chef', 'loco', 'terminus', 'tunnel', 'tunnel-lampes', 'gare-paris', 'gare-venise', 'gare-istanbul'].map((n) => `bw-ex2-${n}`),
+  ...['baron', 'chef', 'loco', 'terminus', 'tunnel', 'tunnel-lampes', 'gare-paris', 'gare-venise', 'gare-istanbul'].map((n) => `bw-ex2-${n}`),
   ...[1, 2, 3, 4, 5].flatMap((k) => [`bw-ex2-wagon-${k}`, `bw-ex2-wagon-${k}-nuit`]),
   'bw-ex2-loco-nuit',
   ...(['paris', 'alpes', 'venise', 'balkans', 'istanbul'] as Decor[]).flatMap((d) => [`bw-ex2-${d}`, `bw-ex2-${d}-voie`]),
@@ -988,11 +988,6 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
 
       {nom === 'intro' && (
         <div className="bwx-intro">
-          <div className="bwx-affiche">
-            <img src={IMG('affiche')} alt="" draggable={false} />
-            <strong className="bwx-affiche-titre">{tr('Le Rapide de Minuit', 'The Midnight Flyer')}</strong>
-            <i className="bwx-affiche-reflet" />
-          </div>
           <img className="bwx-baron" src={IMG('baron')} alt="" draggable={false} />
           <div className="bwx-vapeurs" aria-hidden="true">
             {[0, 1, 2, 3, 4].map((k) => (

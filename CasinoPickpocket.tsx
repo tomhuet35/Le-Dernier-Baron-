@@ -6,7 +6,7 @@
  *
  * Le serveur a tiré le butin et les trois chapeaux dès le début du bonus ; il n'envoie le butin qu'au vol, et le contenu
  * des chapeaux qu'au retournement (le mélange est un spectacle : on ne peut pas suivre le collier). Les étapes :
- * l'intro (l'affiche et ce que cachent les chapeaux), le vol (le bal, puis le bonneteau), le choix, le retournement.
+ * l'intro (le bal), le vol (le bal, puis le bonneteau), le choix, le retournement.
  * Les personnages, le guéridon et les chapeaux sont placés à chaque image (requestAnimationFrame) d'après l'horloge de
  * l'étape ; les panneaux suivent un battement de 10 par seconde.
  */
@@ -22,7 +22,6 @@ const IMG = (n: string) => `/cartes/bw-pp-${n}.webp`;
 
 /** Toutes les images du Bal (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_PICKPOCKET_NOMS = [
-  'affiche',
   'bal-paysage',
   'bal-portrait',
   'pick-faufile',
@@ -452,28 +451,6 @@ export function BonusPickpocket({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
       )}
       <div className="pp-coupe" ref={r.coupe} aria-hidden="true" />
 
-      {nom === 'intro' && (
-        <div className="pp-intro">
-          <div className="pp-affiche">
-            <img src={IMG('affiche')} alt="" draggable={false} />
-            <svg className="pp-affiche-titre" viewBox="0 0 1000 200" role="img" aria-label={tr('Le Pickpocket', 'The Pickpocket')}>
-              <text x="500" y="62" textAnchor="middle" dominantBaseline="middle" textLength="600" lengthAdjust="spacingAndGlyphs" className="petit">
-                {tr('LE BAL DU GRAND HÔTEL', 'THE GRAND HOTEL BALL')}
-              </text>
-              <text x="500" y="142" textAnchor="middle" dominantBaseline="middle" textLength="760" lengthAdjust="spacingAndGlyphs">
-                PICKPOCKET
-              </text>
-            </svg>
-            <i className="pp-affiche-reflet" />
-            {M > 1 && (
-              <span className="pp-multi" role="status">
-                <small>{tr('Multiplicateur de la roue', 'Wheel multiplier')}</small>
-                <strong>×{M}</strong>
-              </span>
-            )}
-          </div>
-        </div>
-      )}
 
       {mienRevele && choix !== null && objets[choix] === 'collier' && <PluieLingots n={portrait ? 10 : 16} objets={['billet', 'lingot', 'billet']} />}
     </div>
