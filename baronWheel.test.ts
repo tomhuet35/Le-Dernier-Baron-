@@ -31,6 +31,9 @@ import {
   boostsDuTopSlotBW,
   valeurRecompenseBW,
   VALEUR_JACKPOT_BW,
+  chanceCourseBW,
+  NB_DRAISINES,
+  PRIME_COURSE_BW,
   type BoostBW,
   type CaseBW,
   type VueBW,
@@ -69,7 +72,7 @@ describe('The Baron’s Wheel : les règles', () => {
       expect(r[c]).toBeLessThan(1.75);
     }
     // Ce que les petites cases ont perdu est rendu aux quatre bonus (environ 0,15 chacun) : 1,8 à 1,9 fois la mise.
-    for (const c of ['baron', 'pickpocket', 'chaudiere', 'braquage'] as const) {
+    for (const c of ['baron', 'course', 'chaudiere', 'braquage'] as const) {
       expect(r[c]).toBeGreaterThan(1.8);
       expect(r[c]).toBeLessThan(1.9);
     }
@@ -115,10 +118,14 @@ describe('The Baron’s Wheel : les règles', () => {
   it('cache les récompenses dans les bonus et paie le choix du joueur', () => {
     const h = graine(9);
     for (let k = 0; k < 300; k++) {
-      const p = tirerBonusBW('pickpocket', h);
-      if (p.type !== 'pickpocket') throw new Error();
-      expect(p.mallettes).toContain(p.butin);
-      expect(p.mallettes.filter((x) => x === p.butin).length).toBeGreaterThanOrEqual(1);
+      // La Course : quatre cotes justes, la gagnante paie sa cote, les autres la prime d'arrivée ; jamais la gagnante
+      // ne déraille.
+      const p = tirerBonusBW('course', h);
+      if (p.type !== 'course') throw new Error();
+      expect(p.cotes).toHaveLength(NB_DRAISINES);
+      expect(p.cotes.reduce((a, c) => a + chanceCourseBW(c), 0)).toBeCloseTo(1, 9);
+      expect(p.deraille).not.toBe(p.gagnant);
+      for (let k = 0; k < NB_DRAISINES; k++) expect(recompenseBonusBW(p, [k]).x).toBe(k === p.gagnant ? p.cotes[k] : PRIME_COURSE_BW);
       // Le Braquage : une seule perceuse, le même multiple pour tous ; un jackpot en plus au Coffre du Siècle.
       const b = tirerBonusBW('braquage', h);
       if (b.type !== 'braquage') throw new Error();
@@ -266,7 +273,7 @@ beforeAll(async () => {
       jeuALaffiche: () => null,
       cadeaux: [],
       delaiEcriture: 30,
-      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, introAiguillage: 80, introChaudiere: 80, explosion: 300, aiguille: 700, trajet: 80, terminus: 80, introDonne: 80, donne: 80, reveleDonne: 150, introPick: 80, revelePick: 150, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
+      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, introAiguillage: 80, introChaudiere: 80, explosion: 300, aiguille: 700, trajet: 80, terminus: 80, introDonne: 80, donne: 80, reveleDonne: 150, introPick: 80, revelePick: 150, introCourse: 120, sprint: 150, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
       arretBaronWheel: () => arretImpose,
       multiplicateursBaronWheel: () => multiplicateursImposes,
       ouvertureBaronWheel: () => ouverture,
@@ -346,7 +353,7 @@ describe('The Baron’s Wheel en direct', () => {
     a.close();
   }, 30_000);
 
-  it('joue le Pickpocket : la récompense reste cachée jusqu’à la fin, chacun choisit sa mallette', async () => {
+  it('joue la Course des draisines : les cotes avant le départ, l’issue seulement au départ, chacun choisit sa draisine', async () => {
     const a = connecter();
     const b = connecter();
     await emettre(a, 'identifier', { jeton: 'jeton-a' });
@@ -356,40 +363,44 @@ describe('The Baron’s Wheel en direct', () => {
     await emettre(a, 'casino_bw_entrer');
     await emettre(b, 'casino_bw_entrer');
     const v = await nouvelleManche(a);
-    arretImpose = indice('pickpocket', 1);
-    // Un ×5 sur cette case Pickpocket : toutes ses mallettes valent 5 fois plus.
+    arretImpose = indice('course', 1);
+    // Un ×5 sur cette case Course : la cote de la gagnante et la prime d'arrivée valent 5 fois plus.
     multiplicateursImposes = [
       { i: arretImpose, x: 5 },
       { i: indice('x1'), x: 2 },
       { i: indice('x10'), x: 50 },
     ];
-    await emettre(a, 'casino_bw_miser', { case: 'pickpocket', montant: 100_000 });
-    await emettre(b, 'casino_bw_miser', { case: 'pickpocket', montant: 5_000 });
+    await emettre(a, 'casino_bw_miser', { case: 'course', montant: 100_000 });
+    await emettre(b, 'casino_bw_miser', { case: 'course', montant: 5_000 });
     await emettre(b, 'casino_bw_miser', { case: 'x2', montant: 5_000 });
-    const vol = await attendre(a, (x) => etape(x) === 'vol');
-    expect(vol.bonus!.butin).toBeGreaterThanOrEqual(20);
-    expect(vol.bonus!.multiplicateur).toBe(5);
-    expect(vol.bonus!.mallettes).toEqual([null, null, null]);
-    expect((await emettre(a, 'casino_bw_choisir', { etape: vol.bonus!.etape, choix: 0 })).erreur).toMatch(/Trop tard/);
-    const choix = await attendre(a, (x) => etape(x) === 'mallettes');
-    expect(choix.bonus!.mallettes).toEqual([null, null, null]); // toujours cachées pendant le choix
-    expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 3 })).erreur).toMatch(/impossible/);
-    expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 2 })).ok).toBe(true);
-    expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 1 })).erreur).toMatch(/déjà/);
+    const intro = await attendre(a, (x) => etape(x) === 'intro');
+    expect(intro.bonus!.multiplicateur).toBe(5);
+    expect((await emettre(a, 'casino_bw_choisir', { etape: intro.bonus!.etape, choix: 0 })).erreur).toMatch(/Trop tard/);
+    const grille = await attendre(a, (x) => etape(x) === 'grille');
+    const cotes = grille.bonus!.course!.cotes;
+    expect(cotes).toHaveLength(4);
+    expect(grille.bonus!.course).toMatchObject({ gagnant: null, deraille: null, graine: null }); // l'issue reste cachée
+    expect((await emettre(a, 'casino_bw_choisir', { etape: grille.bonus!.etape, choix: 4 })).erreur).toMatch(/impossible/);
+    expect((await emettre(a, 'casino_bw_choisir', { etape: grille.bonus!.etape, choix: 2 })).ok).toBe(true);
+    expect((await emettre(a, 'casino_bw_choisir', { etape: grille.bonus!.etape, choix: 1 })).erreur).toMatch(/déjà/);
     // Léa ne choisit pas : le serveur choisira pour elle.
-    const revele = await attendre(a, (x) => etape(x) === 'revele');
-    const mallettes = revele.bonus!.mallettes as number[];
-    expect(mallettes).toContain(vol.bonus!.butin);
+    const sprint = await attendre(a, (x) => etape(x) === 'sprint');
+    const g = sprint.bonus!.course!.gagnant as number;
+    expect([0, 1, 2, 3]).toContain(g);
+    expect(sprint.bonus!.course!.graine).not.toBeNull();
+    expect(sprint.bonus!.resultat).toBeNull();
+    const x = (g === 2 ? cotes[2] : PRIME_COURSE_BW) * 5;
+    const revele = await attendre(a, (y) => etape(y) === 'revele');
     expect(revele.bonus!.mesChoix).toEqual([2]);
-    expect(revele.bonus!.resultat).toMatchObject({ x: mallettes[2] * 5, gain: gainBW(100_000, mallettes[2] * 5) });
-    const fin = await attendre(a, (x) => x.phase === 'resultat' && x.numero === v.numero);
+    expect(revele.bonus!.resultat).toMatchObject({ x, gain: gainBW(100_000, x) });
+    const fin = await attendre(a, (y) => y.phase === 'resultat' && y.numero === v.numero);
     expect(etape(fin)).toBe('revele'); // pendant les résultats, le bonus reste sur sa révélation
-    expect(fin.bilan).toEqual({ mise: 100_000, gain: gainBW(100_000, mallettes[2] * 5) });
-    expect(fin.historique[0]).toEqual({ c: 'pickpocket', x: 5 });
+    expect(fin.bilan).toEqual({ mise: 100_000, gain: gainBW(100_000, x) });
+    expect(fin.historique[0]).toEqual({ c: 'course', x: 5 });
     const finB = (await emettre(b, 'casino_bw_journal')).journal.manches[0];
-    expect([0, 1, 2].map((k) => gainBW(5_000, mallettes[k] * 5))).toContain(finB.gain);
+    expect([0, 1, 2, 3].map((k) => gainBW(5_000, (k === g ? cotes[k] : PRIME_COURSE_BW) * 5))).toContain(finB.gain);
     multiplicateursImposes = [];
-    expect(fin.joueurs.map((x) => x.nom).sort()).toEqual(['Lucas', 'Léa']);
+    expect(fin.joueurs.map((y) => y.nom).sort()).toEqual(['Lucas', 'Léa']);
     a.close();
     b.close();
   }, 30_000);
