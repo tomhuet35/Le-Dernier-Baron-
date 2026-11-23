@@ -185,7 +185,7 @@
 .brq-fin-butin span { font-weight: 700; font-size: clamp(11px, 1.7cqw, 13.5px); color: #f3e7cf; }
 
 /* Le multiplicateur de la roue est annoncé sur l'affiche de l'intro. */
-.bw-bonus.braquage .bw-bonus-annonce-multi { display: none; }
+/* L'annonce du multiplicateur de la roue : celle de la roue (plus d'affiche à l'intro). */
 
 /* Téléphone : la scène est en hauteur */
 @media (max-width: 640px) {

@@ -2,7 +2,7 @@
    par CasinoPickpocket.tsx à chaque image ; ici, les habits et les animations. */
 
 .bw-bonus.pickpocket { background: #0b0507; }
-.bw-bonus.pickpocket .bw-bonus-annonce-multi { display: none; }
+/* L'annonce du multiplicateur de la roue : celle de la roue (plus d'affiche à l'intro). */
 .pp { position: absolute; inset: 0; overflow: hidden; background: #0b0507; color: #fff1c4; container-type: size; contain: layout; }
 .pp-bal { position: absolute; inset: 0; background-size: cover; background-position: 50% 100%; transition: filter 0.5s; }
 .pp.pp-table .pp-bal { filter: blur(3px) brightness(0.42) saturate(0.85); }

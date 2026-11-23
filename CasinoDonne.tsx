@@ -4,7 +4,7 @@
  * autres cartes se retournent en vague, puis la mienne vient au centre et se révèle ; la carte du Baron cache un jackpot.
  *
  * Le serveur a tiré les neuf cartes dès le début du bonus ; il ne les envoie qu'au retournement (les choix sont faits).
- * Les étapes : l'intro (l'affiche et ce que peuvent cacher les cartes), la donne (le mélange, puis la distribution),
+ * Les étapes : l'intro (le salon), la donne (le mélange, puis la distribution),
  * le choix, le retournement (DONNE_BW). Le décor (table, Baron, cartes) est placé d'après la taille de la scène ; les
  * gestes suivent l'horloge de l'étape (10 fois par seconde), chaque carte passant d'un état au suivant par transition.
  */
@@ -19,7 +19,7 @@ import './donne.css';
 const IMG = (n: string) => `/cartes/bw-gd-${n}.webp`;
 
 /** Toutes les images de la Grande Donne (sans chemin ni extension), préchargées avant le bonus. */
-export const IMAGES_DONNE_NOMS = ['affiche', 'salon-paysage', 'salon-portrait', 'baron-melange', 'baron-donne', 'baron-presente', 'carte-dos', 'carte-face', 'carte-baron', 'eclat', 'paillettes'].map((n) => `bw-gd-${n}`);
+export const IMAGES_DONNE_NOMS = ['salon-paysage', 'salon-portrait', 'baron-melange', 'baron-donne', 'baron-presente', 'carte-dos', 'carte-face', 'carte-baron', 'eclat', 'paillettes'].map((n) => `bw-gd-${n}`);
 
 const NOMS_JACKPOTS: Record<string, string> = { mini: 'MINI', minor: 'MINOR', major: 'MAJOR', grand: 'GRAND' };
 
@@ -297,28 +297,6 @@ export function BonusDonne({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueBon
         </div>
       )}
 
-      {nom === 'intro' && (
-        <div className="gd-intro">
-          <div className="gd-affiche">
-            <img src={IMG('affiche')} alt="" draggable={false} />
-            <svg className="gd-affiche-titre" viewBox="0 0 1000 200" role="img" aria-label={tr('Le Choix du Baron', 'The Baron’s Choice')}>
-              <text x="500" y="62" textAnchor="middle" dominantBaseline="middle" textLength="560" lengthAdjust="spacingAndGlyphs" className="petit">
-                {tr('LA GRANDE DONNE', 'THE GRAND DEAL')}
-              </text>
-              <text x="500" y="142" textAnchor="middle" dominantBaseline="middle" textLength="820" lengthAdjust="spacingAndGlyphs">
-                {tr('LE CHOIX DU BARON', 'THE BARON’S CHOICE')}
-              </text>
-            </svg>
-            <i className="gd-affiche-reflet" />
-            {M > 1 && (
-              <span className="gd-multi" role="status">
-                <small>{tr('Multiplicateur de la roue', 'Wheel multiplier')}</small>
-                <strong>×{M}</strong>
-              </span>
-            )}
-          </div>
-        </div>
-      )}
 
       {nom === 'revele' && auCentre && revele && cartes[suivie] && (cartes[suivie]?.jackpot || (cartes[suivie]?.x ?? 0) >= 25) && choix !== null && s >= DONNE_BW.mienne + 400 && (
         <PluieLingots n={d?.portrait ? 10 : 16} objets={['billet', 'lingot', 'billet']} />

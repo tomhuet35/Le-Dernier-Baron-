@@ -2,7 +2,7 @@
    CasinoDonne.tsx d'après la taille de la scène ; ici, les habits, les transitions et les animations. */
 
 .bw-bonus.baron { background: #0b0507; }
-.bw-bonus.baron .bw-bonus-annonce-multi { display: none; }
+/* L'annonce du multiplicateur de la roue : celle de la roue (plus d'affiche à l'intro). */
 .gd { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(90% 80% at 50% 40%, #2a0d12, #070304 75%); color: #fff1c4; container-type: size; contain: layout; }
 
 /* Le salon : la table au premier plan, en bas ; son devant (même image, découpée) passe devant le Baron. */

@@ -45,8 +45,6 @@ const MEDAILLONS: Record<TerminusAiguillage | 'paris', string> = {
 
 /** Toutes les images de l'Aiguillage (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_AIGUILLAGE_NOMS = [
-  'affiche',
-  'logo',
   'poste',
   'carte',
   'bifurcation',
@@ -353,15 +351,9 @@ export function BonusAiguillage({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
   // --- L'intro : l'affiche, le poste de l'aiguilleur, puis la carte et ce que vaut chaque terminus ce soir.
   if (nom === 'intro') {
     const tt = reduit ? 9_000 : t;
-    const acte = tt < 2_800 ? 'affiche' : tt < 6_300 ? 'poste' : 'carte';
+    const acte = tt < 3_500 ? 'poste' : 'carte';
     return (
       <div className={`ai intro ${acte}`}>
-        {acte === 'affiche' && (
-          <div className="ai-affiche">
-            <img className="ai-affiche-fond" src={IMG('affiche')} alt="" draggable={false} />
-            <img className="ai-logo" src={IMG('logo')} alt={tr('L’Aiguillage', 'The Switch')} draggable={false} />
-          </div>
-        )}
         {acte === 'poste' && (
           <div className="ai-poste">
             <img className="ai-poste-fond" src={IMG('poste')} alt="" draggable={false} />

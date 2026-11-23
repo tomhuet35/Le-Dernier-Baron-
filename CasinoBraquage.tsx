@@ -5,7 +5,7 @@
  *
  * Le serveur a tiré le sous-sol où s'arrête la perceuse dès le début du bonus ; il ne l'envoie aux téléphones qu'au
  * départ de la perceuse (étape « descente », dont la durée suit ce tirage). Cet écran met le casse en scène :
- * - l'intro : l'affiche, la perceuse suspendue, l'échelle des butins (multiplicateur de la roue compris) ;
+ * - l'intro : la perceuse suspendue ;
  * - la descente : la banque en coupe (la rue, puis cinq sous-sols séparés par des dalles), la perceuse qui meule
  *   chaque dalle (étincelles, gravats, poussière, secousses) puis la traverse ; la caméra la suit. La perceuse, la
  *   mèche, les chaînes, la caméra, les effets et les gendarmes sont placés à chaque image (requestAnimationFrame) ;
@@ -25,7 +25,6 @@ import './braquage.css';
 const IMG = (n: string) => `/cartes/bw-br-${n}.webp`;
 /** Toutes les images du Braquage (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_BRAQUAGE_NOMS = [
-  'affiche',
   'surface',
   'perceuse',
   'meche',
@@ -659,7 +658,7 @@ export function BonusBraquage({ v, b, nom }: { v: VueBW; b: VueBonusBW; nom: str
   return (
     <div className={`brq ${nom} ${alarme ? 'alarme' : ''} ${siecle ? 'siecle' : ''}`} ref={refs.scene}>
       {/* La banque en coupe : la rue, les dalles, les sous-sols ; la perceuse au milieu. */}
-      <div className={`brq-monde ${descente ? '' : 'cache'}`} ref={refs.monde} aria-hidden="true">
+      <div className={`brq-monde ${descente || nom === 'intro' ? '' : 'cache'}`} ref={refs.monde} aria-hidden="true">
         <div className="brq-surface" ref={refs.surface} style={{ backgroundImage: `url(${IMG('surface')})` }} />
         <div className="brq-roc" ref={refs.roc} style={{ backgroundImage: `url(${IMG('dalle')})` }} />
         {refs.salles.map((r, i) => (
@@ -704,25 +703,6 @@ export function BonusBraquage({ v, b, nom }: { v: VueBW; b: VueBonusBW; nom: str
         [0, 1, 2, 3, 4].map((k) => (k < Fe && t >= percee(k) && t < percee(k) + 500 ? <div key={`f${k}`} className="brq-flash" aria-hidden="true" /> : null))}
       {alarme && <div className="brq-rouge" aria-hidden="true" />}
 
-      {nom === 'intro' && (
-        <div className="brq-intro">
-          <div className="brq-affiche">
-            <img src={IMG('affiche')} alt="" draggable={false} />
-            <svg className="brq-affiche-titre" viewBox="0 0 1000 140" role="img" aria-label={tr('Le Braquage', 'The Big Heist')}>
-              <text x="500" y="84" textAnchor="middle" dominantBaseline="middle" textLength="760" lengthAdjust="spacingAndGlyphs">
-                {tr('LE BRAQUAGE', 'THE BIG HEIST')}
-              </text>
-            </svg>
-            <i className="brq-affiche-reflet" />
-            {M > 1 && (
-              <span className="brq-multi" role="status">
-                <small>{tr('Multiplicateur de la roue', 'Wheel multiplier')}</small>
-                <strong>×{M}</strong>
-              </span>
-            )}
-          </div>
-        </div>
-      )}
 
       {descente && (
         <Jauge
