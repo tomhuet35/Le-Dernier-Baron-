@@ -25,15 +25,15 @@
 // La roue
 
 export type ChiffreBW = 'x1' | 'x2' | 'x5' | 'x10';
-export type BonusBW = 'baron' | 'pickpocket' | 'chaudiere' | 'braquage' | 'express';
+export type BonusBW = 'baron' | 'course' | 'chaudiere' | 'braquage' | 'express';
 export type CaseBW = ChiffreBW | BonusBW;
 export const CHIFFRES_BW: ChiffreBW[] = ['x1', 'x2', 'x5', 'x10'];
-export const BONUS_BW: BonusBW[] = ['baron', 'pickpocket', 'chaudiere', 'braquage', 'express'];
+export const BONUS_BW: BonusBW[] = ['baron', 'course', 'chaudiere', 'braquage', 'express'];
 export const CASES_BW: CaseBW[] = [...CHIFFRES_BW, ...BONUS_BW];
 export const estBonusBW = (c: CaseBW): c is BonusBW => (BONUS_BW as string[]).includes(c);
 
 /** Combien de cases de chaque sorte sur la roue (30 en tout). */
-export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, pickpocket: 2, chaudiere: 2, braquage: 2, express: 1 };
+export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, course: 2, chaudiere: 2, braquage: 2, express: 1 };
 export const NB_CASES_BW = 30;
 export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 /**
@@ -44,7 +44,7 @@ export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 export const ROUE_BW: CaseBW[] = (() => {
   // La roue est symétrique autour de l'Express (en haut, entre deux Baron) : la moitié droite, puis son miroir ; le ×2
   // du bas, face à l'Express, fait le lien. Les bonus reviennent toutes les 4 cases.
-  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'pickpocket', 'x5', 'x1', 'x2', 'chaudiere', 'x1', 'x10', 'x2', 'braquage', 'x5'];
+  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'course', 'x5', 'x1', 'x2', 'chaudiere', 'x1', 'x10', 'x2', 'braquage', 'x5'];
   return ['express', ...moitie, 'x1', ...[...moitie].reverse()];
 })();
 
@@ -142,7 +142,34 @@ export const JACKPOTS_BARON: TableBW<JackpotBW> = [
 ];
 export const TABLE_CARTES_BARON = avecJackpots(CARTES_BARON, JACKPOTS_BARON);
 
-/** THE BIG THEFT : le Pickpocket vole un gros multiplicateur et le cache dans l'une des trois mallettes ; les deux autres gardent un petit. */
+/**
+ * LA COURSE DES DRAISINES : quatre draisines (Rubis, Saphir, Émeraude, Or), chacune avec sa cote affichée avant le
+ * départ. On choisit la sienne ; la gagnante paie sa cote, les trois autres la prime d'arrivée (×2). Les cotes sont
+ * justes : une draisine à la cote c gagne avec la chance (11 − 2) / (c − 2), si bien que l'espérance est ×11 quelle que
+ * soit la draisine choisie (comme à la Chaudière). Chaque course tire une grille de cotes, répartie au hasard sur les
+ * quatre voies.
+ */
+export const NB_DRAISINES = 4;
+export const PRIME_COURSE_BW = 2;
+export const ESPERANCE_COURSE_BW = 11;
+export const GRILLES_COURSE_BW: TableBW<number[]> = [
+  [[20, 38, 56, 110], 30],
+  [[20, 29, 110, 110], 18],
+  [[20, 38, 74, 74], 18],
+  [[32, 32, 32, 92], 14],
+  [[14, 74, 92, 362], 15],
+  [[12, 182, 227, 902], 5],
+];
+/** La chance de gagner d'une draisine à la cote `c`. */
+export const chanceCourseBW = (c: number) => (ESPERANCE_COURSE_BW - PRIME_COURSE_BW) / (c - PRIME_COURSE_BW);
+/** La chance qu'une draisine (pas la gagnante) déraille pendant la course. */
+export const DERAILLEMENT_BW = 0.55;
+
+/**
+ * THE BIG THEFT : le Pickpocket vole un gros multiplicateur et le cache dans l'une des trois mallettes ; les deux autres
+ * gardent un petit. Il a quitté la roue de l'Express (la Course des draisines a pris ses cases) et rejoindra la roue du
+ * Bal : son écran (CasinoPickpocket) et ses tables restent ici en attendant.
+ */
 export const BUTIN_PICKPOCKET: TableBW<number> = [
   [15, 3800],
   [20, 2600],
@@ -506,7 +533,8 @@ export const COFFRE_DU_BARON: TableBW<number> = [
 
 export type TirageBonusBW =
   | { type: 'baron'; cartes: RecompenseBW[] }
-  | { type: 'pickpocket'; butin: number; mallettes: number[] }
+  /** cotes : celle de chaque draisine ; deraille : celle qui sort de la voie (jamais la gagnante) ; graine : le scénario. */
+  | { type: 'course'; cotes: number[]; gagnant: number; deraille: number | null; graine: number }
   | TirageChaudiereBW
   /** etage : le sous-sol où s'arrête la perceuse (1 à 5) ; jackpot : celui du Coffre du Siècle (au 5e seulement). */
   | { type: 'braquage'; etage: number; jackpot: JackpotBW | null }
@@ -526,9 +554,21 @@ export function tirerBonusBW(type: BonusBW, h: Hasard): TirageBonusBW {
   switch (type) {
     case 'baron':
       return { type, cartes: Array.from({ length: NB_CARTES_BARON }, () => tirerTable(TABLE_CARTES_BARON, h)) };
-    case 'pickpocket': {
-      const butin = tirerTable(BUTIN_PICKPOCKET, h);
-      return { type, butin, mallettes: melanger([butin, tirerTable(PETITES_MALLETTES, h), tirerTable(PETITES_MALLETTES, h)], h) };
+    case 'course': {
+      const cotes = melanger(tirerTable(GRILLES_COURSE_BW, h), h);
+      // La gagnante : chacune avec sa chance (elles font 1 à elles quatre).
+      let u = h();
+      let gagnant = cotes.length - 1;
+      for (let k = 0; k < cotes.length; k++) {
+        u -= chanceCourseBW(cotes[k]);
+        if (u < 0) {
+          gagnant = k;
+          break;
+        }
+      }
+      const autres = cotes.map((_, k) => k).filter((k) => k !== gagnant);
+      const deraille = h() < DERAILLEMENT_BW ? autres[Math.floor(h() * autres.length)] : null;
+      return { type, cotes, gagnant, deraille, graine: Math.floor(h() * 2 ** 31) };
     }
     case 'chaudiere':
       // P(explosion > m) = plancher / m : u uniforme dans ]0, 1].
@@ -574,6 +614,8 @@ export type EtapeBW =
   | 'cartes'
   | 'vol'
   | 'mallettes'
+  | 'grille'
+  | 'sprint'
   | 'route'
   | 'poursuite'
   | 'aiguille'
@@ -634,6 +676,9 @@ export interface DureesBW {
   /** Le Pickpocket (le Bal du Grand Hôtel) : l'affiche, puis le retournement des chapeaux (le vol et le bonneteau : vol). */
   introPick: number;
   revelePick: number;
+  /** La Course des draisines : la présentation des quatre équipages, puis la course (feux, coup de pistolet, sprint). */
+  introCourse: number;
+  sprint: number;
   gare: number;
   tunnel: number;
   traversee: number;
@@ -669,6 +714,8 @@ export const DUREES_BW: DureesBW = {
   reveleDonne: 7_500,
   introPick: 2_500,
   revelePick: 7_000,
+  introCourse: 3_000,
+  sprint: 15_000,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
   tunnel: 12_000,
@@ -686,8 +733,8 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
   switch (type) {
     case 'baron':
       return [e('intro', d.introDonne), e('donne', d.donne), e('cartes', d.choix, NB_CARTES_BARON), e('revele', d.reveleDonne)];
-    case 'pickpocket':
-      return [e('intro', d.introPick), e('vol', d.vol), e('mallettes', d.choix, 3), e('revele', d.revelePick)];
+    case 'course':
+      return [e('intro', d.introCourse), e('grille', d.choix, NB_DRAISINES), e('sprint', d.sprint), e('revele', d.revele)];
     case 'chaudiere': {
       // La montée en pression dure jusqu'à l'explosion (au plus jusqu'à la pleine pression), au rythme de la chaudière
       // (raccourci si les durées sont raccourcies, comme dans les tests).
@@ -726,8 +773,8 @@ export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: numbe
   switch (t.type) {
     case 'baron':
       return { ...t.cartes[choix[0]] };
-    case 'pickpocket':
-      return { x: t.mallettes[choix[0]] };
+    case 'course':
+      return choix[0] === t.gagnant ? { x: t.cotes[choix[0]], evade: true } : { x: PRIME_COURSE_BW, evade: false };
     case 'chaudiere': {
       // choix[0] : le sifflet, en centièmes de multiplicateur (0 : pas de sifflet, le sifflet automatique).
       const x = gainChaudiere(t, choix[0] ? choix[0] / 100 : null);
@@ -767,8 +814,9 @@ export function esperanceBonusBW(type: BonusBW): { multipliable: number; jackpot
   switch (type) {
     case 'baron':
       return separer(TABLE_CARTES_BARON);
-    case 'pickpocket':
-      return { multipliable: (esperanceTable(BUTIN_PICKPOCKET) + 2 * esperanceTable(PETITES_MALLETTES)) / 3, jackpots: 0 };
+    case 'course':
+      // Le même quelle que soit la draisine choisie (les cotes sont justes).
+      return { multipliable: ESPERANCE_COURSE_BW, jackpots: 0 };
     case 'chaudiere':
       // Le même quel que soit le moment du sifflet (dès ×11), sifflet automatique compris.
       return { multipliable: CHAUDIERE_BW.plancher, jackpots: 0 };
@@ -813,7 +861,7 @@ export function rtpBW(): Record<CaseBW, number> {
     x5: p('x5') * GAINS_CHIFFRES_BW.x5 * F,
     x10: p('x10') * GAINS_CHIFFRES_BW.x10 * F,
     baron: bonus('baron'),
-    pickpocket: bonus('pickpocket'),
+    course: bonus('course'),
     chaudiere: bonus('chaudiere'),
     braquage: bonus('braquage'),
     express: bonus('express'),
@@ -920,6 +968,11 @@ export interface VueBonusBW {
    * atteint ; au-delà de la pleine pression : elle n'a pas explosé), mon sifflet et ceux du salon (dans l'ordre).
    */
   chaudiere?: { ecoule: number | null; explosion: number | null; monSifflet: number | null; siffles: { nom: string; avatar: number; x: number; moi?: true }[] };
+  /**
+   * La Course des draisines : la cote de chaque draisine (dès le début), et une fois le départ donné la gagnante, celle
+   * qui déraille et la graine du scénario (tout le monde voit la même course).
+   */
+  course?: { cotes: number[]; gagnant: number | null; deraille: number | null; graine: number | null };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**

@@ -131,7 +131,7 @@ export function creerBaronWheel(options: {
   let minuterie: ReturnType<typeof setTimeout> | null = null;
   let enCours = false;
   let historique: VueBW['historique'] = [];
-  const depuis: VueBW['depuis'] = { baron: null, pickpocket: null, chaudiere: null, braquage: null, express: null };
+  const depuis: VueBW['depuis'] = { baron: null, course: null, chaudiere: null, braquage: null, express: null };
   let record: (NonNullable<VueBW['record']> & { jour: string }) | null = null;
 
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
@@ -165,9 +165,10 @@ export function creerBaronWheel(options: {
       resultat: j && atteinte('revele') ? (j.resultat ?? null) : null,
     };
     if (t.type === 'baron') v.cartes = atteinte('revele') ? t.cartes : t.cartes.map(() => null);
-    if (t.type === 'pickpocket') {
-      v.butin = atteinte('vol') ? t.butin : null;
-      v.mallettes = atteinte('revele') ? t.mallettes : [null, null, null];
+    if (t.type === 'course') {
+      // Les cotes dès la grille ; l'issue seulement au départ, quand plus personne ne peut changer de draisine.
+      const partie = atteinte('sprint');
+      v.course = { cotes: t.cotes, gagnant: partie ? t.gagnant : null, deraille: partie ? t.deraille : null, graine: partie ? t.graine : null };
     }
     if (t.type === 'chaudiere') {
       // Le point d'explosion reste caché jusqu'à l'explosion : la durée de la montée en pression aussi (elle le trahirait).
@@ -403,7 +404,7 @@ export function creerBaronWheel(options: {
       if (gain > 0) banque.crediter(j.uid, gain);
       const jour = jourParis(horloge());
       if (gain > 0 && (!record || record.jour !== jour || gain > record.gain)) record = { nom: j.nom, avatar: j.avatar, gain, c, jour };
-      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, chaudiere: 0, braquage: 0, express: 0 } };
+      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, course: 0, chaudiere: 0, braquage: 0, express: 0 } };
       mt.manches++;
       mt.mise += mise;
       mt.gain += gain;
@@ -570,7 +571,7 @@ export function creerBaronWheel(options: {
       const journal: JournalBW = {
         manches: journaux.get(id.uid) ?? [],
         salon,
-        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, chaudiere: 0, braquage: 0, express: 0 } },
+        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, course: 0, chaudiere: 0, braquage: 0, express: 0 } },
       };
       repondre(rappel, { ok: true, journal });
     });
