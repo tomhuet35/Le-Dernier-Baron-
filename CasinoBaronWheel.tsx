@@ -43,7 +43,7 @@ import { EN, tr } from './traduction';
 import { jouerEffet, mouvementReduit, musiqueDuCasino, useCompteur } from './ui';
 import { BonusExpress, IMAGES_EXPRESS_NOMS, ValeurMultipliee } from './CasinoBaronExpress';
 import { BonusBraquage, IMAGES_BRAQUAGE_NOMS } from './CasinoBraquage';
-import { BonusEvasion, IMAGES_EVASION_NOMS } from './CasinoEvasion';
+import { BonusAiguillage, IMAGES_AIGUILLAGE_NOMS } from './CasinoAiguillage';
 import { BonusDonne, IMAGES_DONNE_NOMS } from './CasinoDonne';
 import { BonusPickpocket, IMAGES_PICKPOCKET_NOMS } from './CasinoPickpocket';
 import './baronWheel.css';
@@ -64,14 +64,14 @@ export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string
   x10: { nom: ['10X', '10X'], ...ARGENT },
   baron: { nom: ['Baron', 'Baron'], ...OR, image: '/cartes/bw-sym-baron2.webp' },
   pickpocket: { nom: ['Pickpocket', 'Pickpocket'], ...OR, image: '/cartes/bw-sym-pickpocket2.webp' },
-  evasion: { nom: ['Évasion', 'Escape'], ...OR, image: '/cartes/bw-sym-evasion2.webp' },
+  aiguillage: { nom: ['Aiguillage', 'Switch'], ...OR, image: '/cartes/bw-sym-aiguillage.webp' },
   braquage: { nom: ['Braquage', 'Big Heist'], ...OR, image: '/cartes/bw-sym-braquage2.webp' },
   express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0b6b3a', texte: '#F3E7CF', matiere: '/cartes/bw-matiere-emeraude.webp', texture: '/cartes/bw-rs-emeraude.webp', image: '/cartes/bw-sym-express.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Choix du Baron', 'The Baron’s Choice'],
   pickpocket: ['Le Grand Vol', 'The Big Theft'],
-  evasion: ['Évasion', 'The Escape'],
+  aiguillage: ['L’Aiguillage', 'The Switch'],
   braquage: ['Le Braquage', 'The Big Heist'],
   express: ['Le Rapide de Minuit', 'The Midnight Flyer'],
 };
@@ -157,7 +157,7 @@ const LUMIERES: Record<CaseBW, string> = {
   x10: '#e8f0ff',
   baron: '#ffd774',
   pickpocket: '#ffd774',
-  evasion: '#ffd774',
+  aiguillage: '#ffd774',
   braquage: '#ffd774',
   express: '#2ee38c',
 };
@@ -882,19 +882,6 @@ export function Compteurs({ v }: { v: VueBW }) {
   );
 }
 
-/** Les avatars des autres joueurs qui ont misé sur cette case (trois au plus, puis « +N »). */
-export function AvatarsCase({ v, c }: { v: VueBW | null; c: CaseBW }) {
-  const autres = (v?.joueurs ?? []).filter((j) => !j.moi && j.cases?.includes(c));
-  if (!autres.length) return null;
-  return (
-    <span className="bw-case-avatars" aria-label={tr(`${autres.length} joueur(s) ont misé ici`, `${autres.length} player(s) bet here`)}>
-      {autres.slice(0, 3).map((j, k) => (
-        <img key={k} src={`/cartes/avatar-${j.avatar}.webp`} alt="" draggable={false} title={j.nom} />
-      ))}
-      {autres.length > 3 && <i>+{autres.length - 3}</i>}
-    </span>
-  );
-}
 
 /** Après un bonus : les trois plus gros gains de la manche. */
 export function Podium({ v }: { v: VueBW }) {
@@ -1028,7 +1015,7 @@ const IMAGES_BONUS_BW: Record<BonusBW, string[]> = Object.fromEntries(
   Object.entries({
     baron: ['bw-sym-baron2', ...IMAGES_DONNE_NOMS, ...plaques],
     pickpocket: ['bw-sym-pickpocket2', ...IMAGES_PICKPOCKET_NOMS],
-    evasion: ['bw-sym-evasion2', ...IMAGES_EVASION_NOMS],
+    aiguillage: ['bw-sym-aiguillage', ...IMAGES_AIGUILLAGE_NOMS],
     braquage: ['bw-sym-braquage2', ...IMAGES_BRAQUAGE_NOMS, ...plaques],
     express: ['bw-sym-express', ...IMAGES_EXPRESS_NOMS],
   }).map(([t, noms]) => [t, noms.map((n) => `/cartes/${n}.webp`)]),
@@ -1058,7 +1045,7 @@ let prechargementLance = false;
 function prechargerLesBonus() {
   if (prechargementLance) return;
   prechargementLance = true;
-  const file = [...new Set((['baron', 'braquage', 'pickpocket', 'evasion', 'express'] as BonusBW[]).flatMap((t) => IMAGES_BONUS_BW[t]))];
+  const file = [...new Set((['baron', 'braquage', 'pickpocket', 'aiguillage', 'express'] as BonusBW[]).flatMap((t) => IMAGES_BONUS_BW[t]))];
   let i = 0;
   const suivante = (): Promise<void> => (i < file.length ? chargerImage(file[i++]).then(suivante) : Promise.resolve());
   void suivante();
@@ -1082,7 +1069,7 @@ function useChargement(type: BonusBW): number {
 const ASTUCES_BONUS: Record<BonusBW, [string, string]> = {
   baron: ['Le Baron mélange et distribue neuf cartes : choisis la tienne. La carte du Baron cache un jackpot.', 'The Baron shuffles and deals nine cards: pick yours. The Baron’s card hides a jackpot.'],
   pickpocket: ['Le Pickpocket vole un collier au bal et le cache sous l’un des trois chapeaux : à toi de le retrouver\u00a0!', 'The Pickpocket steals a necklace at the ball and hides it under one of three hats: find it!'],
-  evasion: ['Trois voitures, trois itinéraires : monte dans l’une d’elles. Plus la route est risquée, plus le butin est gros.', 'Three cars, three routes: jump into one. The riskier the route, the bigger the loot.'],
+  aiguillage: ['Trois aiguillages jusqu’au terminus : à gauche ou à droite ? Les gares éclairées montrent leur prime, les bâches cachent une surprise.', 'Three switches to the terminus: left or right? Lit stations show their bonus, tarps hide a surprise.'],
   braquage: ['Une seule perceuse pour tout le salon : plus elle descend, plus le butin grossit… jusqu’à l’alarme.', 'One drill for the whole room: the deeper it goes, the bigger the loot… until the alarm.'],
   express: ['5 wagons au départ de Paris : un seul arrivera à Istanbul et ouvrira le Coffre du Baron.', '5 carriages leave Paris: only one will reach Istanbul and open the Baron’s Safe.'],
 };
@@ -1129,6 +1116,7 @@ const TEXTES_ETAPES: Record<string, [string, string]> = {
   route: ['La police arrive ! Choisis ta voiture', 'The police are coming! Pick your car'],
   poursuite: ['La course-poursuite\u00a0!', 'The car chase!'],
   wagons: ['Choisis ton wagon : un seul arrivera à Istanbul\u00a0!', 'Pick your carriage: only one will reach Istanbul!'],
+  aiguille: ['À gauche ou à droite ? Tire le levier\u00a0!', 'Left or right? Pull the lever!'],
   revele: ['', ''],
 };
 
@@ -1159,7 +1147,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
     <div className={`bw-bonus ${b.type}`}>
       {b.type === 'baron' && <BonusDonne v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       {b.type === 'pickpocket' && <BonusPickpocket v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
-      {b.type === 'evasion' && <BonusEvasion v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
+      {b.type === 'aiguillage' && <BonusAiguillage v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       {b.type === 'braquage' && <BonusBraquage v={v} b={b} nom={nom} />}
       {b.type === 'express' && <BonusExpress v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       <div className="bw-bonus-titre">
@@ -1174,7 +1162,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
           <span>{tr('Tous les gains de ce bonus sont multipliés\u00a0!', 'Every win in this bonus is multiplied!')}</span>
         </div>
       )}
-      {nom !== 'revele' && nom !== 'intro' && b.type !== 'braquage' && (b.type !== 'express' || nom === 'wagons') && (b.type !== 'evasion' || nom === 'route') && (b.type !== 'baron' || nom === 'cartes') && (b.type !== 'pickpocket' || nom === 'mallettes') && (
+      {nom !== 'revele' && nom !== 'intro' && b.type !== 'braquage' && (b.type !== 'express' || nom === 'wagons') && (b.type !== 'aiguillage' || nom === 'aiguille') && (b.type !== 'baron' || nom === 'cartes') && (b.type !== 'pickpocket' || nom === 'mallettes') && (
         <div className="bw-bonus-consigne">
           <span>{texte}</span>
           {rang >= 0 && (b.mise > 0 ? b.mesChoix[rang] !== null ? <small>{tr('Choix fait : on attend les autres…', 'Done: waiting for the others…')}</small> : <small>{tr(`Ta mise : ${dollars(b.mise)}`, `Your bet: ${dollars(b.mise)}`)}</small> : <small>{tr('Tu regardes : tu n’as pas misé sur ce bonus.', 'Watching: you did not bet on this bonus.')}</small>)}
@@ -1189,7 +1177,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
               <b>{NOMS_JACKPOTS[r.jackpot]}</b>
             </span>
           )}
-          <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'evasion' ? (r.evade ? tr('Évadé\u00a0!', 'Escaped!') : tr('Arrêté\u00a0!', 'Caught!')) : b.type === 'express' ? (r.evade ? tr('Ton wagon est arrivé à Istanbul\u00a0!', 'Your carriage reached Istanbul!') : tr('Wagon décroché : il garde son butin', 'Carriage uncoupled: it keeps its loot')) : tr('Ta récompense', 'Your reward')}</small>
+          <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'aiguillage' ? tr('Terminus : tout le monde descend\u00a0!', 'Last stop: everybody off!') : b.type === 'express' ? (r.evade ? tr('Ton wagon est arrivé à Istanbul\u00a0!', 'Your carriage reached Istanbul!') : tr('Wagon décroché : il garde son butin', 'Carriage uncoupled: it keeps its loot')) : tr('Ta récompense', 'Your reward')}</small>
           <strong>{r.gain > 0 ? `${fx(r.x)} · +${dollars(r.gain)}` : tr('Pas de butin cette fois', 'No loot this time')}</strong>
           {r.gain > 0 && !r.jackpot && b.multiplicateur > 1 && <em>{tr(`${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (multiplicateur de la roue)`, `${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (wheel multiplier)`)}</em>}
         </div>
@@ -1338,14 +1326,9 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     if (v.phase === 'bonus' && v.bonus) {
       const n = etapeNom(v);
       // L'Express et le Braquage jouent leurs propres sons.
-      if (n === 'intro' && v.bonus.type !== 'express' && v.bonus.type !== 'braquage') jouerEffet(v.bonus.type === 'baron' ? 'bw_baron' : v.bonus.type === 'pickpocket' ? 'bw_vol' : 'bw_sirene');
+      if (n === 'intro' && v.bonus.type !== 'express' && v.bonus.type !== 'braquage') jouerEffet(v.bonus.type === 'baron' ? 'bw_baron' : v.bonus.type === 'pickpocket' ? 'bw_vol' : 'ex_sifflet');
       if (n === 'revele') {
         if (v.bonus.type === 'baron') jouerEffet('bw_carte');
-        if (v.bonus.type === 'evasion') {
-          const c = v.bonus.mesChoix[0];
-          const r = c !== null ? v.bonus.routes?.[c] : null;
-          if (r) jouerEffet(r.evade ? 'bw_evade' : 'bw_menottes');
-        }
       }
     }
     if (v.phase === 'resultat' && avant.phase !== 'resultat' && v.bilan && v.bilan.mise > 0) {
@@ -1546,7 +1529,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
                   </span>
                 )}
                 {c === 'express' && <small className="bw-case-sous">{tr('Case unique · ×10 à ×10 000', 'One spot · ×10 to ×10,000')}</small>}
-                <AvatarsCase v={v} c={c} />
                 {m > 0 && (
                   <span className="bw-case-mise">
                     <img src={`/cartes/jeton-${imageJeton(m)}.webp`} alt="" />

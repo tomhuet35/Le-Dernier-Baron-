@@ -25,6 +25,8 @@ import {
   GAINS_CHIFFRES_BW,
   multiplicateurDe,
   tirerTopSlotBW,
+  conseilAiguillage,
+  NB_AIGUILLAGES,
   dureeMultiplicateursBW,
   boostsDuTopSlotBW,
   topSlotDesBoostsBW,
@@ -129,7 +131,7 @@ export function creerBaronWheel(options: {
   let minuterie: ReturnType<typeof setTimeout> | null = null;
   let enCours = false;
   let historique: VueBW['historique'] = [];
-  const depuis: VueBW['depuis'] = { baron: null, pickpocket: null, evasion: null, braquage: null, express: null };
+  const depuis: VueBW['depuis'] = { baron: null, pickpocket: null, aiguillage: null, braquage: null, express: null };
   let record: (NonNullable<VueBW['record']> & { jour: string }) | null = null;
 
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
@@ -165,7 +167,11 @@ export function creerBaronWheel(options: {
       v.butin = atteinte('vol') ? t.butin : null;
       v.mallettes = atteinte('revele') ? t.mallettes : [null, null, null];
     }
-    if (t.type === 'evasion') v.routes = atteinte('poursuite') ? t.routes : [null, null, null];
+    if (t.type === 'aiguillage') {
+      // Les gares éclairées sont connues dès le départ ; une gare sous bâche se révèle quand le train passe à son niveau.
+      const passes = phase === 'resultat' ? NB_AIGUILLAGES : etapes.slice(0, etape + 1).filter((e) => e.nom === 'trajet').length;
+      v.aiguillage = { terminus: [...t.terminus], eclairees: t.eclairees.map((n) => [...n]), gares: t.gares.map((n, l) => n.map((x, k) => (l < passes || t.eclairees[l][k] ? x : null))) };
+    }
     // Le Braquage : la descente se joue dès que la perceuse part (aucun choix à faire, rien à deviner).
     if (t.type === 'braquage') v.casse = atteinte('descente') ? { etage: t.etage, jackpot: t.jackpot } : null;
     if (t.type === 'express') {
@@ -193,7 +199,6 @@ export function creerBaronWheel(options: {
         avatar: x.avatar,
         mise: totalMises(x.mises),
         gain: x.gain,
-        cases: CASES_BW.filter((c) => (x.mises[c] ?? 0) > 0),
         ...(x.jackpot ? { jackpot: x.jackpot } : {}),
         ...(x.uid === uid ? { moi: true as const } : {}),
       }))
@@ -338,7 +343,10 @@ export function creerBaronWheel(options: {
     const r = rangChoix(etape);
     if (r >= 0 && tirage) {
       const n = etapes[etape].choix;
-      for (const j of joueurs.values()) if ((j.mises[tirage.type] ?? 0) > 0 && j.choix[r] === null) j.choix[r] = Math.floor(hasard() * n);
+      // À l'Aiguillage, l'aiguilleur choisit pour lui (son conseil : le meilleur choix en moyenne).
+      const t = tirage;
+      for (const j of joueurs.values())
+        if ((j.mises[t.type] ?? 0) > 0 && j.choix[r] === null) j.choix[r] = t.type === 'aiguillage' ? conseilAiguillage(t, j.choix.slice(0, r).map((x) => x ?? 0)) : Math.floor(hasard() * n);
     }
     // Avant la révélation finale, chaque joueur reçoit sa récompense (calculée une fois, versée à la fin).
     if (etapes[etape + 1]?.nom === 'revele') calculerBonus();
@@ -384,7 +392,7 @@ export function creerBaronWheel(options: {
       if (gain > 0) banque.crediter(j.uid, gain);
       const jour = jourParis(horloge());
       if (gain > 0 && (!record || record.jour !== jour || gain > record.gain)) record = { nom: j.nom, avatar: j.avatar, gain, c, jour };
-      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, evasion: 0, braquage: 0, express: 0 } };
+      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, aiguillage: 0, braquage: 0, express: 0 } };
       mt.manches++;
       mt.mise += mise;
       mt.gain += gain;
@@ -535,7 +543,7 @@ export function creerBaronWheel(options: {
       const journal: JournalBW = {
         manches: journaux.get(id.uid) ?? [],
         salon,
-        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, evasion: 0, braquage: 0, express: 0 } },
+        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, pickpocket: 0, aiguillage: 0, braquage: 0, express: 0 } },
       };
       repondre(rappel, { ok: true, journal });
     });

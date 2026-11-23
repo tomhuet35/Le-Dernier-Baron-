@@ -189,7 +189,7 @@ export const IMAGES_JEUX = [
   '/cartes/bw-ev-voiture-boulevard.webp',
   '/cartes/bw-ev-voiture-ruelles.webp',
   '/cartes/bw-ev-voiture-souterrains.webp',
-  '/cartes/bw-sym-evasion2.webp',
+  '/cartes/bw-sym-aiguillage.webp',
   '/cartes/bw-gd-affiche.webp',
   '/cartes/bw-gd-baron-donne.webp',
   '/cartes/bw-gd-baron-melange.webp',

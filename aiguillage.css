@@ -1,0 +1,148 @@
+/* L'Aiguillage (Le Baron Express) : la carte de l'Europe et son réseau, la bifurcation du choix, la voie de nuit et
+   l'arrivée au terminus. La caméra de la carte est posée par CasinoAiguillage.tsx ; ici, les habits et les animations. */
+
+.bw-bonus.aiguillage { background: #06070d; }
+.bw-bonus.aiguillage .bw-bonus-annonce-multi { top: 62%; }
+.ai { position: absolute; inset: 0; overflow: hidden; color: #fff1c4; container-type: size; background: #06070d; }
+
+/* ---------- La carte ---------- */
+.ai-carte { position: absolute; inset: 0; overflow: hidden; }
+.ai-monde { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform 1.1s cubic-bezier(0.45, 0, 0.3, 1); will-change: transform; }
+.ai.trajet .ai-monde { transition-duration: 0.25s; transition-timing-function: linear; }
+.ai-carte-fond { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; }
+.ai-voies { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ai-voie path { fill: none; stroke-linecap: round; }
+.ai-voie .dessous { stroke: rgba(10, 4, 2, 0.85); stroke-width: 13; }
+.ai-voie .rail { stroke: #d6a84b; stroke-width: 6; }
+.ai-voie .traverses { stroke: #2a1608; stroke-width: 11; stroke-dasharray: 2 12; stroke-linecap: butt; opacity: 0.8; }
+.ai-voie.possible .rail { stroke: #ffd774; filter: drop-shadow(0 0 5px rgba(255, 210, 110, 0.9)); }
+.ai-voie.parcourue .rail { stroke: #fff3c8; stroke-width: 8; filter: drop-shadow(0 0 8px rgba(255, 220, 130, 1)); }
+.ai-voie.fermee { opacity: 0.35; }
+
+.ai-gare, .ai-ville { position: absolute; z-index: 2; display: grid; justify-items: center; transform: translate(-50%, -62%); pointer-events: none; transition: opacity 0.6s, filter 0.6s; }
+.ai-gare.loin, .ai-ville.loin { opacity: 0.45; filter: saturate(0.5); }
+.ai-gare-img { width: 96px; height: auto; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.7)); }
+.ai-gare.bachee:not(.vue) .ai-gare-img { animation: ai-mystere 2.2s ease-in-out infinite; }
+@keyframes ai-mystere { 50% { filter: drop-shadow(0 0 14px rgba(255, 190, 90, 0.9)) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.7)); } }
+/* La bâche tombe au passage du train. */
+.ai-bache-tombe { position: absolute; top: 0; left: 50%; width: 96px; height: auto; translate: -50% 0; pointer-events: none; animation: ai-bache 1.1s cubic-bezier(0.5, 0, 0.8, 0.4) both; }
+@keyframes ai-bache { 0% { opacity: 1; transform: none; } 30% { opacity: 1; transform: translateY(-10%) scaleY(1.04); } 100% { opacity: 0; transform: translateY(40%) scaleY(0.5); } }
+.ai-gare i, .ai-ville b { font-style: normal; font-family: var(--titre); font-weight: 400; font-size: 17px; color: #fff1c4; text-shadow: 0 2px 3px #000, 0 0 8px #000; white-space: nowrap; }
+.ai-plaque { position: relative; display: grid; place-items: center; width: 74px; margin-top: -6px; }
+.ai-plaque img { width: 100%; height: auto; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.7)); }
+.ai-plaque b { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 2px; font-family: var(--titre); font-weight: 400; font-size: 17px; color: #6e0f1a; }
+.ai-gare.bachee .ai-plaque b { color: #3a1a06; }
+.ai-gare.vue.bachee .ai-plaque { animation: ai-pop 0.6s cubic-bezier(0.3, 1.8, 0.5, 1) 0.4s both; }
+@keyframes ai-pop { from { transform: scale(0.3); } }
+.ai-gare.passee .ai-gare-img { filter: drop-shadow(0 0 16px rgba(255, 220, 130, 1)) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.7)); }
+
+.ai-ville img { width: 92px; height: auto; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.75)); }
+.ai-ville.depart img { width: 74px; }
+.ai-ville.terminus { transform: translate(-50%, -40%); }
+.ai-multi-terminus { margin-top: -4px; padding: 0 10px; border-radius: 99px; border: 2px solid #ffd774; background: linear-gradient(180deg, #8a1424, #3b0007); font-style: normal; font-family: var(--titre); font-size: 22px; color: #ffe9a8; box-shadow: 0 0 10px rgba(255, 200, 100, 0.6); }
+.ai-ville.meilleur .ai-multi-terminus { animation: ai-pulse 1.1s ease-in-out infinite alternate; }
+@keyframes ai-pulse { to { box-shadow: 0 0 22px rgba(255, 220, 120, 1); transform: scale(1.08); } }
+.ai-prime-terminus { margin-top: 3px; padding: 0 8px; border-radius: 6px; background: rgba(243, 231, 207, 0.92); color: #6e0f1a; font-family: var(--titre); font-size: 15px; }
+.ai-prime-terminus.bachee { background: rgba(110, 15, 26, 0.92); color: #ffe9a8; }
+.ai-ville.arrivee img { animation: ai-pulse 0.8s ease-in-out infinite alternate; }
+
+.ai-train { position: absolute; z-index: 4; width: 150px; transform-origin: 50% 78%; pointer-events: none; }
+.ai-train img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.8)); }
+.ai-train-phare { position: absolute; right: -55%; top: 30%; width: 80%; height: 50%; background: radial-gradient(ellipse at 0% 50%, rgba(255, 236, 170, 0.75), transparent 70%); mix-blend-mode: screen; }
+
+/* ---------- Le compteur ---------- */
+.ai-compteur { position: absolute; left: 8px; top: 52px; z-index: 20; width: min(36%, 230px); display: grid; place-items: center; pointer-events: none; }
+.ai-compteur img { width: 100%; height: auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)); }
+.ai-compteur b { position: absolute; left: 22%; right: 22%; top: 30%; bottom: 30%; display: grid; place-items: center; font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 5.4cqw, 32px); color: #ffd774; text-shadow: 0 0 10px rgba(255, 200, 100, 0.8); animation: ai-pop 0.5s cubic-bezier(0.3, 1.8, 0.5, 1) both; }
+.ai-compteur small { margin-top: 1px; padding: 0 8px; border-radius: 99px; background: rgba(8, 4, 2, 0.8); font-size: 10.5px; font-weight: 800; color: #ffe9a8; white-space: nowrap; }
+
+/* ---------- L'intro ---------- */
+.ai-affiche, .ai-poste { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
+.ai-affiche { background: radial-gradient(circle, #5a0a14, #160406 75%); }
+.ai-affiche-fond { height: 100%; width: auto; max-width: none; animation: ai-zoom 3s ease-out both; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8)); }
+@keyframes ai-zoom { from { transform: scale(1.12); opacity: 0; } 20% { opacity: 1; } }
+.ai-logo { position: absolute; left: 50%; top: 9%; width: min(56%, 520px); height: auto; translate: -50% 0; filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9)); animation: ai-logo 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) 0.4s both; }
+@keyframes ai-logo { from { transform: scale(0.3); opacity: 0; } }
+.ai-poste-fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: ai-zoom 2.4s ease-out both; }
+.ai-aiguilleur { position: absolute; left: 0; bottom: 0; height: 86%; width: auto; max-width: none; filter: drop-shadow(10px 0 20px rgba(0, 0, 0, 0.7)); animation: ai-entre 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) both; }
+@keyframes ai-entre { from { transform: translateX(-100%); } }
+.ai-bulle { position: absolute; right: 4%; top: 22%; max-width: 48%; margin: 0; padding: 10px 14px; border-radius: 16px; border: 2px solid #ffd774; background: rgba(20, 8, 6, 0.9); font-weight: 800; font-size: clamp(12px, 3.6cqw, 17px); line-height: 1.3; animation: ai-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.5s both; }
+.ai-annonce { position: absolute; left: 50%; bottom: 10px; z-index: 10; translate: -50% 0; width: max-content; max-width: 94%; margin: 0; padding: 6px 14px; border-radius: 12px; border: 1px solid #ffd774; background: rgba(12, 6, 4, 0.88); text-align: center; font-family: var(--titre); font-size: clamp(12px, 3.4cqw, 17px); color: #ffe9a8; animation: ai-pop 0.5s ease-out 0.6s both; }
+
+/* ---------- L'aiguillage (le choix) ---------- */
+.ai.aiguille { background: #000; }
+.ai-bifurcation { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 70%; animation: ai-zoom 1s ease-out both; }
+.ai-signal { position: absolute; bottom: 4%; height: 70%; width: auto; max-width: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); }
+.ai-signal.gauche { left: 1%; }
+.ai-signal.droite { right: 1%; transform: scaleX(-1); }
+/* Le feu des signaux : blanc en attendant, vert du côté choisi, rouge de l'autre. */
+.ai-feu { position: absolute; top: calc(30% - 3cqh); width: 9cqh; height: 9cqh; border-radius: 50%; mix-blend-mode: screen; background: radial-gradient(circle, #fff, rgba(255, 240, 200, 0.6) 30%, transparent 70%); animation: ai-clignote 1s ease-in-out infinite alternate; }
+.ai-feu.gauche { left: calc(1% + 1.6cqh); }
+.ai-feu.droite { right: calc(1% + 1.6cqh); }
+.ai-feu.vert { background: radial-gradient(circle, #e9ffe9, rgba(60, 255, 120, 0.85) 30%, transparent 70%); animation: none; }
+.ai-feu.rouge { background: radial-gradient(circle, #ffe0e0, rgba(255, 40, 40, 0.85) 30%, transparent 70%); animation: none; }
+@keyframes ai-clignote { to { opacity: 0.45; } }
+.ai-numero { position: absolute; left: 50%; top: 52px; z-index: 6; translate: -50% 0; margin: 0; padding: 2px 12px; border-radius: 99px; background: rgba(10, 4, 2, 0.8); font-size: 11px; font-weight: 900; letter-spacing: 0.15em; text-transform: uppercase; color: #ffd774; white-space: nowrap; }
+.ai-choix { position: absolute; top: 31%; z-index: 5; display: grid; justify-items: center; gap: 1px; width: 30%; padding: 6px 4px 8px; border: 2px solid rgba(255, 215, 116, 0.75); border-radius: 16px; background: radial-gradient(120% 100% at 50% 0%, rgba(90, 24, 16, 0.9), rgba(12, 6, 4, 0.92)); color: #fff1c4; cursor: pointer; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7); transition: transform 0.25s, opacity 0.3s, box-shadow 0.3s; animation: ai-pop 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) 0.3s both; }
+.ai-choix.gauche { left: 13%; }
+.ai-choix.droite { right: 13%; }
+.ai-choix:not(:disabled):hover { transform: translateY(-4px) scale(1.03); box-shadow: 0 0 22px rgba(255, 210, 110, 0.8), 0 10px 24px rgba(0, 0, 0, 0.7); }
+.ai-choix:disabled { cursor: default; }
+.ai-choix.pris { border-color: #9bff9b; box-shadow: 0 0 26px rgba(120, 255, 140, 0.75), 0 10px 24px rgba(0, 0, 0, 0.7); transform: scale(1.05); }
+.ai-choix.laisse { opacity: 0.45; filter: saturate(0.4); }
+.ai-choix-sens { font-size: 10.5px; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: #ffd774; }
+.ai-choix-gare { width: 72%; height: auto; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.8)); }
+.ai-choix-gare.med { width: 52%; }
+.ai-choix strong { font-family: var(--titre); font-weight: 400; font-size: clamp(13px, 3.8cqw, 20px); }
+.ai-choix .ai-plaque { width: 62%; margin-top: 0; }
+.ai-choix .ai-plaque b { font-size: clamp(13px, 4cqw, 22px); }
+.ai-choix small { font-size: clamp(9.5px, 2.4cqw, 12px); font-weight: 700; color: var(--creme-doux, #e5d3ad); }
+.ai-conseil { position: absolute; top: -11px; left: 50%; translate: -50% 0; padding: 1px 8px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #c88a2a); color: #3a1a06; font-style: normal; font-size: 9.5px; font-weight: 900; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.ai-levier { position: absolute; left: 50%; bottom: 4%; z-index: 4; height: 42%; width: auto; max-width: none; translate: -50% 0; transform-origin: 50% 88%; transition: transform 0.6s cubic-bezier(0.3, 1.6, 0.5, 1); filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); }
+.ai-levier.gauche { transform: rotate(-24deg); }
+.ai-levier.droite { transform: rotate(24deg) scaleX(-1); }
+.ai-mini { position: absolute; right: 8px; top: 52px; z-index: 7; width: 23%; aspect-ratio: 16 / 9; border-radius: 10px; border: 2px solid #c8963e; overflow: hidden; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7); }
+.ai-carte.mini .ai-monde { transition: none; }
+.ai-carte.mini .ai-gare i, .ai-carte.mini .ai-ville b, .ai-carte.mini .ai-prime-terminus { display: none; }
+
+/* ---------- Le trajet ---------- */
+.ai-voie-nuit { position: absolute; inset: 0; overflow: hidden; }
+.ai-voie-fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 80%; animation: ai-zoom 0.6s ease-out both; }
+.ai-train-file { position: absolute; left: 0; bottom: 21%; width: 78%; height: auto; max-width: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); animation: ai-file var(--d) cubic-bezier(0.3, 0, 0.7, 1) both; }
+@keyframes ai-file { from { transform: translateX(-105%); } to { transform: translateX(135%); } }
+.ai-etincelles { position: absolute; left: 0; bottom: 14%; width: 40%; height: auto; max-width: none; mix-blend-mode: screen; opacity: 0.9; animation: ai-file var(--d) cubic-bezier(0.3, 0, 0.7, 1) both, ai-clignote 0.12s steps(2) infinite; }
+.ai-prime-gagnee { position: absolute; left: 50%; top: 22%; z-index: 10; translate: -50% 0; width: max-content; max-width: 92%; margin: 0; padding: 6px 18px; border-radius: 14px; border: 2px solid #ffd774; background: radial-gradient(120% 140% at 50% 0%, rgba(70, 46, 10, 0.95), rgba(22, 12, 4, 0.95)); font-family: var(--titre); font-size: clamp(16px, 5.4cqw, 30px); color: #fff1c4; text-shadow: 0 0 14px rgba(255, 200, 110, 0.8); animation: ai-pop 0.5s cubic-bezier(0.3, 1.8, 0.5, 1) both; }
+.ai-prime-gagnee.grosse { border-color: #fff; box-shadow: 0 0 30px rgba(255, 220, 120, 0.9); }
+.ai-prime-gagnee.travaux { border-color: #ff8a7a; background: rgba(60, 10, 8, 0.95); color: #ffd0c4; text-shadow: none; }
+
+/* ---------- Le terminus ---------- */
+.ai-arrivee { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; align-content: center; gap: 4px; background: radial-gradient(circle at 50% 45%, rgba(40, 12, 6, 0.55), rgba(4, 2, 1, 0.88) 70%); animation: ai-zoom 0.8s ease-out both; }
+.ai-medaillon { width: min(34cqh, 30%); height: auto; filter: drop-shadow(0 0 30px rgba(255, 210, 110, 0.85)); animation: ai-logo 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.ai-ville-nom { font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 7cqw, 44px); color: #ffd774; text-shadow: 0 0 18px rgba(255, 200, 100, 0.8), 0 3px 6px #000; }
+.ai-calcul { margin: 0; padding: 4px 16px; border-radius: 14px; background: rgba(10, 4, 2, 0.75); font-family: var(--titre); font-size: clamp(16px, 5cqw, 28px); color: #fff1c4; animation: ai-pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.8s both; }
+.ai-calcul b { font-weight: 400; color: #b8f0b4; text-shadow: 0 0 12px rgba(120, 220, 120, 0.7); }
+.ai-feux { position: absolute; width: 46cqh; height: auto; opacity: 0; mix-blend-mode: screen; animation: ai-feux 1.6s ease-out infinite; }
+.ai-feux.un { left: 6%; top: 4%; }
+.ai-feux.deux { right: 6%; top: 10%; animation-delay: 0.8s; }
+@keyframes ai-feux { 0% { opacity: 0; transform: scale(0.3); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.15); } }
+.ai-aiguilleur-joie { position: absolute; right: 0; bottom: 0; height: 58%; width: auto; max-width: none; filter: drop-shadow(-8px 0 16px rgba(0, 0, 0, 0.7)); animation: ai-entre-d 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) 0.4s both; }
+@keyframes ai-entre-d { from { transform: translateX(100%); } }
+.ai.terminus.revele .ai-arrivee { align-content: start; padding-top: 14%; }
+.ai.terminus.revele .ai-calcul, .ai.terminus.revele .ai-aiguilleur-joie { display: none; }
+
+@container (max-width: 520px) {
+  .ai-choix { width: 36%; top: 30%; }
+  .ai-choix.gauche { left: 4%; }
+  .ai-choix.droite { right: 4%; }
+  .ai-signal { display: none; }
+  .ai-feu { display: none; }
+  .ai-levier { height: 30%; }
+  .ai-mini { width: 34%; top: 48px; }
+  .ai-compteur { width: 40%; top: 48px; }
+  .ai-aiguilleur-joie { display: none; }
+  .ai-numero { display: none; }
+  .ai-medaillon { width: 40%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai *, .ai-monde { animation: none !important; transition: none !important; }
+}
