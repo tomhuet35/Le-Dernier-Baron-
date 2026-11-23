@@ -6,8 +6,8 @@
  *
  * Le serveur envoie les cotes dès la grille, puis l'issue (la gagnante, celle qui déraille, la graine) au départ, quand
  * plus personne ne peut changer de draisine : la course est un scénario tiré de cette graine, le même sur tous les
- * écrans. La scène est vue de profil, en travelling : les voies sont étagées en profondeur (la plus lointaine en haut,
- * plus petite), le décor défile plus lentement que les voies, la foule du premier plan plus vite.
+ * écrans. La scène est en travelling : en haut la tribune (elle défile lentement), en bas le terrain des quatre voies,
+ * vu d'un peu au-dessus, où chaque draisine roule sur sa voie ; la foule du premier plan défile plus vite.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { NB_DRAISINES, PRIME_COURSE_BW, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
@@ -27,10 +27,10 @@ export const EQUIPAGES = [
 /** Les images de la Course (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_DRAISINES_NOMS = [
   'dr-logo',
-  'dr-panorama',
-  'dr-voie',
+  'dr-tribune',
+  'dr-terrain',
   'dr-foule',
-  'dr-mat-depart',
+  'dr-mat-feux',
   'dr-poteau-arrivee',
   'dr-baron-pret',
   'dr-baron-tir',
@@ -144,37 +144,54 @@ interface DonneesCourse {
 interface RefsCourse {
   scene: RefObject<HTMLDivElement>;
   ciel: RefObject<HTMLDivElement>;
+  terrain: RefObject<HTMLDivElement>;
   foule: RefObject<HTMLDivElement>;
   mat: RefObject<HTMLDivElement>;
   baron: RefObject<HTMLDivElement>;
   poteau: RefObject<HTMLDivElement>;
-  voies: RefObject<HTMLDivElement>[];
-  departs: RefObject<HTMLDivElement>[];
-  arrivees: RefObject<HTMLDivElement>[];
+  depart: RefObject<HTMLDivElement>;
+  arrivee: RefObject<HTMLDivElement>;
   draisines: RefObject<HTMLDivElement>[];
   jetons: RefObject<HTMLSpanElement>[];
 }
 const nouvelleRef = <T,>(): RefObject<T> => ({ current: null });
 
-/** La profondeur de chaque voie : son échelle et la hauteur de son rail (part de la hauteur de la scène). */
-const ECHELLES = [0.62, 0.74, 0.87, 1];
-const RAILS = [0.6, 0.69, 0.79, 0.9];
-/** La voie (image vue de dessus, écrasée en hauteur) : la file de rail proche est à 68 % de sa hauteur. */
-const VOIE = { ratio: 1100 / 192, etirement: 1.6, rail: 0.68 };
+/**
+ * Le terrain (une image de 1672 × 941 qui se répète en largeur) : la bordure de pierre en haut, puis les quatre voies ;
+ * RAILS : la hauteur du rail proche de chaque voie, où roulent les roues (part de la hauteur du terrain).
+ */
+const TERRAIN = { ratio: 1172 / 720, bordure: 0.075, voies: [0.07, 0.905] as const };
+const RAILS = [0.203, 0.412, 0.633, 0.887];
+/** La part de la scène laissée à la tribune, au-dessus du terrain. */
+const HAUT = { paysage: 0.34, portrait: 0.3 };
 const lisse = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
 
 function useSceneCourse(donnees: { current: DonneesCourse }, refs: RefsCourse) {
   useEffect(() => {
     const scene = refs.scene.current;
     if (!scene) return;
-    const g = { W: 0, H: 0, u: 0 };
+    const g = { W: 0, H: 0, u: 0, haut: 0, th: 0 };
     const mesurer = () => {
       g.W = scene.clientWidth;
       g.H = scene.clientHeight;
       const portrait = g.H > g.W * 1.05;
-      // Une draisine (sa longueur) : assez petite pour que les quatre voies restent lisibles l'une derrière l'autre.
-      g.u = portrait ? g.W * 0.4 : Math.min(g.W * 0.2, g.H * 0.3);
+      // Le terrain occupe le bas de la scène ; une draisine (sa longueur) 70 % de sa hauteur : elle déborde sur la voie de derrière.
+      g.haut = g.H * (portrait ? HAUT.portrait : HAUT.paysage);
+      g.th = g.H - g.haut;
+      g.u = Math.min(g.th * 0.7, g.W * 0.46);
       scene.style.setProperty('--u', `${g.u}px`);
+      scene.style.setProperty('--haut', `${g.haut}px`);
+      const terrain = refs.terrain.current;
+      if (terrain) {
+        terrain.style.top = `${g.haut}px`;
+        terrain.style.height = `${g.th}px`;
+        terrain.style.backgroundSize = `${g.th * TERRAIN.ratio}px ${g.th}px`;
+      }
+      for (const r of [refs.depart, refs.arrivee]) {
+        if (!r.current) continue;
+        r.current.style.height = `${g.th * (TERRAIN.voies[1] - TERRAIN.voies[0])}px`;
+        r.current.style.width = `${g.u * 0.045}px`;
+      }
     };
     mesurer();
     const ro = new ResizeObserver(mesurer);
@@ -207,55 +224,35 @@ function useSceneCourse(donnees: { current: DonneesCourse }, refs: RefsCourse) {
       }
       st.cam = Number.isNaN(st.cam) || d.nom === 'intro' ? cible : st.cam + (cible - st.cam) * (1 - Math.exp(-dt * 0.004));
       const cam = st.cam;
-      const ecran = (x: number, k: number) => g.W / 2 + (x - cam) * g.u * ECHELLES[k];
+      const ecran = (x: number) => g.W / 2 + (x - cam) * g.u;
 
-      // Le décor lointain et la foule du premier plan (parallaxe).
-      if (refs.ciel.current) refs.ciel.current.style.backgroundPosition = `${-(cam + 3) * g.u * 0.1}px 0`;
+      // La tribune (parallaxe), le terrain au pas des draisines, la foule du premier plan un peu plus vite.
+      if (refs.ciel.current) refs.ciel.current.style.backgroundPosition = `${-(cam + 3) * g.u * 0.18}px 0`;
+      if (refs.terrain.current) refs.terrain.current.style.backgroundPosition = `${-cam * g.u}px 0`;
       if (refs.foule.current) refs.foule.current.style.backgroundPosition = `${-cam * g.u * 1.12}px 0`;
 
-      // Les voies, les lignes de départ et d'arrivée sur chacune.
-      for (let k = 0; k < NB_DRAISINES; k++) {
-        const s = ECHELLES[k];
-        const yR = RAILS[k] * g.H;
-        const th = g.u * s * 0.16;
-        const voie = refs.voies[k].current;
-        if (voie) {
-          voie.style.top = `${yR - VOIE.rail * th}px`;
-          voie.style.height = `${th}px`;
-          const tuile = th * VOIE.ratio * VOIE.etirement;
-          voie.style.backgroundSize = `${tuile}px ${th}px`;
-          voie.style.backgroundPosition = `${-(((cam * g.u * s) % tuile) + tuile) % tuile}px 0`;
-        }
-        for (const [r, x] of [
-          [refs.departs[k], 0],
-          [refs.arrivees[k], LONGUEUR],
-        ] as const) {
-          const el = r.current;
-          if (!el) continue;
-          el.style.transform = `translate3d(${ecran(x, k) - th * 0.12}px, ${yR - VOIE.rail * th}px, 0)`;
-          el.style.width = `${th * 0.24}px`;
-          el.style.height = `${th}px`;
-        }
-      }
+      // Les lignes de départ et d'arrivée, en travers des quatre voies.
+      const yLignes = g.haut + g.th * TERRAIN.voies[0];
+      if (refs.depart.current) refs.depart.current.style.transform = `translate3d(${ecran(0) - g.u * 0.0225}px, ${yLignes}px, 0)`;
+      if (refs.arrivee.current) refs.arrivee.current.style.transform = `translate3d(${ecran(LONGUEUR) - g.u * 0.0225}px, ${yLignes}px, 0)`;
 
-      // Le mât de départ, le Baron sur son podium et le poteau d'arrivée, derrière la voie la plus lointaine.
-      const yFond = RAILS[0] * g.H - g.u * ECHELLES[0] * 0.16 * VOIE.rail;
+      // Le mât de départ, le Baron sur son podium et le poteau d'arrivée, sur la bordure du terrain.
+      const yFond = g.haut + g.th * TERRAIN.bordure;
       // (Leur largeur se calcule d'après leurs proportions : la lire forcerait une mise en page à chaque image.)
       const place = (el: HTMLDivElement | null, x: number, h: number, ratio: number, ancre: number) => {
         if (!el) return;
         el.style.height = `${h}px`;
-        el.style.transform = `translate3d(${ecran(x, 0) - ancre * h * ratio}px, ${yFond - h}px, 0)`;
+        el.style.transform = `translate3d(${ecran(x) - ancre * h * ratio}px, ${yFond - h}px, 0)`;
       };
-      place(refs.mat.current, 0.5, g.H * 0.36, 451 / 1504, 0.5);
-      place(refs.baron.current, -1.3, g.H * 0.34, 600 / 1235, 0.5);
-      place(refs.poteau.current, LONGUEUR, g.H * 0.4, 600 / 1050, 0.25);
+      place(refs.mat.current, 0.35, g.haut * 0.95, 600 / 940, 0.5);
+      place(refs.baron.current, -1.25, g.haut * 0.92, 600 / 1235, 0.5);
+      place(refs.poteau.current, LONGUEUR, g.haut * 1.05, 600 / 1050, 0.25);
 
       // Les draisines : elles pompent au rythme de leur vitesse ; celle qui déraille bascule, puis disparaît.
       for (let i = 0; i < NB_DRAISINES; i++) {
         const el = refs.draisines[i].current;
         if (!el) continue;
-        const s = ECHELLES[i];
-        const w = g.u * s;
+        const w = g.u;
         const x = pos(i);
         const v = sc && enCourse ? sc.vitesse(i, Math.max(0, t)) : 0;
         const tombee = !!sc && enCourse && sc.deraille === i && sc.chute !== null && t > sc.chute;
@@ -265,7 +262,7 @@ function useSceneCourse(donnees: { current: DonneesCourse }, refs: RefsCourse) {
         el.style.setProperty('--vitesse', String(Math.min(1, v / 2)));
         const roulis = reduit || tombee ? 0 : Math.sin(maintenant * 0.02 + i * 1.7) * w * 0.004 * (0.3 + Math.min(1, v));
         el.style.width = `${w}px`;
-        el.style.transform = `translate3d(${ecran(x, i) - w}px, ${RAILS[i] * g.H - w * 0.5 + roulis}px, 0)`;
+        el.style.transform = `translate3d(${ecran(x) - w}px, ${g.haut + RAILS[i] * g.th - w * 0.49 + roulis}px, 0)`;
         el.style.opacity = tombee && t - (sc?.chute ?? 0) > 1400 ? String(Math.max(0, 1 - (t - (sc?.chute ?? 0) - 1400) / 500)) : '1';
         // Le jeton sur la frise du classement.
         const j = refs.jetons[i].current;
@@ -316,13 +313,13 @@ export function BonusDraisines({ v, b, nom, ouvert, choisir }: { v: VueBW; b: Vu
     refsScene.current = {
       scene: nouvelleRef(),
       ciel: nouvelleRef(),
+      terrain: nouvelleRef(),
       foule: nouvelleRef(),
       mat: nouvelleRef(),
       baron: nouvelleRef(),
       poteau: nouvelleRef(),
-      voies: EQUIPAGES.map(() => nouvelleRef<HTMLDivElement>()),
-      departs: EQUIPAGES.map(() => nouvelleRef<HTMLDivElement>()),
-      arrivees: EQUIPAGES.map(() => nouvelleRef<HTMLDivElement>()),
+      depart: nouvelleRef(),
+      arrivee: nouvelleRef(),
       draisines: EQUIPAGES.map(() => nouvelleRef<HTMLDivElement>()),
       jetons: EQUIPAGES.map(() => nouvelleRef<HTMLSpanElement>()),
     };
@@ -391,13 +388,17 @@ export function BonusDraisines({ v, b, nom, ouvert, choisir }: { v: VueBW; b: Vu
   return (
     <div className={`dr ${nom} ${photoFinish ? 'photo' : ''}`} ref={refs.scene}>
       <div className="dr-ciel" ref={refs.ciel} />
+      <div className="dr-terrain" ref={refs.terrain} />
+      <div className="dr-ligne depart" ref={refs.depart} />
+      <div className="dr-ligne arrivee" ref={refs.arrivee} />
       <div className="dr-objet dr-poteau" ref={refs.poteau}>
         <img src={IMG('dr-poteau-arrivee')} alt="" draggable={false} />
       </div>
       <div className={`dr-objet dr-mat ${vert ? 'vert' : ''}`} ref={refs.mat} style={{ '--feux': feux } as CSSProperties}>
-        <img src={IMG('dr-mat-depart')} alt="" draggable={false} />
+        <img src={IMG('dr-mat-feux')} alt="" draggable={false} />
+        {/* Seules les lampes s'allument : en rouge l'une après l'autre, puis toutes en vert au départ. */}
         {FEUX.map((_, k) => (
-          <i key={k} className={`dr-feu ${k < feux ? 'allume' : ''}`} style={{ top: `${[22.8, 33.2, 43.8, 54.3][k]}%` }} />
+          <i key={k} className={`dr-feu ${vert ? 'vert' : k < feux ? 'allume' : ''}`} style={{ left: `${[19.3, 39.8, 60.4, 81.1][k]}%` }} />
         ))}
       </div>
       <div className={`dr-objet dr-baron ${tir ? 'tir' : ''} ${parti ? 'parti' : ''}`} ref={refs.baron}>
@@ -407,10 +408,7 @@ export function BonusDraisines({ v, b, nom, ouvert, choisir }: { v: VueBW; b: Vu
       </div>
 
       {EQUIPAGES.map((e, k) => (
-        <div key={e.cle} className="dr-couloir" style={{ zIndex: 2 + k * 2 } as CSSProperties}>
-          <div className="dr-voie" ref={refs.voies[k]} />
-          <div className="dr-ligne depart" ref={refs.departs[k]} />
-          <div className="dr-ligne arrivee" ref={refs.arrivees[k]} />
+        <div key={e.cle} className="dr-couloir" style={{ zIndex: 3 + k } as CSSProperties}>
           <div className={`dr-draisine ${mien === k ? 'mienne' : ''} ${g === k && arriveeGagnant ? 'gagnante' : ''}`} ref={refs.draisines[k]} data-pose="a">
             <img className="dr-poussiere" src={IMG('dr-poussiere')} alt="" draggable={false} />
             <img className="a" src={IMG(`dr-${e.cle}-a`)} alt="" draggable={false} />
