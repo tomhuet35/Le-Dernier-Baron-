@@ -305,7 +305,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bw-ev-voiture-boulevard.webp',
     '/cartes/bw-ev-voiture-ruelles.webp',
     '/cartes/bw-ev-voiture-souterrains.webp',
-    '/cartes/bw-sym-aiguillage.webp',
+    '/cartes/bw-sym-chaudiere.webp',
     '/cartes/son-ev-moteur.mp3',
     '/cartes/son-ev-passage.mp3',
     '/cartes/son-ev-fracas.mp3',

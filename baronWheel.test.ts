@@ -7,7 +7,8 @@ import {
   BONUS_BW,
   CASES_BW,
   choixDuBonusBW,
-  conseilAiguillage,
+  arrondiChaudiere,
+  multiplicateurChaudiere,
   COMPOSITION_BW,
   DEGRES_CASE_BW,
   DUREES_BW,
@@ -68,7 +69,7 @@ describe('The Baron’s Wheel : les règles', () => {
       expect(r[c]).toBeLessThan(1.75);
     }
     // Ce que les petites cases ont perdu est rendu aux quatre bonus (environ 0,15 chacun) : 1,8 à 1,9 fois la mise.
-    for (const c of ['baron', 'pickpocket', 'aiguillage', 'braquage'] as const) {
+    for (const c of ['baron', 'pickpocket', 'chaudiere', 'braquage'] as const) {
       expect(r[c]).toBeGreaterThan(1.8);
       expect(r[c]).toBeLessThan(1.9);
     }
@@ -138,38 +139,32 @@ describe('The Baron’s Wheel : les règles', () => {
     expect(valeurRecompenseBW({ x: 100, jackpot: 'grand', fixe: 500 }, 10)).toBe(1500);
     expect(valeurRecompenseBW({ x: 25, jackpot: 'mini' }, 10)).toBe(25);
     expect(valeurRecompenseBW({ x: 12 }, 5)).toBe(60);
-    expect(etapesBonusBW('aiguillage').map((e) => e.nom)).toEqual(['chargement', 'intro', 'aiguille', 'trajet', 'aiguille', 'trajet', 'aiguille', 'trajet', 'terminus', 'revele']);
-    expect(choixDuBonusBW('aiguillage')).toEqual([2, 2, 2]);
-    // Chaque mini-jeu commence par son écran de chargement.
-    for (const t of BONUS_BW) expect(etapesBonusBW(t)[0]).toMatchObject({ nom: 'chargement', choix: 0 });
-    // L'Aiguillage : (1 + les trois primes) × le multiplicateur du terminus ; gauche, droite, droite → Istanbul (k = 2).
-    const reseau = {
-      type: 'aiguillage' as const,
-      gares: [
-        [2, 0],
-        [1, 10, 3],
-        [0, 2, 5, 1],
-      ],
-      eclairees: [
-        [true, false],
-        [true, false, true],
-        [false, true, false, true],
-      ],
-      terminus: [1, 1.5, 2, 1.25],
-    };
-    expect(recompenseBonusBW(reseau, [0, 1, 1])).toEqual({ x: (1 + 2 + 10 + 5) * 2 });
-    // L'aiguilleur vise le meilleur terminus en moyenne : Istanbul ×2 par la gare éclairée +3 (à droite, puis à droite).
-    expect(conseilAiguillage(reseau, [])).toBe(1);
-    expect(conseilAiguillage(reseau, [1])).toBe(1);
-    expect(conseilAiguillage(reseau, [1, 1])).toBe(0);
-    // Chaque aiguillage propose une gare éclairée et une gare sous bâche ; les terminus du milieu valent ×1,5 et ×2.
-    for (let k = 0; k < 300; k++) {
-      const t = tirerBonusBW('aiguillage', h);
-      if (t.type !== 'aiguillage') throw new Error();
-      t.eclairees.forEach((n) => n.forEach((e, i) => i > 0 && expect(e).not.toBe(n[i - 1])));
-      expect([...t.terminus.slice(1, 3)].sort()).toEqual([1.5, 2]);
-      expect([t.terminus[0], t.terminus[3]].sort()).toEqual([1, 1.25]);
+    // La Chaudière : jamais d'explosion avant ×11 ; siffler à ×m rapporte ×m si la chaudière tient, rien sinon ; ×20
+    // sans sifflet ; tous ceux qui tiennent jusqu'à la pleine pression encaissent ×1 000.
+    expect(etapesBonusBW('chaudiere').map((e) => e.nom)).toEqual(['chargement', 'intro', 'pression', 'explosion', 'revele']);
+    expect(choixDuBonusBW('chaudiere')).toEqual([]);
+    expect(recompenseBonusBW({ type: 'chaudiere', explosion: 37.4 }, [3_620])).toEqual({ x: 36.2, evade: true });
+    expect(recompenseBonusBW({ type: 'chaudiere', explosion: 37.4 }, [4_000])).toEqual({ x: 0, evade: false });
+    expect(recompenseBonusBW({ type: 'chaudiere', explosion: 37.4 }, [0])).toEqual({ x: 20, evade: true });
+    expect(recompenseBonusBW({ type: 'chaudiere', explosion: 15 }, [0])).toEqual({ x: 0, evade: false });
+    expect(recompenseBonusBW({ type: 'chaudiere', explosion: 5_000 }, [0])).toEqual({ x: 20, evade: true });
+    expect(multiplicateurChaudiere(0)).toBe(10);
+    expect(multiplicateurChaudiere(10_000)).toBeCloseTo(100, 6);
+    expect(multiplicateurChaudiere(60_000)).toBe(1000);
+    expect(arrondiChaudiere(12.38)).toBe(12.3);
+    expect(arrondiChaudiere(345.9)).toBe(345);
+    // La montée dure jusqu'à l'explosion (20 s au plus) ; P(explosion après ×m) = 11 / m : siffler à ×m vaut ×11 en moyenne.
+    expect(etapesBonusBW('chaudiere', DUREES_BW, { type: 'chaudiere', explosion: 100 })[2].duree).toBe(10_000);
+    expect(etapesBonusBW('chaudiere', DUREES_BW, { type: 'chaudiere', explosion: 1e9 })[2].duree).toBe(20_000);
+    const somme = { 15: 0, 50: 0, 400: 0 } as Record<number, number>;
+    const N = 200_000;
+    for (let k = 0; k < N; k++) {
+      const t = tirerBonusBW('chaudiere', h);
+      if (t.type !== 'chaudiere') throw new Error();
+      expect(t.explosion).toBeGreaterThanOrEqual(11);
+      for (const m of [15, 50, 400]) somme[m] += recompenseBonusBW(t, [m * 100]).x;
     }
+    for (const m of [15, 50, 400]) expect(somme[m] / N).toBeCloseTo(11, 0);
     expect(gainBW(25_000, 5)).toBe(125_000);
     // L'Express : 5 wagons, 2 décrochés au premier tunnel, 2 au second, un seul arrive ; rien sous ×10.
     for (let k = 0; k < 500; k++) {
@@ -271,7 +266,7 @@ beforeAll(async () => {
       jeuALaffiche: () => null,
       cadeaux: [],
       delaiEcriture: 30,
-      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, introAiguillage: 80, aiguille: 700, trajet: 80, terminus: 80, introDonne: 80, donne: 80, reveleDonne: 150, introPick: 80, revelePick: 150, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
+      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, introAiguillage: 80, introChaudiere: 80, explosion: 300, aiguille: 700, trajet: 80, terminus: 80, introDonne: 80, donne: 80, reveleDonne: 150, introPick: 80, revelePick: 150, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
       arretBaronWheel: () => arretImpose,
       multiplicateursBaronWheel: () => multiplicateursImposes,
       ouvertureBaronWheel: () => ouverture,
