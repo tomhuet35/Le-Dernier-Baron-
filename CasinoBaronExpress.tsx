@@ -994,10 +994,6 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
             <i className="bwx-affiche-reflet" />
           </div>
           <img className="bwx-baron" src={IMG('baron')} alt="" draggable={false} />
-          <div className="bwx-accroche">
-            <span>Paris → Istanbul</span>
-            <em>{tr('5 wagons au départ… un seul arrivera !', '5 carriages leave… only one will arrive!')}</em>
-          </div>
           <div className="bwx-vapeurs" aria-hidden="true">
             {[0, 1, 2, 3, 4].map((k) => (
               <img key={k} src={`/cartes/bw-ex-fumee-${k + 1}.webp`} alt="" style={{ '--k': k } as CSSProperties} />

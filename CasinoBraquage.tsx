@@ -721,33 +721,6 @@ export function BonusBraquage({ v, b, nom }: { v: VueBW; b: VueBonusBW; nom: str
               </span>
             )}
           </div>
-          <div className="brq-infos">
-          <div className="brq-accroche">
-            <strong>{tr('Une seule perceuse pour tout le salon', 'One drill for the whole room')}</strong>
-            <span>{tr('Plus elle descend, plus le butin grossit… jusqu’à l’alarme !', 'The deeper it goes, the bigger the loot… until the alarm!')}</span>
-          </div>
-          <ol className="brq-echelle" aria-label={tr('Les sous-sols', 'The basements')}>
-            {ETAGES.map((n, k) => (
-              <li key={k} style={{ '--k': k } as CSSProperties} className={k === NB - 1 ? 'siecle' : ''}>
-                <small>
-                  {k === NB - 1 ? (
-                    <>
-                      <span className="long">{tr('Coffre du Siècle', 'Vault of the Century')}</span>
-                      <span className="court">{tr('Sous-sol 5', 'Basement 5')}</span>
-                    </>
-                  ) : (
-                    tr(`Sous-sol ${k + 1}`, `Basement ${k + 1}`)
-                  )}
-                </small>
-                <b>
-                  <ValeurMultipliee x={ETAGES_BRAQUAGE[k]} m={M} />
-                </b>
-                {k === NB - 1 && <em>+ JACKPOT</em>}
-                <span className="brq-echelle-nom">{tr(...n)}</span>
-              </li>
-            ))}
-          </ol>
-          </div>
         </div>
       )}
 

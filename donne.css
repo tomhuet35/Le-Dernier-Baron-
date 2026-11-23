@@ -118,3 +118,7 @@
 
 /* Le résultat de la manche attend que ma carte soit révélée. */
 .bw-bonus.baron .bw-bonus-resultat { animation-delay: 5.6s; animation-fill-mode: both; }
+
+/* L'intro : l'affiche seule, au centre (sans explications). */
+.gd-affiche { left: 50% !important; top: 50% !important; bottom: auto !important; height: min(calc(100% - 70px), 92cqw * 1099 / 1000) !important; width: auto !important; margin-top: 24px; transform: translate(-50%, -50%) !important; animation-name: gd-affiche-seule !important; }
+@keyframes gd-affiche-seule { from { opacity: 0; transform: translate(-50%, -50%) rotate(-4deg) scale(0.82); } }
