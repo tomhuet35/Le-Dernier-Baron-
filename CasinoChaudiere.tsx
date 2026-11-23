@@ -19,7 +19,7 @@ import { jouerEffet, mouvementReduit } from './ui';
 import './chaudiere.css';
 
 /** Les images de la Chaudière (sans chemin ni extension), préchargées avant le bonus. */
-export const IMAGES_CHAUDIERE_NOMS = ['bw-ex-gare-depart', 'ai-train-34', 'bw-mano-cadran', 'bw-mano-aiguille', 'bw-vapeur-face', 'bw-ev-etincelles'];
+export const IMAGES_CHAUDIERE_NOMS = ['bw-ex-gare-depart', 'ai-train-34', 'ch-logo', 'ch-cabine', 'ch-sifflet', 'ch-mecanicien', 'ch-explosion', 'bw-mano-cadran', 'bw-mano-aiguille', 'bw-vapeur-face'];
 
 const fmt = (x: number) => `×${x.toLocaleString(tr('fr-FR', 'en-US'), { maximumFractionDigits: x < 100 ? 1 : 0, minimumFractionDigits: x < 100 ? 1 : 0 })}`;
 /** La part de la montée (0 à 1) : l'échelle du manomètre est logarithmique, de ×10 à ×1 000. */
@@ -119,18 +119,22 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
             </span>
           </div>
           <i className="ch-gare-fondu" />
+          <img className="ch-logo" src="/cartes/ch-logo.webp" alt={tr('La Chaudière', 'The Boiler')} draggable={false} />
         </div>
       )}
+      {/* La cabine : le manomètre géant dans le hublot de la chaudière ; le cadre garde les proportions du décor. */}
+      <div className="ch-cadre">
+        <img className="ch-cabine" src="/cartes/ch-cabine.webp" alt="" draggable={false} />
+        <div className="ch-mano">
+          <img className="ch-mano-cadran" src="/cartes/bw-mano-cadran.webp" alt="" draggable={false} />
+          <img className="ch-mano-aiguille" src="/cartes/bw-mano-aiguille.webp" alt="" draggable={false} style={{ transform: `rotate(${aiguille}deg)` }} />
+        </div>
+      </div>
       <div className="ch-lueur" aria-hidden="true" />
       <div className="ch-vapeurs" aria-hidden="true">
         {[0, 1, 2, 3].map((k) => (
           <img key={k} src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} style={{ '--k': k } as CSSProperties} />
         ))}
-      </div>
-
-      <div className="ch-mano">
-        <img className="ch-mano-cadran" src="/cartes/bw-mano-cadran.webp" alt="" draggable={false} />
-        <img className="ch-mano-aiguille" src="/cartes/bw-mano-aiguille.webp" alt="" draggable={false} style={{ transform: `rotate(${aiguille}deg)` }} />
       </div>
 
       <div className="ch-compteur" role="status" aria-live="off">
@@ -142,6 +146,7 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
 
       {(montee || nom === 'intro') && b.mise > 0 && (
         <button type="button" className={`ch-sifflet ${monSifflet !== null ? 'fait' : ''}`} onClick={siffler} disabled={!peut}>
+          <img className="ch-sifflet-img" src="/cartes/ch-sifflet.webp" alt="" draggable={false} />
           {monSifflet !== null ? (
             <>
               <span>{tr('Sifflé à', 'Whistled at')}</span>
@@ -162,6 +167,9 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
       )}
       {(montee || nom === 'intro') && !b.mise && <p className="ch-auto">{tr('Tu regardes : tu n’as pas misé sur la Chaudière.', 'Watching: you did not bet on the Boiler.')}</p>}
 
+      {/* Le mécanicien tire la chaîne du sifflet quand j'ai sifflé. */}
+      {monSifflet !== null && !explosee && <img className="ch-mecanicien" src="/cartes/ch-mecanicien.webp" alt="" draggable={false} />}
+
       {c && c.siffles.length > 0 && (
         <ol className="ch-siffles" aria-label={tr('Ceux qui ont sifflé', 'Who whistled')}>
           {c.siffles.slice(-6).map((s, k) => (
@@ -178,8 +186,8 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
         <div className={`ch-fin ${explosee ? 'boum' : 'pleine'}`} role="status">
           {explosee ? (
             <>
-              <img className="ch-eclats" src="/cartes/bw-ev-etincelles.webp" alt="" draggable={false} />
               <img className="ch-nuage" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
+              <img className="ch-eclats" src="/cartes/ch-explosion.webp" alt="" draggable={false} />
               <strong>{tr('BOUM !', 'BOOM!')}</strong>
               <span>{tr(`La chaudière a explosé à ${fmt(arrondiChaudiere(explosion ?? 0))}`, `The boiler blew up at ${fmt(arrondiChaudiere(explosion ?? 0))}`)}</span>
             </>
