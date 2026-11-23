@@ -3,6 +3,9 @@
  * (×10, ×100 au bout de 10 s, ×1 000 à pleine pression au bout de 20 s). Chacun tire le sifflet quand il veut pour
  * encaisser le multiplicateur du moment ; si la chaudière explose avant, il perd.
  *
+ * L'intro : le Rapide entre en gare au fond du grand hall, freine le long du quai, siffle, puis la caméra plonge dans
+ * la cabine de la locomotive, jusqu'à la chaudière.
+ *
  * Le serveur cache le point d'explosion (et la durée de la montée, qui le trahirait) : il envoie seulement depuis
  * combien de temps la pression monte. L'écran fait monter le manomètre à ce rythme, de plus en plus vite et de plus en
  * plus fort (vapeur, tremblement), et montre qui a sifflé et à combien. À l'explosion, tout vole en éclats ; à pleine
@@ -16,7 +19,7 @@ import { jouerEffet, mouvementReduit } from './ui';
 import './chaudiere.css';
 
 /** Les images de la Chaudière (sans chemin ni extension), préchargées avant le bonus. */
-export const IMAGES_CHAUDIERE_NOMS = ['bw-mano-cadran', 'bw-mano-aiguille', 'bw-vapeur-face', 'bw-ev-etincelles'];
+export const IMAGES_CHAUDIERE_NOMS = ['bw-ex-gare-depart', 'ai-train-34', 'bw-mano-cadran', 'bw-mano-aiguille', 'bw-vapeur-face', 'bw-ev-etincelles'];
 
 const fmt = (x: number) => `×${x.toLocaleString(tr('fr-FR', 'en-US'), { maximumFractionDigits: x < 100 ? 1 : 0, minimumFractionDigits: x < 100 ? 1 : 0 })}`;
 /** La part de la montée (0 à 1) : l'échelle du manomètre est logarithmique, de ×10 à ×1 000. */
@@ -84,14 +87,40 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
     void onSiffler().finally(() => setEnvoi(false));
   };
 
+  // L'intro : où en est-on (pour caler l'animation et les sons, même si l'on arrive en cours de route) ?
+  const [t0] = useState(() => (nom === 'intro' && v.duree !== null && v.reste !== null ? Math.max(0, v.duree - v.reste) : 0));
+  useEffect(() => {
+    if (nom !== 'intro' || mouvementReduit()) return;
+    const sons: [number, () => void][] = [
+      [0, () => jouerEffet('bw_train_passe', { volume: 0.8 })],
+      [2_600, () => jouerEffet('ex_freins', { volume: 0.9 })],
+      [3_300, () => jouerEffet('ex_sifflet', { volume: 0.9 })],
+      [3_500, () => jouerEffet('bw_vapeur', { volume: 0.7 })],
+    ];
+    const ids = sons.filter(([t]) => t >= t0).map(([t, f]) => window.setTimeout(f, t - t0));
+    return () => ids.forEach((i) => window.clearTimeout(i));
+  }, [nom, t0]);
+
   const p = part(affiche);
   const reduit = mouvementReduit();
-  const style = { '--p': p, '--secousse': reduit || !montee ? 0 : p } as CSSProperties;
+  const style = { '--p': p, '--secousse': reduit || !montee ? 0 : p, '--t0': `${-t0}ms` } as CSSProperties;
   const aiguille = -124 + 248 * p;
   const danger = p > 0.55;
 
   return (
     <div className={`ch ${nom} ${explosee && fin ? 'explosee' : ''} ${fin && !explosee ? 'pleine' : ''} ${danger && montee ? 'danger' : ''}`} style={style}>
+      {nom === 'intro' && (
+        <div className="ch-gare" aria-hidden="true">
+          <div className="ch-gare-cadre">
+            <img className="ch-gare-fond" src="/cartes/bw-ex-gare-depart.webp" alt="" draggable={false} />
+            <span className="ch-gare-train">
+              <img src="/cartes/ai-train-34.webp" alt="" draggable={false} />
+              <img className="ch-gare-vapeur" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
+            </span>
+          </div>
+          <i className="ch-gare-fondu" />
+        </div>
+      )}
       <div className="ch-lueur" aria-hidden="true" />
       <div className="ch-vapeurs" aria-hidden="true">
         {[0, 1, 2, 3].map((k) => (
