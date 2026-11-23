@@ -595,6 +595,8 @@ function Rouleau({ fin, duree, type }: { fin: { c?: CaseBW; x?: number }; duree:
 export function TopSlot({ v }: { v: VueBW }) {
   const t = v.phase === 'mises' ? null : v.topSlot;
   const double = !!t && t.length > 1;
+  // La roue s'est arrêtée sur la case tirée : son multiplicateur s'illumine.
+  const gagne = (c: CaseBW) => (v.phase === 'bonus' || v.phase === 'resultat') && v.arret !== null && ROUE_BW[v.arret] === c;
   // Depuis combien de temps les mises sont fermées : on ne fait défiler les rouleaux que si l'on a vu le tirage commencer.
   const [depart] = useState(() => ({ numero: v.numero, ecoule: v.phase === 'multiplicateurs' && v.duree !== null && v.reste !== null ? v.duree - v.reste : Infinity }));
   const anime = !mouvementReduit() && depart.numero === v.numero ? depart.ecoule < 400 : !mouvementReduit() && v.phase === 'multiplicateurs';
@@ -626,7 +628,7 @@ export function TopSlot({ v }: { v: VueBW }) {
     gauche = (
       <span className={`bw-ts-fixe n${t.length}`}>
         {t.map((x) => (
-          <span key={x.c} className="bw-ts-ligne">
+          <span key={x.c} className={`bw-ts-ligne ${gagne(x.c) ? 'gagne' : ''}`}>
             <ElementTopSlot c={x.c} />
           </span>
         ))}
@@ -635,7 +637,7 @@ export function TopSlot({ v }: { v: VueBW }) {
     droite = (
       <span className={`bw-ts-fixe n${t.length}`}>
         {t.map((x) => (
-          <span key={x.c} className="bw-ts-ligne">
+          <span key={x.c} className={`bw-ts-ligne ${gagne(x.c) ? 'gagne' : ''}`}>
             <ElementTopSlot x={x.x} />
           </span>
         ))}
@@ -668,60 +670,6 @@ export function Manometre({ aiguille }: { aiguille: MutableRefObject<HTMLImageEl
     <div className="bw-mano" aria-hidden="true">
       <img className="bw-mano-cadran" src="/cartes/bw-mano-cadran.webp" alt="" draggable={false} />
       <img className="bw-mano-aiguille" ref={aiguille} src="/cartes/bw-mano-aiguille.webp" alt="" draggable={false} />
-    </div>
-  );
-}
-
-/** Le coup de tampon : où frapper (la plaque ×N du Top Slot) et où s'envole le ×N (le solde), en pixels de l'écran. */
-export interface CoupDeTampon {
-  x: number;
-  id: number;
-  cx: number;
-  cy: number;
-  w: number;
-  dx: number;
-  dy: number;
-}
-export const DUREE_TAMPON = 3400;
-/** La plaque ×N de la case d'arrêt (sa ligne au Top Slot), et le solde vers lequel le ×N s'envole. */
-export function viserTampon(v: VueBW, x: number): CoupDeTampon | null {
-  const k = Math.max(0, (v.topSlot ?? []).findIndex((t) => v.arret !== null && t.c === ROUE_BW[v.arret]));
-  const lignes = document.querySelectorAll('.bw-ts-fenetre.droite .bw-ts-ligne');
-  const cible = (lignes[k] ?? document.querySelector('.bw-ts-fenetre.droite'))?.getBoundingClientRect();
-  if (!cible || !cible.width) return null;
-  const solde = document.querySelector('.bw-solde')?.getBoundingClientRect();
-  const cx = cible.left + cible.width / 2;
-  const cy = cible.top + cible.height / 2;
-  return { x, id: Date.now(), cx, cy, w: Math.max(130, cible.width * 1.12), dx: solde ? solde.left + solde.width / 2 - cx : 0, dy: solde ? solde.top + solde.height / 2 - cy : -200 };
-}
-
-/** La case gagnante était multipliée : le contrôleur arrive, frappe « VALIDÉ » sur la plaque ×N du Top Slot, et le ×N s'envole vers le solde. */
-export function Tampon({ coup }: { coup: CoupDeTampon }) {
-  useEffect(() => {
-    const ids = [
-      window.setTimeout(() => {
-        jouerEffet('bw_poincon', { vitesse: 0.7, volume: 0.9 });
-        document.querySelector('.bw-topslot')?.animate(
-          [{ transform: 'none' }, { transform: 'translateY(4px) scale(0.99)' }, { transform: 'translateY(-2px)' }, { transform: 'none' }],
-          { duration: 260, easing: 'ease-out' },
-        );
-      }, DUREE_TAMPON * 0.3),
-    ];
-    return () => ids.forEach((i) => window.clearTimeout(i));
-  }, []);
-  return (
-    <div
-      className="bw-tampon-scene"
-      style={{ '--cx': `${coup.cx}px`, '--cy': `${coup.cy}px`, '--w': `${coup.w}px`, '--dx': `${coup.dx}px`, '--dy': `${coup.dy}px`, '--duree': `${DUREE_TAMPON}ms` } as CSSProperties}
-      aria-hidden="true"
-    >
-      <img className="bw-controleur-tampon" src="/cartes/bw-controleur-tampon.webp" alt="" draggable={false} />
-      <span className="bw-empreinte">
-        <img src="/cartes/bw-tampon-empreinte.webp" alt="" draggable={false} />
-        <b>{tr('VALIDÉ', 'VALID')}</b>
-      </span>
-      <img className="bw-tampon-objet" src="/cartes/bw-tampon.webp" alt="" draggable={false} />
-      <b className="bw-tampon-x bw-or">×{coup.x}</b>
     </div>
   );
 }
@@ -1132,7 +1080,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   const [credit, setCredit] = useState<{ montant: number; id: number } | null>(null);
   const [fete, setFete] = useState<{ jackpot: JackpotBW; gain: number; id: number } | null>(null);
   const [palier, setPalier] = useState<{ n: number; gain: number; id: number } | null>(null);
-  const [tampon, setTampon] = useState<CoupDeTampon | null>(null);
   const aiguille = useRef<HTMLImageElement | null>(null);
   const minuteries = useRef<number[]>([]);
   const plusTard = (f: () => void, ms: number) => minuteries.current.push(window.setTimeout(f, ms));
@@ -1218,17 +1165,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     const change = avant.numero !== v.numero || avant.phase !== v.phase || etapeNom(avant) !== etapeNom(v);
     if (!change) return;
     if (v.phase === 'multiplicateurs') jouerEffet('bw_cloche');
-    // Arrêt sur une case multipliée : le contrôleur valide la plaque ×N du Top Slot d'un coup de tampon.
-    if (avant.phase === 'tour' && v.phase === 'resultat' && v.arret !== null && !mouvementReduit()) {
-      const x = v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1;
-      if (x > 1)
-        plusTard(() => {
-          const coup = viserTampon(v, x);
-          if (!coup) return;
-          setTampon(coup);
-          plusTard(() => setTampon((p) => (p?.id === coup.id ? null : p)), DUREE_TAMPON + 100);
-        }, 450);
-    }
+    // Arrêt sur une case multipliée : son multiplicateur s'illumine au Top Slot.
+    if (avant.phase === 'tour' && v.phase === 'resultat' && v.arret !== null && (v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1) > 1) plusTard(() => jouerEffet('bw_multi'), 300);
     if (v.phase === 'tour') {
       jouerEffet('bw_lancer');
       jouerEffet('bw_sifflet');
@@ -1258,7 +1196,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         jouerEffet(np >= 3 ? 'bw_jackpot' : 'bw_gros');
         const id = Date.now();
         // Après le poinçon du contrôleur s'il y en a un.
-        const attente = (v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1) > 1 && !mouvementReduit() ? DUREE_TAMPON + 500 : 300;
+        const attente = (v.multiplicateurs?.find((b) => b.i === v.arret)?.x ?? 1) > 1 && !mouvementReduit() ? 1500 : 300;
         plusTard(() => setPalier({ n: np, gain, id }), attente);
         plusTard(() => setPalier((p) => (p?.id === id ? null : p)), attente + 5200);
       } else if (gain >= 10 * mise && gain >= 500_000) jouerEffet('bw_gros');
@@ -1554,7 +1492,6 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           <b>+{dollars(fete.gain)}</b>
         </div>
       )}
-      {tampon && <Tampon key={tampon.id} coup={tampon} />}
       {palier && <PalierGain key={palier.id} n={palier.n} gain={palier.gain} onFermer={() => setPalier(null)} />}
       {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={BUTIN_PLUIE} />}
     </div>
