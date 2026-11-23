@@ -39,7 +39,7 @@ const MEDAILLONS: Record<TerminusAiguillage | 'paris', string> = {
   paris: 'med-paris',
   rome: 'noeud',
   venise: 'med-venise',
-  istanbul: 'noeud',
+  istanbul: 'med-istanbul',
   vienne: 'med-vienne',
 };
 
@@ -61,6 +61,7 @@ export const IMAGES_AIGUILLAGE_NOMS = [
   'med-paris',
   'med-venise',
   'med-vienne',
+  'med-istanbul',
   'compteur',
   'plaque-prime',
   'etincelles',
@@ -174,10 +175,13 @@ function Carte({ a, etat, camera, mini = false }: { a: NonNullable<VueBonusBW['a
     return () => ro.disconnect();
   }, []);
   // La caméra : l'échelle qui couvre la boîte, fois le zoom, centrée sur le point demandé sans montrer le bord.
-  const base = taille.w ? Math.max(taille.w / CARTE.w, taille.h / CARTE.h) : 0;
+  // Sur un écran plus haut que la carte (un téléphone), la carte tient en largeur : on voit toute l'Europe, de bord à
+  // bord, sur un fond de la même carte, floutée.
+  const base = taille.w ? (taille.w / taille.h < CARTE.w / CARTE.h ? taille.w / CARTE.w : Math.max(taille.w / CARTE.w, taille.h / CARTE.h)) : 0;
   const S = base * camera.z;
-  const tx = Math.min(0, Math.max(taille.w - CARTE.w * S, taille.w / 2 - camera.x * S));
-  const ty = Math.min(0, Math.max(taille.h - CARTE.h * S, taille.h / 2 - camera.y * S));
+  const cadrer = (boite: number, monde: number, c: number) => (monde * S <= boite ? (boite - monde * S) / 2 : Math.min(0, Math.max(boite - monde * S, boite / 2 - c * S)));
+  const tx = cadrer(taille.w, CARTE.w, camera.x);
+  const ty = cadrer(taille.h, CARTE.h, camera.y);
 
   const { chemin, niveau, avance, devoiles } = etat;
   const positions = [0];
@@ -207,6 +211,7 @@ function Carte({ a, etat, camera, mini = false }: { a: NonNullable<VueBonusBW['a
 
   return (
     <div className={`ai-carte ${mini ? 'mini' : ''}`} ref={boite}>
+      {!mini && <img className="ai-carte-flou" src={IMG('carte')} alt="" draggable={false} />}
       <div className="ai-monde" style={{ width: CARTE.w, height: CARTE.h, transform: `translate(${tx}px, ${ty}px) scale(${S || 0.0001})` }}>
         <img className="ai-carte-fond" src={IMG('carte')} alt="" draggable={false} />
         <svg className="ai-voies" viewBox={`0 0 ${CARTE.w} ${CARTE.h}`} aria-hidden="true">
@@ -260,7 +265,7 @@ function Carte({ a, etat, camera, mini = false }: { a: NonNullable<VueBonusBW['a
           );
         })}
         {/* Le train */}
-        <span className="ai-train" style={{ left: train.p[0], top: train.p[1], transform: `translate(-50%, -78%) rotate(${train.angle}deg)` }}>
+        <span className="ai-train" style={{ left: train.p[0], top: train.p[1], transform: `translate(-50%, -88%) rotate(${train.angle}deg)` }}>
           <i className="ai-train-phare" />
           <img src={IMG('train-cote')} alt="" draggable={false} />
         </span>
@@ -345,7 +350,7 @@ export function BonusAiguillage({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
   // --- L'intro : l'affiche, le poste de l'aiguilleur, puis la carte et ce que vaut chaque terminus ce soir.
   if (nom === 'intro') {
     const tt = reduit ? 9_000 : t;
-    const acte = tt < 2_800 ? 'affiche' : tt < 5_000 ? 'poste' : 'carte';
+    const acte = tt < 2_800 ? 'affiche' : tt < 6_300 ? 'poste' : 'carte';
     return (
       <div className={`ai intro ${acte}`}>
         {acte === 'affiche' && (
@@ -460,9 +465,12 @@ export function BonusAiguillage({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
     <div className={`ai trajet ${nuit ? 'nuit' : 'jour'}`}>
       {nuit ? (
         <div className="ai-voie-nuit" style={{ '--d': `${duree * 0.45}ms` } as CSSProperties}>
-          <img className="ai-voie-fond" src={IMG('voie')} alt="" draggable={false} />
-          <img className="ai-train-file" src={IMG('train-cote')} alt="" draggable={false} />
-          <img className="ai-etincelles" src={IMG('etincelles')} alt="" draggable={false} />
+          {/* Le décor garde ses proportions (il couvre l'écran) : le train roule exactement sur son rail. */}
+          <div className="ai-voie-cadre">
+            <img className="ai-voie-fond" src={IMG('voie')} alt="" draggable={false} />
+            <img className="ai-train-file" src={IMG('train-cote')} alt="" draggable={false} />
+            <img className="ai-etincelles" src={IMG('etincelles')} alt="" draggable={false} />
+          </div>
         </div>
       ) : (
         <>

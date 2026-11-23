@@ -6,7 +6,10 @@
 .ai { position: absolute; inset: 0; overflow: hidden; color: #fff1c4; container-type: size; background: #06070d; }
 
 /* ---------- La carte ---------- */
-.ai-carte { position: absolute; inset: 0; overflow: hidden; }
+.ai-carte { position: absolute; inset: 0; overflow: hidden; background: #06070d; }
+.ai-carte-flou { position: absolute; inset: -6%; width: 112%; height: 112%; max-width: none; object-fit: cover; filter: blur(14px) brightness(0.45) saturate(0.8); }
+/* Le titre du bonus s'efface devant l'affiche et l'aiguilleur. */
+.bw-bonus.aiguillage:has(.ai.intro.affiche) .bw-bonus-titre, .bw-bonus.aiguillage:has(.ai.intro.poste) .bw-bonus-titre { display: none; }
 .ai-monde { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform 1.1s cubic-bezier(0.45, 0, 0.3, 1); will-change: transform; }
 .ai.trajet .ai-monde { transition-duration: 0.25s; transition-timing-function: linear; }
 .ai-carte-fond { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; }
@@ -46,12 +49,12 @@
 .ai-prime-terminus.bachee { background: rgba(110, 15, 26, 0.92); color: #ffe9a8; }
 .ai-ville.arrivee img { animation: ai-pulse 0.8s ease-in-out infinite alternate; }
 
-.ai-train { position: absolute; z-index: 4; width: 150px; transform-origin: 50% 78%; pointer-events: none; }
+.ai-train { position: absolute; z-index: 4; width: 120px; transform-origin: 50% 88%; pointer-events: none; }
 .ai-train img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.8)); }
 .ai-train-phare { position: absolute; right: -55%; top: 30%; width: 80%; height: 50%; background: radial-gradient(ellipse at 0% 50%, rgba(255, 236, 170, 0.75), transparent 70%); mix-blend-mode: screen; }
 
 /* ---------- Le compteur ---------- */
-.ai-compteur { position: absolute; left: 8px; top: 52px; z-index: 20; width: min(36%, 230px); display: grid; place-items: center; pointer-events: none; }
+.ai-compteur { position: absolute; left: 8px; top: 64px; z-index: 20; width: min(36%, 230px); display: grid; place-items: center; pointer-events: none; }
 .ai-compteur img { width: 100%; height: auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)); }
 .ai-compteur b { position: absolute; left: 22%; right: 22%; top: 30%; bottom: 30%; display: grid; place-items: center; font-family: var(--titre); font-weight: 400; font-size: clamp(16px, 5.4cqw, 32px); color: #ffd774; text-shadow: 0 0 10px rgba(255, 200, 100, 0.8); animation: ai-pop 0.5s cubic-bezier(0.3, 1.8, 0.5, 1) both; }
 .ai-compteur small { margin-top: 1px; padding: 0 8px; border-radius: 99px; background: rgba(8, 4, 2, 0.8); font-size: 10.5px; font-weight: 800; color: #ffe9a8; white-space: nowrap; }
@@ -59,9 +62,9 @@
 /* ---------- L'intro ---------- */
 .ai-affiche, .ai-poste { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
 .ai-affiche { background: radial-gradient(circle, #5a0a14, #160406 75%); }
-.ai-affiche-fond { height: 100%; width: auto; max-width: none; animation: ai-zoom 3s ease-out both; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8)); }
+.ai-affiche-fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; animation: ai-zoom 3s ease-out both; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8)); }
 @keyframes ai-zoom { from { transform: scale(1.12); opacity: 0; } 20% { opacity: 1; } }
-.ai-logo { position: absolute; left: 50%; top: 9%; width: min(56%, 520px); height: auto; translate: -50% 0; filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9)); animation: ai-logo 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) 0.4s both; }
+.ai-logo { position: absolute; left: 50%; top: calc(50% - min(50cqh, 70.6cqw) + min(11cqh, 15.5cqw)); width: min(56cqw, 34cqh * 1.41); max-width: 520px; translate: -50% -50%; height: auto; filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.9)); animation: ai-logo 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) 0.4s both; }
 @keyframes ai-logo { from { transform: scale(0.3); opacity: 0; } }
 .ai-poste-fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: ai-zoom 2.4s ease-out both; }
 .ai-aiguilleur { position: absolute; left: 0; bottom: 0; height: 86%; width: auto; max-width: none; filter: drop-shadow(10px 0 20px rgba(0, 0, 0, 0.7)); animation: ai-entre 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) both; }
@@ -101,22 +104,24 @@
 .ai-levier { position: absolute; left: 50%; bottom: 4%; z-index: 4; height: 42%; width: auto; max-width: none; translate: -50% 0; transform-origin: 50% 88%; transition: transform 0.6s cubic-bezier(0.3, 1.6, 0.5, 1); filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); }
 .ai-levier.gauche { transform: rotate(-24deg); }
 .ai-levier.droite { transform: rotate(24deg) scaleX(-1); }
-.ai-mini { position: absolute; right: 8px; top: 52px; z-index: 7; width: 23%; aspect-ratio: 16 / 9; border-radius: 10px; border: 2px solid #c8963e; overflow: hidden; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7); }
+.ai-mini { position: absolute; right: 8px; top: 64px; z-index: 7; width: 23%; aspect-ratio: 16 / 9; border-radius: 10px; border: 2px solid #c8963e; overflow: hidden; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7); }
 .ai-carte.mini .ai-monde { transition: none; }
 .ai-carte.mini .ai-gare i, .ai-carte.mini .ai-ville b, .ai-carte.mini .ai-prime-terminus { display: none; }
 
 /* ---------- Le trajet ---------- */
-.ai-voie-nuit { position: absolute; inset: 0; overflow: hidden; }
-.ai-voie-fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 80%; animation: ai-zoom 0.6s ease-out both; }
-.ai-train-file { position: absolute; left: 0; bottom: 21%; width: 78%; height: auto; max-width: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); animation: ai-file var(--d) cubic-bezier(0.3, 0, 0.7, 1) both; }
+.ai-voie-nuit { position: absolute; inset: 0; overflow: hidden; background: #000; }
+.ai-voie-cadre { position: absolute; left: 50%; top: 50%; width: max(100cqw, 177.78cqh); height: max(100cqh, 56.25cqw); translate: -50% -50%; }
+.ai-voie-fond { position: absolute; inset: 0; width: 100%; height: 100%; animation: ai-fondu 0.5s ease-out both; }
+@keyframes ai-fondu { from { opacity: 0; } }
+.ai-train-file { position: absolute; left: 0; bottom: 29%; width: 62%; height: auto; max-width: none; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.8)); animation: ai-file var(--d) cubic-bezier(0.3, 0, 0.7, 1) both; }
 @keyframes ai-file { from { transform: translateX(-105%); } to { transform: translateX(135%); } }
-.ai-etincelles { position: absolute; left: 0; bottom: 14%; width: 40%; height: auto; max-width: none; mix-blend-mode: screen; opacity: 0.9; animation: ai-file var(--d) cubic-bezier(0.3, 0, 0.7, 1) both, ai-clignote 0.12s steps(2) infinite; }
+.ai-etincelles { position: absolute; left: 4%; bottom: 25%; width: 30%; height: auto; max-width: none; mix-blend-mode: screen; opacity: 0.9; animation: ai-file var(--d) cubic-bezier(0.3, 0, 0.7, 1) both, ai-clignote 0.12s steps(2) infinite; }
 .ai-prime-gagnee { position: absolute; left: 50%; top: 22%; z-index: 10; translate: -50% 0; width: max-content; max-width: 92%; margin: 0; padding: 6px 18px; border-radius: 14px; border: 2px solid #ffd774; background: radial-gradient(120% 140% at 50% 0%, rgba(70, 46, 10, 0.95), rgba(22, 12, 4, 0.95)); font-family: var(--titre); font-size: clamp(16px, 5.4cqw, 30px); color: #fff1c4; text-shadow: 0 0 14px rgba(255, 200, 110, 0.8); animation: ai-pop 0.5s cubic-bezier(0.3, 1.8, 0.5, 1) both; }
 .ai-prime-gagnee.grosse { border-color: #fff; box-shadow: 0 0 30px rgba(255, 220, 120, 0.9); }
 .ai-prime-gagnee.travaux { border-color: #ff8a7a; background: rgba(60, 10, 8, 0.95); color: #ffd0c4; text-shadow: none; }
 
 /* ---------- Le terminus ---------- */
-.ai-arrivee { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; align-content: center; gap: 4px; background: radial-gradient(circle at 50% 45%, rgba(40, 12, 6, 0.55), rgba(4, 2, 1, 0.88) 70%); animation: ai-zoom 0.8s ease-out both; }
+.ai-arrivee { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; align-content: center; gap: 4px; background: radial-gradient(circle at 50% 45%, rgba(40, 12, 6, 0.82), rgba(4, 2, 1, 0.94) 70%); animation: ai-zoom 0.8s ease-out both; }
 .ai-medaillon { width: min(34cqh, 30%); height: auto; filter: drop-shadow(0 0 30px rgba(255, 210, 110, 0.85)); animation: ai-logo 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
 .ai-ville-nom { font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 7cqw, 44px); color: #ffd774; text-shadow: 0 0 18px rgba(255, 200, 100, 0.8), 0 3px 6px #000; }
 .ai-calcul { margin: 0; padding: 4px 16px; border-radius: 14px; background: rgba(10, 4, 2, 0.75); font-family: var(--titre); font-size: clamp(16px, 5cqw, 28px); color: #fff1c4; animation: ai-pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.8s both; }
@@ -137,8 +142,8 @@
   .ai-signal { display: none; }
   .ai-feu { display: none; }
   .ai-levier { height: 30%; }
-  .ai-mini { width: 34%; top: 48px; }
-  .ai-compteur { width: 40%; top: 48px; }
+  .ai-mini { width: 38%; top: 62px; }
+  .ai-compteur { width: 44%; top: 62px; }
   .ai-aiguilleur-joie { display: none; }
   .ai-numero { display: none; }
   .ai-medaillon { width: 40%; }
