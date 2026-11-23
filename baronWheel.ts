@@ -659,7 +659,7 @@ export const DUREES_BW: DureesBW = {
   introBraquage: 2_500,
   introEvasion: 6_000,
   introAiguillage: 7_000,
-  introChaudiere: 3_000,
+  introChaudiere: 6_500,
   explosion: 3_000,
   aiguille: 6_000,
   trajet: 5_000,
