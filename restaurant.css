@@ -54,12 +54,16 @@
 /* En cuisine (pendant l'intro) : le chef prépare le plat vedette de la manche. */
 .wr-cuisine { position: absolute; inset: 0; z-index: 6; overflow: hidden; background: #140806; animation: wr-cuisine 5s ease-in-out both; }
 @keyframes wr-cuisine { 0%, 28% { opacity: 0; } 36%, 92% { opacity: 1; } 100% { opacity: 0; } }
-.wr-cuisine-fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
+.wr-cuisine-cadre { --lc: max(100cqw, 177.78cqh); position: absolute; left: 50%; top: 50%; width: var(--lc); height: calc(var(--lc) * 0.5625); translate: -50% -50%; }
+.wr-cuisine-fond { position: absolute; inset: 0; width: 100%; height: 100%; }
 .wr-cuisine-fond.haut { display: none; }
-.wr-cuisine-chef { position: absolute; left: 6%; bottom: 0; height: 92%; width: auto; filter: drop-shadow(8px 8px 18px rgba(0, 0, 0, 0.7)); animation: wr-chef 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) 1.5s both; }
-.wr-cuisine-plat { position: absolute; left: 54%; bottom: 8%; width: 34%; height: auto; translate: -50% 0; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 20px rgba(255, 200, 100, 0.35)); animation: wr-vedette 0.8s cubic-bezier(0.3, 1.4, 0.5, 1) 1.9s both; }
-@keyframes wr-vedette { from { transform: translateY(20%) scale(0.6); opacity: 0; filter: brightness(2); } }
-.wr-cuisine-vapeur { position: absolute; left: 54%; bottom: 30%; width: 10%; height: auto; translate: -50% 0; opacity: 0; mix-blend-mode: screen; animation: wr-fumee 3s ease-out 2.2s infinite; }
+/* Derrière le comptoir : la zone s'arrête à son bord (71 % du cadre), les jambes du chef restent cachées. */
+.wr-cuisine-derriere { position: absolute; left: 0; top: 0; width: 100%; height: 71.2%; overflow: hidden; }
+.wr-cuisine-chef { position: absolute; left: 8%; top: 22.5%; height: 154.5%; width: auto; max-width: none; filter: drop-shadow(8px 8px 18px rgba(0, 0, 0, 0.6)); animation: wr-monte 0.8s cubic-bezier(0.3, 1.2, 0.5, 1) 1.5s both; }
+@keyframes wr-monte { from { transform: translateY(40%); } }
+.wr-cuisine-plat { position: absolute; left: 63%; top: 44%; width: 30%; height: auto; translate: -50% 0; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 22px rgba(255, 200, 100, 0.35)); animation: wr-vedette 0.8s cubic-bezier(0.3, 1.4, 0.5, 1) 1.9s both; }
+@keyframes wr-vedette { from { transform: translateY(-30%) scale(0.6); opacity: 0; filter: brightness(2); } }
+.wr-cuisine-vapeur { position: absolute; left: 63%; top: 18%; width: 8%; height: auto; translate: -50% 0; opacity: 0; mix-blend-mode: screen; animation: wr-fumee 3s ease-out 2.2s infinite; }
 .wr-cuisine-titre { position: absolute; right: 4%; top: 8%; display: grid; justify-items: center; gap: 2px; padding: 10px 22px 12px; border-radius: 16px; border: 2px solid #d6a84b; background: rgba(40, 10, 16, 0.9); text-align: center; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7); animation: wr-annonce 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 2.1s both; }
 .wr-cuisine-titre small { font-weight: 800; font-size: clamp(11px, 2.6cqw, 15px); color: #ecd9b4; }
 .wr-cuisine-titre strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 5cqw, 40px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.7); }
@@ -102,11 +106,16 @@
   .wr-double, .wr-mien { font-size: calc(var(--lc) * 0.04); }
   .wr-nb { font-size: calc(var(--lc) * 0.022); }
   .wr-baron-zone { --ligne: var(--ligne-h); --bx: var(--x-h); --btop: var(--top-h); --bh: var(--h-h); --sens: var(--sens-h); }
+  .wr-cuisine-cadre { --lc: max(100cqw, 75cqh); height: calc(var(--lc) * 1.3333); top: auto; bottom: 0; translate: -50% 0; }
   .wr-cuisine-fond.large { display: none; }
   .wr-cuisine-fond.haut { display: block; }
-  .wr-cuisine-chef { left: -6%; height: 62%; }
-  .wr-cuisine-plat { left: 60%; bottom: 6%; width: 64%; }
-  .wr-cuisine-vapeur { left: 60%; bottom: 26%; width: 18%; }
+  .wr-cuisine-derriere { height: 66.6%; }
+  .wr-cuisine-chef { left: -8%; top: 47.5%; height: 105%; }
+  .wr-cuisine-plat { left: 70%; top: 54.5%; width: 50%; }
+  .wr-cuisine-vapeur { left: 70%; top: 38%; width: 12%; }
+  .wr-cuisine-titre { top: 2%; padding: 6px 16px 8px; }
+  .wr-cuisine-titre strong { font-size: clamp(18px, 4.6cqw, 30px); }
+  .wr-cuisine-titre b { font-size: clamp(22px, 5.6cqw, 40px); }
   .wr-cuisine-titre { left: 50%; right: auto; top: 6%; translate: -50% 0; width: max-content; max-width: 90%; }
   .wr-chef { height: 52%; right: -4%; }
   .wr-chef.ravi.gauche-l { left: auto; right: -4%; }

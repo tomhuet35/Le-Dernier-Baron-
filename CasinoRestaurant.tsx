@@ -217,11 +217,16 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
       {/* En cuisine : le chef prépare le plat vedette de la manche (le plus cher des six cloches). */}
       {nom === 'intro' && r?.vedette && (
         <div className="wr-cuisine" aria-live="polite">
-          <img className="wr-cuisine-fond large" src={IMG('wr-cuisine')} alt="" draggable={false} />
-          <img className="wr-cuisine-fond haut" src={IMG('wr-cuisine-portrait')} alt="" draggable={false} />
-          <img className="wr-cuisine-chef" src={IMG('wr-chef-cuisine')} alt="" draggable={false} />
-          <img className={`wr-cuisine-plat ${r.vedette}`} src={IMG(`wr-plat-${r.vedette}`)} alt="" draggable={false} />
-          {!reduit && <img className="wr-cuisine-vapeur" src={IMG('wr-vapeur')} alt="" draggable={false} />}
+          {/* La cuisine garde ses proportions ; le chef se tient derrière le comptoir (rogné à son bord), le plat posé dessus. */}
+          <div className="wr-cuisine-cadre">
+            <img className="wr-cuisine-fond large" src={IMG('wr-cuisine')} alt="" draggable={false} />
+            <img className="wr-cuisine-fond haut" src={IMG('wr-cuisine-portrait')} alt="" draggable={false} />
+            <div className="wr-cuisine-derriere">
+              <img className="wr-cuisine-chef" src={IMG('wr-chef-cuisine')} alt="" draggable={false} />
+            </div>
+            <img className={`wr-cuisine-plat ${r.vedette}`} src={IMG(`wr-plat-${r.vedette}`)} alt="" draggable={false} />
+            {!reduit && <img className="wr-cuisine-vapeur" src={IMG('wr-vapeur')} alt="" draggable={false} />}
+          </div>
           <div className="wr-cuisine-titre">
             <small>{tr('Ce soir, le chef prépare', 'Tonight, the chef is cooking')}</small>
             <strong>{tr(...NOMS_PLATS[r.vedette])}</strong>
