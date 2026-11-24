@@ -856,7 +856,7 @@ export const DUREES_BW: DureesBW = {
   reveleDonne: 7_500,
   introPick: 2_500,
   revelePick: 7_000,
-  introCourse: 3_000,
+  introCourse: 8_500,
   sprint: 15_000,
   introRestaurant: 9_000,
   service: 11_000,
