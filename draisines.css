@@ -157,23 +157,28 @@
 .drj-journal { position: absolute; inset: 0; container-type: inline-size; filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.75)); }
 .drj-papier { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* La une, imprimée à l'encre noire. */
-.drj-une { position: absolute; inset: 6% 8% 5%; display: grid; grid-template-rows: auto auto 1fr auto; gap: 2cqw; color: #1c140d; text-align: center; font-family: Georgia, 'Times New Roman', serif; }
+.drj-une { position: absolute; inset: 6% 8% 5%; min-width: 0; overflow: hidden; grid-template-columns: minmax(0, 1fr); display: grid; grid-template-rows: auto auto 1fr auto; gap: 2cqw; color: #1c140d; text-align: center; font-family: Georgia, 'Times New Roman', serif; }
 .drj-une > * { mix-blend-mode: multiply; }
 .drj-tete { display: grid; gap: 0.6cqw; padding-bottom: 1.4cqw; border-bottom: 0.9cqw double #1c140d; animation: drj-presse 0.3s ease-out calc(2300ms + var(--t0)) both; }
 .drj-tete small { padding: 0.6cqw 0; border-top: 0.25cqw solid #1c140d; border-bottom: 0.25cqw solid #1c140d; font-size: 2.6cqw; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
-.drj-tete strong { order: -1; font-family: var(--titre); font-weight: 400; font-size: 12cqw; line-height: 1; letter-spacing: 0.02em; }
-.drj-titre { margin: 0; font-size: 7.2cqw; font-weight: 900; line-height: 1.02; text-transform: uppercase; letter-spacing: -0.01em; animation: drj-presse 0.3s ease-out calc(2650ms + var(--t0)) both; }
+.drj-tete strong { order: -1; font-family: var(--titre); font-weight: 400; font-size: 11cqw; line-height: 1; letter-spacing: 0.02em; }
+.drj-titre { margin: 0; font-size: 6.6cqw; font-weight: 900; line-height: 1.02; text-transform: uppercase; letter-spacing: -0.01em; animation: drj-presse 0.3s ease-out calc(2650ms + var(--t0)) both; }
 @keyframes drj-presse { 0% { opacity: 0; transform: scale(1.25); filter: blur(2px); } 60% { opacity: 1; filter: none; } 100% { transform: none; } }
 /* Les quatre équipages : photos de presse (noir et blanc, tramées), nom et cote. */
-.drj-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 2.4cqw 3cqw; align-content: center; }
-.drj-photo { position: relative; margin: 0; display: grid; gap: 0.8cqw; }
+.drj-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.4cqw 3cqw; align-content: center; }
+.drj-photo { position: relative; min-width: 0; margin: 0; display: grid; gap: 0.8cqw; }
 .drj-cliche { position: relative; display: block; aspect-ratio: 2 / 1; overflow: hidden; border: 0.4cqw solid #1c140d; background: #efe4c8; animation: drj-presse 0.3s ease-out calc(2650ms + var(--t0)) both; }
+/* (la photo se développe : elle apparaît sous un voile blanc qui se dissipe ; seules l'opacité et l'échelle s'animent, le
+   filtre reste fixe, sans à-coup sur Safari) */
 .drj-cliche img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; filter: grayscale(1) sepia(0.35) contrast(1.25) brightness(1.02); animation: drj-developpe 0.7s ease-out calc(3050ms + var(--k) * 450ms + var(--t0)) both; }
-@keyframes drj-developpe { 0% { opacity: 0; filter: grayscale(1) sepia(0.35) brightness(3) contrast(0.4); } 40% { opacity: 1; } 100% { filter: grayscale(1) sepia(0.35) contrast(1.25) brightness(1.02); } }
-.drj-cliche::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0, 0, 0, 0.35) 30%, transparent 32%) 0 0 / 1.1cqw 1.1cqw; mix-blend-mode: multiply; opacity: 0.55; }
+@keyframes drj-developpe { 0% { opacity: 0; transform: scale(1.06); } 100% { opacity: 1; transform: none; } }
+.drj-cliche::before { content: ''; position: absolute; inset: 0; z-index: 1; background: #fff8e6; opacity: 0; animation: drj-voile-photo 0.9s ease-out calc(3050ms + var(--k) * 450ms + var(--t0)) both; }
+@keyframes drj-voile-photo { 0% { opacity: 0; } 15% { opacity: 0.9; } 100% { opacity: 0; } }
+.drj-cliche::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0, 0, 0, 0.35) 30%, transparent 32%) 0 0 / 1.1cqw 1.1cqw; mix-blend-mode: multiply; opacity: 0; animation: drj-trame 0.7s ease-out calc(3050ms + var(--k) * 450ms + var(--t0)) both; }
+@keyframes drj-trame { to { opacity: 0.55; } }
 .drj-photo figcaption { display: flex; align-items: baseline; justify-content: space-between; gap: 1cqw; border-bottom: 0.25cqw solid #1c140d; padding-bottom: 0.5cqw; animation: drj-presse 0.3s ease-out calc(3300ms + var(--k) * 450ms + var(--t0)) both; }
-.drj-photo figcaption span { font-size: 2.9cqw; font-style: italic; font-weight: 700; white-space: nowrap; }
-.drj-photo figcaption b { font-family: var(--titre); font-weight: 400; font-size: 6.4cqw; line-height: 1; }
+.drj-photo figcaption span { min-width: 0; font-size: 2.6cqw; font-style: italic; font-weight: 700; line-height: 1.1; text-align: left; overflow-wrap: anywhere; }
+.drj-photo figcaption b { flex: none; font-family: var(--titre); font-weight: 400; font-size: 5.6cqw; line-height: 1; }
 /* Les tampons rouges : Favori, Outsider. */
 .drj-tampon { position: absolute; left: 50%; top: 34%; z-index: 2; translate: -50% -50%; background: rgba(244, 234, 210, 0.9); box-shadow: 0 0.4cqw 1cqw rgba(0, 0, 0, 0.4); padding: 0.4cqw 1.6cqw; border: 0.6cqw solid #b3121e; border-radius: 1cqw; color: #b3121e; font-family: var(--titre); font-style: normal; font-size: 4.4cqw; letter-spacing: 0.08em; text-transform: uppercase; transform: rotate(-12deg); mix-blend-mode: normal !important; animation: drj-tampon 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) calc(4950ms + var(--t0)) both; }
 .drj-tampon.outsider { transform: rotate(9deg); border-color: #1d3577; color: #1d3577; }
