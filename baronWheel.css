@@ -465,6 +465,7 @@
 .bw-attente-express .bw-roue-figee { position: relative; height: 77%; aspect-ratio: 1; }
 @container (max-aspect-ratio: 1 / 1) {
   .bw-attente-express .bw-roue-figee { height: 65%; }
+  .bw-attente-express.restaurant .bw-roue-figee { height: 52%; }
 }
 
 /* Le Top Slot dans le cadre de la roue, juste dessous : posé sur le quai, devant les rails. */

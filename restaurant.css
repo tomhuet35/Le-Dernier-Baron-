@@ -89,8 +89,10 @@
 @keyframes wr-logo { 0% { opacity: 0; transform: scale(0.4); } 7% { opacity: 1; transform: scale(1.06); } 11% { transform: none; } 26% { opacity: 1; } 32%, 100% { opacity: 0; transform: translateY(-12%); } }
 
 /* Le menu (pendant le choix). */
-.wr-menu { position: absolute; left: 3%; top: 4%; z-index: 5; height: 56%; aspect-ratio: 520 / 807; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4%; padding: 0 13%; background: url('/cartes/wr-menu.webp') center / 100% 100% no-repeat; color: #3a1810; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.7)); animation: wr-menu 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
-@keyframes wr-menu { from { transform: translateY(-20%) rotate(-4deg); opacity: 0; } }
+.wr-menu { position: absolute; left: 3%; top: 4%; z-index: 5; height: 56%; aspect-ratio: 520 / 807; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4%; padding: 0 13%; background: url('/cartes/wr-menu.webp') center / 100% 100% no-repeat; color: #3a1810; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.7)); animation: wr-menu 0.8s cubic-bezier(0.3, 1.1, 0.5, 1) both; }
+/* (la carte se déplie depuis son bord haut) */
+.wr-menu { transform-origin: 50% 0; }
+@keyframes wr-menu { from { transform: perspective(900px) rotateX(-88deg); opacity: 0; } 60% { transform: perspective(900px) rotateX(8deg); opacity: 1; } to { transform: none; } }
 .wr-menu strong { font-family: var(--titre); font-weight: 400; font-size: clamp(14px, 4.6cqh, 26px); color: #7a1424; letter-spacing: 0.06em; }
 .wr-menu ol { display: grid; gap: 0.25em; width: 100%; margin: 0; padding: 0; list-style: none; }
 .wr-menu li { display: flex; justify-content: space-between; gap: 6px; border-bottom: 1px dotted rgba(122, 20, 36, 0.4); font-size: clamp(9px, 2.3cqh, 14px); font-weight: 700; line-height: 1.3; white-space: nowrap; }
@@ -142,6 +144,80 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .wr *, .wr { animation: none !important; }
+  .wri, .wr-main-pose { display: none; }
 }
 /* Pendant le choix et le service, le titre du bonus s'efface : le menu et les annonces prennent le haut. */
 .bw-bonus.restaurant:has(.wr.cloches) .bw-bonus-titre, .bw-bonus.restaurant:has(.wr.service) .bw-bonus-titre { display: none; }
+
+/* L'intro (9 s, calée sur le temps déjà écoulé : --t0).
+   1. La roue (comme dans le jeu, sur le décor du plateau) ; la cloche géante tombe dessus (0,25 → 0,75 s) : clang, la
+      scène tremble, la vapeur fuse de sous le rebord, un reflet court sur l'argent. La main gantée descend (1,6 s), saisit
+      l'anse et soulève la cloche (2,15 s) : dessous, la cuisine s'ouvre en cercle.
+   2. Le chef flambe (3 s) : la gerbe de feu, puis le plat vedette (3,7 s) et son prix (3,9 s). L'intro s'efface à 6 s.
+   3. Dans la salle, des serveurs posent les six cloches (6,4 s, une toutes les 380 ms).
+   Repères mesurés : la cloche géante (1000 × 866) a son anse en haut, centrée, large de 23 % ; son dôme (au-dessus du
+   rebord) haut de 44 % de sa largeur : elle tient toute à l'écran (anse comprise) et couvre le bas de la roue, qui disparaît
+   au choc. La main (500 × 1017) a le creux du poing à (54 %, 84 %). Le chef (700 × 1226) a le fond de sa poêle à (81,9 %, 27,9 %). */
+.wri { position: absolute; inset: 0; z-index: 8; overflow: hidden; animation: wri-fin 9s linear var(--t0) both; }
+@keyframes wri-fin { 0%, 66.7% { opacity: 1; } 71.1%, 100% { opacity: 0; } }
+.wri-a { position: absolute; inset: 0; container-type: size; background: #090909 url('/cartes/bw-rl-decor-paysage.webp') 50% 70% / cover; }
+.wri-secoue { --d: 77cqh; position: absolute; inset: 0; animation: wri-secoue 0.45s ease-out calc(750ms + var(--t0)) both; }
+@keyframes wri-secoue { 0% { transform: none; } 15% { transform: translate(0.8%, -1.2%); } 35% { transform: translate(-0.7%, 0.9%); } 60% { transform: translate(0.4%, -0.4%); } 100% { transform: none; } }
+.wri-roue { position: absolute; left: 50%; top: 50%; height: var(--d); aspect-ratio: 1; translate: -50% -50%; animation: wri-roue 9s linear var(--t0) both; }
+.wri-roue .bw-roue-figee { position: absolute; inset: 0; }
+@keyframes wri-roue { 0%, 8.3% { opacity: 1; } 10%, 100% { opacity: 0; } }
+/* La cloche : son rebord se pose juste sous la roue. */
+.wri-cloche { position: absolute; left: 50%; bottom: 2cqh; z-index: 1; width: min(calc(var(--d) * 1.42), 96cqw); translate: -50% 0; transform-origin: 50% 100%; animation: wri-cloche 2.75s linear var(--t0) both; }
+@keyframes wri-cloche {
+  0%, 9.1% { transform: translateY(-190%); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.6); }
+  27.3% { transform: translateY(0) scale(1.03, 0.95); animation-timing-function: ease-out; }
+  32% { transform: translateY(-3%) scale(0.99, 1.02); }
+  36%, 78.2% { transform: none; animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.4); }
+  100% { transform: translateY(-160%) rotate(-7deg); }
+}
+.wri-dome { display: block; width: 100%; height: auto; filter: drop-shadow(0 calc(var(--d) * 0.03) calc(var(--d) * 0.06) rgba(0, 0, 0, 0.7)); }
+.wri-reflet { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.85) 48%, rgba(255, 248, 225, 0.45) 53%, transparent 63%) no-repeat 120% 0 / 300% 100%; -webkit-mask: url('/cartes/wri-cloche.webp') center / 100% 100% no-repeat; mask: url('/cartes/wri-cloche.webp') center / 100% 100% no-repeat; animation: wri-reflet 0.7s ease-in-out calc(950ms + var(--t0)) both; }
+@keyframes wri-reflet { from { background-position: 120% 0; } to { background-position: -20% 0; } }
+.wri-main { position: absolute; left: 32.7%; top: -51.2%; width: 32%; height: auto; max-width: none; filter: drop-shadow(0 calc(var(--d) * 0.02) calc(var(--d) * 0.04) rgba(0, 0, 0, 0.6)); animation: wri-main 9s linear var(--t0) both; }
+@keyframes wri-main { 0%, 17.8% { transform: translateY(-170%); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); } 22.2%, 100% { transform: none; } }
+/* La vapeur qui fuse de sous le rebord, des deux côtés ; l'éclat du choc sur la scène. */
+.wri-jet { position: absolute; bottom: 0; z-index: 2; width: calc(var(--d) * 1.5); height: auto; max-width: none; opacity: 0; pointer-events: none; }
+.wri-jet.g { right: 46%; animation: wri-jet-g 1.7s ease-out calc(780ms + var(--t0)) both; }
+.wri-jet.d { left: 46%; animation: wri-jet-d 1.7s ease-out calc(800ms + var(--t0)) both; }
+@keyframes wri-jet-g { 0% { opacity: 0; transform: translateX(35%) scaleY(0.4); } 12% { opacity: 1; } 100% { opacity: 0; transform: translateX(-20%) scaleY(1.3); } }
+@keyframes wri-jet-d { 0% { opacity: 0; transform: scaleX(-1) translateX(35%) scaleY(0.4); } 12% { opacity: 1; } 100% { opacity: 0; transform: scaleX(-1) translateX(-20%) scaleY(1.3); } }
+.wri-choc { position: absolute; left: 50%; bottom: -8cqh; z-index: 2; width: calc(var(--d) * 2.4); height: calc(var(--d) * 0.5); translate: -50% 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 244, 210, 0.95), rgba(255, 200, 120, 0.35) 45%, transparent); opacity: 0; animation: wri-choc 0.55s ease-out calc(750ms + var(--t0)) both; }
+@keyframes wri-choc { 0% { opacity: 1; transform: scale(0.5); } 100% { opacity: 0; transform: scale(1.3); } }
+
+/* 2. La cuisine, ouverte en cercle sous la cloche qui s'envole. */
+.wri-b { position: absolute; inset: 0; z-index: 1; overflow: hidden; background: #140806; clip-path: circle(0% at 50% 62%); animation: wri-ouvre 0.7s cubic-bezier(0.5, 0, 0.3, 1) calc(2200ms + var(--t0)) both; }
+@keyframes wri-ouvre { from { clip-path: circle(0% at 50% 62%); } to { clip-path: circle(150% at 50% 62%); } }
+/* Le chef, derrière le comptoir (la zone « derrière » fait 71,2 % du cadre : ses mesures en sont rapportées). */
+.wri-chef { position: absolute; left: 10%; top: 25.3%; height: 182.6%; aspect-ratio: 700 / 1226; animation: wr-monte 0.7s cubic-bezier(0.3, 1.2, 0.5, 1) calc(2350ms + var(--t0)) both; }
+.wri-chef > img:first-child { display: block; width: 100%; height: 100%; filter: drop-shadow(8px 8px 18px rgba(0, 0, 0, 0.6)); }
+/* La gerbe de feu, qui part du fond de la poêle. */
+.wri-flammes { position: absolute; left: 45.9%; top: -12.4%; width: 72%; height: auto; max-width: none; transform-origin: 50% 98%; opacity: 0; animation: wri-feu 0.65s cubic-bezier(0.2, 0.8, 0.3, 1.2) calc(3000ms + var(--t0)) both, wri-flamme 0.16s ease-in-out calc(3650ms + var(--t0)) infinite alternate; }
+@keyframes wri-feu { 0% { opacity: 0; transform: scale(0.08, 0.15); } 30% { opacity: 1; } 70% { transform: scale(1.08, 1.12); } 100% { opacity: 1; transform: none; } }
+@keyframes wri-flamme { from { scale: 1 1; } to { scale: 1.03 0.96; } }
+.wri-lueur { position: absolute; inset: 0; background: radial-gradient(circle at 44% 50%, rgba(255, 150, 50, 0.7), rgba(255, 110, 30, 0.25) 35%, transparent 65%); mix-blend-mode: screen; opacity: 0; animation: wri-lueur 3.2s ease-out calc(3000ms + var(--t0)) both; }
+@keyframes wri-lueur { 0% { opacity: 0; } 8% { opacity: 1; } 20% { opacity: 0.75; } 35% { opacity: 0.95; } 100% { opacity: 0.7; } }
+.wri-plat { position: absolute; left: 66%; top: 44%; width: 30%; height: auto; translate: -50% 0; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 22px rgba(255, 200, 100, 0.45)); animation: wr-vedette 0.8s cubic-bezier(0.3, 1.4, 0.5, 1) calc(3700ms + var(--t0)) both; }
+.wri-plat-vapeur { position: absolute; left: 66%; top: 18%; width: 8%; height: auto; translate: -50% 0; opacity: 0; mix-blend-mode: screen; animation: wr-fumee 3s ease-out calc(4100ms + var(--t0)) infinite; }
+.wr-cuisine-titre.wri-titre { animation: wr-annonce 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) calc(3950ms + var(--t0)) both; }
+
+/* 3. Dans la salle : la main d'un serveur pose chaque cloche, puis repart. */
+.wr.intro .wr-cloche { animation: wr-pose-intro 0.55s cubic-bezier(0.3, 0.7, 0.4, 1) calc(6400ms + var(--k) * 380ms + var(--t0)) both; }
+@keyframes wr-pose-intro { from { transform: translateY(-260%); opacity: 0; } 25% { opacity: 1; } 70% { transform: translateY(3%); } to { transform: none; } }
+.wr-cloche > img.wr-main-pose { left: 36.9%; top: -61.7%; width: 24.3%; height: auto; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5)); animation: wr-main-part 0.95s ease-in calc(6400ms + var(--k) * 380ms + var(--t0)) both; }
+@keyframes wr-main-part { 0% { opacity: 0; } 20%, 72% { transform: none; opacity: 1; } 100% { transform: translateY(-240%); opacity: 0; } }
+
+/* Le titre du bonus s'efface pendant l'intro. */
+.bw-bonus.restaurant:has(.wri) .bw-bonus-titre { display: none; }
+
+@container (max-aspect-ratio: 1 / 1) {
+  .wri-secoue { --d: 52cqh; }
+  .wri-cloche { width: 98cqw; }
+  .wri-chef { left: -6%; top: 51%; height: 142.6%; }
+  .wri-plat { left: 75%; top: 58%; width: 42%; }
+  .wri-plat-vapeur { left: 75%; top: 42%; width: 12%; }
+}

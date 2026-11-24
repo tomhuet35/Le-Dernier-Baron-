@@ -1036,10 +1036,10 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
   const part = useChargement(b.type);
   const charge = nom === 'chargement' || (nom === 'intro' && part < 1);
   // (l'Express attend ses images sur sa roue figée, comme au début de son intro)
-  if (charge && b.type === 'express')
+  if (charge && (b.type === 'express' || b.type === 'restaurant'))
     return (
-      <div className="bw-bonus express">
-        <div className="bw-attente-express">
+      <div className={`bw-bonus ${b.type}`}>
+        <div className={`bw-attente-express ${b.type}`}>
           <RoueFigee />
         </div>
       </div>
@@ -1067,7 +1067,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
           }
         />
       )}
-      {b.type === 'restaurant' && <BonusRestaurant v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
+      {b.type === 'restaurant' && <BonusRestaurant v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} roue={<RoueFigee />} />}
       {b.type === 'express' && <BonusExpress v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} roue={<RoueFigee />} />}
       <div className="bw-bonus-titre">
         <img src={CASES_VISUELS[b.type].image} alt="" />
@@ -1075,7 +1075,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
         {b.multiplicateur > 1 && <em className="bw-bonus-multi">×{b.multiplicateur}</em>}
       </div>
       {/* (l'Express l'affiche sur son tableau des départs) */}
-      {b.multiplicateur > 1 && nom === 'intro' && b.type !== 'express' && (
+      {b.multiplicateur > 1 && nom === 'intro' && b.type !== 'express' && b.type !== 'restaurant' && (
         <div className="bw-bonus-annonce-multi" role="status">
           <small>{tr('Multiplicateur de la roue', 'Wheel multiplier')}</small>
           <strong>×{b.multiplicateur}</strong>
@@ -1329,11 +1329,12 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   }
   // L'Express n'a pas d'écran de chargement : la roue reste là, arrêtée sur l'Express, et son intro la change en horloge
   // (ses images se chargent pendant ce temps).
-  const roueAvantExpress = v?.bonus?.type === 'express' && v.phase === 'bonus' && v.bonus.etapes[v.bonus.etape]?.nom === 'chargement';
-  const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat') && !roueAvantExpress;
+  // (de même pour la Cloche, dont la cloche géante tombe sur la roue)
+  const typeAvant = v?.bonus && (v.bonus.type === 'express' || v.bonus.type === 'restaurant') && v.phase === 'bonus' && v.bonus.etapes[v.bonus.etape]?.nom === 'chargement' ? v.bonus.type : null;
+  const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat') && !typeAvant;
   useEffect(() => {
-    if (roueAvantExpress) for (const src of IMAGES_BONUS_BW.express) void chargerImage(src);
-  }, [roueAvantExpress]);
+    if (typeAvant) for (const src of IMAGES_BONUS_BW[typeAvant]) void chargerImage(src);
+  }, [typeAvant]);
   const gagnante = v && v.arret !== null && v.phase === 'resultat' ? ROUE_BW[v.arret] : null;
 
   return (
