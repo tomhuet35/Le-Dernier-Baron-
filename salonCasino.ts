@@ -108,13 +108,16 @@ import { creerTickets } from './ticketsCasino';
 import { creerToits } from './toitsCasino';
 import { creerCourse } from './courseCasino';
 import { creerBaronWheel } from './baronWheelCasino';
-import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, evenementsBW, type BoostBW, type DureesBW } from '../shared/baronWheel';
+import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, evenementsBW, ROUE_BW, type BoostBW, type DureesBW } from '../shared/baronWheel';
 import type { DureesCourse } from '../shared/course';
 import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type AfficheCasino } from '../shared/afficheCasino';
 import type { DureesCouronne } from '../shared/couronne';
 
-/** Le grand spectacle de la roue du Baron (heure de Paris) : l'Express à ×200, une seule fois dans ce créneau. */
-const SPECTACLE_BW = { debut: Date.parse('2026-11-24T13:06:00+01:00'), fin: Date.parse('2026-11-24T13:40:00+01:00'), x: 200 };
+/**
+ * Le grand spectacle de la roue du Baron (heure de Paris), une seule fois dans ce créneau : le Top Slot pose ×200 sur la
+ * Chaudière, la roue s'y arrête et la chaudière explose à ×25 (×5000 sur la mise pour qui siffle au dernier moment).
+ */
+const SPECTACLE_BW = { debut: Date.parse('2026-11-24T13:10:00+01:00'), fin: Date.parse('2026-11-24T13:45:00+01:00'), c: 'chaudiere' as const, x: 200, explosion: 25 };
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
 type Rappel = (r: Reponse) => void;
@@ -707,9 +710,9 @@ export function creerCasino(options: OptionsCasino) {
     const debut = ouvertures[CADEAU_OUVERTURE_BW];
     return debut === undefined ? null : debut + DUREE_OUVERTURE_BW;
   };
-  // Le grand spectacle : une fois, la première manche dont les mises ferment entre SPECTACLE_BW.debut et .fin, le Top Slot
-  // pose ×200 sur l'Express (la case 0) et la roue s'y arrête.
-  const spectacle = { fait: false, enCours: false };
+  // Le grand spectacle : une fois, la première manche dont les mises ferment entre SPECTACLE_BW.debut et .fin.
+  const casesSpectacle = ROUE_BW.flatMap((c, i) => (c === SPECTACLE_BW.c ? [i] : []));
+  const spectacle = { fait: false, enCours: false, tirage: false };
   const roueBW = creerBaronWheel({
     io,
     banque: banqueDe('baronWheel'),
@@ -720,7 +723,7 @@ export function creerCasino(options: OptionsCasino) {
       // (jamais dans les tests : ils règlent leurs délais)
       if (!options.delaisBaronWheel && !options.multiplicateursBaronWheel && !spectacle.fait && t >= SPECTACLE_BW.debut && t < SPECTACLE_BW.fin) {
         spectacle.enCours = true;
-        return [{ i: 0, x: SPECTACLE_BW.x }];
+        return casesSpectacle.map((i) => ({ i, x: SPECTACLE_BW.x }));
       }
       return options.multiplicateursBaronWheel?.();
     },
@@ -728,9 +731,15 @@ export function creerCasino(options: OptionsCasino) {
       if (spectacle.enCours) {
         spectacle.enCours = false;
         spectacle.fait = true;
-        return 0;
+        spectacle.tirage = true;
+        return casesSpectacle[0];
       }
       return options.arretBaronWheel?.();
+    },
+    tirage: (c) => {
+      if (!spectacle.tirage || c !== SPECTACLE_BW.c) return undefined;
+      spectacle.tirage = false;
+      return { type: 'chaudiere', explosion: SPECTACLE_BW.explosion };
     },
     ouverture: finOuvertureBW,
     annoncer: (a) => annoncer(a),
