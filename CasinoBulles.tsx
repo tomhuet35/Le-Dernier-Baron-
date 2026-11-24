@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { COLONNES_BULLES, LIGNES_BULLES, MISES_BULLES, MIN_GROUPE, GAINS_BULLES, MULTIS_CASCADE, type EtapeBulles, type GrilleBulles, type ResultatBulles, type SymboleBulles } from '../../shared/bulles';
 import type { VueCasino } from '../../shared/casino';
 import type { Appel } from './App';
-import { dollars, dollarsCourt } from './casinoOutils';
+import { dollars, dollarsCourt, SoldeJeu } from './casinoOutils';
 import { tr } from './traduction';
 import { jouerEffet } from './ui';
 import './bulles.css';
@@ -167,6 +167,7 @@ export function JeuBulles({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
           ‹ {tr('Machines', 'Slots')}
         </button>
         <img className="bl-logo" src="/cartes/bl-logo.webp" alt={'The Baron’s Bubbles'} draggable={false} />
+        <SoldeJeu solde={solde} />
         <span className="cas-solde-petit">{dollars(solde)}</span>
       </header>
 

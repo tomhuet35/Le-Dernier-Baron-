@@ -19,8 +19,49 @@ export function dollarsCourt(n: number): string {
 }
 
 
+/**
+ * Le solde que montre le jeu en cours, pour la barre du haut : chaque jeu tient le sien à jour (dès la mise, et ses gains
+ * au moment où il les révèle), alors que le solde du salon n'est rafraîchi que de temps en temps.
+ */
+const soldeJeu = { valeur: null as number | null, abonnes: new Set<() => void>(), jetons: 0 };
+function publierSolde(n: number | null) {
+  if (soldeJeu.valeur === n) return;
+  soldeJeu.valeur = n;
+  soldeJeu.abonnes.forEach((f) => f());
+}
+/** Le jeu affiché annonce son solde à la barre du haut (et le retire en partant). */
+export function useSoldeJeu(solde: number | null | undefined) {
+  useEffect(() => {
+    if (solde === null || solde === undefined || !Number.isFinite(solde)) return;
+    publierSolde(solde);
+  }, [solde]);
+  useEffect(() => {
+    soldeJeu.jetons += 1;
+    return () => {
+      soldeJeu.jetons -= 1;
+      if (!soldeJeu.jetons) publierSolde(null);
+    };
+  }, []);
+}
+/** La même chose, en composant (pour les jeux qui rendent leur écran après un retour anticipé). */
+export function SoldeJeu({ solde }: { solde: number | null | undefined }) {
+  useSoldeJeu(solde);
+  return null;
+}
+/** Le solde du jeu en cours (null hors d'un jeu). */
+export function useSoldeDuJeu(): number | null {
+  const [v, setV] = useState(soldeJeu.valeur);
+  useEffect(() => {
+    const f = () => setV(soldeJeu.valeur);
+    soldeJeu.abonnes.add(f);
+    f();
+    return () => void soldeJeu.abonnes.delete(f);
+  }, []);
+  return v;
+}
+
 /** Le solde défile jusqu'à sa nouvelle valeur. */
-export function useSoldeAnime(solde: number): number {
+export function useSoldeDefilant(solde: number): number {
   const [depart, setDepart] = useState(solde);
   const precedent = useRef(solde);
   useEffect(() => {
@@ -28,6 +69,11 @@ export function useSoldeAnime(solde: number): number {
     precedent.current = solde;
   }, [solde]);
   return useCompteur(solde, depart, 0, 700);
+}
+/** Le solde d'un jeu, qui défile jusqu'à sa nouvelle valeur ; la barre du haut suit le même. */
+export function useSoldeAnime(solde: number): number {
+  useSoldeJeu(solde);
+  return useSoldeDefilant(solde);
 }
 
 /** Jeton de la couleur de la mise (ivoire, rouge, vert, noir, violet). */
