@@ -7,7 +7,7 @@
  * choisir. La salle garde ses proportions (cadre « cover ») : en largeur, une longue table et six cloches ; en hauteur
  * (téléphone), deux tables de trois.
  */
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { MENU_RESTAURANT, NB_CLOCHES, PLATS_RESTAURANT, type PlatBW, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
 import { fx } from './CasinoBaronExpress';
 import { tr } from './traduction';
@@ -32,6 +32,13 @@ export const IMAGES_RESTAURANT_NOMS = [
   'wr-menu',
   'wr-eclat',
   'wr-vapeur',
+  // l'intro : la cloche géante tombe sur la roue, la main la soulève, le chef flambe
+  'wri-cloche',
+  'wri-main',
+  'wri-chef',
+  'wri-flammes',
+  'exi-vapeur',
+  'bw-rl-decor-paysage',
   ...PLATS_RESTAURANT.map((p) => `wr-plat-${p}`),
 ];
 const IMG = (n: string) => `/cartes/${n}.webp`;
@@ -101,7 +108,7 @@ function BaronDerriere({ k }: { k: number }) {
   );
 }
 
-export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void }) {
+export function BonusRestaurant({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void; roue?: ReactNode }) {
   const r = b.restaurant;
   const mien = b.mesChoix[0] ?? null;
   const salon = b.choixSalon[0] ?? [];
@@ -142,7 +149,6 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
       f();
     };
     if (v.phase !== 'bonus') return;
-    if (nom === 'intro' && tau > 150) fois('cloches', () => jouerEffet('wr_cloche', { volume: 0.5, vitesse: 1.15 }));
     if (!service || !plats) return;
     if (double !== null && tau >= BARON.dore && tau < BARON.dore + 800) fois('baron', () => jouerEffet('gd_eclat', { volume: 0.9 }));
     for (let k = 0; k < NB_CLOCHES; k++) {
@@ -170,9 +176,11 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
   const reduit = mouvementReduit();
   const ravi = fini && mien !== null && plats !== null && valeur(mien) >= 25;
   const choix = nom === 'cloches';
+  // L'intro : le temps déjà écoulé à l'arrivée (figé pour l'étape), qui cale ses animations.
+  const t0Intro = useMemo(() => (nom === 'intro' ? Math.max(0, (v.duree ?? 0) - (v.reste ?? 0)) : 0), [cle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className={`wr ${nom}`}>
+    <div className={`wr ${nom}`} style={nom === 'intro' ? ({ '--t0': `${-t0Intro}ms` } as CSSProperties) : undefined}>
       <div className="wr-cadre">
         {/* Le dehors, derrière les vitres : la forêt enneigée défile, la lune reste au loin. */}
         <div className="wr-dehors large" aria-hidden="true">
@@ -209,6 +217,8 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
               <span className="wr-cloche">
                 <img className="argent" src={IMG('wr-cloche')} alt="" draggable={false} />
                 <img className="or" src={IMG('wr-cloche-or')} alt="" draggable={false} />
+                {/* À la fin de l'intro, la main gantée d'un serveur pose la cloche à sa place. */}
+                {nom === 'intro' && <img className="wr-main-pose" src={IMG('wri-main')} alt="" draggable={false} />}
               </span>
               {doree(k) && <b className="wr-double">×2</b>}
               {lv && plat && (
@@ -224,28 +234,8 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
         })}
       </div>
 
-      {nom === 'intro' && <img className="wr-logo" src={IMG('wr-logo')} alt={tr('La Cloche', 'The Cloche')} draggable={false} />}
-      {/* En cuisine : le chef prépare le plat vedette de la manche (le plus cher des six cloches). */}
-      {nom === 'intro' && r?.vedette && (
-        <div className="wr-cuisine" aria-live="polite">
-          {/* La cuisine garde ses proportions ; le chef se tient derrière le comptoir (rogné à son bord), le plat posé dessus. */}
-          <div className="wr-cuisine-cadre">
-            <img className="wr-cuisine-fond large" src={IMG('wr-cuisine')} alt="" draggable={false} />
-            <img className="wr-cuisine-fond haut" src={IMG('wr-cuisine-portrait')} alt="" draggable={false} />
-            <div className="wr-cuisine-derriere">
-              <img className="wr-cuisine-chef" src={IMG('wr-chef-cuisine')} alt="" draggable={false} />
-            </div>
-            <img className={`wr-cuisine-plat ${r.vedette}`} src={IMG(`wr-plat-${r.vedette}`)} alt="" draggable={false} />
-            {!reduit && <img className="wr-cuisine-vapeur" src={IMG('wr-vapeur')} alt="" draggable={false} />}
-          </div>
-          <div className="wr-cuisine-titre">
-            <small>{tr('Ce soir, le chef prépare', 'Tonight, the chef is cooking')}</small>
-            <strong>{tr(...NOMS_PLATS[r.vedette])}</strong>
-            <b>{fx(MENU_RESTAURANT[r.vedette] * M)}</b>
-            <small>{tr('Il est sous l’une des six cloches…', 'It is under one of the six cloches…')}</small>
-          </div>
-        </div>
-      )}
+      {/* L'intro : la cloche géante tombe sur la roue, la main la soulève sur la cuisine où le chef flambe le plat vedette. */}
+      {nom === 'intro' && <IntroCloche t0={t0Intro} roue={roue} vedette={r?.vedette ?? null} M={M} />}
       {/* Il se met du côté opposé à ma cloche, pour ne pas la cacher. */}
       {ravi && mien !== null && <img className={`wr-chef ravi ${mien >= 3 ? 'gauche-l' : ''} ${mien % 3 === 2 ? 'gauche-h' : ''}`} src={IMG('wr-chef-ravi')} alt="" draggable={false} />}
 
@@ -274,6 +264,75 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
           {annonce.sous && <span>{annonce.sous}</span>}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// L'intro (9 s) : 1. la cloche géante tombe sur la roue (clang, vapeur) ; une main gantée la soulève : dessous, la
+// cuisine ; 2. le chef flambe le plat vedette de la manche (la gerbe de feu, le plat, son prix) ; 3. retour à la salle,
+// où des serveurs posent les six cloches une à une (dans BonusRestaurant).
+
+/** Les cloches posées par les serveurs : la première, puis une toutes les 380 ms. */
+const POSE_INTRO = { debut: 6_400, pas: 380 };
+
+function IntroCloche({ t0, roue, vedette, M }: { t0: number; roue?: ReactNode; vedette: PlatBW | null; M: number }) {
+  const reduit = mouvementReduit();
+  useEffect(() => {
+    if (reduit) return;
+    const sons: [number, () => void][] = [
+      [250, () => jouerEffet('ex_vapeur', { volume: 0.35, vitesse: 1.6 })],
+      [750, () => jouerEffet('wri_clang', { volume: 1 })],
+      [820, () => jouerEffet('ex_vapeur', { volume: 0.9 })],
+      [2_150, () => jouerEffet('wr_cloche', { volume: 0.6, vitesse: 0.8 })],
+      [3_000, () => jouerEffet('wri_flambe', { volume: 1 })],
+      [3_700, () => jouerEffet('gd_eclat', { volume: 0.8 })],
+      ...Array.from({ length: NB_CLOCHES }, (_, k): [number, () => void] => [POSE_INTRO.debut + k * POSE_INTRO.pas + 280, () => jouerEffet('wr_cloche', { volume: 0.55, vitesse: 1 + k * 0.06 })]),
+    ];
+    const ids = sons.filter(([x]) => x >= t0).map(([x, f]) => window.setTimeout(f, x - t0));
+    return () => ids.forEach((i) => window.clearTimeout(i));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="wri" aria-hidden="true">
+      {/* 1. La roue, la cloche géante, la main. */}
+      <div className="wri-a">
+        <div className="wri-secoue">
+          {roue && <div className="wri-roue">{roue}</div>}
+          <img className="wri-jet g" src={IMG('exi-vapeur')} alt="" draggable={false} />
+          <img className="wri-jet d" src={IMG('exi-vapeur')} alt="" draggable={false} />
+          <span className="wri-cloche">
+            <img className="wri-dome" src={IMG('wri-cloche')} alt="" draggable={false} />
+            <i className="wri-reflet" />
+            <img className="wri-main" src={IMG('wri-main')} alt="" draggable={false} />
+          </span>
+          <i className="wri-choc" />
+        </div>
+      </div>
+      {/* 2. Dessous : la cuisine, le chef flambe. */}
+      <div className="wri-b">
+        <div className="wr-cuisine-cadre">
+          <img className="wr-cuisine-fond large" src={IMG('wr-cuisine')} alt="" draggable={false} />
+          <img className="wr-cuisine-fond haut" src={IMG('wr-cuisine-portrait')} alt="" draggable={false} />
+          <div className="wr-cuisine-derriere">
+            <span className="wri-chef">
+              <img src={IMG('wri-chef')} alt="" draggable={false} />
+              <img className="wri-flammes" src={IMG('wri-flammes')} alt="" draggable={false} />
+            </span>
+          </div>
+          {vedette && <img className={`wri-plat ${vedette}`} src={IMG(`wr-plat-${vedette}`)} alt="" draggable={false} />}
+          {vedette && !reduit && <img className="wri-plat-vapeur" src={IMG('wr-vapeur')} alt="" draggable={false} />}
+          <i className="wri-lueur" />
+        </div>
+        {vedette && (
+          <div className="wr-cuisine-titre wri-titre">
+            <small>{tr('Ce soir, le chef flambe', 'Tonight, the chef flambés')}</small>
+            <strong>{tr(...NOMS_PLATS[vedette])}</strong>
+            <b>{fx(MENU_RESTAURANT[vedette] * M)}</b>
+            <small>{M > 1 ? tr(`(×${M} de la roue) · sous l’une des six cloches…`, `(×${M} from the wheel) · under one of the six cloches…`) : tr('Il est sous l’une des six cloches…', 'It is under one of the six cloches…')}</small>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
