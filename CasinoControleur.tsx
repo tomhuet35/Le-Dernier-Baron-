@@ -9,7 +9,20 @@
  * voiture (les huit compartiments, leur état, où je suis caché) et le palier en cours.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
-import { NB_COMPARTIMENTS, ordreControleur, PALIERS_CONTROLEUR, type FeinteCT, type JackpotBW, type PassageCT, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
+import {
+  calendrierControleur,
+  DEPART_CT,
+  FIN_TOURNEE_CT,
+  NB_COMPARTIMENTS,
+  ordreControleur,
+  PALIERS_CONTROLEUR,
+  type FeinteCT,
+  type JackpotBW,
+  type PassageCT,
+  type SegmentCT,
+  type VueBonusBW,
+  type VueBW,
+} from '../../shared/baronWheel';
 import { fx } from './CasinoBaronExpress';
 import { tr } from './traduction';
 import { jouerEffet, mouvementReduit } from './ui';
@@ -40,47 +53,16 @@ const NOMS_JACKPOTS: Record<JackpotBW, string> = { mini: 'MINI', minor: 'MINOR',
 // Le calendrier de la tournée (le même sur tous les écrans : tiré de la tournée du serveur)
 
 type Pose = 'marche' | FeinteCT | 'trouve' | 'vide' | 'stupefait';
-interface Segment {
-  t0: number;
-  t1: number;
-  type: 'marche' | 'ouvre' | 'feinte';
-  porte: number;
-  /** marche : d'où il part et où il va (en travées ; la porte k est au milieu de la travée k). */
-  de: number;
-  vers: number;
-  /** ouvre : la place de cette porte dans l'ordre d'ouverture. */
-  i: number;
-  feinte: FeinteCT | null;
-}
-/** Où il se tient : devant la porte, un peu à gauche (il la regarde) ; à côté, une fois ouverte (elle se voit). */
-const DEVANT = -0.3;
-const DEPART = -1.1;
+type Segment = SegmentCT;
+const DEPART = DEPART_CT;
 /** Dans une ouverture : il frappe, prend la poignée, la porte s'ouvre, puis il réagit. */
 const OUVRE = { poignee: 0.3, porte: 0.45, reaction: 0.52 };
 
+/** Le calendrier partagé, ramené à la durée de l'étape (elle le suit déjà ; seulement si elle était plus courte). */
 function calendrier(tournee: PassageCT[], duree: number): { segments: Segment[]; fin: number } {
-  const brut: Segment[] = [];
-  let t = 0;
-  let x = DEPART;
-  let i = 0;
-  for (const p of tournee) {
-    const cible = p.porte + 0.5 + DEVANT;
-    const d = Math.abs(cible - x);
-    if (d > 0.01) {
-      const dt = 180 + 330 * d;
-      brut.push({ t0: t, t1: t + dt, type: 'marche', porte: p.porte, de: x, vers: cible, i: -1, feinte: null });
-      t += dt;
-      x = cible;
-    }
-    // Plus il avance, plus il prend son temps : la tension monte.
-    const dt = p.feinte ? 1150 : 1250 + 110 * i;
-    brut.push({ t0: t, t1: t + dt, type: p.feinte ? 'feinte' : 'ouvre', porte: p.porte, de: x, vers: x, i: p.feinte ? -1 : i, feinte: p.feinte });
-    t += dt;
-    if (!p.feinte) i += 1;
-  }
-  // Ramené à la durée de l'étape (si la tournée est trop longue).
-  const f = Math.min(1, Math.max(1, duree - 500) / Math.max(1, t));
-  return { segments: brut.map((s) => ({ ...s, t0: s.t0 * f, t1: s.t1 * f })), fin: t * f };
+  const { segments, fin } = calendrierControleur(tournee);
+  const f = Math.min(1, Math.max(1, duree) / Math.max(1, fin + FIN_TOURNEE_CT));
+  return { segments: segments.map((s) => ({ ...s, t0: s.t0 * f, t1: s.t1 * f })), fin: fin * f };
 }
 
 /** Ce que fait le contrôleur à l'instant t : sa position (en travées), sa pose, son sens. */
@@ -123,7 +105,7 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
 
   const enTournee = nom === 'tournee';
   const fini = nom === 'revele';
-  const dureeTournee = (enTournee ? v.duree : null) ?? b.etapes.find((e) => e.nom === 'tournee')?.duree ?? 17_000;
+  const dureeTournee = (enTournee ? v.duree : null) || b.etapes.find((e) => e.nom === 'tournee')?.duree || Infinity;
   const cal = useMemo(() => (tournee ? calendrier(tournee, dureeTournee) : { segments: [], fin: 0 }), [tournee, dureeTournee]);
   const ordre = useMemo(() => (tournee ? ordreControleur(tournee) : []), [tournee]);
   /** Le temps de tournée (pendant la révélation : la tournée est finie). */
@@ -141,8 +123,8 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
 
   // La scène : le couloir défile et suit le contrôleur (image par image).
   const refs = useRef({ scene: { current: null } as RefObject<HTMLDivElement>, piste: { current: null } as RefObject<HTMLDivElement>, ctrl: { current: null } as RefObject<HTMLDivElement> }).current;
-  const donnees = useRef({ nom, debut: 0, segs: cal.segments, occupe });
-  donnees.current = { nom, debut: horloge.current.debut, segs: cal.segments, occupe };
+  const donnees = useRef({ nom, debut: 0, segs: cal.segments, occupe, mien });
+  donnees.current = { nom, debut: horloge.current.debut, segs: cal.segments, occupe, mien };
   useEffect(() => {
     const scene = refs.scene.current;
     if (!scene) return;
@@ -179,9 +161,10 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
       if (d.nom === 'tournee' || d.nom === 'revele') {
         e = etatControleur(d.segs, d.nom === 'revele' ? 1e9 : Math.max(0, tt), d.occupe);
         cible = e.x + (e.gauche ? -0.3 : 0.25); // un peu d'avance dans le sens de la marche
-      } else cible = NB_COMPARTIMENTS / 2 + (NB_COMPARTIMENTS / 2 - visibles / 2 + 0.15) * Math.sin(tt / 2600 - Math.PI / 2);
+      } else if (d.nom === 'compartiments' && d.mien !== null) cible = d.mien + 0.5; // ma cachette, en attendant qu'il arrive
+      else cible = NB_COMPARTIMENTS / 2 + (NB_COMPARTIMENTS / 2 - visibles / 2 + 0.15) * Math.sin(tt / 4200 - Math.PI / 2);
       cible = bornes(cible);
-      cam = Number.isNaN(cam) ? cible : cam + (cible - cam) * (1 - Math.exp(-dt * 0.012));
+      cam = Number.isNaN(cam) ? cible : cam + (cible - cam) * (1 - Math.exp(-dt * (d.nom === 'compartiments' ? 0.005 : 0.012)));
       const piste = refs.piste.current;
       if (piste) piste.style.transform = `translate3d(${g.W / 2 - cam * g.P}px, 0, 0)`;
       const ctrl = refs.ctrl.current;
@@ -248,6 +231,8 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
   }
 
   const palier = PALIERS_CONTROLEUR[Math.min(nOuvertes, NB_COMPARTIMENTS - 1)];
+  const enChoix = nom === 'compartiments';
+  const peutChoisir = enChoix && ouvert;
   const mienOuverte = mien !== null && ouverte(mien);
 
   return (
@@ -260,7 +245,14 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
             const vue = k === tresor ? 'tresor' : occupe(k) ? 'fouillee' : 'vide';
             const i = ordre.indexOf(k);
             return (
-              <div key={k} className={`ct-porte ${ov ? 'ouverte' : ''} ${feinteEnCours === k ? 'tremble' : ''} ${mien === k ? 'mienne' : ''} ${ov && k === tresor ? 'tresor' : ''}`} style={{ '--k': k } as CSSProperties}>
+              <div
+                key={k}
+                className={`ct-porte ${ov ? 'ouverte' : ''} ${feinteEnCours === k ? 'tremble' : ''} ${mien === k ? 'mienne' : ''} ${ov && k === tresor ? 'tresor' : ''} ${peutChoisir ? 'choix' : ''}`}
+                style={{ '--k': k } as CSSProperties}
+                {...(peutChoisir
+                  ? { role: 'button', tabIndex: 0, 'aria-label': tr(`Compartiment ${k + 1}`, `Compartment ${k + 1}`), onClick: () => choisir(k), onKeyDown: (e: { key: string }) => (e.key === 'Enter' || e.key === ' ') && choisir(k) }
+                  : {})}
+              >
                 {ov && <img className="ct-interieur" src={IMG(`ct-porte-${vue}`)} alt="" draggable={false} />}
                 {ov && k === tresor && !mouvementReduit() && <img className="ct-lueur" src={IMG('ct-lueur')} alt="" draggable={false} />}
                 <img className="ct-battant" src={IMG('ct-porte')} alt="" draggable={false} />
@@ -288,55 +280,61 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
 
       {nom === 'intro' && <img className="ct-logo" src={IMG('ct-logo')} alt={tr('Le Contrôleur', 'The Conductor')} draggable={false} />}
 
-      {/* Le plan de la voiture : les huit compartiments, et le palier en cours pour ceux qui restent cachés. */}
-      {(enTournee || fini) && (
-        <div className="ct-plan" aria-label={tr('Plan de la voiture', 'Car plan')}>
-          <div className="ct-palier">
-            {mienOuverte || nOuvertes >= NB_COMPARTIMENTS ? (
-              <small>{tr('Portes ouvertes', 'Doors opened')} {nOuvertes}/8</small>
-            ) : (
-              <>
-                <small>{mien !== null ? tr('Toujours caché', 'Still hidden') : tr('Palier', 'Level')}</small>
-                <strong key={palier}>{fx(palier * M)}</strong>
-              </>
-            )}
+      {/* Le plan de la voiture : les huit compartiments (on y choisit sa cachette, comme sur les portes du couloir), puis
+          leur état et le palier en cours pendant la tournée. */}
+      {(enChoix || enTournee || fini) && (
+        <div className="ct-haut">
+          <div className={`ct-plan ${enChoix ? 'choix' : ''}`} role={enChoix ? 'group' : undefined} aria-label={enChoix ? tr('Choisis ton compartiment', 'Pick your compartment') : tr('Plan de la voiture', 'Car plan')}>
+            <div className="ct-palier">
+              {enChoix ? (
+                <>
+                  <small>{tr('Ta cachette', 'Your hideout')}</small>
+                  <strong key={mien ?? -1}>{mien !== null ? `N° ${mien + 1}` : '?'}</strong>
+                </>
+              ) : mienOuverte || nOuvertes >= NB_COMPARTIMENTS ? (
+                <small>{tr('Portes ouvertes', 'Doors opened')} {nOuvertes}/8</small>
+              ) : (
+                <>
+                  <small>{mien !== null ? tr('Toujours caché', 'Still hidden') : tr('Palier', 'Level')}</small>
+                  <strong key={palier}>{fx(palier * M)}</strong>
+                </>
+              )}
+            </div>
+            <ol>
+              {Array.from({ length: NB_COMPARTIMENTS }, (_, k) => {
+                const ov = ouverte(k);
+                const i = ordre.indexOf(k);
+                const contenu = (
+                  <>
+                    <b>{k + 1}</b>
+                    <small>{ov ? (k === tresor ? '★' : fx(PALIERS_CONTROLEUR[i] * M)) : mien === k ? tr('toi', 'you') : salon[k] ? `${salon[k]}` : ''}</small>
+                  </>
+                );
+                return (
+                  <li key={k} className={`${ov ? (k === tresor ? 'tresor' : occupe(k) ? 'trouve' : 'vide') : ''} ${mien === k ? 'mien' : ''} ${seg?.porte === k && !ov && enTournee ? 'vise' : ''}`}>
+                    {enChoix ? (
+                      <button type="button" onClick={() => choisir(k)} disabled={!ouvert} aria-pressed={mien === k}>
+                        {contenu}
+                      </button>
+                    ) : (
+                      contenu
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
           </div>
-          <ol>
-            {Array.from({ length: NB_COMPARTIMENTS }, (_, k) => {
-              const ov = ouverte(k);
-              const i = ordre.indexOf(k);
-              return (
-                <li key={k} className={`${ov ? (k === tresor ? 'tresor' : occupe(k) ? 'trouve' : 'vide') : ''} ${mien === k ? 'mien' : ''} ${seg?.porte === k && !ov ? 'vise' : ''}`}>
-                  <b>{k + 1}</b>
-                  <small>{ov ? (k === tresor ? '★' : fx(PALIERS_CONTROLEUR[i] * M)) : mien === k ? tr('toi', 'you') : salon[k] ? `${salon[k]}` : ''}</small>
+          {enChoix && (
+            <ol className="ct-echelle" aria-label={tr('Les paliers', 'The levels')}>
+              {PALIERS_CONTROLEUR.map((x, i) => (
+                <li key={i} className={i === NB_COMPARTIMENTS - 1 ? 'tresor' : ''}>
+                  <small>{i === NB_COMPARTIMENTS - 1 ? tr('Dernière', 'Last') : `${i + 1}${tr(i ? 'e' : 're', ['st', 'nd', 'rd'][i] ?? 'th')}`}</small>
+                  <b>{fx(x * M)}</b>
+                  {i === NB_COMPARTIMENTS - 1 && <em>+ Jackpot</em>}
                 </li>
-              );
-            })}
-          </ol>
-        </div>
-      )}
-
-      {/* Le choix du compartiment : les huit portes, et ce que vaut chaque rang d'ouverture. */}
-      {nom === 'compartiments' && (
-        <div className="ct-choix">
-          <div className="ct-grille" role="group" aria-label={tr('Choisis ton compartiment', 'Pick your compartment')}>
-            {Array.from({ length: NB_COMPARTIMENTS }, (_, k) => (
-              <button key={k} type="button" className={`${mien === k ? 'choisi' : ''} ${mien !== null && mien !== k ? 'autre' : ''}`} onClick={() => choisir(k)} disabled={!ouvert}>
-                <span>N°</span>
-                <strong>{k + 1}</strong>
-                {(salon[k] ?? 0) > 0 && <i>{salon[k]}</i>}
-              </button>
-            ))}
-          </div>
-          <ol className="ct-echelle" aria-label={tr('Les paliers', 'The levels')}>
-            {PALIERS_CONTROLEUR.map((x, i) => (
-              <li key={i} className={i === NB_COMPARTIMENTS - 1 ? 'tresor' : ''}>
-                <small>{i === NB_COMPARTIMENTS - 1 ? tr('Dernière', 'Last') : `${i + 1}${tr(i ? 'e' : 're', ['st', 'nd', 'rd'][i] ?? 'th')}`}</small>
-                <b>{fx(x * M)}</b>
-                {i === NB_COMPARTIMENTS - 1 && <em>+ Jackpot</em>}
-              </li>
-            ))}
-          </ol>
+              ))}
+            </ol>
+          )}
         </div>
       )}
 

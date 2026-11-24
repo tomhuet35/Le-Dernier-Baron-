@@ -167,7 +167,11 @@ export function creerBaronWheel(options: {
       resultat: j && atteinte('revele') ? (j.resultat ?? null) : null,
     };
     // Le Contrôleur : sa tournée n'est montrée qu'une fois les choix faits.
-    if (t.type === 'controleur') v.controleur = atteinte('tournee') ? { tournee: t.tournee, jackpot: t.jackpot } : { tournee: null, jackpot: null };
+    if (t.type === 'controleur') {
+      v.controleur = atteinte('tournee') ? { tournee: t.tournee, jackpot: t.jackpot } : { tournee: null, jackpot: null };
+      // (la durée de la tournée dépend de son trajet : cachée elle aussi jusque-là)
+      if (!atteinte('tournee')) v.etapes = etapes.map((e) => (e.nom === 'tournee' ? { ...e, duree: 0 } : e));
+    }
     if (t.type === 'course') {
       // Les cotes dès la grille ; l'issue seulement au départ, quand plus personne ne peut changer de draisine.
       const partie = atteinte('sprint');

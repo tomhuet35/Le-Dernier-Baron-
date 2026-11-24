@@ -139,6 +139,51 @@ export interface PassageCT {
 /** L'ordre où il ouvre les compartiments (sans les feintes). */
 export const ordreControleur = (tournee: PassageCT[]) => tournee.filter((p) => p.feinte === null).map((p) => p.porte);
 
+/** Un moment de la tournée : il marche d'une porte à l'autre, ouvre une porte, ou feint devant. */
+export interface SegmentCT {
+  t0: number;
+  t1: number;
+  type: 'marche' | 'ouvre' | 'feinte';
+  porte: number;
+  /** marche : d'où il part et où il va (en travées ; la porte k est au milieu de la travée k). */
+  de: number;
+  vers: number;
+  /** ouvre : la place de cette porte dans l'ordre d'ouverture. */
+  i: number;
+  feinte: FeinteCT | null;
+}
+/** Où il se tient : devant la porte, un peu à gauche (il la regarde) ; d'où il part (l'entrée du couloir). */
+export const DEVANT_CT = -0.3;
+export const DEPART_CT = -1.1;
+/**
+ * Le calendrier de la tournée, à son rythme (ms) : le même sur tous les écrans, et l'étape dure ce qu'il dure (il n'est
+ * jamais pressé). Il marche d'un pas tranquille (les longs trajets un peu plus vite), et prend de plus en plus son temps
+ * devant les portes : la tension monte.
+ */
+export function calendrierControleur(tournee: PassageCT[]): { segments: SegmentCT[]; fin: number } {
+  const segments: SegmentCT[] = [];
+  let t = 0;
+  let x = DEPART_CT;
+  let i = 0;
+  for (const p of tournee) {
+    const cible = p.porte + 0.5 + DEVANT_CT;
+    const d = Math.abs(cible - x);
+    if (d > 0.01) {
+      const dt = Math.round(280 + 500 * Math.sqrt(d));
+      segments.push({ t0: t, t1: t + dt, type: 'marche', porte: p.porte, de: x, vers: cible, i: -1, feinte: null });
+      t += dt;
+      x = cible;
+    }
+    const dt = p.feinte ? 1300 : 1350 + 80 * i;
+    segments.push({ t0: t, t1: t + dt, type: p.feinte ? 'feinte' : 'ouvre', porte: p.porte, de: x, vers: x, i: p.feinte ? -1 : i, feinte: p.feinte });
+    t += dt;
+    if (!p.feinte) i += 1;
+  }
+  return { segments, fin: t };
+}
+/** Le temps laissé après la dernière porte (le trésor), avant la révélation. */
+export const FIN_TOURNEE_CT = 900;
+
 /** LE CHOIX DU BARON (la Grande Donne : il a quitté la roue de l'Express, le Contrôleur a pris ses cases, et rejoindra la roue du Bal) : le Baron distribue neuf cartes, chacune tirée dans cette table (la carte du Baron cache un jackpot). */
 export const NB_CARTES_BARON = 9;
 export const CARTES_BARON: TableBW<number | 'jackpot'> = [
@@ -820,8 +865,11 @@ export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW, t?: Tirage
 function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonusBW[] {
   const e = (nom: EtapeBW, duree: number, choix = 0): EtapeBonusBW => ({ nom, choix, duree });
   switch (type) {
-    case 'controleur':
-      return [e('intro', d.introControleur), e('compartiments', d.choix, NB_COMPARTIMENTS), e('tournee', d.tournee), e('revele', d.revele)];
+    case 'controleur': {
+      // La tournée dure ce que dure son calendrier (au rythme des durées : plus courte dans les tests).
+      const tournee = t?.type === 'controleur' ? Math.round(((calendrierControleur(t.tournee).fin + FIN_TOURNEE_CT) * d.tournee) / DUREES_TOURNEE_REF) : d.tournee;
+      return [e('intro', d.introControleur), e('compartiments', d.choix, NB_COMPARTIMENTS), e('tournee', tournee), e('revele', d.revele)];
+    }
     case 'course':
       return [e('intro', d.introCourse), e('grille', d.choix, NB_DRAISINES), e('sprint', d.sprint), e('revele', d.revele)];
     case 'chaudiere': {
@@ -848,6 +896,8 @@ function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonu
 }
 /** La durée de référence de l'explosion (la montée en pression suit le même rythme que les durées). */
 const DUREES_EXPLOSION_REF = 3_000;
+/** La durée de référence de la tournée du Contrôleur (à cette valeur, la tournée suit son calendrier à la lettre). */
+const DUREES_TOURNEE_REF = 17_000;
 /** Le nombre d'options de chaque étape de choix, dans l'ordre (un choix par étape). */
 export const choixDuBonusBW = (type: BonusBW) => etapesBonusBW(type).filter((e) => e.choix > 0).map((e) => e.choix);
 

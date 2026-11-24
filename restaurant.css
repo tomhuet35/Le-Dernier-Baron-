@@ -6,6 +6,14 @@
 .wr-cadre { --lc: max(100cqw, 200cqh); position: absolute; left: 50%; top: 50%; width: var(--lc); height: calc(var(--lc) / 2); translate: -50% -50%; }
 .wr-salle { position: absolute; inset: 0; width: 100%; height: 100%; }
 .wr-salle.haut { display: none; }
+/* Le dehors (derrière les vitres, percées dans la salle) : la bande de forêt boucle, d'une tuile par cycle. */
+.wr-dehors { --tuile: calc(var(--lc) * 0.3369); position: absolute; left: 0; right: 0; top: 19.5%; height: 38.5%; overflow: hidden; background: #0d1626; }
+.wr-dehors.haut { display: none; --tuile: calc(var(--lc) * 0.6376); top: 19.6%; height: 24.3%; }
+.wr-defile { position: absolute; left: 0; top: 0; bottom: 0; width: calc(100% + var(--tuile) * 2); background: url('/cartes/wr-dehors.webp') repeat-x 0 0 / var(--tuile) 100%; filter: blur(0.6px) brightness(0.92); will-change: transform; animation: wr-defile 7s linear infinite; }
+.wr-dehors.haut .wr-defile { animation-duration: 11s; }
+@keyframes wr-defile { to { transform: translate3d(calc(var(--tuile) * -1), 0, 0); } }
+.wr-lune { position: absolute; left: 31.3%; top: 17.5%; width: 7.5%; height: auto; translate: -50% -50%; }
+.wr-dehors.haut .wr-lune { left: 57.35%; top: 17.1%; width: 16.2%; }
 
 /* Une place : l'assiette (le plat), la cloche par-dessus ; le bas de l'assiette est posé sur la nappe. */
 .wr-place { --x: var(--xl); --y: var(--yl); --w: var(--wl); position: absolute; left: var(--x); top: var(--y); width: var(--w); aspect-ratio: 3 / 2; padding: 0; border: 0; background: none; translate: -50% -93%; color: inherit; cursor: pointer; animation: wr-pose 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) calc(var(--k) * 0.09s) both; }
@@ -101,6 +109,8 @@
   .wr-cadre { --lc: max(100cqw, 66.667cqh); height: calc(var(--lc) * 1.5); top: auto; bottom: 0; translate: -50% 0; }
   .wr-salle.large { display: none; }
   .wr-salle.haut { display: block; }
+  .wr-dehors.large { display: none; }
+  .wr-dehors.haut { display: block; }
   .wr-place { --x: var(--xh); --y: var(--yh); --w: var(--wh); }
   .wr-etiquette { font-size: calc(var(--lc) * 0.022); }
   .wr-double, .wr-mien { font-size: calc(var(--lc) * 0.04); }
