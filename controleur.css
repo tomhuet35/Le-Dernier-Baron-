@@ -106,6 +106,90 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ct *, .ct { animation: none !important; }
+  .cti { display: none; }
 }
 /* Pendant le choix et la tournée, le titre du bonus s'efface : le plan et les annonces prennent le haut. */
 .bw-bonus.controleur:has(.ct.compartiments) .bw-bonus-titre, .bw-bonus.controleur:has(.ct.tournee) .bw-bonus-titre { display: none; }
+
+/* Le choix : les huit portes sur le même écran, deux rangées de quatre (deux bouts du couloir, l'un au-dessus de
+   l'autre). Chaque rangée : --h sa hauteur, --P une travée (une porte au milieu de chacune). */
+.ct-portes-choix { position: absolute; inset: 0; z-index: 4; display: grid; align-content: center; gap: 3cqh; padding-top: 5cqh; background: radial-gradient(120% 80% at 50% 0%, #3a1a10 0%, #1c0c07 55%, #120806 100%); animation: ct-choix-in 0.45s ease-out both; }
+@keyframes ct-choix-in { from { opacity: 0; } }
+.ct-rangee { --h: min(41cqh, 24.5cqw); --P: calc(var(--h) * 0.875); --hc: var(--h); --travee: var(--P); position: relative; height: var(--h); background: url('/cartes/ct-couloir.webp') repeat-x calc(50cqw - 2 * var(--P)) 0 / var(--P) 100%; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7), 0 -6px 18px rgba(0, 0, 0, 0.5); }
+.ct-rangee-portes { position: absolute; left: calc(50% - 2 * var(--P)); top: 0; bottom: 0; width: calc(4 * var(--P)); }
+.ct-rangee .ct-porte { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; animation: ct-porte-in 0.4s cubic-bezier(0.3, 1.4, 0.5, 1) calc(var(--k) * 60ms) both; }
+@keyframes ct-porte-in { from { opacity: 0; transform: translateY(6%); } }
+.ct-rangee .ct-porte:disabled { cursor: default; opacity: 1; }
+/* (une zone de clic un peu plus large que la porte) */
+.ct-rangee .ct-porte::before { content: ''; position: absolute; inset: -6% -22%; }
+/* La lueur jaune autour de la porte : à peine au survol, pleine (et qui respire) sur la mienne. */
+.ct-lueur-choix { position: absolute; inset: -3% -6%; border-radius: 6% / 3%; box-shadow: 0 0 calc(var(--h) * 0.05) calc(var(--h) * 0.012) rgba(255, 215, 116, 0.95), 0 0 calc(var(--h) * 0.14) rgba(255, 200, 90, 0.65), inset 0 0 calc(var(--h) * 0.05) rgba(255, 215, 116, 0.5); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.ct-rangee .ct-porte:not(:disabled):hover .ct-lueur-choix { opacity: 0.45; }
+.ct-rangee .ct-porte.mienne .ct-lueur-choix { opacity: 1; animation: ct-lueur-respire 1.4s ease-in-out infinite alternate; }
+@keyframes ct-lueur-respire { to { opacity: 0.6; } }
+.ct-rangee .ct-porte.mienne .ct-battant { filter: brightness(1.12) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); }
+.ct-rangee .ct-porte.autre .ct-battant { filter: brightness(0.72) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); }
+.ct-rangee .ct-numero { top: 9%; font-size: calc(var(--h) * 0.085); color: #ffe9b0; text-shadow: 0 0 calc(var(--h) * 0.02) rgba(255, 210, 110, 0.9), 0 1px 2px #000; }
+.ct-rangee .ct-porte.mienne .ct-numero { color: #fff6dc; text-shadow: 0 0 calc(var(--h) * 0.03) #ffd774, 0 0 calc(var(--h) * 0.06) rgba(255, 200, 90, 0.9); }
+.bw-bonus.controleur:has(.ct.intro) .bw-bonus-titre { display: none; }
+
+/* L'intro : « Le sifflet dans la nuit » (8 s, calée sur le temps déjà écoulé : --t0).
+   0,3 → 0,9 s : les lumières de la roue vacillent, puis le noir. 1,25 s : le sifflet. Trois passages du faisceau : la
+   porte (1,5 → 3 s), la poignée (3,05 → 4,55 s), le contrôleur (4,6 → 6,3 s). 6,3 s : la lumière inonde l'écran, on est
+   dans le couloir (ses numéros s'allument un à un) ; 6,6 s : « Cachez-vous ! ». */
+@property --cx { syntax: '<percentage>'; inherits: false; initial-value: 50%; }
+@property --cy { syntax: '<percentage>'; inherits: false; initial-value: 50%; }
+@property --cr { syntax: '<percentage>'; inherits: false; initial-value: 30%; }
+.cti { position: absolute; inset: 0; z-index: 8; overflow: hidden; pointer-events: none; }
+.cti::before { content: ''; position: absolute; inset: 0; background: #000; }
+.cti::before, .cti > :not(.cti-cri) { animation: cti-fin 8s linear var(--t0) both; }
+@keyframes cti-fin { 0%, 81.9% { opacity: 1; } 89%, 100% { opacity: 0; } }
+.cti-roue-plan { position: absolute; inset: 0; display: grid; place-items: center; background: #090909 url('/cartes/bw-rl-decor-paysage.webp') 50% 70% / cover; animation: cti-panne 8s linear var(--t0) both !important; }
+@keyframes cti-panne { 0%, 3.7% { filter: none; opacity: 1; } 4.6% { filter: brightness(0.3); } 5.4% { filter: brightness(1.1); } 6.6% { filter: brightness(0.15); } 7.4% { filter: brightness(0.85); } 9.6% { filter: brightness(0.6); } 11.2% { filter: brightness(1); opacity: 1; } 11.3%, 100% { opacity: 0; } }
+.cti-roue { position: relative; height: 77cqh; aspect-ratio: 1; }
+.cti-roue .bw-roue-figee { position: absolute; inset: 0; }
+.cti-plan { position: absolute; inset: 0; overflow: hidden; opacity: 0; }
+.cti-cadre { --lc: max(100cqw, 177.78cqh); position: absolute; left: 50%; top: 50%; width: var(--lc); height: calc(var(--lc) * 0.5625); translate: -50% -50%; }
+.cti-cadre > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cti-sombre { filter: brightness(0.06) saturate(0.5); }
+.cti-eclaire { -webkit-mask-image: radial-gradient(ellipse calc(var(--cr) * 0.5625) var(--cr) at var(--cx) var(--cy), #000 0%, #000 35%, rgba(0, 0, 0, 0.55) 62%, transparent 100%); mask-image: radial-gradient(ellipse calc(var(--cr) * 0.5625) var(--cr) at var(--cx) var(--cy), #000 0%, #000 35%, rgba(0, 0, 0, 0.55) 62%, transparent 100%); }
+.cti-faisceau { position: absolute; left: -4%; top: 0; width: 108%; height: 100%; object-fit: cover; transform-origin: 0 50%; opacity: 0.32; }
+/* Chaque plan : il n'apparaît que le temps de son passage. */
+.cti-plan.porte { animation: cti-vis 1.5s linear calc(1500ms + var(--t0)) both !important; }
+.cti-plan.poignee { animation: cti-vis 1.5s linear calc(3050ms + var(--t0)) both !important; }
+.cti-plan.controleur { animation: cti-vis-fin 2.5s linear calc(4600ms + var(--t0)) both !important; }
+@keyframes cti-vis { 0% { opacity: 0; } 6%, 94% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes cti-vis-fin { 0% { opacity: 0; } 5%, 78% { opacity: 1; } 100% { opacity: 0; } }
+/* 1. La porte : le faisceau la traverse de gauche à droite. */
+.cti-plan.porte .cti-eclaire { animation: cti-spot-porte 1.5s ease-in-out calc(1500ms + var(--t0)) both; }
+@keyframes cti-spot-porte { 0% { --cx: 2%; --cy: 46%; --cr: 30%; } 50% { --cx: 52%; --cy: 44%; } 100% { --cx: 98%; --cy: 48%; --cr: 30%; } }
+.cti-plan.porte .cti-faisceau { animation: cti-rayon-porte 1.5s ease-in-out calc(1500ms + var(--t0)) both; }
+@keyframes cti-rayon-porte { 0% { transform: rotate(-2deg) scaleX(0.3); } 50% { transform: rotate(-3deg) scaleX(0.75); } 100% { transform: rotate(-1deg) scaleX(1.1); } }
+/* 2. La poignée : le faisceau la cherche, et s'y arrête (elle grince). */
+.cti-plan.poignee .cti-eclaire { animation: cti-spot-poignee 1.5s cubic-bezier(0.3, 0.6, 0.3, 1) calc(3050ms + var(--t0)) both; }
+@keyframes cti-spot-poignee { 0% { --cx: 12%; --cy: 80%; --cr: 26%; } 45%, 100% { --cx: 46%; --cy: 42%; --cr: 30%; } }
+.cti-plan.poignee .cti-faisceau { animation: cti-rayon-poignee 1.5s cubic-bezier(0.3, 0.6, 0.3, 1) calc(3050ms + var(--t0)) both; }
+@keyframes cti-rayon-poignee { 0% { transform: rotate(22deg) scaleX(0.25); } 45%, 100% { transform: rotate(-6deg) scaleX(0.55); } }
+.cti-plan.poignee .cti-cadre { animation: cti-tremble 0.9s ease-in-out calc(3700ms + var(--t0)) both; }
+@keyframes cti-tremble { 20% { transform: translateX(-0.3%); } 40% { transform: translateX(0.3%); } 60% { transform: translateX(-0.2%); } 80%, 100% { transform: none; } }
+/* 3. Le contrôleur : le faisceau remonte du bas jusqu'à ses yeux, sous la casquette. */
+.cti-plan.controleur .cti-eclaire { animation: cti-spot-controleur 1.7s cubic-bezier(0.4, 0, 0.3, 1) calc(4600ms + var(--t0)) both; }
+@keyframes cti-spot-controleur { 0% { --cx: 62%; --cy: 100%; --cr: 22%; } 55% { --cx: 60%; --cy: 42%; --cr: 30%; } 100% { --cx: 60%; --cy: 40%; --cr: 36%; } }
+.cti-plan.controleur .cti-faisceau { animation: cti-rayon-controleur 1.7s cubic-bezier(0.4, 0, 0.3, 1) calc(4600ms + var(--t0)) both; }
+@keyframes cti-rayon-controleur { 0% { transform: rotate(32deg) scaleX(0.6); } 55%, 100% { transform: rotate(-4deg) scaleX(0.62); } }
+.cti-plan.controleur .cti-cadre { animation: cti-approche 1.95s ease-out calc(4600ms + var(--t0)) both; }
+@keyframes cti-approche { from { transform: scale(1.08); } to { transform: none; } }
+/* La lumière qui inonde l'écran. */
+.cti-lumiere { position: absolute; inset: 0; background: radial-gradient(circle at 60% 40%, #fff6dc 0%, #ffd774 30%, rgba(255, 170, 60, 0.85) 60%, rgba(120, 50, 10, 0.7) 100%); opacity: 0; animation: cti-lumiere 8s linear var(--t0) both !important; }
+@keyframes cti-lumiere { 0%, 78.6% { opacity: 0; } 81.9% { opacity: 1; } 89%, 100% { opacity: 0; } }
+/* « Cachez-vous ! » */
+.cti-cri { position: absolute; left: 50%; top: 10%; z-index: 2; margin: 0; width: max-content; max-width: 92%; translate: -50% 0; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 9cqw, 80px); line-height: 1; color: #ffd774; text-shadow: 0 4px 0 #3a1505, 0 0 18px rgba(255, 190, 80, 0.7), 0 10px 18px rgba(0, 0, 0, 0.8); opacity: 0; animation: cti-cri 1.4s cubic-bezier(0.3, 1.6, 0.5, 1) calc(6600ms + var(--t0)) both; }
+@keyframes cti-cri { 0% { opacity: 0; transform: scale(0.3) rotate(-6deg); } 25% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+/* Pendant l'intro, les numéros des portes du couloir s'allument un à un. */
+.ct.intro .ct-couloir .ct-numero { animation: ct-numero-allume 0.5s ease-out calc(6650ms + var(--k) * 130ms + var(--t0)) both; }
+@keyframes ct-numero-allume { 0% { color: #2a1004; text-shadow: none; } 40% { color: #fff6dc; text-shadow: 0 0 calc(var(--hc) * 0.03) #ffd774, 0 0 calc(var(--hc) * 0.06) rgba(255, 200, 90, 0.8); } 100% { color: #ffe9b0; text-shadow: 0 0 calc(var(--hc) * 0.02) rgba(255, 210, 110, 0.8); } }
+@container (max-aspect-ratio: 1 / 1) {
+  .cti-roue { height: 65cqh; }
+  .ct-portes-choix { padding-top: 14cqh; }
+  .ct-rangee { --h: min(36cqh, 24.5cqw); }
+}
