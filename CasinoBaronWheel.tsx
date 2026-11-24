@@ -1370,11 +1370,12 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
       </div>
 
       <div className="bw-gauche">
-      {v && !enBonus && <TopSlot v={v} />}
       <div className="bw-plateau">
         {v && !enBonus && <LampesDecor lampes={lampes} />}
         {v && (enBonus ? <SceneBonus v={v} appel={appel} onErreur={setErreur} /> : <Roue v={v} horloges={horloges} lampes={lampes} aiguille={aiguille} />)}
         {v && !enBonus && <Manometre aiguille={aiguille} />}
+        {/* Le Top Slot, sous la roue, dans son cadre : posé sur le quai, devant les rails. */}
+        {v && !enBonus && <TopSlot v={v} />}
         {!v && <div className="chargement">{erreur ?? tr('La roue arrive…', 'The wheel is coming…')}</div>}
         <span className="bw-direct">
           {tr('En direct', 'Live')}
