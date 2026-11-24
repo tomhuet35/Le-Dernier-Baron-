@@ -9,7 +9,7 @@
  * écrans. La scène est en travelling : en haut la tribune (elle défile lentement), en bas le terrain des quatre voies,
  * vu d'un peu au-dessus, où chaque draisine roule sur sa voie ; la foule du premier plan défile plus vite.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { NB_DRAISINES, PRIME_COURSE_BW, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
 import { fx } from './CasinoBaronExpress';
 import { tr } from './traduction';
@@ -39,6 +39,11 @@ export const IMAGES_DRAISINES_NOMS = [
   'dr-etincelles',
   'dr-photo',
   'dr-trophee',
+  // l'intro : le journal du jour
+  'drj-crieur',
+  'drj-papier',
+  'drj-rafale',
+  'bw-rl-decor-paysage',
   ...EQUIPAGES.flatMap((e) => [`dr-${e.cle}-a`, `dr-${e.cle}-b`, `dr-${e.cle}-chute`, `dr-pilotes-${e.cle}`]),
 ];
 const IMG = (n: string) => `/cartes/${n}.webp`;
@@ -280,7 +285,7 @@ function useSceneCourse(donnees: { current: DonneesCourse }, refs: RefsCourse) {
 // ---------------------------------------------------------------------------------------------------------------
 // Le bonus
 
-export function BonusDraisines({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void }) {
+export function BonusDraisines({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void; roue?: ReactNode }) {
   const c = b.course;
   const cotes = c?.cotes ?? [0, 0, 0, 0];
   const mien = b.mesChoix[0] ?? null;
@@ -348,7 +353,8 @@ export function BonusDraisines({ v, b, nom, ouvert, choisir }: { v: VueBW; b: Vu
       f();
     };
     if (v.phase !== 'bonus') return;
-    if (nom === 'intro' && tau > 200) fois('foule', () => jouerEffet('course_foule', { volume: 0.55 }));
+    // (la foule, quand le vent emporte le journal et découvre la piste)
+    if (nom === 'intro' && tau > 6_900) fois('foule', () => jouerEffet('course_foule', { volume: 0.55 }));
     if (nom !== 'sprint') return;
     FEUX.forEach((f, k) => tau >= f && tau < f + 400 && fois(`feu${k}`, () => jouerEffet('dr_feu', { vitesse: 1 + k * 0.04 })));
     if (tau >= DEPART && tau < DEPART + 600) fois('pistolet', () => jouerEffet('dr_pistolet'));
@@ -434,7 +440,8 @@ export function BonusDraisines({ v, b, nom, ouvert, choisir }: { v: VueBW; b: Vu
         </div>
       )}
 
-      {nom === 'intro' && <img className="dr-logo" src={IMG('dr-logo')} alt={tr('La Course des draisines', 'The Handcar Race')} draggable={false} />}
+      {/* L'intro : le journal du jour (il tombe sur la roue, la une s'imprime, le vent l'emporte et découvre la piste). */}
+      {nom === 'intro' && <JournalDuJour t0={Math.max(0, (v.duree ?? 0) - (v.reste ?? 0))} roue={roue} cotes={cotes} M={M} cle={cle} />}
 
       {nom === 'grille' && (
         <div className="dr-choix" role="group" aria-label={tr('Choisis ta draisine', 'Pick your handcar')}>
@@ -471,6 +478,82 @@ export function BonusDraisines({ v, b, nom, ouvert, choisir }: { v: VueBW; b: Vu
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// L'intro (8,5 s) : « Le journal du jour ». La roue est encore là ; un crieur surgit et lance l'édition spéciale, qui
+// tombe en tournoyant et se pose sur la roue. La une s'imprime (le titre du journal, le gros titre), les photos des
+// quatre équipages se développent l'une après l'autre avec leur cote, le favori et l'outsider sont tamponnés. Puis un
+// coup de vent emporte le journal et découvre la piste, derrière.
+
+/** Les moments de la une (ms) : le journal se pose, la tête, le gros titre, la première photo (puis une toutes les 450 ms). */
+const UNE = { pose: 2_000, tete: 2_300, titre: 2_650, photo: 3_050, pas: 450, tampons: 4_950, vent: 6_300 };
+
+function JournalDuJour({ t0: t0Recu, roue, cotes, M, cle }: { t0: number; roue?: ReactNode; cotes: number[]; M: number; cle: string }) {
+  // (le temps écoulé à l'arrivée, figé pour l'étape : tout le reste en découle)
+  const t0 = useMemo(() => t0Recu, [cle]); // eslint-disable-line react-hooks/exhaustive-deps
+  const reduit = mouvementReduit();
+  const favori = cotes.indexOf(Math.min(...cotes));
+  const outsider = cotes.indexOf(Math.max(...cotes));
+  useEffect(() => {
+    if (reduit) return;
+    const sons: [number, () => void][] = [
+      [150, () => jouerEffet('course_appel', { volume: 0.7 })],
+      [UNE.pose, () => jouerEffet('drj_flap', { volume: 1 })],
+      [UNE.tete, () => jouerEffet('drj_presse', { volume: 0.9 })],
+      [UNE.titre, () => jouerEffet('drj_presse', { volume: 1, vitesse: 0.9 })],
+      ...EQUIPAGES.map((_, k): [number, () => void] => [UNE.photo + k * UNE.pas + 250, () => jouerEffet('bw_poincon', { volume: 0.7, vitesse: 1 + k * 0.05 })]),
+      [UNE.tampons, () => jouerEffet('bw_poincon', { volume: 1, vitesse: 0.85 })],
+      [UNE.vent - 150, () => jouerEffet('ex_vent', { volume: 1 })],
+      [UNE.vent + 300, () => jouerEffet('drj_flap', { volume: 0.6, vitesse: 1.3 })],
+    ];
+    const ids = sons.filter(([x]) => x >= t0).map(([x, f]) => window.setTimeout(f, x - t0));
+    return () => ids.forEach((i) => window.clearTimeout(i));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="drj" style={{ '--t0': `${-t0}ms` } as CSSProperties} aria-hidden="true">
+      <div className="drj-a">{roue && <div className="drj-roue">{roue}</div>}</div>
+      <i className="drj-voile" />
+      <img className="drj-crieur" src={IMG('drj-crieur')} alt="" draggable={false} />
+      <div className="drj-scene">
+        <div className="drj-vol">
+          <div className="drj-journal">
+            <img className="drj-papier" src={IMG('drj-papier')} alt="" draggable={false} />
+            <div className="drj-une">
+              <div className="drj-tete">
+                <small>{tr('Édition spéciale · ce soir · 5 centimes', 'Special edition · tonight · 5 cents')}</small>
+                <strong>{tr('Le Baron Soir', 'The Evening Baron')}</strong>
+              </div>
+              <h3 className="drj-titre">{tr('Grande course des draisines ce soir !', 'Grand handcar race tonight!')}</h3>
+              <div className="drj-photos">
+                {EQUIPAGES.map((e, k) => (
+                  <figure key={e.cle} className="drj-photo" style={{ '--k': k } as CSSProperties}>
+                    <span className="drj-cliche">
+                      <img src={IMG(`dr-pilotes-${e.cle}`)} alt="" draggable={false} />
+                    </span>
+                    <figcaption>
+                      <span>{tr(`L’équipage ${e.nom[0]}`, `Team ${e.nom[1]}`)}</span>
+                      <b>{fx(cotes[k] * M)}</b>
+                    </figcaption>
+                    {k === favori && <em className="drj-tampon">{tr('Favori', 'Favourite')}</em>}
+                    {k === outsider && k !== favori && <em className="drj-tampon outsider">{tr('Outsider', 'Outsider')}</em>}
+                  </figure>
+                ))}
+              </div>
+              <div className="drj-colonnes">
+                <i />
+                <i />
+                <i />
+              </div>
+              {M > 1 && <p className="drj-bandeau">{tr(`Gains ×${M} sur la roue !`, `Wins ×${M} on the wheel!`)}</p>}
+            </div>
+          </div>
+        </div>
+      </div>
+      <img className="drj-rafale" src={IMG('drj-rafale')} alt="" draggable={false} />
     </div>
   );
 }
