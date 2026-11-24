@@ -97,6 +97,8 @@ export function creerBaronWheel(options: {
   arret?: () => number | undefined;
   /** Multiplicateurs imposés (tests, démonstration) ; au hasard sinon. */
   multiplicateurs?: () => BoostBW[] | undefined;
+  /** Tirage du bonus imposé (démonstration) ; au hasard sinon. */
+  tirage?: (c: BonusBW) => TirageBonusBW | undefined;
   /** Grande ouverture : sa fin (ms), ou null. */
   ouverture?: () => number | null;
   annoncer?: (a: AnnonceCasino) => void;
@@ -344,7 +346,8 @@ export function creerBaronWheel(options: {
     salon.manches++;
     salon.cases[c]++;
     if (estBonusBW(c)) {
-      tirage = tirerBonusBW(c, hasard);
+      const impose = options.tirage?.(c);
+      tirage = impose && impose.type === c ? impose : tirerBonusBW(c, hasard);
       etapes = etapesBonusBW(c, D, tirage);
       etape = 0;
       // À la Chaudière, le seul « choix » est le sifflet (en centièmes de multiplicateur), donné pendant la montée.
