@@ -1036,7 +1036,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
   const part = useChargement(b.type);
   const charge = nom === 'chargement' || (nom === 'intro' && part < 1);
   // (l'Express attend ses images sur sa roue figée, comme au début de son intro)
-  if (charge && (b.type === 'express' || b.type === 'restaurant' || b.type === 'course'))
+  if (charge && (b.type === 'express' || b.type === 'restaurant' || b.type === 'course' || b.type === 'controleur'))
     return (
       <div className={`bw-bonus ${b.type}`}>
         <div className={`bw-attente-express ${b.type}`}>
@@ -1052,7 +1052,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
     );
   return (
     <div className={`bw-bonus ${b.type}`}>
-      {b.type === 'controleur' && <BonusControleur v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
+      {b.type === 'controleur' && <BonusControleur v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} roue={<RoueFigee />} />}
       {b.type === 'course' && <BonusDraisines v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} roue={<RoueFigee />} />}
       {b.type === 'chaudiere' && (
         <BonusChaudiere
@@ -1330,7 +1330,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
   // L'Express n'a pas d'écran de chargement : la roue reste là, arrêtée sur l'Express, et son intro la change en horloge
   // (ses images se chargent pendant ce temps).
   // (de même pour la Cloche, dont la cloche géante tombe sur la roue)
-  const typeAvant = v?.bonus && (v.bonus.type === 'express' || v.bonus.type === 'restaurant' || v.bonus.type === 'course') && v.phase === 'bonus' && v.bonus.etapes[v.bonus.etape]?.nom === 'chargement' ? v.bonus.type : null;
+  const typeAvant = v?.bonus && (v.bonus.type === 'express' || v.bonus.type === 'restaurant' || v.bonus.type === 'course' || v.bonus.type === 'controleur') && v.phase === 'bonus' && v.bonus.etapes[v.bonus.etape]?.nom === 'chargement' ? v.bonus.type : null;
   const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat') && !typeAvant;
   useEffect(() => {
     if (typeAvant) for (const src of IMAGES_BONUS_BW[typeAvant]) void chargerImage(src);

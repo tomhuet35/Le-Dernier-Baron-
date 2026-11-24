@@ -8,7 +8,7 @@
  * répète, une porte au milieu de chacune) défile et suit le contrôleur ; le haut de l'écran montre le plan de la
  * voiture (les huit compartiments, leur état, où je suis caché) et le palier en cours.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import {
   calendrierControleur,
   DEPART_CT,
@@ -45,6 +45,12 @@ export const IMAGES_CONTROLEUR_NOMS = [
   'ct-stupefait',
   'ct-lueur',
   'ct-sifflet',
+  // l'intro : le sifflet dans la nuit
+  'cti-porte',
+  'cti-poignee',
+  'cti-controleur',
+  'cti-faisceau',
+  'bw-rl-decor-paysage',
 ];
 const IMG = (n: string) => `/cartes/${n}.webp`;
 const NOMS_JACKPOTS: Record<JackpotBW, string> = { mini: 'MINI', minor: 'MINOR', major: 'MAJOR', grand: 'GRAND' };
@@ -82,7 +88,7 @@ function etatControleur(segs: Segment[], t: number, occupe: (k: number) => boole
 // ---------------------------------------------------------------------------------------------------------------
 // Le bonus
 
-export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void }) {
+export function BonusControleur({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void; roue?: ReactNode }) {
   const c = b.controleur;
   const tournee = c?.tournee ?? null;
   const mien = b.mesChoix[0] ?? null;
@@ -232,11 +238,13 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
 
   const palier = PALIERS_CONTROLEUR[Math.min(nOuvertes, NB_COMPARTIMENTS - 1)];
   const enChoix = nom === 'compartiments';
-  const peutChoisir = enChoix && ouvert;
+  // (dans le couloir, les portes ne se choisissent plus : le choix a son écran, les huit portes)
+  const peutChoisir = false;
+  const t0Intro = useMemo(() => (nom === 'intro' ? Math.max(0, (v.duree ?? 0) - (v.reste ?? 0)) : 0), [cle]); // eslint-disable-line react-hooks/exhaustive-deps
   const mienOuverte = mien !== null && ouverte(mien);
 
   return (
-    <div className={`ct ${nom}`} ref={refs.scene}>
+    <div className={`ct ${nom}`} ref={refs.scene} style={nom === 'intro' ? ({ '--t0': `${-t0Intro}ms` } as CSSProperties) : undefined}>
       <div className="ct-plafond" />
       <div className="ct-couloir">
         <div className="ct-piste" ref={refs.piste}>
@@ -278,20 +286,53 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
         </div>
       </div>
 
-      {nom === 'intro' && <img className="ct-logo" src={IMG('ct-logo')} alt={tr('Le Contrôleur', 'The Conductor')} draggable={false} />}
+      {/* L'intro : « Le sifflet dans la nuit ». */}
+      {nom === 'intro' && <IntroControleur t0={t0Intro} roue={roue} />}
 
-      {/* Le plan de la voiture : les huit compartiments (on y choisit sa cachette, comme sur les portes du couloir), puis
-          leur état et le palier en cours pendant la tournée. */}
-      {(enChoix || enTournee || fini) && (
+      {/* Le choix : les huit portes de la voiture-lits sur le même écran (deux rangées de quatre) ; la mienne s'entoure
+          d'une lueur jaune. */}
+      {enChoix && (
+        <div className="ct-portes-choix" role="group" aria-label={tr('Choisis ton compartiment', 'Pick your compartment')}>
+          {[0, 1].map((r) => (
+            <div key={r} className="ct-rangee">
+              <div className="ct-rangee-portes">
+                {Array.from({ length: NB_COMPARTIMENTS / 2 }, (_, j) => {
+                  const k = r * (NB_COMPARTIMENTS / 2) + j;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      className={`ct-porte choix ${mien === k ? 'mienne' : ''} ${mien !== null && mien !== k ? 'autre' : ''}`}
+                      style={{ '--k': j } as CSSProperties}
+                      onClick={() => choisir(k)}
+                      disabled={!ouvert}
+                      aria-pressed={mien === k}
+                      aria-label={tr(`Compartiment ${k + 1}`, `Compartment ${k + 1}`)}
+                    >
+                      <i className="ct-lueur-choix" />
+                      <img className="ct-battant" src={IMG('ct-porte')} alt="" draggable={false} />
+                      <b className="ct-numero">{k + 1}</b>
+                      {(mien === k || (salon[k] ?? 0) > 0) && (
+                        <span className="ct-caches">
+                          {mien === k && <i>★</i>}
+                          {(salon[k] ?? 0) > 0 && <small>{salon[k]}</small>}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Le plan de la voiture pendant la tournée : les huit compartiments, leur état, et le palier en cours. */}
+      {(enTournee || fini) && (
         <div className="ct-haut">
-          <div className={`ct-plan ${enChoix ? 'choix' : ''}`} role={enChoix ? 'group' : undefined} aria-label={enChoix ? tr('Choisis ton compartiment', 'Pick your compartment') : tr('Plan de la voiture', 'Car plan')}>
+          <div className="ct-plan" aria-label={tr('Plan de la voiture', 'Car plan')}>
             <div className="ct-palier">
-              {enChoix ? (
-                <>
-                  <small>{tr('Ta cachette', 'Your hideout')}</small>
-                  <strong key={mien ?? -1}>{mien !== null ? `N° ${mien + 1}` : '?'}</strong>
-                </>
-              ) : mienOuverte || nOuvertes >= NB_COMPARTIMENTS ? (
+              {mienOuverte || nOuvertes >= NB_COMPARTIMENTS ? (
                 <small>{tr('Portes ouvertes', 'Doors opened')} {nOuvertes}/8</small>
               ) : (
                 <>
@@ -304,37 +345,15 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
               {Array.from({ length: NB_COMPARTIMENTS }, (_, k) => {
                 const ov = ouverte(k);
                 const i = ordre.indexOf(k);
-                const contenu = (
-                  <>
-                    <b>{k + 1}</b>
-                    <small>{ov ? (k === tresor ? '★' : fx(PALIERS_CONTROLEUR[i] * M)) : mien === k ? tr('toi', 'you') : salon[k] ? `${salon[k]}` : ''}</small>
-                  </>
-                );
                 return (
                   <li key={k} className={`${ov ? (k === tresor ? 'tresor' : occupe(k) ? 'trouve' : 'vide') : ''} ${mien === k ? 'mien' : ''} ${seg?.porte === k && !ov && enTournee ? 'vise' : ''}`}>
-                    {enChoix ? (
-                      <button type="button" onClick={() => choisir(k)} disabled={!ouvert} aria-pressed={mien === k}>
-                        {contenu}
-                      </button>
-                    ) : (
-                      contenu
-                    )}
+                    <b>{k + 1}</b>
+                    <small>{ov ? (k === tresor ? '★' : fx(PALIERS_CONTROLEUR[i] * M)) : mien === k ? tr('toi', 'you') : salon[k] ? `${salon[k]}` : ''}</small>
                   </li>
                 );
               })}
             </ol>
           </div>
-          {enChoix && (
-            <ol className="ct-echelle" aria-label={tr('Les paliers', 'The levels')}>
-              {PALIERS_CONTROLEUR.map((x, i) => (
-                <li key={i} className={i === NB_COMPARTIMENTS - 1 ? 'tresor' : ''}>
-                  <small>{i === NB_COMPARTIMENTS - 1 ? tr('Dernière', 'Last') : `${i + 1}${tr(i ? 'e' : 're', ['st', 'nd', 'rd'][i] ?? 'th')}`}</small>
-                  <b>{fx(x * M)}</b>
-                  {i === NB_COMPARTIMENTS - 1 && <em>+ Jackpot</em>}
-                </li>
-              ))}
-            </ol>
-          )}
         </div>
       )}
 
@@ -344,6 +363,48 @@ export function BonusControleur({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
           {annonce.sous && <span>{annonce.sous}</span>}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// L'intro (8 s) : « Le sifflet dans la nuit ». La roue est encore là ; ses lumières vacillent et s'éteignent d'un coup.
+// Dans le noir, un sifflet ; le faisceau d'une lanterne balaie l'écran et n'éclaire que ce qu'il touche : une porte de
+// compartiment, une poignée qui tourne, le contrôleur sous sa casquette, sifflet aux lèvres. Puis la lumière inonde
+// l'écran : on est dans le couloir, dont les numéros des portes s'allument un à un.
+
+const INTRO_CT = { noir: 900, sifflet: 1_250, porte: 1_500, poignee: 3_050, controleur: 4_600, lumiere: 6_300 };
+
+function IntroControleur({ t0, roue }: { t0: number; roue?: ReactNode }) {
+  const reduit = mouvementReduit();
+  useEffect(() => {
+    if (reduit) return;
+    const sons: [number, () => void][] = [
+      [INTRO_CT.noir, () => jouerEffet('cti_noir', { volume: 1 })],
+      [INTRO_CT.sifflet, () => jouerEffet('bw_sifflet', { volume: 1, vitesse: 1.15 })],
+      [INTRO_CT.poignee + 650, () => jouerEffet('cti_grince', { volume: 0.9 })],
+      [INTRO_CT.controleur + 750, () => jouerEffet('bw_sifflet', { volume: 1, vitesse: 1.25 })],
+      [INTRO_CT.lumiere, () => jouerEffet('gd_eclat', { volume: 0.7 })],
+      [INTRO_CT.lumiere + 250, () => jouerEffet('ct_toc', { volume: 0.6 })],
+    ];
+    const ids = sons.filter(([x]) => x >= t0).map(([x, f]) => window.setTimeout(f, x - t0));
+    return () => ids.forEach((i) => window.clearTimeout(i));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="cti" aria-hidden="true">
+      <div className="cti-roue-plan">{roue && <div className="cti-roue">{roue}</div>}</div>
+      {(['porte', 'poignee', 'controleur'] as const).map((n) => (
+        <div key={n} className={`cti-plan ${n}`}>
+          <div className="cti-cadre">
+            <img className="cti-sombre" src={IMG(`cti-${n}`)} alt="" draggable={false} />
+            <img className="cti-eclaire" src={IMG(`cti-${n}`)} alt="" draggable={false} />
+          </div>
+          <img className="cti-faisceau" src={IMG('cti-faisceau')} alt="" draggable={false} />
+        </div>
+      ))}
+      <i className="cti-lumiere" />
+      <p className="cti-cri">{tr('Cachez-vous !', 'Hide!')}</p>
     </div>
   );
 }
