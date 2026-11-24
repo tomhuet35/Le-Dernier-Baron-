@@ -113,6 +113,9 @@ import type { DureesCourse } from '../shared/course';
 import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type AfficheCasino } from '../shared/afficheCasino';
 import type { DureesCouronne } from '../shared/couronne';
 
+/** Le grand spectacle de la roue du Baron (heure de Paris) : l'Express à ×200, une seule fois dans ce créneau. */
+const SPECTACLE_BW = { debut: Date.parse('2026-11-24T13:06:00+01:00'), fin: Date.parse('2026-11-24T13:40:00+01:00'), x: 200 };
+
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
 type Rappel = (r: Reponse) => void;
 
@@ -704,7 +707,34 @@ export function creerCasino(options: OptionsCasino) {
     const debut = ouvertures[CADEAU_OUVERTURE_BW];
     return debut === undefined ? null : debut + DUREE_OUVERTURE_BW;
   };
-  const roueBW = creerBaronWheel({ io, banque: banqueDe('baronWheel'), horloge, delais: options.delaisBaronWheel, arret: options.arretBaronWheel, multiplicateurs: options.multiplicateursBaronWheel, ouverture: finOuvertureBW, annoncer: (a) => annoncer(a) });
+  // Le grand spectacle : une fois, la première manche dont les mises ferment entre SPECTACLE_BW.debut et .fin, le Top Slot
+  // pose ×200 sur l'Express (la case 0) et la roue s'y arrête.
+  const spectacle = { fait: false, enCours: false };
+  const roueBW = creerBaronWheel({
+    io,
+    banque: banqueDe('baronWheel'),
+    horloge,
+    delais: options.delaisBaronWheel,
+    multiplicateurs: () => {
+      const t = horloge();
+      // (jamais dans les tests : ils règlent leurs délais)
+      if (!options.delaisBaronWheel && !options.multiplicateursBaronWheel && !spectacle.fait && t >= SPECTACLE_BW.debut && t < SPECTACLE_BW.fin) {
+        spectacle.enCours = true;
+        return [{ i: 0, x: SPECTACLE_BW.x }];
+      }
+      return options.multiplicateursBaronWheel?.();
+    },
+    arret: () => {
+      if (spectacle.enCours) {
+        spectacle.enCours = false;
+        spectacle.fait = true;
+        return 0;
+      }
+      return options.arretBaronWheel?.();
+    },
+    ouverture: finOuvertureBW,
+    annoncer: (a) => annoncer(a),
+  });
   // -------------------------------------------------------------------------------------------------------------
   // Salle des ventes et Bureau du Baron (shared/ventes.ts, server/ventesCasino.ts)
 
