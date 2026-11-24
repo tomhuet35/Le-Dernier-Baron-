@@ -132,7 +132,7 @@ export function creerBaronWheel(options: {
   let minuterie: ReturnType<typeof setTimeout> | null = null;
   let enCours = false;
   let historique: VueBW['historique'] = [];
-  const depuis: VueBW['depuis'] = { baron: null, course: null, chaudiere: null, restaurant: null, express: null };
+  const depuis: VueBW['depuis'] = { controleur: null, course: null, chaudiere: null, restaurant: null, express: null };
   let record: (NonNullable<VueBW['record']> & { jour: string }) | null = null;
 
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
@@ -165,7 +165,8 @@ export function creerBaronWheel(options: {
       choixSalon,
       resultat: j && atteinte('revele') ? (j.resultat ?? null) : null,
     };
-    if (t.type === 'baron') v.cartes = atteinte('revele') ? t.cartes : t.cartes.map(() => null);
+    // Le Contrôleur : sa tournée n'est montrée qu'une fois les choix faits.
+    if (t.type === 'controleur') v.controleur = atteinte('tournee') ? { tournee: t.tournee, jackpot: t.jackpot } : { tournee: null, jackpot: null };
     if (t.type === 'course') {
       // Les cotes dès la grille ; l'issue seulement au départ, quand plus personne ne peut changer de draisine.
       const partie = atteinte('sprint');
@@ -409,7 +410,7 @@ export function creerBaronWheel(options: {
       if (gain > 0) banque.crediter(j.uid, gain);
       const jour = jourParis(horloge());
       if (gain > 0 && (!record || record.jour !== jour || gain > record.gain)) record = { nom: j.nom, avatar: j.avatar, gain, c, jour };
-      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, course: 0, chaudiere: 0, restaurant: 0, express: 0 } };
+      const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { controleur: 0, course: 0, chaudiere: 0, restaurant: 0, express: 0 } };
       mt.manches++;
       mt.mise += mise;
       mt.gain += gain;
@@ -576,7 +577,7 @@ export function creerBaronWheel(options: {
       const journal: JournalBW = {
         manches: journaux.get(id.uid) ?? [],
         salon,
-        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { baron: 0, course: 0, chaudiere: 0, restaurant: 0, express: 0 } },
+        moi: totaux.get(id.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { controleur: 0, course: 0, chaudiere: 0, restaurant: 0, express: 0 } },
       };
       repondre(rappel, { ok: true, journal });
     });

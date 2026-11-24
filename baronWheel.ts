@@ -25,15 +25,15 @@
 // La roue
 
 export type ChiffreBW = 'x1' | 'x2' | 'x5' | 'x10';
-export type BonusBW = 'baron' | 'course' | 'chaudiere' | 'restaurant' | 'express';
+export type BonusBW = 'controleur' | 'course' | 'chaudiere' | 'restaurant' | 'express';
 export type CaseBW = ChiffreBW | BonusBW;
 export const CHIFFRES_BW: ChiffreBW[] = ['x1', 'x2', 'x5', 'x10'];
-export const BONUS_BW: BonusBW[] = ['baron', 'course', 'chaudiere', 'restaurant', 'express'];
+export const BONUS_BW: BonusBW[] = ['controleur', 'course', 'chaudiere', 'restaurant', 'express'];
 export const CASES_BW: CaseBW[] = [...CHIFFRES_BW, ...BONUS_BW];
 export const estBonusBW = (c: CaseBW): c is BonusBW => (BONUS_BW as string[]).includes(c);
 
 /** Combien de cases de chaque sorte sur la roue (30 en tout). */
-export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, baron: 2, course: 2, chaudiere: 2, restaurant: 2, express: 1 };
+export const COMPOSITION_BW: Record<CaseBW, number> = { x1: 9, x2: 6, x5: 4, x10: 2, controleur: 2, course: 2, chaudiere: 2, restaurant: 2, express: 1 };
 export const NB_CASES_BW = 30;
 export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 /**
@@ -44,7 +44,7 @@ export const DEGRES_CASE_BW = 360 / NB_CASES_BW;
 export const ROUE_BW: CaseBW[] = (() => {
   // La roue est symétrique autour de l'Express (en haut, entre deux Baron) : la moitié droite, puis son miroir ; le ×2
   // du bas, face à l'Express, fait le lien. Les bonus reviennent toutes les 4 cases.
-  const moitie: CaseBW[] = ['baron', 'x1', 'x2', 'x1', 'course', 'x5', 'x1', 'x2', 'chaudiere', 'x1', 'x10', 'x2', 'restaurant', 'x5'];
+  const moitie: CaseBW[] = ['controleur', 'x1', 'x2', 'x1', 'course', 'x5', 'x1', 'x2', 'chaudiere', 'x1', 'x10', 'x2', 'restaurant', 'x5'];
   return ['express', ...moitie, 'x1', ...[...moitie].reverse()];
 })();
 
@@ -121,7 +121,25 @@ function avecJackpots(t: TableBW<number | 'jackpot'>, jackpots: TableBW<JackpotB
   return t.flatMap(([v, p]): TableBW<RecompenseBW> => (v === 'jackpot' ? jackpots.map(([j, q]) => [jackpot(j), (p * q) / total]) : [[{ x: v }, p]]));
 }
 
-/** LE CHOIX DU BARON (la Grande Donne) : le Baron distribue neuf cartes, chacune tirée dans cette table (la carte du Baron cache un jackpot). */
+/**
+ * LE CONTRÔLEUR : chacun se cache dans l'un des huit compartiments de la voiture-lits ; le contrôleur les ouvre tous, un
+ * à un, dans un ordre tiré au hasard (et feint parfois d'ouvrir une porte, pour rien). Celui qu'il débusque garde le
+ * palier atteint : plus il a ouvert de portes avant la sienne, plus il gagne. Le dernier compartiment fermé cache le
+ * trésor : le dernier palier et un jackpot.
+ */
+export const NB_COMPARTIMENTS = 8;
+export const PALIERS_CONTROLEUR = [2, 3, 4, 5, 7, 10, 15, 25];
+/** Les feintes : il écoute à la porte, frappe ou prend la poignée… et repart. */
+export type FeinteCT = 'ecoute' | 'frappe' | 'poignee';
+export interface PassageCT {
+  porte: number;
+  /** null : il ouvre ; sinon la feinte qu'il fait devant cette porte (sans l'ouvrir). */
+  feinte: FeinteCT | null;
+}
+/** L'ordre où il ouvre les compartiments (sans les feintes). */
+export const ordreControleur = (tournee: PassageCT[]) => tournee.filter((p) => p.feinte === null).map((p) => p.porte);
+
+/** LE CHOIX DU BARON (la Grande Donne : il a quitté la roue de l'Express, le Contrôleur a pris ses cases, et rejoindra la roue du Bal) : le Baron distribue neuf cartes, chacune tirée dans cette table (la carte du Baron cache un jackpot). */
 export const NB_CARTES_BARON = 9;
 export const CARTES_BARON: TableBW<number | 'jackpot'> = [
   [5, 4700],
@@ -557,7 +575,8 @@ export const COFFRE_DU_BARON: TableBW<number> = [
 // Les tirages des bonus (tout est caché dans le tirage dès que le bonus commence)
 
 export type TirageBonusBW =
-  | { type: 'baron'; cartes: RecompenseBW[] }
+  /** tournee : ses arrêts (ouvertures et feintes) ; l'ordre d'ouverture fait les gains. jackpot : celui du trésor. */
+  | { type: 'controleur'; tournee: PassageCT[]; jackpot: JackpotBW }
   /** cotes : celle de chaque draisine ; deraille : celle qui sort de la voie (jamais la gagnante) ; graine : le scénario. */
   | { type: 'course'; cotes: number[]; gagnant: number; deraille: number | null; graine: number }
   | TirageChaudiereBW
@@ -577,8 +596,27 @@ function melanger<T>(t: T[], h: Hasard): T[] {
 
 export function tirerBonusBW(type: BonusBW, h: Hasard): TirageBonusBW {
   switch (type) {
-    case 'baron':
-      return { type, cartes: Array.from({ length: NB_CARTES_BARON }, () => tirerTable(TABLE_CARTES_BARON, h)) };
+    case 'controleur': {
+      const ordre = melanger(
+        Array.from({ length: NB_COMPARTIMENTS }, (_, k) => k),
+        h,
+      );
+      // Deux ou trois feintes, devant des portes encore fermées (jamais celle qu'il va ouvrir juste après), tant qu'il en
+      // reste au moins trois : elles ne disent rien de ce qu'il y a derrière.
+      const nFeintes = 2 + (h() < 0.5 ? 1 : 0);
+      const avant = new Set<number>();
+      while (avant.size < nFeintes) avant.add(Math.floor(h() * (NB_COMPARTIMENTS - 2)));
+      const tournee: PassageCT[] = [];
+      const poses: FeinteCT[] = ['ecoute', 'frappe', 'poignee'];
+      ordre.forEach((porte, i) => {
+        if (avant.has(i)) {
+          const fermees = ordre.slice(i + 1);
+          tournee.push({ porte: fermees[Math.floor(h() * fermees.length)], feinte: poses[Math.floor(h() * poses.length)] });
+        }
+        tournee.push({ porte, feinte: null });
+      });
+      return { type, tournee, jackpot: tirerTable(JACKPOTS_BARON, h) };
+    }
     case 'course': {
       const cotes = melanger(tirerTable(GRILLES_COURSE_BW, h), h);
       // La gagnante : chacune avec sa chance (elles font 1 à elles quatre).
@@ -650,6 +688,8 @@ export type EtapeBW =
   | 'sprint'
   | 'cloches'
   | 'service'
+  | 'compartiments'
+  | 'tournee'
   | 'route'
   | 'poursuite'
   | 'aiguille'
@@ -716,6 +756,9 @@ export interface DureesBW {
   /** Le Wagon-Restaurant : le chef présente le menu, puis le service (le Baron, les cloches soulevées une à une). */
   introRestaurant: number;
   service: number;
+  /** Le Contrôleur : la voiture-lits, puis la tournée (les portes ouvertes une à une, les feintes). */
+  introControleur: number;
+  tournee: number;
   gare: number;
   tunnel: number;
   traversee: number;
@@ -755,6 +798,8 @@ export const DUREES_BW: DureesBW = {
   sprint: 15_000,
   introRestaurant: 5_000,
   service: 11_000,
+  introControleur: 3_000,
+  tournee: 17_000,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
   tunnel: 12_000,
@@ -770,8 +815,8 @@ export function etapesBonusBW(type: BonusBW, d: DureesBW = DUREES_BW, t?: Tirage
 function etapesDuJeuBW(type: BonusBW, d: DureesBW, t?: TirageBonusBW): EtapeBonusBW[] {
   const e = (nom: EtapeBW, duree: number, choix = 0): EtapeBonusBW => ({ nom, choix, duree });
   switch (type) {
-    case 'baron':
-      return [e('intro', d.introDonne), e('donne', d.donne), e('cartes', d.choix, NB_CARTES_BARON), e('revele', d.reveleDonne)];
+    case 'controleur':
+      return [e('intro', d.introControleur), e('compartiments', d.choix, NB_COMPARTIMENTS), e('tournee', d.tournee), e('revele', d.revele)];
     case 'course':
       return [e('intro', d.introCourse), e('grille', d.choix, NB_DRAISINES), e('sprint', d.sprint), e('revele', d.revele)];
     case 'chaudiere': {
@@ -807,8 +852,12 @@ export const choixDuBonusBW = (type: BonusBW) => etapesBonusBW(type).filter((e) 
  */
 export function recompenseBonusBW(t: TirageBonusBW, choix: number[]): { x: number; jackpot?: JackpotBW; evade?: boolean; fixe?: number } {
   switch (t.type) {
-    case 'baron':
-      return { ...t.cartes[choix[0]] };
+    case 'controleur': {
+      // Le palier atteint quand il ouvre ma porte ; la dernière, le trésor, avec son jackpot.
+      const i = ordreControleur(t.tournee).indexOf(choix[0]);
+      const x = PALIERS_CONTROLEUR[i];
+      return i === NB_COMPARTIMENTS - 1 ? { x, jackpot: t.jackpot, fixe: VALEUR_JACKPOT_BW[t.jackpot], evade: true } : { x, evade: false };
+    }
     case 'course':
       return choix[0] === t.gagnant ? { x: t.cotes[choix[0]], evade: true } : { x: PRIME_COURSE_BW, evade: false };
     case 'chaudiere': {
@@ -848,8 +897,14 @@ export function esperanceBonusBW(type: BonusBW): { multipliable: number; jackpot
     };
   };
   switch (type) {
-    case 'baron':
-      return separer(TABLE_CARTES_BARON);
+    case 'controleur': {
+      // Chaque place dans l'ordre d'ouverture a la même chance ; le jackpot du trésor, une fois sur huit.
+      const totalJ = JACKPOTS_BARON.reduce((s, [, p]) => s + p, 0);
+      return {
+        multipliable: PALIERS_CONTROLEUR.reduce((s, x) => s + x, 0) / NB_COMPARTIMENTS,
+        jackpots: JACKPOTS_BARON.reduce((s, [j, p]) => s + (p / totalJ) * VALEUR_JACKPOT_BW[j], 0) / NB_COMPARTIMENTS,
+      };
+    }
     case 'course':
       // Le même quelle que soit la draisine choisie (les cotes sont justes).
       return { multipliable: ESPERANCE_COURSE_BW, jackpots: 0 };
@@ -893,7 +948,7 @@ export function rtpBW(): Record<CaseBW, number> {
     x2: p('x2') * GAINS_CHIFFRES_BW.x2 * F,
     x5: p('x5') * GAINS_CHIFFRES_BW.x5 * F,
     x10: p('x10') * GAINS_CHIFFRES_BW.x10 * F,
-    baron: bonus('baron'),
+    controleur: bonus('controleur'),
     course: bonus('course'),
     chaudiere: bonus('chaudiere'),
     restaurant: bonus('restaurant'),
@@ -1011,6 +1066,8 @@ export interface VueBonusBW {
    * chaque cloche, celle que le Baron dore et l'ordre où le chef les soulève.
    */
   restaurant?: { plats: PlatBW[] | null; double: number | null; ordre: number[] | null; vedette: PlatBW | null };
+  /** Le Contrôleur : sa tournée et le jackpot du trésor, une fois la tournée commencée (les choix sont faits). */
+  controleur?: { tournee: PassageCT[] | null; jackpot: JackpotBW | null };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**

@@ -30,6 +30,8 @@ import {
   boostsDuTopSlotBW,
   valeurRecompenseBW,
   chanceCourseBW,
+  ordreControleur,
+  PALIERS_CONTROLEUR,
   MENU_RESTAURANT,
   NB_CLOCHES,
   NB_DRAISINES,
@@ -72,7 +74,7 @@ describe('The Baron’s Wheel : les règles', () => {
       expect(r[c]).toBeLessThan(1.75);
     }
     // Ce que les petites cases ont perdu est rendu aux quatre bonus (environ 0,15 chacun) : 1,8 à 1,9 fois la mise.
-    for (const c of ['baron', 'course', 'chaudiere', 'restaurant'] as const) {
+    for (const c of ['controleur', 'course', 'chaudiere', 'restaurant'] as const) {
       expect(r[c]).toBeGreaterThan(1.8);
       expect(r[c]).toBeLessThan(1.9);
     }
@@ -118,6 +120,24 @@ describe('The Baron’s Wheel : les règles', () => {
   it('cache les récompenses dans les bonus et paie le choix du joueur', () => {
     const h = graine(9);
     for (let k = 0; k < 300; k++) {
+      // Le Contrôleur : il ouvre les huit compartiments une fois chacun (les feintes en plus, jamais sur la porte qu'il
+      // ouvre juste après) ; le palier atteint paie, le dernier compartiment a le trésor et son jackpot.
+      const ct = tirerBonusBW('controleur', h);
+      if (ct.type !== 'controleur') throw new Error();
+      const ordre = ordreControleur(ct.tournee);
+      expect([...ordre].sort()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+      const feintes = ct.tournee.filter((p) => p.feinte !== null).length;
+      expect(feintes >= 2 && feintes <= 3).toBe(true);
+      ct.tournee.forEach((p, i) => {
+        if (p.feinte === null) return;
+        expect(ct.tournee[i + 1].porte).not.toBe(p.porte);
+        expect(ordre.slice(ordreControleur(ct.tournee.slice(0, i)).length)).toContain(p.porte);
+      });
+      ordre.forEach((porte, i) => {
+        const r = recompenseBonusBW(ct, [porte]);
+        expect(r.x).toBe(PALIERS_CONTROLEUR[i]);
+        expect(r.jackpot ?? null).toBe(i === 7 ? ct.jackpot : null);
+      });
       // La Course : quatre cotes justes, la gagnante paie sa cote, les autres la prime d'arrivée ; jamais la gagnante
       // ne déraille.
       const p = tirerBonusBW('course', h);
@@ -269,7 +289,7 @@ beforeAll(async () => {
       jeuALaffiche: () => null,
       cadeaux: [],
       delaiEcriture: 30,
-      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, introAiguillage: 80, introChaudiere: 80, explosion: 300, aiguille: 700, trajet: 80, terminus: 80, introDonne: 80, donne: 80, reveleDonne: 150, introPick: 80, revelePick: 150, introCourse: 120, sprint: 150, introRestaurant: 80, service: 150, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
+      delaisBaronWheel: { mises: 900, multiplicateurs: 120, tour: 250, resultat: 300, chargement: 80, intro: 80, choix: 700, descente: 400, vol: 80, poursuite: 80, revele: 150, introExpress: 80, introBraquage: 80, introEvasion: 80, introAiguillage: 80, introChaudiere: 80, explosion: 300, aiguille: 700, trajet: 80, terminus: 80, introDonne: 80, donne: 80, reveleDonne: 150, introPick: 80, revelePick: 150, introCourse: 120, sprint: 150, introRestaurant: 80, service: 150, introControleur: 80, tournee: 200, gare: 150, tunnel: 150, traversee: 80, arrivee: 150 },
       arretBaronWheel: () => arretImpose,
       multiplicateursBaronWheel: () => multiplicateursImposes,
       ouvertureBaronWheel: () => ouverture,
@@ -316,14 +336,14 @@ describe('The Baron’s Wheel en direct', () => {
     // 25 000 $ sur le 5X, 5 000 $ sur le Baron ; la roue s'arrêtera sur un 5X.
     arretImpose = indice('x5', 2);
     await emettre(a, 'casino_bw_miser', { case: 'x5', montant: 25_000 });
-    await emettre(a, 'casino_bw_miser', { case: 'baron', montant: 5_000 });
+    await emettre(a, 'casino_bw_miser', { case: 'controleur', montant: 5_000 });
     await emettre(a, 'casino_bw_miser', { case: 'x10', montant: 1_000 });
     await emettre(a, 'casino_bw_annuler'); // retire le dernier jeton (le 10X)
     const pose = await attendre(a, (x) => x.phase === 'multiplicateurs');
     expect(pose.multiplicateurs).toEqual([]);
     expect(pose.arret).toBeNull(); // la case d'arrêt reste secrète
     const tour = await attendre(a, (x) => x.phase === 'tour');
-    expect(tour.mesMises).toEqual({ x5: 25_000, baron: 5_000 });
+    expect(tour.mesMises).toEqual({ x5: 25_000, controleur: 5_000 });
     expect((await emettre(a, 'casino_bw_miser', { case: 'x1', montant: 1_000 })).erreur).toMatch(/fermées/);
     // La roue tourne de 5 tours et plus, et s'arrête avec la case tirée sous l'aiguille.
     expect(tour.tour!.arrivee - tour.tour!.depart).toBeGreaterThanOrEqual(5 * 360);
@@ -346,6 +366,30 @@ describe('The Baron’s Wheel en direct', () => {
     expect((await emettre(a, 'casino_bw_doubler')).ok).toBe(true);
     const r2 = await attendre(a, (x) => x.phase === 'resultat' && x.numero === v2.numero);
     expect(r2.bilan).toEqual({ mise: 60_000, gain: 0 });
+    a.close();
+  }, 30_000);
+
+  it('joue le Contrôleur : la tournée cachée pendant le choix, le palier atteint quand il ouvre ma porte', async () => {
+    const a = connecter();
+    await emettre(a, 'identifier', { jeton: 'jeton-a' });
+    await emettre(a, 'casino_entrer');
+    await emettre(a, 'casino_bw_entrer');
+    const v = await nouvelleManche(a);
+    arretImpose = indice('controleur', 1);
+    await emettre(a, 'casino_bw_miser', { case: 'controleur', montant: 20_000 });
+    const choix = await attendre(a, (y) => etape(y) === 'compartiments');
+    expect(choix.bonus!.controleur).toEqual({ tournee: null, jackpot: null });
+    expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 8 })).erreur).toMatch(/impossible/);
+    expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 5 })).ok).toBe(true);
+    const tournee = await attendre(a, (y) => etape(y) === 'tournee');
+    const c = tournee.bonus!.controleur!;
+    expect(c.tournee!.length).toBeGreaterThanOrEqual(10);
+    expect(tournee.bonus!.resultat).toBeNull();
+    const fin = await attendre(a, (x) => x.phase === 'resultat' && x.numero === v.numero);
+    const i = ordreControleur(c.tournee!).indexOf(5);
+    const x = PALIERS_CONTROLEUR[i] * fin.bonus!.multiplicateur;
+    expect(fin.bonus!.resultat).toMatchObject({ x });
+    expect(fin.bonus!.resultat!.jackpot ?? null).toBe(i === 7 ? c.jackpot : null);
     a.close();
   }, 30_000);
 
@@ -497,7 +541,7 @@ describe('The Baron’s Wheel en direct', () => {
     arretImpose = indice('x10', 1);
     multiplicateursImposes = [
       { i: arretImpose, x: 50 },
-      { i: indice('baron'), x: 3 },
+      { i: indice('controleur'), x: 3 },
       { i: indice('x1', 4), x: 2 },
     ];
     await emettre(a, 'casino_bw_miser', { case: 'x10', montant: 100_000 });
