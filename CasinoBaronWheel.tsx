@@ -1,7 +1,7 @@
 /**
- * Le Baron Express (Salon privé ; anciennement The Baron's Wheel) : la roue géante de 30 cases, en direct, et ses cinq bonus (le Choix du Baron,
+ * Le Baron Express (Salon privé ; anciennement The Baron's Wheel) : la roue géante de 30 cases, en direct, et ses cinq bonus (le Contrôleur,
  * la Course des draisines, la Chaudière, le Wagon-Restaurant et le Rapide de Minuit ; chacun a son propre écran :
- * CasinoDonne.tsx, CasinoDraisines.tsx, CasinoChaudiere.tsx, CasinoRestaurant.tsx et CasinoBaronExpress.tsx).
+ * CasinoControleur.tsx, CasinoDraisines.tsx, CasinoChaudiere.tsx, CasinoRestaurant.tsx et CasinoBaronExpress.tsx).
  *
  * Le serveur tient les manches et diffuse la vue (« casino_bw ») ; il a déjà tiré la case d'arrêt quand la roue part,
  * et toutes les récompenses cachées d'un bonus quand il commence. Cet écran ne fait que montrer : la roue tourne
@@ -43,7 +43,7 @@ import { jouerEffet, mouvementReduit, musiqueDuCasino, useCompteur } from './ui'
 import { BonusExpress, IMAGES_EXPRESS_NOMS, ValeurMultipliee } from './CasinoBaronExpress';
 import { BonusRestaurant, IMAGES_RESTAURANT_NOMS } from './CasinoRestaurant';
 import { BonusChaudiere, IMAGES_CHAUDIERE_NOMS } from './CasinoChaudiere';
-import { BonusDonne, IMAGES_DONNE_NOMS } from './CasinoDonne';
+import { BonusControleur, IMAGES_CONTROLEUR_NOMS } from './CasinoControleur';
 import { BonusDraisines, IMAGES_DRAISINES_NOMS } from './CasinoDraisines';
 import './baronWheel.css';
 
@@ -61,14 +61,14 @@ export const CASES_VISUELS: Record<CaseBW, { nom: [string, string]; fond: string
   x2: { nom: ['2X', '2X'], ...ARGENT },
   x5: { nom: ['5X', '5X'], ...ARGENT },
   x10: { nom: ['10X', '10X'], ...ARGENT },
-  baron: { nom: ['Baron', 'Baron'], ...OR, image: '/cartes/bw-sym-baron2.webp' },
+  controleur: { nom: ['Contrôleur', 'Conductor'], ...OR, image: '/cartes/bw-sym-controleur.webp' },
   course: { nom: ['Course', 'Race'], ...OR, image: '/cartes/bw-sym-course.webp' },
   chaudiere: { nom: ['Chaudière', 'Boiler'], ...OR, image: '/cartes/bw-sym-chaudiere.webp' },
   restaurant: { nom: ['Cloche', 'Cloche'], ...OR, image: '/cartes/bw-sym-restaurant.webp' },
   express: { nom: ['Rapide de Minuit', 'Midnight Flyer'], fond: '#0b6b3a', texte: '#F3E7CF', matiere: '/cartes/bw-matiere-emeraude.webp', texture: '/cartes/bw-rs-emeraude.webp', image: '/cartes/bw-sym-express.webp' },
 };
 const NOMS_BONUS: Record<BonusBW, [string, string]> = {
-  baron: ['Le Choix du Baron', 'The Baron’s Choice'],
+  controleur: ['Le Contrôleur', 'The Conductor'],
   course: ['La Course des draisines', 'The Handcar Race'],
   chaudiere: ['La Chaudière', 'The Boiler'],
   restaurant: ['La Cloche', 'The Cloche'],
@@ -154,7 +154,7 @@ const LUMIERES: Record<CaseBW, string> = {
   x2: '#e8f0ff',
   x5: '#e8f0ff',
   x10: '#e8f0ff',
-  baron: '#ffd774',
+  controleur: '#ffd774',
   course: '#ffd774',
   chaudiere: '#ffd774',
   restaurant: '#ffd774',
@@ -888,7 +888,7 @@ function Journal({ appel, onFermer }: { appel: Appel; onFermer: () => void }) {
 const plaques = ['mini', 'minor', 'major', 'grand'].map((j) => `bw-plaque-${j}`);
 const IMAGES_BONUS_BW: Record<BonusBW, string[]> = Object.fromEntries(
   Object.entries({
-    baron: ['bw-sym-baron2', ...IMAGES_DONNE_NOMS, ...plaques],
+    controleur: ['bw-sym-controleur', ...IMAGES_CONTROLEUR_NOMS, ...plaques],
     course: ['bw-sym-course', ...IMAGES_DRAISINES_NOMS],
     chaudiere: ['bw-sym-chaudiere', ...IMAGES_CHAUDIERE_NOMS],
     restaurant: ['bw-sym-restaurant', ...IMAGES_RESTAURANT_NOMS],
@@ -920,7 +920,7 @@ let prechargementLance = false;
 function prechargerLesBonus() {
   if (prechargementLance) return;
   prechargementLance = true;
-  const file = [...new Set((['baron', 'restaurant', 'course', 'chaudiere', 'express'] as BonusBW[]).flatMap((t) => IMAGES_BONUS_BW[t]))];
+  const file = [...new Set((['controleur', 'restaurant', 'course', 'chaudiere', 'express'] as BonusBW[]).flatMap((t) => IMAGES_BONUS_BW[t]))];
   let i = 0;
   const suivante = (): Promise<void> => (i < file.length ? chargerImage(file[i++]).then(suivante) : Promise.resolve());
   void suivante();
@@ -983,6 +983,7 @@ const TEXTES_ETAPES: Record<string, [string, string]> = {
   poursuite: ['La course-poursuite\u00a0!', 'The car chase!'],
   wagons: ['Choisis ton wagon : un seul arrivera à Istanbul\u00a0!', 'Pick your carriage: only one will reach Istanbul!'],
   aiguille: ['À gauche ou à droite ? Tire le levier\u00a0!', 'Left or right? Pull the lever!'],
+  compartiments: ['Cache-toi dans un compartiment : plus il ouvre de portes avant la tienne, plus tu gagnes', 'Hide in a compartment: the more doors he opens before yours, the more you win'],
   cloches: ['Choisis ta cloche : le plat dessous fait ton gain', 'Pick your cloche: the dish beneath is your win'],
   grille: ['Choisis ta draisine : sa cote si elle gagne, ×2 sinon', 'Pick your handcar: its odds if it wins, ×2 otherwise'],
   revele: ['', ''],
@@ -996,7 +997,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
   const ouvert = v.phase === 'bonus' && rang >= 0 && b.mise > 0 && b.mesChoix[rang] === null;
   const choisir = (o: number) => {
     if (!ouvert) return;
-    jouerEffet(b.type === 'baron' ? 'bw_carte' : 'jeton');
+    jouerEffet('jeton');
     void appel('casino_bw_choisir', { etape: b.etape, choix: o }).then((r) => onErreur(r.ok ? null : (r.erreur ?? tr('Choix impossible.', 'Choice not allowed.'))));
   };
   const props: PropsBonus = { v, b, nom, rang, ouvert, choisir };
@@ -1013,7 +1014,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
     );
   return (
     <div className={`bw-bonus ${b.type}`}>
-      {b.type === 'baron' && <BonusDonne v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
+      {b.type === 'controleur' && <BonusControleur v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       {b.type === 'course' && <BonusDraisines v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
       {b.type === 'chaudiere' && (
         <BonusChaudiere
@@ -1042,7 +1043,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
           <span>{tr('Tous les gains de ce bonus sont multipliés\u00a0!', 'Every win in this bonus is multiplied!')}</span>
         </div>
       )}
-      {nom !== 'revele' && nom !== 'intro' && (b.type !== 'restaurant' || nom === 'cloches') && (b.type !== 'express' || nom === 'wagons') && b.type !== 'chaudiere' && (b.type !== 'baron' || nom === 'cartes') && (b.type !== 'course' || nom === 'grille') && (
+      {nom !== 'revele' && nom !== 'intro' && (b.type !== 'restaurant' || nom === 'cloches') && (b.type !== 'express' || nom === 'wagons') && b.type !== 'chaudiere' && (b.type !== 'controleur' || nom === 'compartiments') && (b.type !== 'course' || nom === 'grille') && (
         <div className="bw-bonus-consigne">
           <span>{texte}</span>
           {rang >= 0 && (b.mise > 0 ? b.mesChoix[rang] !== null ? <small>{tr('Choix fait : on attend les autres…', 'Done: waiting for the others…')}</small> : <small>{tr(`Ta mise : ${dollars(b.mise)}`, `Your bet: ${dollars(b.mise)}`)}</small> : <small>{tr('Tu regardes : tu n’as pas misé sur ce bonus.', 'Watching: you did not bet on this bonus.')}</small>)}
@@ -1057,7 +1058,7 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
               <b>{NOMS_JACKPOTS[r.jackpot]}</b>
             </span>
           )}
-          <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'chaudiere' ? (r.evade ? tr('Sifflé à temps\u00a0!', 'Whistled in time!') : tr('La chaudière a explosé\u00a0!', 'The boiler blew up!')) : b.type === 'express' ? (r.evade ? tr('Ton wagon est arrivé à Istanbul\u00a0!', 'Your carriage reached Istanbul!') : tr('Wagon décroché : il garde son butin', 'Carriage uncoupled: it keeps its loot')) : b.type === 'course' ? (r.evade ? tr('Ta draisine a gagné\u00a0!', 'Your handcar won!') : tr('Prime d’arrivée', 'Finish bonus')) : tr('Ta récompense', 'Your reward')}</small>
+          <small>{r.jackpot ? `JACKPOT ${NOMS_JACKPOTS[r.jackpot]}` : b.type === 'controleur' ? (r.evade ? tr('Le trésor du dernier compartiment\u00a0!', 'The treasure of the last compartment!') : tr('Débusqué : tu gardes le palier atteint', 'Caught: you keep the level reached')) : b.type === 'chaudiere' ? (r.evade ? tr('Sifflé à temps\u00a0!', 'Whistled in time!') : tr('La chaudière a explosé\u00a0!', 'The boiler blew up!')) : b.type === 'express' ? (r.evade ? tr('Ton wagon est arrivé à Istanbul\u00a0!', 'Your carriage reached Istanbul!') : tr('Wagon décroché : il garde son butin', 'Carriage uncoupled: it keeps its loot')) : b.type === 'course' ? (r.evade ? tr('Ta draisine a gagné\u00a0!', 'Your handcar won!') : tr('Prime d’arrivée', 'Finish bonus')) : tr('Ta récompense', 'Your reward')}</small>
           <strong>{r.gain > 0 ? `${fx(r.x)} · +${dollars(r.gain)}` : tr('Pas de butin cette fois', 'No loot this time')}</strong>
           {r.gain > 0 && !r.jackpot && b.multiplicateur > 1 && <em>{tr(`${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (multiplicateur de la roue)`, `${fx(r.x / b.multiplicateur)} × ${b.multiplicateur} (wheel multiplier)`)}</em>}
         </div>
@@ -1189,10 +1190,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
     if (v.phase === 'bonus' && v.bonus) {
       const n = etapeNom(v);
       // L'Express et le Wagon-Restaurant jouent leurs propres sons.
-      if (n === 'intro' && v.bonus.type !== 'express' && v.bonus.type !== 'restaurant') jouerEffet(v.bonus.type === 'baron' ? 'bw_baron' : v.bonus.type === 'course' ? 'course_appel' : 'ex_sifflet');
-      if (n === 'revele') {
-        if (v.bonus.type === 'baron') jouerEffet('bw_carte');
-      }
+      if (n === 'intro' && v.bonus.type !== 'express' && v.bonus.type !== 'restaurant') jouerEffet(v.bonus.type === 'controleur' ? 'bw_sifflet' : v.bonus.type === 'course' ? 'course_appel' : 'ex_sifflet');
     }
     if (v.phase === 'resultat' && avant.phase !== 'resultat' && v.bilan && v.bilan.mise > 0) {
       const { mise, gain } = v.bilan;
@@ -1492,8 +1490,8 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         )}
         <p className="cas-mention">
           {tr(
-            '30 cases, toutes avec la même chance : 9 cases 1X (paient ×2), 6 cases 2X (×3), 4 cases 5X (×5), 2 cases 10X (×10), 8 cases bonus : Baron (2), Course des draisines (2), Chaudière (2) et Cloche (2), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Choix du Baron, le Baron distribue neuf cartes (×5 à ×250) ; la carte du Baron cache un jackpot. À la Course des draisines, chacun choisit l’une des quatre draisines d’après sa cote (×12 à ×902) : la gagnante paie sa cote, les autres ×2. À la Chaudière, la pression monte de ×10 à ×1 000 : tire le sifflet avant qu’elle explose (sans sifflet, il part tout seul à ×20). À la Cloche, chacun choisit l’une des six cloches : le plat dessous paie de ×3 (velouté) à ×500 (le Plat du Baron), et la cloche que le Baron dore compte double. Une fois les mises fermées, le Top Slot tire une case et un multiplicateur de ×2 à ×200 : toutes les cases de ce type sur la roue sont multipliées, bonus compris. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le Choix du Baron. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche. Heure de pointe, chaque soir de 19 h à 20 h : le Top Slot donne toujours au moins ×5. Grand Départ, le samedi et le dimanche de 18 h à 22 h : l’XP compte double sur la roue.',
-            '30 spots, all equally likely: 9 1X spots (pay ×2), 6 2X (×3), 4 5X (×5), 2 10X (×10), 8 bonus spots: Baron (2), Handcar Race (2), Boiler (2) and Cloche (2), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Baron’s Choice, the Baron deals nine cards (×5 to ×250); the Baron’s card hides a jackpot. In the Handcar Race, everyone picks one of four handcars by its odds (×12 to ×902): the winner pays its odds, the others ×2. In the Boiler, the pressure climbs from ×10 to ×1,000: pull the whistle before it blows (no whistle: it goes off by itself at ×20). In the Cloche, everyone picks one of six cloches: the dish beneath pays from ×3 (velouté) to ×500 (the Baron’s Dish), and the cloche the Baron gilds counts double. Once bets close, the Top Slot draws a spot and a ×2 to ×200 multiplier: every spot of that kind on the wheel is multiplied, bonuses included. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Baron’s Choice. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round. Rush hour, every evening from 7 to 8 pm (Paris time): the Top Slot always gives at least ×5. Grand Departure, Saturday and Sunday from 6 to 10 pm: XP counts double on the wheel.',
+            '30 cases, toutes avec la même chance : 9 cases 1X (paient ×2), 6 cases 2X (×3), 4 cases 5X (×5), 2 cases 10X (×10), 8 cases bonus : Contrôleur (2), Course des draisines (2), Chaudière (2) et Cloche (2), et la case unique du Rapide de Minuit : chaque wagon gagne au moins ×10 et le seul qui arrive à Istanbul ouvre le Coffre du Baron (×50 à ×10 000). Au Contrôleur, chacun se cache dans l’un des huit compartiments : le contrôleur les ouvre un à un, et plus il en ouvre avant le tien, plus tu gagnes (×2 à ×15) ; le dernier compartiment cache le trésor, ×25 et un jackpot. À la Course des draisines, chacun choisit l’une des quatre draisines d’après sa cote (×12 à ×902) : la gagnante paie sa cote, les autres ×2. À la Chaudière, la pression monte de ×10 à ×1 000 : tire le sifflet avant qu’elle explose (sans sifflet, il part tout seul à ×20). À la Cloche, chacun choisit l’une des six cloches : le plat dessous paie de ×3 (velouté) à ×500 (le Plat du Baron), et la cloche que le Baron dore compte double. Une fois les mises fermées, le Top Slot tire une case et un multiplicateur de ×2 à ×200 : toutes les cases de ce type sur la roue sont multipliées, bonus compris. Les jackpots (MINI ×25 à GRAND ×500) sont des récompenses fixes cachées dans le trésor du Contrôleur. Jetons de 1 000 à 10 000 000 $ : 30 000 000 $ au plus par case et par manche. Heure de pointe, chaque soir de 19 h à 20 h : le Top Slot donne toujours au moins ×5. Grand Départ, le samedi et le dimanche de 18 h à 22 h : l’XP compte double sur la roue.',
+            '30 spots, all equally likely: 9 1X spots (pay ×2), 6 2X (×3), 4 5X (×5), 2 10X (×10), 8 bonus spots: Conductor (2), Handcar Race (2), Boiler (2) and Cloche (2), and the one-of-a-kind Midnight Flyer spot: every carriage wins at least ×10 and the only one reaching Istanbul opens the Baron’s Safe (×50 to ×10,000). In the Conductor, everyone hides in one of eight compartments: the conductor opens them one by one, and the more he opens before yours, the more you win (×2 to ×15); the last compartment hides the treasure, ×25 and a jackpot. In the Handcar Race, everyone picks one of four handcars by its odds (×12 to ×902): the winner pays its odds, the others ×2. In the Boiler, the pressure climbs from ×10 to ×1,000: pull the whistle before it blows (no whistle: it goes off by itself at ×20). In the Cloche, everyone picks one of six cloches: the dish beneath pays from ×3 (velouté) to ×500 (the Baron’s Dish), and the cloche the Baron gilds counts double. Once bets close, the Top Slot draws a spot and a ×2 to ×200 multiplier: every spot of that kind on the wheel is multiplied, bonuses included. The jackpots (MINI ×25 to GRAND ×500) are fixed rewards hidden in the Conductor’s treasure. Chips from $1,000 to $10,000,000: $30,000,000 at most per spot and per round. Rush hour, every evening from 7 to 8 pm (Paris time): the Top Slot always gives at least ×5. Grand Departure, Saturday and Sunday from 6 to 10 pm: XP counts double on the wheel.',
           )}
         </p>
       </aside>
