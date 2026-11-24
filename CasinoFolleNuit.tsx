@@ -33,7 +33,7 @@ import {
 } from '../../shared/folleNuit';
 import type { VueCasino } from '../../shared/casino';
 import type { Appel } from './App';
-import { CHOIX_AUTO, dollars, LINGOTS_PALIER, PluieLingots } from './casinoOutils';
+import { CHOIX_AUTO, dollars, LINGOTS_PALIER, PluieLingots, SoldeJeu } from './casinoOutils';
 import { socket } from './socket';
 import { tr } from './traduction';
 import { jouerEffet, mouvementReduit, useCompteur } from './ui';
@@ -1192,6 +1192,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
           <img className="fn-logo" src="/cartes/fn-logo.webp" alt={tr('La Folle Nuit', 'Crazy Night')} draggable={false} />
           <span className="fn-direct">{tr('En direct', 'Live')}</span>
         </h1>
+        <SoldeJeu solde={v.solde} />
         <span className="cas-solde-petit">{dollars(v.solde)}</span>
       </header>
 

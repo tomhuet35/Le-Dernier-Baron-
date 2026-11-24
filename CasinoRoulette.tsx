@@ -11,6 +11,7 @@ import { formatDollars } from '../../shared/casino';
 import { colonneDe, couleurNumero, CYLINDRE, JETONS_ROULETTE, MISES_ROULETTE, rangeeDe, SIMPLES, type JetonPoseRoulette, type MiseSimple, type VueTableRoulette } from '../../shared/rouletteCasino';
 import type { Appel } from './App';
 import { EN, tr } from './traduction';
+import { SoldeJeu } from './casinoOutils';
 import { Celebration, Fenetre, jouerEffet, mouvementReduit } from './ui';
 import './roulette.css';
 import './blackjack.css';
@@ -560,6 +561,7 @@ export function TableRoulette({ v, appel, onQuitter }: { v: VueTableRoulette; ap
         <span className="bj-code">
           {v.vip ? '★ VIP · ' : ''}{tr('Roulette', 'Roulette')} · {v.code}
         </span>
+        <SoldeJeu solde={v.solde} />
         <span className="cas-solde-petit">{dollars(v.solde)}</span>
       </header>
 

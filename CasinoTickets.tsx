@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Poin
 import type { VueCasino } from '../../shared/casino';
 import { MODELES_TICKETS, montantsTicket, TICKETS, type ModeleTicket, type Ticket } from '../../shared/tickets';
 import type { Appel } from './App';
-import { dollars } from './casinoOutils';
+import { dollars, SoldeJeu } from './casinoOutils';
 import { EN, tr } from './traduction';
 import { jouerEffet } from './ui';
 import './tickets.css';
@@ -227,6 +227,7 @@ export function JeuTickets({ vue, appel, onVue, onRetour }: { vue: VueCasino; ap
           ‹ {tr('Salon', 'Lounge')}
         </button>
         <h1 className="tk-titre">{tr('Les Tickets du Baron', 'The Baron’s Tickets')}</h1>
+        <SoldeJeu solde={soldeAffiche} />
         <span className="cas-solde-petit">{dollars(soldeAffiche)}</span>
       </header>
 

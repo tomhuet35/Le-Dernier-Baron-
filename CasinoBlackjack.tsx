@@ -9,6 +9,7 @@ import { formatDollars } from '../../shared/casino';
 import type { Appel } from './App';
 import { FenetreInviter } from './CasinoRoulette';
 import { EN, tr } from './traduction';
+import { SoldeJeu } from './casinoOutils';
 import { jouerEffet, mouvementReduit } from './ui';
 import './blackjack.css';
 
@@ -582,6 +583,7 @@ export function TableBlackjack({ v, appel, onQuitter }: { v: VueTableBJ; appel: 
         <span className="bj-code">
           {v.vip ? '★ VIP · ' : ''}{tr('Table', 'Table')} {v.code}
         </span>
+        <SoldeJeu solde={v.solde} />
         <span className="cas-solde-petit">{dollars(v.solde)}</span>
       </header>
 

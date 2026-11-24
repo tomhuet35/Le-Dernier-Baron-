@@ -74,7 +74,7 @@ import { COULEURS_ROUE, DUREE_ROUE_MS, Roue, useAttente, type CaseRoue } from '.
 import { socket } from './socket';
 import { EN, tr } from './traduction';
 import { Celebration, Fenetre, Garde, jouerEffet, mouvementReduit, musiqueDuCasino, musiqueDuSalon, useCompteur } from './ui';
-import { dollars, dollarsCourt, GainDefilant, Jeton, LINGOTS_PALIER, OptionsMachine, palierDe, PluieLingots, useSoldeAnime, useToursAuto, type Palier } from './casinoOutils';
+import { dollars, dollarsCourt, GainDefilant, Jeton, LINGOTS_PALIER, OptionsMachine, palierDe, PluieLingots, useSoldeAnime, useSoldeDefilant, useSoldeDuJeu, useToursAuto, type Palier } from './casinoOutils';
 import './casino.css';
 
 
@@ -1960,7 +1960,9 @@ function ALaUne({ elements }: { elements: ElementUne[] }) {
 
 /** La barre du haut (profil, rubis, dollars, Boutique, menu) : à l'accueil, et aussi au-dessus de chaque jeu. */
 function BarreHaut({ vue, onProfil, onBoutique, onMenu, enJeu, onSalon }: { vue: VueCasino; onProfil: () => void; onBoutique: (rayon: string) => void; onMenu: () => void; enJeu?: boolean; onSalon?: () => void }) {
-  const solde = useSoldeAnime(vue.solde);
+  // Dans un jeu, la barre suit le solde que le jeu montre (mis à jour dès la mise) plutôt que celui du salon.
+  const duJeu = useSoldeDuJeu();
+  const solde = useSoldeDefilant(enJeu && duJeu !== null ? duJeu : vue.solde);
   const attenteRoue = useAttente(vue.roueProchaine);
   const niveau = vue.hotel?.niveau ?? vue.profil?.niveau ?? 1;
   const c = vue.contrats;
