@@ -460,3 +460,9 @@
   .bw-evenement strong { font-size: 15px; }
   .bw-evenement small { font-size: 11px; }
 }
+/* L'Express qui attend ses images : sa roue figée, au centre, comme au début de son intro. */
+.bw-attente-express { position: absolute; inset: 0; display: grid; place-items: center; container-type: size; background: #090909 url('/cartes/bw-rl-decor-paysage.webp') 50% 70% / cover; }
+.bw-attente-express .bw-roue-figee { position: relative; height: 77%; aspect-ratio: 1; }
+@container (max-aspect-ratio: 1 / 1) {
+  .bw-attente-express .bw-roue-figee { height: 65%; }
+}

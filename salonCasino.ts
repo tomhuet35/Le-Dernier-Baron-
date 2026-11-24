@@ -118,8 +118,8 @@ import type { DureesCouronne } from '../shared/couronne';
  * du type c (avec ×x posé dessus par le Top Slot, si x est donné) (la Chaudière peut aussi avoir son point d'explosion imposé).
  */
 const SPECTACLE_BW: { debut: number; fin: number; c: CaseBW; x?: number; explosion?: number } = {
-  debut: Date.parse('2026-11-24T13:55:00+01:00'),
-  fin: Date.parse('2026-11-24T14:20:00+01:00'),
+  debut: Date.parse('2026-11-24T13:58:00+01:00'),
+  fin: Date.parse('2026-11-24T14:30:00+01:00'),
   c: 'express',
 };
 
