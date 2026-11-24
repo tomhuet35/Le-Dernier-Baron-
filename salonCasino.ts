@@ -114,14 +114,13 @@ import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type A
 import type { DureesCouronne } from '../shared/couronne';
 
 /**
- * Le grand spectacle de la roue du Baron (heure de Paris), une seule fois dans ce créneau : le Top Slot pose ×x sur les
- * cases du type c et la roue s'arrête sur l'une d'elles (la Chaudière peut aussi avoir son point d'explosion imposé).
+ * Le grand spectacle de la roue du Baron (heure de Paris), une seule fois dans ce créneau : la roue s'arrête sur une case
+ * du type c (avec ×x posé dessus par le Top Slot, si x est donné) (la Chaudière peut aussi avoir son point d'explosion imposé).
  */
-const SPECTACLE_BW: { debut: number; fin: number; c: CaseBW; x: number; explosion?: number } = {
-  debut: Date.parse('2026-11-24T13:15:00+01:00'),
-  fin: Date.parse('2026-11-24T13:45:00+01:00'),
+const SPECTACLE_BW: { debut: number; fin: number; c: CaseBW; x?: number; explosion?: number } = {
+  debut: Date.parse('2026-11-24T13:55:00+01:00'),
+  fin: Date.parse('2026-11-24T14:20:00+01:00'),
   c: 'express',
-  x: 25,
 };
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
@@ -728,7 +727,9 @@ export function creerCasino(options: OptionsCasino) {
       // (jamais dans les tests : ils règlent leurs délais)
       if (!options.delaisBaronWheel && !options.multiplicateursBaronWheel && !spectacle.fait && t >= SPECTACLE_BW.debut && t < SPECTACLE_BW.fin) {
         spectacle.enCours = true;
-        return casesSpectacle.map((i) => ({ i, x: SPECTACLE_BW.x }));
+        // (sans multiplicateur imposé, le Top Slot tire au hasard)
+        const x = SPECTACLE_BW.x;
+        if (x !== undefined) return casesSpectacle.map((i) => ({ i, x }));
       }
       return options.multiplicateursBaronWheel?.();
     },
