@@ -15,11 +15,12 @@
  *   l'étape (10 fois par seconde).
  * Chaque gain s'affiche d'abord tel quel, puis le jeton ×M de la roue plonge dedans et le nombre grimpe jusqu'au total.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { NB_WAGONS, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
 import { dollars, PluieLingots } from './casinoOutils';
 import { EN, tr } from './traduction';
 import { jouerEffet, mouvementReduit } from './ui';
+import { IntroExpress, IMAGES_INTRO_EXPRESS } from './CasinoExpressIntro';
 import './baronExpress.css';
 
 /** Pas de « ! » seul en début de ligne. */
@@ -52,6 +53,7 @@ export const IMAGES_EXPRESS_NOMS = [
   'bw-ex-coffre-ouvert',
   'bw-ex-gendarme',
   ...[1, 2, 3, 4, 5, 6].map((k) => `bw-ex-fumee-${k}`),
+  ...IMAGES_INTRO_EXPRESS,
 ];
 
 /** Chaque étape du voyage a son décor. */
@@ -734,7 +736,7 @@ function Neige({ couche }: { couche: 'loin' | 'pres' }) {
 // ---------------------------------------------------------------------------------------------------------------
 // Le bonus
 
-export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void }) {
+export function BonusExpress({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void; roue?: ReactNode }) {
   const ex = b.express;
   const ordre = useMemo(() => b.etapes.map((e) => e.nom as string), [b.etapes]);
   const mien = b.mesChoix[0] ?? null;
@@ -842,10 +844,6 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
       f();
     };
     if (v.phase !== 'bonus') return;
-    if (nom === 'intro') {
-      if (tau > 300) fois('sifflet', () => jouerEffet('ex_sifflet'));
-      if (tau > 1100) fois('vapeur', () => jouerEffet('ex_vapeur', { volume: 0.8 }));
-    }
     if ((nom === 'paris' || nom === 'venise') && tau >= D - DEPART) {
       fois('depart', () => jouerEffet('ex_sifflet', { volume: 0.75 }));
       if (tau >= D - DEPART + 250) fois('vapeurDepart', () => jouerEffet('ex_vapeur'));
@@ -1026,16 +1024,8 @@ export function BonusExpress({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueB
         </div>
       )}
 
-      {nom === 'intro' && (
-        <div className="bwx-intro">
-          <img className="bwx-baron" src={IMG('baron')} alt="" draggable={false} />
-          <div className="bwx-vapeurs" aria-hidden="true">
-            {[0, 1, 2, 3, 4].map((k) => (
-              <img key={k} src={`/cartes/bw-ex-fumee-${k + 1}.webp`} alt="" style={{ '--k': k } as CSSProperties} />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* L'intro : « Minuit sonne » (la roue devient l'horloge de la gare, le tableau des départs, le quai). */}
+      {nom === 'intro' && <IntroExpress t0={(v.duree ?? 0) - (v.reste ?? 0)} roue={roue} multiplicateur={b.multiplicateur} />}
 
       {nom === 'wagons' && (
         <>
