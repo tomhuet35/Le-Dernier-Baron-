@@ -162,14 +162,14 @@
 @keyframes cti-vis-fin { 0% { opacity: 0; } 5%, 78% { opacity: 1; } 100% { opacity: 0; } }
 /* 1. La porte : le faisceau la traverse de gauche à droite. */
 .cti-plan.porte .cti-eclaire { animation: cti-spot-porte 1.5s ease-in-out calc(1500ms + var(--t0)) both; }
-@keyframes cti-spot-porte { 0% { --cx: 2%; --cy: 46%; --cr: 30%; } 50% { --cx: 52%; --cy: 44%; } 100% { --cx: 98%; --cy: 48%; --cr: 30%; } }
+@keyframes cti-spot-porte { 0% { --cx: 2%; --cy: 46%; --cr: 30%; } 50% { --cx: 55%; --cy: 42%; } 75% { --cx: 74%; --cy: 64%; } 100% { --cx: 98%; --cy: 50%; --cr: 30%; } }
 .cti-plan.porte .cti-faisceau { animation: cti-rayon-porte 1.5s ease-in-out calc(1500ms + var(--t0)) both; }
 @keyframes cti-rayon-porte { 0% { transform: rotate(-2deg) scaleX(0.3); } 50% { transform: rotate(-3deg) scaleX(0.75); } 100% { transform: rotate(-1deg) scaleX(1.1); } }
 /* 2. La poignée : le faisceau la cherche, et s'y arrête (elle grince). */
 .cti-plan.poignee .cti-eclaire { animation: cti-spot-poignee 1.5s cubic-bezier(0.3, 0.6, 0.3, 1) calc(3050ms + var(--t0)) both; }
-@keyframes cti-spot-poignee { 0% { --cx: 12%; --cy: 80%; --cr: 26%; } 45%, 100% { --cx: 46%; --cy: 42%; --cr: 30%; } }
+@keyframes cti-spot-poignee { 0% { --cx: 14%; --cy: 82%; --cr: 26%; } 45%, 100% { --cx: 57%; --cy: 47%; --cr: 30%; } }
 .cti-plan.poignee .cti-faisceau { animation: cti-rayon-poignee 1.5s cubic-bezier(0.3, 0.6, 0.3, 1) calc(3050ms + var(--t0)) both; }
-@keyframes cti-rayon-poignee { 0% { transform: rotate(22deg) scaleX(0.25); } 45%, 100% { transform: rotate(-6deg) scaleX(0.55); } }
+@keyframes cti-rayon-poignee { 0% { transform: rotate(22deg) scaleX(0.25); } 45%, 100% { transform: rotate(-2deg) scaleX(0.62); } }
 .cti-plan.poignee .cti-cadre { animation: cti-tremble 0.9s ease-in-out calc(3700ms + var(--t0)) both; }
 @keyframes cti-tremble { 20% { transform: translateX(-0.3%); } 40% { transform: translateX(0.3%); } 60% { transform: translateX(-0.2%); } 80%, 100% { transform: none; } }
 /* 3. Le contrôleur : le faisceau remonte du bas jusqu'à ses yeux, sous la casquette. */
