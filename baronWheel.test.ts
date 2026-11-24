@@ -283,7 +283,7 @@ beforeAll(async () => {
   await service.donnerBadgeCreateur('uid-a');
   await service.donnerBadgeCreateur('uid-b');
   await service.entrerCasino('uid-a');
-  await service.mouvementCasino('uid-a', 30_000_000);
+  await service.mouvementCasino('uid-a', 1_300_000_000);
   serveur = await demarrerServeur({
     port: 0,
     servirClient: false,
@@ -326,12 +326,10 @@ describe('The Baron’s Wheel en direct', () => {
     expect(v.multiplicateurs).toBeNull(); // posés seulement une fois les mises fermées
     expect((await emettre(a, 'casino_bw_miser', { case: 'x5', montant: 1234 })).erreur).toMatch(/Jeton/);
     expect((await emettre(a, 'casino_bw_miser', { case: 'x3', montant: 1000 })).erreur).toMatch(/introuvable/);
-    // Plafonds : 30 000 000 $ par case et par manche.
-    for (let k = 0; k < 3; k++) await emettre(a, 'casino_bw_miser', { case: 'x1', montant: 10_000_000 });
-    expect((await emettre(a, 'casino_bw_miser', { case: 'x1', montant: 1_000 })).erreur).toMatch(/30 000 000 \$ sur une même case/);
-    await emettre(a, 'casino_bw_annuler');
-    expect((await emettre(a, 'casino_bw_miser', { case: 'x2', montant: 10_000_000 })).ok).toBe(true);
-    expect((await emettre(a, 'casino_bw_miser', { case: 'x5', montant: 1_000 })).erreur).toMatch(/30 000 000 \$ par manche/);
+    // Plafonds : 1 000 000 000 $ par case et par manche (le jeton de 10 M, doublé : 10 → 640 M, puis 1,28 Md refusé).
+    expect((await emettre(a, 'casino_bw_miser', { case: 'x1', montant: 10_000_000 })).ok).toBe(true);
+    for (let k = 0; k < 6; k++) expect((await emettre(a, 'casino_bw_doubler')).ok).toBe(true);
+    expect((await emettre(a, 'casino_bw_doubler')).erreur).toMatch(/1 000 000 000 \$ sur une même case/);
     await emettre(a, 'casino_bw_annuler', { tout: true });
     // Tout est rendu (le million misé a pu faire passer un niveau du salon : son bonus reste acquis).
     const base = (await emettre(a, 'casino_vue')).casino.solde;
