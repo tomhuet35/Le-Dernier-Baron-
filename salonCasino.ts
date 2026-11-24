@@ -108,16 +108,21 @@ import { creerTickets } from './ticketsCasino';
 import { creerToits } from './toitsCasino';
 import { creerCourse } from './courseCasino';
 import { creerBaronWheel } from './baronWheelCasino';
-import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, evenementsBW, ROUE_BW, type BoostBW, type DureesBW } from '../shared/baronWheel';
+import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, evenementsBW, ROUE_BW, type BoostBW, type CaseBW, type DureesBW } from '../shared/baronWheel';
 import type { DureesCourse } from '../shared/course';
 import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type AfficheCasino } from '../shared/afficheCasino';
 import type { DureesCouronne } from '../shared/couronne';
 
 /**
- * Le grand spectacle de la roue du Baron (heure de Paris), une seule fois dans ce créneau : le Top Slot pose ×200 sur la
- * Chaudière, la roue s'y arrête et la chaudière explose à ×25 (×5000 sur la mise pour qui siffle au dernier moment).
+ * Le grand spectacle de la roue du Baron (heure de Paris), une seule fois dans ce créneau : le Top Slot pose ×x sur les
+ * cases du type c et la roue s'arrête sur l'une d'elles (la Chaudière peut aussi avoir son point d'explosion imposé).
  */
-const SPECTACLE_BW = { debut: Date.parse('2026-11-24T13:10:00+01:00'), fin: Date.parse('2026-11-24T13:45:00+01:00'), c: 'chaudiere' as const, x: 200, explosion: 25 };
+const SPECTACLE_BW: { debut: number; fin: number; c: CaseBW; x: number; explosion?: number } = {
+  debut: Date.parse('2026-11-24T13:15:00+01:00'),
+  fin: Date.parse('2026-11-24T13:45:00+01:00'),
+  c: 'express',
+  x: 25,
+};
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
 type Rappel = (r: Reponse) => void;
@@ -737,7 +742,7 @@ export function creerCasino(options: OptionsCasino) {
       return options.arretBaronWheel?.();
     },
     tirage: (c) => {
-      if (!spectacle.tirage || c !== SPECTACLE_BW.c) return undefined;
+      if (!spectacle.tirage || c !== SPECTACLE_BW.c || c !== 'chaudiere' || SPECTACLE_BW.explosion === undefined) return undefined;
       spectacle.tirage = false;
       return { type: 'chaudiere', explosion: SPECTACLE_BW.explosion };
     },
