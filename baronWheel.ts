@@ -384,7 +384,12 @@ export function esperanceAiguillage(): number {
  * automatiquement à ×20 ; à pleine pression, tous ceux qui n'ont pas sifflé encaissent ×1 000.
  * Le joueur ne voit le multiplicateur que là où le serveur en est (le point d'explosion reste caché jusqu'à l'explosion).
  */
-export const CHAUDIERE_BW = { depart: 10, plancher: 11, max: 1000, auto: 20, decade: 10_000 };
+/**
+ * retard : l'écran montre la pression avec ce retard (ms) sur le serveur, pour que le message de l'explosion arrive
+ * toujours avant que le compteur ne la dépasse ; le sifflet paie ce que l'écran montrait (la pression d'il y a `retard`),
+ * et reste refusé dès que la chaudière a explosé.
+ */
+export const CHAUDIERE_BW = { depart: 10, plancher: 11, max: 1000, auto: 20, decade: 10_000, retard: 450 };
 /** Le multiplicateur de la chaudière au bout de `ms` millisecondes de montée en pression. */
 export const multiplicateurChaudiere = (ms: number) => Math.min(CHAUDIERE_BW.max, CHAUDIERE_BW.depart * 10 ** (Math.max(0, ms) / CHAUDIERE_BW.decade));
 /** Le temps (ms) qu'il faut à la pression pour atteindre le multiplicateur `m`. */
