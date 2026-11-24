@@ -171,7 +171,7 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
         })}
       </div>
 
-      {nom === 'intro' && <img className="wr-logo" src={IMG('wr-logo')} alt={tr('Le Wagon-Restaurant', 'The Dining Car')} draggable={false} />}
+      {nom === 'intro' && <img className="wr-logo" src={IMG('wr-logo')} alt={tr('La Cloche', 'The Cloche')} draggable={false} />}
       {nom === 'intro' && <img className="wr-chef" src={IMG('wr-chef')} alt="" draggable={false} />}
       {/* Il se met du côté opposé à ma cloche, pour ne pas la cacher. */}
       {ravi && mien !== null && <img className={`wr-chef ravi ${mien >= 3 ? 'gauche-l' : ''} ${mien % 3 === 2 ? 'gauche-h' : ''}`} src={IMG('wr-chef-ravi')} alt="" draggable={false} />}
