@@ -434,11 +434,23 @@ export function esperanceAiguillage(): number {
  * toujours avant que le compteur ne la dépasse ; le sifflet paie ce que l'écran montrait (la pression d'il y a `retard`),
  * et reste refusé dès que la chaudière a explosé.
  */
-export const CHAUDIERE_BW = { depart: 10, plancher: 11, max: 1000, auto: 20, decade: 10_000, retard: 450 };
-/** Le multiplicateur de la chaudière au bout de `ms` millisecondes de montée en pression. */
-export const multiplicateurChaudiere = (ms: number) => Math.min(CHAUDIERE_BW.max, CHAUDIERE_BW.depart * 10 ** (Math.max(0, ms) / CHAUDIERE_BW.decade));
-/** Le temps (ms) qu'il faut à la pression pour atteindre le multiplicateur `m`. */
-export const tempsChaudiere = (m: number) => Math.max(0, Math.log10(Math.min(m, CHAUDIERE_BW.max) / CHAUDIERE_BW.depart) * CHAUDIERE_BW.decade);
+/**
+ * chauffe : la mise en chauffe (ms). La pression part de ×0 et monte d'un trait jusqu'à ×10 (depart) : rien ne peut
+ * exploser et le sifflet reste fermé, le temps de comprendre le jeu ; puis la vraie montée commence (×10 de plus tous
+ * les `decade` ms). La pente est la même des deux côtés de ×10 (à peu près) : la montée ne marque pas d'à-coup.
+ */
+export const CHAUDIERE_BW = { depart: 10, plancher: 11, max: 1000, auto: 20, decade: 10_000, retard: 450, chauffe: 4_000 };
+/** Le multiplicateur de la chaudière au bout de `ms` millisecondes de montée en pression (chauffe comprise). */
+export const multiplicateurChaudiere = (ms: number) => {
+  const t = Math.max(0, ms);
+  if (t < CHAUDIERE_BW.chauffe) return (CHAUDIERE_BW.depart * t) / CHAUDIERE_BW.chauffe;
+  return Math.min(CHAUDIERE_BW.max, CHAUDIERE_BW.depart * 10 ** ((t - CHAUDIERE_BW.chauffe) / CHAUDIERE_BW.decade));
+};
+/** Le temps (ms) qu'il faut à la pression pour atteindre le multiplicateur `m` (chauffe comprise). */
+export const tempsChaudiere = (m: number) =>
+  m <= CHAUDIERE_BW.depart
+    ? (Math.max(0, m) / CHAUDIERE_BW.depart) * CHAUDIERE_BW.chauffe
+    : CHAUDIERE_BW.chauffe + Math.log10(Math.min(m, CHAUDIERE_BW.max) / CHAUDIERE_BW.depart) * CHAUDIERE_BW.decade;
 /** Le multiplicateur encaissé (arrondi par défaut : au dixième sous ×100, à l'unité au-delà). */
 export const arrondiChaudiere = (m: number) => (m < 100 ? Math.floor(m * 10 + 1e-9) / 10 : Math.floor(m + 1e-9));
 export interface TirageChaudiereBW {

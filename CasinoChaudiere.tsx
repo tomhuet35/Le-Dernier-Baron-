@@ -58,9 +58,9 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
     if (debut.current.cle !== cle) debut.current = { cle, t: estime };
     else debut.current.t = Math.min(debut.current.t, estime);
   }
-  const [m, setM] = useState<number>(CHAUDIERE_BW.depart);
+  const [m, setM] = useState<number>(0);
   // À l'explosion, le compteur (en léger retard) rattrape d'un trait la pression exacte, puis la chaudière saute.
-  const derniereValeur = useRef({ numero: -1, m: CHAUDIERE_BW.depart });
+  const derniereValeur = useRef({ numero: -1, m: 0 });
   if (montee) derniereValeur.current = { numero: v.numero, m };
   const [rattrape, setRattrape] = useState<{ cle: string; de: number; t0: number } | null>(null);
   const [, setTic] = useState(0);
@@ -91,7 +91,7 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
       ? Math.min(explosion ?? CHAUDIERE_BW.max, CHAUDIERE_BW.max)
       : montee
         ? m
-        : CHAUDIERE_BW.depart;
+        : 0;
   // Pendant le rattrapage, la chaudière tient encore (l'explosion se joue juste après).
   const fin = finBrut && !enRattrapage;
   const sousPression = montee || enRattrapage;
@@ -204,7 +204,9 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
   // Mon sifflet.
   const [envoi, setEnvoi] = useState(false);
   const monSifflet = c?.monSifflet ?? null;
-  const peut = montee && b.mise > 0 && monSifflet === null && !envoi;
+  // (le sifflet s'ouvre à ×10, une fois la chaudière chauffée)
+  const chauffe = montee && m < CHAUDIERE_BW.depart;
+  const peut = montee && !chauffe && b.mise > 0 && monSifflet === null && !envoi;
   const siffler = () => {
     if (!peut) return;
     setEnvoi(true);
@@ -344,6 +346,12 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
                   <span>{tr('Sifflé à', 'Whistled at')}</span>
                   <b>{fmt(monSifflet)}</b>
                   <small>+{dollars(Math.floor(b.mise * monSifflet * M))}</small>
+                </>
+              ) : chauffe || nom === 'intro' ? (
+                <>
+                  <span>{tr('Ça chauffe…', 'Warming up…')}</span>
+                  <b>{fmt(arrondiChaudiere(affiche))}</b>
+                  <small>{tr(`Sifflet ouvert à ${fmt(CHAUDIERE_BW.depart)}`, `Whistle opens at ${fmt(CHAUDIERE_BW.depart)}`)}</small>
                 </>
               ) : (
                 <>
