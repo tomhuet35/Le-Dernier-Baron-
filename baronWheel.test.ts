@@ -171,14 +171,17 @@ describe('The Baron’s Wheel : les règles', () => {
     expect(recompenseBonusBW({ type: 'chaudiere', explosion: 37.4 }, [0])).toEqual({ x: 20, evade: true });
     expect(recompenseBonusBW({ type: 'chaudiere', explosion: 15 }, [0])).toEqual({ x: 0, evade: false });
     expect(recompenseBonusBW({ type: 'chaudiere', explosion: 5_000 }, [0])).toEqual({ x: 20, evade: true });
-    expect(multiplicateurChaudiere(0)).toBe(10);
-    expect(multiplicateurChaudiere(10_000)).toBeCloseTo(100, 6);
+    // La chauffe : de ×0 à ×10 en 4 s, puis ×10 de plus toutes les 10 s.
+    expect(multiplicateurChaudiere(0)).toBe(0);
+    expect(multiplicateurChaudiere(2_000)).toBe(5);
+    expect(multiplicateurChaudiere(4_000)).toBe(10);
+    expect(multiplicateurChaudiere(14_000)).toBeCloseTo(100, 6);
     expect(multiplicateurChaudiere(60_000)).toBe(1000);
     expect(arrondiChaudiere(12.38)).toBe(12.3);
     expect(arrondiChaudiere(345.9)).toBe(345);
     // La montée dure jusqu'à l'explosion (20 s au plus) ; P(explosion après ×m) = 11 / m : siffler à ×m vaut ×11 en moyenne.
-    expect(etapesBonusBW('chaudiere', DUREES_BW, { type: 'chaudiere', explosion: 100 })[2].duree).toBe(10_000);
-    expect(etapesBonusBW('chaudiere', DUREES_BW, { type: 'chaudiere', explosion: 1e9 })[2].duree).toBe(20_000);
+    expect(etapesBonusBW('chaudiere', DUREES_BW, { type: 'chaudiere', explosion: 100 })[2].duree).toBe(14_000);
+    expect(etapesBonusBW('chaudiere', DUREES_BW, { type: 'chaudiere', explosion: 1e9 })[2].duree).toBe(24_000);
     const somme = { 15: 0, 50: 0, 400: 0 } as Record<number, number>;
     const N = 200_000;
     for (let k = 0; k < N; k++) {

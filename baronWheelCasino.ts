@@ -573,6 +573,7 @@ export function creerBaronWheel(options: {
       if (j.choix[0]) return erreur(rappel, 'Tu as déjà sifflé.', 'You have already whistled.');
       // Ce que montrait l'écran du joueur (qui a la pression avec un léger retard), jamais après l'explosion.
       const x = arrondiChaudiere(multiplicateurChaudiere(Math.max(0, horloge() - (fin - duree) - CHAUDIERE_BW.retard)));
+      if (x < CHAUDIERE_BW.depart) return erreur(rappel, 'La chaudière chauffe encore : le sifflet s’ouvre à ×10.', 'The boiler is still warming up: the whistle opens at ×10.');
       if (x >= t.explosion) return erreur(rappel, 'Trop tard : la chaudière a explosé !', 'Too late: the boiler blew up!');
       j.choix[0] = Math.round(x * 100);
       diffuser();
