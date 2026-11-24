@@ -85,6 +85,8 @@ interface Joueur {
   resultat?: VueBonusBW['resultat'];
 }
 
+/** 1 000 000 000 (espaces ordinaires). */
+const milliers = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const totalMises = (m: Partial<Record<CaseBW, number>>) => Object.values(m).reduce((s: number, x) => s + (x ?? 0), 0);
 
 export function creerBaronWheel(options: {
@@ -474,8 +476,8 @@ export function creerBaronWheel(options: {
     const poser = (m: { id: Identite; j: Joueur }, ajout: { c: CaseBW; montant: number }[], rappel: unknown) => {
       const apres = { ...m.j.mises };
       for (const x of ajout) apres[x.c] = (apres[x.c] ?? 0) + x.montant;
-      if (Object.values(apres).some((v) => (v ?? 0) > MAX_CASE_BW)) return erreur(rappel, 'Pas plus de 30 000 000 $ sur une même case.', 'No more than $30,000,000 on one spot.');
-      if (totalMises(apres) > MAX_MANCHE_BW) return erreur(rappel, 'Pas plus de 30 000 000 $ par manche.', 'No more than $30,000,000 per round.');
+      if (Object.values(apres).some((v) => (v ?? 0) > MAX_CASE_BW)) return erreur(rappel, `Pas plus de ${milliers(MAX_CASE_BW)} $ sur une même case.`, `No more than $${MAX_CASE_BW.toLocaleString('en-US')} on one spot.`);
+      if (totalMises(apres) > MAX_MANCHE_BW) return erreur(rappel, `Pas plus de ${milliers(MAX_MANCHE_BW)} $ par manche.`, `No more than $${MAX_MANCHE_BW.toLocaleString('en-US')} per round.`);
       const total = ajout.reduce((s, x) => s + x.montant, 0);
       if (!banque.debiter(m.id.uid, total)) return erreur(rappel, 'Solde insuffisant.', 'Not enough money.');
       m.j.mises = apres;
