@@ -19,6 +19,8 @@ export const IMAGES_RESTAURANT_NOMS = [
   'wr-logo',
   'wr-salle',
   'wr-salle-portrait',
+  'wr-dehors',
+  'wr-lune',
   'wr-cloche',
   'wr-cloche-or',
   'wr-chef',
@@ -172,6 +174,15 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
   return (
     <div className={`wr ${nom}`}>
       <div className="wr-cadre">
+        {/* Le dehors, derrière les vitres : la forêt enneigée défile, la lune reste au loin. */}
+        <div className="wr-dehors large" aria-hidden="true">
+          <div className="wr-defile" />
+          <img className="wr-lune" src={IMG('wr-lune')} alt="" draggable={false} />
+        </div>
+        <div className="wr-dehors haut" aria-hidden="true">
+          <div className="wr-defile" />
+          <img className="wr-lune" src={IMG('wr-lune')} alt="" draggable={false} />
+        </div>
         <img className="wr-salle large" src={IMG('wr-salle')} alt="" draggable={false} />
         <img className="wr-salle haut" src={IMG('wr-salle-portrait')} alt="" draggable={false} />
         {/* Le Baron se penche au-dessus de la cloche qu'il dore, debout derrière la table : la nappe cache ses jambes. */}

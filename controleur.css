@@ -24,6 +24,9 @@
 .ct-caches { position: absolute; left: 50%; top: 32%; translate: -50% 0; display: flex; gap: 4px; align-items: center; }
 .ct-caches i { font-style: normal; font-size: calc(var(--hc) * 0.07); color: #ffd774; text-shadow: 0 0 10px rgba(255, 200, 100, 0.9), 0 2px 3px #000; }
 .ct-caches small { min-width: 1.6em; height: 1.6em; padding: 0 0.4em; border-radius: 99px; display: grid; place-items: center; background: #d6a84b; color: #1b120c; font-weight: 900; font-size: calc(var(--hc) * 0.035); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.ct-porte.choix { cursor: pointer; }
+.ct-porte.choix:hover .ct-battant, .ct-porte.choix:focus-visible .ct-battant { filter: brightness(1.15) drop-shadow(0 0 calc(var(--hc) * 0.02) rgba(255, 215, 116, 0.8)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); }
+.ct-porte.choix:focus-visible { outline: none; }
 .ct-porte.mienne:not(.ouverte) .ct-battant { filter: drop-shadow(0 0 calc(var(--hc) * 0.025) #ffd774) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); }
 .ct-gain { position: absolute; left: 50%; top: 101%; translate: -50% 0; padding: 0.05em 0.6em; border-radius: 99px; border: 1px solid #d6a84b; background: rgba(40, 10, 16, 0.92); font-family: var(--titre); font-size: calc(var(--hc) * 0.045); white-space: nowrap; color: #ffd774; animation: ct-pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1) 0.3s both; }
 @keyframes ct-pop { from { transform: scale(0.3); opacity: 0; } }
@@ -50,7 +53,8 @@
 @keyframes ct-logo { 0% { opacity: 0; transform: scale(0.4); } 12% { opacity: 1; transform: scale(1.06); } 18% { transform: none; } 82% { opacity: 1; } 100% { opacity: 0; transform: translateY(-12%); } }
 
 /* Le plan de la voiture et le palier (pendant la tournée). */
-.ct-plan { position: absolute; left: 50%; top: 2.5%; z-index: 4; display: flex; align-items: center; gap: 12px; width: max-content; max-width: 96%; padding: 6px 12px; border-radius: 14px; border: 1px solid rgba(214, 168, 75, 0.6); background: rgba(18, 8, 6, 0.85); translate: -50% 0; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6); }
+.ct-haut { position: absolute; left: 50%; top: 2.5%; z-index: 4; display: grid; justify-items: center; gap: 6px; width: max-content; max-width: 96%; translate: -50% 0; }
+.ct-plan { display: flex; align-items: center; gap: 12px; max-width: 100%; padding: 6px 12px; border-radius: 14px; border: 1px solid rgba(214, 168, 75, 0.6); background: rgba(18, 8, 6, 0.85); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6); }
 .ct-palier { display: grid; justify-items: center; min-width: 86px; }
 .ct-palier small { font-weight: 800; font-size: clamp(10px, 2.2cqw, 13px); color: #ecd9b4; white-space: nowrap; }
 .ct-palier strong { font-family: var(--titre); font-weight: 400; font-size: clamp(22px, 5cqw, 38px); line-height: 1; color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.7); animation: ct-pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
@@ -59,6 +63,13 @@
 .ct-plan li b { font-family: var(--titre); font-weight: 400; font-size: clamp(13px, 2.8cqw, 20px); line-height: 1; }
 .ct-plan li small { font-size: clamp(9px, 1.9cqw, 12px); font-weight: 800; line-height: 1.1; color: #ffd774; min-height: 1.1em; }
 .ct-plan li.mien { border: 2px solid #ffd774; box-shadow: 0 0 10px rgba(255, 210, 110, 0.7); }
+/* Pendant le choix : chaque compartiment du plan est un bouton (comme les portes du couloir). */
+.ct-plan li > button { display: grid; justify-items: center; align-content: center; width: 100%; height: 100%; padding: 0; border: 0; border-radius: inherit; background: none; color: inherit; font: inherit; cursor: pointer; transition: transform 0.15s; }
+.ct-plan li > button:disabled { cursor: default; opacity: 1; }
+.ct-plan.choix li:has(> button:not(:disabled):hover) { transform: translateY(-2px); box-shadow: 0 0 12px rgba(255, 200, 100, 0.6); }
+.ct-plan.choix li.mien { border-color: #ffd774; background: linear-gradient(180deg, #ffe08a, #b8862b); color: #2a1405; }
+.ct-plan.choix li.mien small { color: #2a1405; }
+.ct-plan.choix .ct-palier strong { font-size: clamp(18px, 4cqw, 30px); }
 .ct-plan li.vise { animation: ct-vise 0.5s ease-in-out infinite alternate; }
 @keyframes ct-vise { to { background: linear-gradient(180deg, #8a3a1c, #4a1c10); } }
 .ct-plan li.vide { opacity: 0.45; }
@@ -66,19 +77,8 @@
 .ct-plan li.tresor { border-color: #ffe08a; background: linear-gradient(180deg, #ffe08a, #b8862b); color: #2a1405; }
 .ct-plan li.tresor small { color: #2a1405; }
 
-/* Le choix du compartiment. */
-.ct-choix { position: absolute; left: 50%; top: 3%; z-index: 4; display: grid; justify-items: center; gap: 8px; width: min(94%, 640px); padding: 10px 12px; border-radius: 16px; border: 1px solid rgba(214, 168, 75, 0.6); background: rgba(18, 8, 6, 0.88); translate: -50% 0; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7); }
-.ct-grille { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; width: 100%; }
-.ct-grille button { position: relative; display: grid; justify-items: center; padding: 4px 0 6px; border-radius: 10px; border: 2px solid #8a5a2a; background: linear-gradient(180deg, #6a2a16, #3a160c); color: #fff1c4; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
-.ct-grille button span { font-size: 11px; font-weight: 800; color: #ecd9b4; }
-.ct-grille button strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 4.4cqw, 30px); line-height: 1; }
-.ct-grille button i { position: absolute; right: -5px; top: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; display: grid; place-items: center; background: #d6a84b; color: #1b120c; font-style: normal; font-weight: 900; font-size: 11px; }
-.ct-grille button:not(:disabled):hover { transform: translateY(-3px); box-shadow: 0 0 14px rgba(255, 200, 100, 0.6); }
-.ct-grille button:disabled { cursor: default; opacity: 1; }
-.ct-grille button.choisi { border-color: #ffd774; background: linear-gradient(180deg, #ffe08a, #b8862b); color: #2a1405; box-shadow: 0 0 18px rgba(255, 210, 110, 0.9); }
-.ct-grille button.choisi span { color: #2a1405; }
-.ct-grille button.autre { filter: brightness(0.6); }
-.ct-echelle { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; width: 100%; margin: 0; padding: 0; list-style: none; }
+/* Les paliers (pendant le choix). */
+.ct-echelle { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; width: 100%; margin: 0; padding: 5px 6px; list-style: none; border-radius: 12px; background: rgba(18, 8, 6, 0.8); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5); }
 .ct-echelle li { display: grid; justify-items: center; padding: 2px 0; border-radius: 6px; background: rgba(255, 240, 200, 0.06); }
 .ct-echelle small { font-size: clamp(8px, 1.8cqw, 11px); font-weight: 700; color: #ecd9b4; }
 .ct-echelle b { font-family: var(--titre); font-weight: 400; font-size: clamp(12px, 2.6cqw, 17px); color: #ffd774; }
@@ -101,7 +101,6 @@
   .ct-plan { flex-direction: column; gap: 6px; }
   .ct-plan ol { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   .ct-plan li { width: clamp(30px, 10cqw, 44px); }
-  .ct-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .ct-echelle { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .ct-logo { top: 12%; width: 84%; }
 }
