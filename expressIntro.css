@@ -1,4 +1,4 @@
-/* L'intro de l'Express : « Minuit sonne » (10 s, calée sur le temps déjà écoulé : --t0). Chaque plan garde les proportions
+/* L'intro de l'Express : « Minuit sonne » (12 s, calée sur le temps déjà écoulé : --t0). Chaque plan garde les proportions
    de ses images (16:9, « cover », centré). Repères mesurés sur les images :
    - la façade : le cadran de son horloge a son centre à (49,94 %, 31,03 %) et un rayon de 17,85 % de la hauteur ;
    - l'horloge seule (exi-horloge) : cadran centré à (50,52 %, 49,62 %), rayon 30,41 % de sa largeur ;
@@ -10,12 +10,12 @@
 .exi-cadre { --lc: max(100cqw, 177.78cqh); position: absolute; left: 50%; top: 50%; width: var(--lc); height: calc(var(--lc) * 0.5625); translate: -50% -50%; }
 .exi-fond { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-.exi-p1 { animation: exi-p1 10s linear var(--t0) both; }
-@keyframes exi-p1 { 0%, 52.9% { opacity: 1; } 53%, 100% { opacity: 0; } }
-.exi-p2 { opacity: 0; animation: exi-p2 10s linear var(--t0) both; }
-@keyframes exi-p2 { 0%, 52.9% { opacity: 0; } 53%, 73.9% { opacity: 1; } 74%, 100% { opacity: 0; } }
-.exi-p3 { animation: exi-p3 10s linear var(--t0) both; }
-@keyframes exi-p3 { 0%, 73.9% { opacity: 0; } 74%, 100% { opacity: 1; } }
+.exi-p1 { animation: exi-p1 12s linear var(--t0) both; }
+@keyframes exi-p1 { 0%, 44.1% { opacity: 1; } 44.17%, 100% { opacity: 0; } }
+.exi-p2 { opacity: 0; animation: exi-p2 12s linear var(--t0) both; }
+@keyframes exi-p2 { 0%, 44.1% { opacity: 0; } 44.17%, 77.45% { opacity: 1; } 77.5%, 100% { opacity: 0; } }
+.exi-p3 { animation: exi-p3 12s linear var(--t0) both; }
+@keyframes exi-p3 { 0%, 77.45% { opacity: 0; } 77.5%, 100% { opacity: 1; } }
 
 /* 1. La roue devient l'horloge. */
 .exi-secoue { animation: exi-coup 0.24s ease-out calc(2350ms + var(--t0)) 12 both; }
@@ -39,8 +39,8 @@
   100% { transform: rotate(360deg) scale(0.94); opacity: 0; filter: brightness(2) blur(2px); }
 }
 /* L'horloge : elle tourne en s'installant, dans le même élan ; elle s'efface dans celle de la façade quand la caméra a reculé. */
-.exi-horloge-zone { position: absolute; left: 0; top: 0; width: 0; height: 0; animation: exi-relais 10s linear var(--t0) both; }
-@keyframes exi-relais { 0%, 45% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.exi-horloge-zone { position: absolute; left: 0; top: 0; width: 0; height: 0; animation: exi-relais 12s linear var(--t0) both; }
+@keyframes exi-relais { 0%, 37.5% { opacity: 1; } 42.5%, 100% { opacity: 0; } }
 .exi-horloge { position: absolute; left: 0; top: 0; width: calc(var(--r) * 3.2884); height: auto; max-width: none; translate: -50.52% -49.62%; filter: drop-shadow(0 calc(var(--r) * 0.06) calc(var(--r) * 0.12) rgba(0, 0, 0, 0.6)); animation: exi-horloge 1.2s cubic-bezier(0.2, 0.7, 0.3, 1) calc(350ms + var(--t0)) both; }
 @keyframes exi-horloge {
   0% { opacity: 0; transform: rotate(-200deg) scale(0.86); filter: brightness(2.2); }
@@ -72,8 +72,8 @@
 @keyframes exi-onde { 0% { opacity: 0.95; transform: scale(1); } 100% { opacity: 0; transform: scale(2.3); } }
 
 /* 2. Le tableau des départs : la caméra s'en approche pendant que les palettes claquent. */
-.exi-approche { animation: exi-approche 2.2s ease-out calc(5300ms + var(--t0)) both; }
-@keyframes exi-approche { from { transform: scale(1.12); filter: brightness(1.8); } 12% { filter: none; } to { transform: scale(1); } }
+.exi-approche { animation: exi-approche 4s ease-out calc(5300ms + var(--t0)) both; }
+@keyframes exi-approche { from { transform: scale(1.12); filter: brightness(1.8); } 7% { filter: none; } 45% { transform: scale(1.01); } to { transform: scale(1); } }
 .exi-panneau { position: absolute; left: 8.97%; top: 26.89%; width: 82%; height: 56.11%; display: grid; align-content: center; gap: 4%; padding: 0 1.2%; box-sizing: border-box; }
 .exi-ligne { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 0.45%; }
 .exi-case { position: relative; aspect-ratio: 0.72; border-radius: calc(var(--lc) * 0.003); background: linear-gradient(180deg, #2a2522 0%, #1a1614 49%, #050403 49.5%, #050403 50.5%, #141110 51%, #0f0c0b 100%); box-shadow: inset 0 calc(var(--lc) * 0.0012) 0 rgba(255, 240, 210, 0.12), 0 calc(var(--lc) * 0.0015) calc(var(--lc) * 0.002) rgba(0, 0, 0, 0.8); overflow: hidden; perspective: calc(var(--lc) * 0.2); }
@@ -86,35 +86,35 @@
 @keyframes exi-pose { from { color: #fff6dc; } }
 
 /* 3. Le quai : les lanternes s'allument du fond du train jusqu'à nous (un masque qui avance), la vapeur, le Baron. */
-.exi-allume { -webkit-mask-image: linear-gradient(to right, #000 0%, #000 66%, transparent 69%); mask-image: linear-gradient(to right, #000 0%, #000 66%, transparent 69%); -webkit-mask-size: 300% 100%; mask-size: 300% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: calc(var(--lc) * -0.95) 0; mask-position: calc(var(--lc) * -0.95) 0; animation: exi-allume 1.3s cubic-bezier(0.45, 0.05, 0.7, 1) calc(7600ms + var(--t0)) both; }
+.exi-allume { -webkit-mask-image: linear-gradient(to right, #000 0%, #000 66%, transparent 69%); mask-image: linear-gradient(to right, #000 0%, #000 66%, transparent 69%); -webkit-mask-size: 300% 100%; mask-size: 300% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: calc(var(--lc) * -0.95) 0; mask-position: calc(var(--lc) * -0.95) 0; animation: exi-allume 1.3s cubic-bezier(0.45, 0.05, 0.7, 1) calc(9500ms + var(--t0)) both; }
 @keyframes exi-allume {
   from { -webkit-mask-position: calc(var(--lc) * -1.82) 0; mask-position: calc(var(--lc) * -1.82) 0; filter: brightness(1.3); }
   to { -webkit-mask-position: calc(var(--lc) * -0.95) 0; mask-position: calc(var(--lc) * -0.95) 0; filter: none; }
 }
-.exi-p3 .exi-cadre { animation: exi-quai 2.6s ease-out calc(7400ms + var(--t0)) both; }
+.exi-p3 .exi-cadre { animation: exi-quai 2.6s ease-out calc(9300ms + var(--t0)) both; }
 @keyframes exi-quai { from { transform: scale(1.08); } to { transform: none; } }
 .exi-vapeur { position: absolute; bottom: -4%; width: 150%; height: auto; max-width: none; pointer-events: none; }
-.exi-vapeur.a { left: -25%; opacity: 0.85; animation: exi-vapeur-a 2.6s ease-out calc(7400ms + var(--t0)) both; }
-.exi-vapeur.b { left: -25%; bottom: -14%; opacity: 0.7; transform: scaleX(-1); animation: exi-vapeur-b 2.6s ease-out calc(7650ms + var(--t0)) both; }
+.exi-vapeur.a { left: -25%; opacity: 0.85; animation: exi-vapeur-a 2.6s ease-out calc(9300ms + var(--t0)) both; }
+.exi-vapeur.b { left: -25%; bottom: -14%; opacity: 0.7; transform: scaleX(-1); animation: exi-vapeur-b 2.6s ease-out calc(9550ms + var(--t0)) both; }
 @keyframes exi-vapeur-a { from { opacity: 0; transform: translateX(-45%); } 30% { opacity: 0.95; } to { opacity: 0.85; transform: translateX(-8%); } }
 @keyframes exi-vapeur-b { from { opacity: 0; transform: scaleX(-1) translateX(-40%); } 35% { opacity: 0.8; } to { opacity: 0.7; transform: scaleX(-1) translateX(-12%); } }
-.exi-baron { position: absolute; left: 21%; bottom: 1%; height: 86%; aspect-ratio: 667 / 1000; transform-origin: 50% 100%; animation: exi-baron 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) calc(8000ms + var(--t0)) both, exi-elan 0.5s ease-out calc(8650ms + var(--t0)) both; }
+.exi-baron { position: absolute; left: 21%; bottom: 1%; height: 86%; aspect-ratio: 667 / 1000; transform-origin: 50% 100%; animation: exi-baron 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) calc(9900ms + var(--t0)) both, exi-elan 0.5s ease-out calc(10550ms + var(--t0)) both; }
 .exi-baron > img { display: block; width: 100%; height: 100%; filter: drop-shadow(0 calc(var(--lc) * 0.008) calc(var(--lc) * 0.014) rgba(0, 0, 0, 0.75)); }
 @keyframes exi-baron { from { opacity: 0; transform: translateY(35%) scale(0.92); } to { opacity: 1; transform: none; } }
 @keyframes exi-elan { 0% { scale: 1; } 35% { scale: 1.045; } 100% { scale: 1; } }
 /* L'éclat au pommeau de la canne. */
-.exi-etoile { position: absolute; left: 2%; top: -6%; width: 34%; aspect-ratio: 1; translate: -30% -30%; background: radial-gradient(closest-side, #fff 0%, rgba(255, 236, 170, 0.95) 12%, rgba(255, 200, 90, 0.4) 35%, transparent 70%), conic-gradient(from 0deg, transparent 0 20deg, rgba(255, 240, 200, 0.8) 22deg 24deg, transparent 26deg 110deg, rgba(255, 240, 200, 0.8) 112deg 114deg, transparent 116deg 200deg, rgba(255, 240, 200, 0.8) 202deg 204deg, transparent 206deg 290deg, rgba(255, 240, 200, 0.8) 292deg 294deg, transparent 296deg); border-radius: 50%; opacity: 0; animation: exi-etoile 1.1s ease-out calc(8650ms + var(--t0)) both; }
+.exi-etoile { position: absolute; left: 2%; top: -6%; width: 34%; aspect-ratio: 1; translate: -30% -30%; background: radial-gradient(closest-side, #fff 0%, rgba(255, 236, 170, 0.95) 12%, rgba(255, 200, 90, 0.4) 35%, transparent 70%), conic-gradient(from 0deg, transparent 0 20deg, rgba(255, 240, 200, 0.8) 22deg 24deg, transparent 26deg 110deg, rgba(255, 240, 200, 0.8) 112deg 114deg, transparent 116deg 200deg, rgba(255, 240, 200, 0.8) 202deg 204deg, transparent 206deg 290deg, rgba(255, 240, 200, 0.8) 292deg 294deg, transparent 296deg); border-radius: 50%; opacity: 0; animation: exi-etoile 1.1s ease-out calc(10550ms + var(--t0)) both; }
 @keyframes exi-etoile { 0% { opacity: 0; transform: scale(0.2) rotate(0deg); } 20% { opacity: 1; transform: scale(1.1) rotate(25deg); } 100% { opacity: 0; transform: scale(0.7) rotate(70deg); } }
 /* « En voiture ! » */
-.exi-cri { position: absolute; left: 50%; top: 9%; z-index: 2; margin: 0; width: max-content; max-width: 92%; translate: -50% 0; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 9cqw, 86px); line-height: 1; color: #ffd774; text-align: center; letter-spacing: 0.02em; background: linear-gradient(180deg, #fff3c4 0%, #ffd774 45%, #c88a2a 55%, #ffe08a 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 4px 0 #3a1505) drop-shadow(0 0 18px rgba(255, 190, 80, 0.7)) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.8)); animation: exi-cri 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) calc(8650ms + var(--t0)) both; }
+.exi-cri { position: absolute; left: 50%; top: 9%; z-index: 2; margin: 0; width: max-content; max-width: 92%; translate: -50% 0; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 9cqw, 86px); line-height: 1; color: #ffd774; text-align: center; letter-spacing: 0.02em; background: linear-gradient(180deg, #fff3c4 0%, #ffd774 45%, #c88a2a 55%, #ffe08a 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 4px 0 #3a1505) drop-shadow(0 0 18px rgba(255, 190, 80, 0.7)) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.8)); animation: exi-cri 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) calc(10550ms + var(--t0)) both; }
 @keyframes exi-cri { from { opacity: 0; transform: scale(0.3) rotate(-6deg); } to { opacity: 1; transform: none; } }
 
 /* Le titre du bonus s'efface pendant l'intro (le tableau des départs l'affiche). */
 .bw-bonus.express:has(.exi) .bw-bonus-titre { display: none; }
 
 /* Les éclairs : au 12ᵉ coup (et le passage au tableau), puis le passage au quai. */
-.exi-eclair { position: absolute; inset: 0; z-index: 3; background: radial-gradient(circle at 50% 35%, #fff 0%, #fff0c8 25%, rgba(255, 180, 70, 0.9) 55%, rgba(80, 30, 5, 0.75) 100%); opacity: 0; animation: exi-eclair 10s linear var(--t0) both; }
-@keyframes exi-eclair { 0%, 49.6% { opacity: 0; } 50.3% { opacity: 0.95; } 52.5% { opacity: 0.8; } 53.2% { opacity: 1; } 56% { opacity: 0; } 72.8% { opacity: 0; } 74% { opacity: 0.85; } 76.5%, 100% { opacity: 0; } }
+.exi-eclair { position: absolute; inset: 0; z-index: 3; background: radial-gradient(circle at 50% 35%, #fff 0%, #fff0c8 25%, rgba(255, 180, 70, 0.9) 55%, rgba(80, 30, 5, 0.75) 100%); opacity: 0; animation: exi-eclair 12s linear var(--t0) both; }
+@keyframes exi-eclair { 0%, 41.33% { opacity: 0; } 41.92% { opacity: 0.95; } 43.75% { opacity: 0.8; } 44.33% { opacity: 1; } 46.67% { opacity: 0; } 76.5% { opacity: 0; } 77.5% { opacity: 0.85; } 79.6%, 100% { opacity: 0; } }
 
 /* En hauteur (téléphone) : le Baron au milieu du quai (les côtés du cadre sont coupés). */
 @container (max-aspect-ratio: 1 / 1) {

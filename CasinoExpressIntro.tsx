@@ -1,11 +1,12 @@
 /**
- * L'intro de l'Express (le Rapide de Minuit) : « Minuit sonne », en trois plans, sur 10 s.
+ * L'intro de l'Express (le Rapide de Minuit) : « Minuit sonne », en trois plans, sur 12 s.
  *
  * 1. La roue devient l'horloge (0 → 5,3 s) : la roue, arrêtée sur l'Express (en haut, à midi), tourne une dernière fois et
  *    se change en cadran ; les aiguilles sortent du moyeu, filent, ralentissent… tac : minuit pile. Les douze coups (l'image
  *    tremble, une onde dorée part du cadran à chaque coup), et la caméra recule : c'est l'horloge de la gare, de nuit.
- * 2. Le tableau des départs (5,3 → 7,4 s) : ses palettes claquent jusqu'à « RAPIDE DE MINUIT · PARIS → ISTANBUL ».
- * 3. Le quai (7,4 → 10 s) : les lanternes du train s'allument d'un bout à l'autre, la vapeur envahit le quai, le Baron
+ * 2. Le tableau des départs (5,3 → 9,3 s) : ses palettes claquent jusqu'à « RAPIDE DE MINUIT · PARIS → ISTANBUL », puis
+ *    on a deux bonnes secondes pour le lire.
+ * 3. Le quai (9,3 → 12 s) : les lanternes du train s'allument d'un bout à l'autre, la vapeur envahit le quai, le Baron
  *    surgit et lève sa canne : « En voiture ! ».
  *
  * Tout est calé sur le temps déjà écoulé de l'étape (--t0), pour qui arrive en cours de route.
@@ -22,7 +23,7 @@ const IMG = (n: string) => `/cartes/${n}.webp`;
 /** Les douze coups : le premier, puis un toutes les 240 ms. */
 const COUPS = { debut: 2_350, pas: 240 };
 /** Le tableau : les palettes s'affolent, puis se posent colonne après colonne, ligne après ligne. */
-const TABLEAU = { debut: 5_450, pose: 5_650, parColonne: 45, parLigne: 220, cadence: 55 };
+const TABLEAU = { debut: 5_450, pose: 5_700, parColonne: 60, parLigne: 300, cadence: 70 };
 const COLONNES = 18;
 const LETTRES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -62,7 +63,7 @@ export function IntroExpress({ t0: t0Recu, roue, multiplicateur = 1 }: { t0: num
     if (reduit) return;
     const id = window.setInterval(() => {
       const x = performance.now() - debut;
-      if (x > TABLEAU.debut - 200 && x < 7_600) setT(x);
+      if (x > TABLEAU.debut - 200 && x < 9_400) setT(x);
     }, 40);
     return () => window.clearInterval(id);
   }, [debut, reduit]);
@@ -77,8 +78,8 @@ export function IntroExpress({ t0: t0Recu, roue, multiplicateur = 1 }: { t0: num
       ...Array.from({ length: 12 }, (_, k): [number, () => void] => [COUPS.debut + k * COUPS.pas, () => jouerEffet('exi_minuit', { volume: k === 11 ? 1 : 0.55 + k * 0.02 })]),
       [COUPS.debut + 11 * COUPS.pas + 40, () => jouerEffet('gd_eclat', { volume: 0.8 })],
       [TABLEAU.debut, () => jouerEffet('exi_palettes', { volume: 0.9 })],
-      [7_350, () => jouerEffet('ex_vapeur', { volume: 0.9 })],
-      [8_650, () => jouerEffet('ex_sifflet', { volume: 1 })],
+      [9_250, () => jouerEffet('ex_vapeur', { volume: 0.9 })],
+      [10_550, () => jouerEffet('ex_sifflet', { volume: 1 })],
     ];
     const ids = sons.filter(([x]) => x >= t0).map(([x, f]) => window.setTimeout(f, x - t0));
     return () => ids.forEach((i) => window.clearTimeout(i));
