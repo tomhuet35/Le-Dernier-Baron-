@@ -139,6 +139,9 @@
   .wr-menu { left: 50%; top: 1%; height: 34%; translate: -50% 0; padding: 4% 12% 0; gap: 2%; }
   .wr-menu strong { font-size: clamp(12px, 3.4cqh, 20px); }
   .wr-menu li { font-size: clamp(8px, 1.8cqh, 12px); line-height: 1.2; }
+  /* (sur téléphone, la carte est basse : le menu tient sur deux colonnes, le Plat du Baron en tête, sur toute la largeur) */
+  .wr-menu ol { grid-template-columns: 1fr 1fr; column-gap: 9%; row-gap: 0.35em; }
+  .wr-menu li.baron { grid-column: 1 / -1; justify-content: center; gap: 0.8em; }
   .wr-menu em { font-size: clamp(7px, 1.6cqh, 10px); }
   .wr-annonce { top: 4%; }
 }
