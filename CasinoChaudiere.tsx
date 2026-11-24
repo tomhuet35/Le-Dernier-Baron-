@@ -35,6 +35,8 @@ const FUITES: { x: number; y: number; sens: 1 | -1; r: number; seuil: number }[]
 const PALIERS = [50, 100, 200, 500];
 /** Largeur d'un motif du paysage, en hauteur de la bande des fenêtres. */
 const MOTIF_PAYSAGE = 225 / 420;
+/** Le rattrapage du compteur à l'explosion (ms). */
+const RATTRAPAGE = 320;
 
 const fmt = (x: number) => `×${x.toLocaleString(tr('fr-FR', 'en-US'), { maximumFractionDigits: x < 100 ? 1 : 0, minimumFractionDigits: x < 100 ? 1 : 0 })}`;
 /** La part de la montée (0 à 1) : l'échelle du manomètre est logarithmique, de ×10 à ×1 000. */
@@ -43,7 +45,7 @@ const part = (m: number) => Math.min(1, Math.max(0, Math.log10(m / CHAUDIERE_BW.
 export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonusBW; nom: string; onSiffler: () => Promise<boolean> }) {
   const c = b.chaudiere;
   const montee = nom === 'pression' && v.phase === 'bonus';
-  const fin = nom === 'explosion' || nom === 'revele' || v.phase === 'resultat';
+  const finBrut = nom === 'explosion' || nom === 'revele' || v.phase === 'resultat';
   const explosion = c?.explosion ?? null;
   const explosee = explosion !== null && explosion < CHAUDIERE_BW.max;
   const M = Math.max(1, b.multiplicateur);
@@ -57,7 +59,42 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
     else debut.current.t = Math.min(debut.current.t, estime);
   }
   const [m, setM] = useState<number>(CHAUDIERE_BW.depart);
-  const affiche = fin ? Math.min(explosion ?? CHAUDIERE_BW.max, CHAUDIERE_BW.max) : montee ? m : CHAUDIERE_BW.depart;
+  // À l'explosion, le compteur (en léger retard) rattrape d'un trait la pression exacte, puis la chaudière saute.
+  const derniereValeur = useRef({ numero: -1, m: CHAUDIERE_BW.depart });
+  if (montee) derniereValeur.current = { numero: v.numero, m };
+  const [rattrape, setRattrape] = useState<{ cle: string; de: number; t0: number } | null>(null);
+  const [, setTic] = useState(0);
+  useEffect(() => {
+    if (nom !== 'explosion' || explosion === null || v.phase !== 'bonus' || rattrape?.cle === cle) return;
+    // (seulement si on a vu la montée : en arrivant pendant l'explosion, pas de rattrapage)
+    if (derniereValeur.current.numero !== v.numero) return;
+    const de = Math.min(derniereValeur.current.m, explosion);
+    if (de >= explosion || mouvementReduit()) return;
+    setRattrape({ cle, de, t0: performance.now() });
+    let raf = 0;
+    const pas = () => {
+      setTic((x) => x + 1);
+      raf = requestAnimationFrame(pas);
+    };
+    raf = requestAnimationFrame(pas);
+    const fini = window.setTimeout(() => cancelAnimationFrame(raf), RATTRAPAGE + 50);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(fini);
+    };
+  }, [nom, cle]);
+  const uR = rattrape && rattrape.cle === cle ? (performance.now() - rattrape.t0) / RATTRAPAGE : 1;
+  const enRattrapage = uR < 1 && explosion !== null;
+  const affiche = enRattrapage
+    ? rattrape!.de * (Math.min(explosion!, CHAUDIERE_BW.max) / rattrape!.de) ** Math.max(0, uR)
+    : finBrut
+      ? Math.min(explosion ?? CHAUDIERE_BW.max, CHAUDIERE_BW.max)
+      : montee
+        ? m
+        : CHAUDIERE_BW.depart;
+  // Pendant le rattrapage, la chaudière tient encore (l'explosion se joue juste après).
+  const fin = finBrut && !enRattrapage;
+  const sousPression = montee || enRattrapage;
   const valeur = arrondiChaudiere(affiche);
   const p = part(affiche);
   const arret = fin && explosee;
@@ -65,7 +102,7 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
     if (!montee) return;
     let raf = 0;
     const pas = () => {
-      setM(multiplicateurChaudiere(performance.now() - debut.current.t));
+      setM(multiplicateurChaudiere(Math.max(0, performance.now() - debut.current.t - CHAUDIERE_BW.retard)));
       raf = requestAnimationFrame(pas);
     };
     raf = requestAnimationFrame(pas);
@@ -75,7 +112,7 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
   // Le paysage défile derrière les fenêtres, de plus en plus vite ; il s'arrête net à l'explosion.
   const cadre = useRef<HTMLDivElement>(null);
   const vitesse = useRef(0);
-  vitesse.current = montee ? p : 0;
+  vitesse.current = sousPression ? p : 0;
   useEffect(() => {
     if (arret || mouvementReduit()) return;
     let raf = 0;
@@ -107,7 +144,7 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
   const matiere = valeur >= 200 ? 'rouge' : valeur >= 50 ? 'or' : 'argent';
 
   // Les fuites de vapeur : un joint lâche de temps en temps quand la pression devient folle.
-  const fuites = montee || (fin && !explosee) ? FUITES.filter((f) => p >= f.seuil) : [];
+  const fuites = sousPression || (fin && !explosee) ? FUITES.filter((f) => p >= f.seuil) : [];
   const nFuites = useRef(0);
   useEffect(() => {
     if (montee && fuites.length > nFuites.current) jouerEffet('bw_vapeur', { volume: 0.55 });
@@ -195,7 +232,7 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
   const sous = (n: ReactNode) => (dehors ? createPortal(n, dehors) : n);
 
   const reduit = mouvementReduit();
-  const style = { '--p': p, '--secousse': reduit || !montee ? 0 : p, '--t0': `${-t0}ms` } as CSSProperties;
+  const style = { '--p': p, '--secousse': reduit || !sousPression ? 0 : p, '--t0': `${-t0}ms` } as CSSProperties;
   const aiguille = -124 + 248 * p;
   const danger = p > 0.55;
 

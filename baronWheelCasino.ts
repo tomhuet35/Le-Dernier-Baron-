@@ -19,6 +19,7 @@ import {
   CASES_BW,
   DEGRES_CASE_BW,
   DUREES_BW,
+  CHAUDIERE_BW,
   estBonusBW,
   vedetteRestaurant,
   etapesBonusBW,
@@ -563,7 +564,8 @@ export function creerBaronWheel(options: {
       const j = joueurs.get(id.uid);
       if (!j || !(j.mises.chaudiere ?? 0)) return erreur(rappel, 'Tu n’as pas misé sur la Chaudière.', 'You did not bet on the Boiler.');
       if (j.choix[0]) return erreur(rappel, 'Tu as déjà sifflé.', 'You have already whistled.');
-      const x = arrondiChaudiere(multiplicateurChaudiere(horloge() - (fin - duree)));
+      // Ce que montrait l'écran du joueur (qui a la pression avec un léger retard), jamais après l'explosion.
+      const x = arrondiChaudiere(multiplicateurChaudiere(Math.max(0, horloge() - (fin - duree) - CHAUDIERE_BW.retard)));
       if (x >= t.explosion) return erreur(rappel, 'Trop tard : la chaudière a explosé !', 'Too late: the boiler blew up!');
       j.choix[0] = Math.round(x * 100);
       diffuser();
