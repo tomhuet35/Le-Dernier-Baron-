@@ -26,6 +26,8 @@
 @keyframes exi-recul-h { from { transform: translateY(18.97%) scale(1.45); } to { transform: none; } }
 .exi-facade { position: absolute; inset: 0; width: 100%; height: 100%; animation: exi-flou 2.5s ease-out calc(2600ms + var(--t0)) both; }
 @keyframes exi-flou { from { filter: blur(3px) brightness(0.55); } 70% { filter: brightness(0.9); } to { filter: none; } }
+.exi-nuit { position: absolute; inset: -60%; background: #090909 url('/cartes/bw-rl-decor-paysage.webp') 50% 70% / cover; animation: exi-nuit 0.7s ease-in calc(150ms + var(--t0)) both; }
+@keyframes exi-nuit { from { opacity: 1; } to { opacity: 0; } }
 .exi-centre { --r: calc(var(--lc) * 0.1004); position: absolute; left: 49.94%; top: 31.03%; width: 0; height: 0; }
 
 /* La roue arrêtée sur l'Express (en haut, à midi) : un dernier tour, et elle s'efface dans le cadran. */

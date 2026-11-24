@@ -95,6 +95,8 @@ export function IntroExpress({ t0: t0Recu, roue, multiplicateur = 1 }: { t0: num
         <div className="exi-cadre exi-secoue">
           <div className="exi-vue">
             <img className="exi-facade" src={IMG('exi-facade')} alt="" draggable={false} />
+            {/* (au début, la roue seule sur le noir, comme dans le jeu : la gare apparaît autour d'elle) */}
+            <i className="exi-nuit" />
             <div className="exi-centre">
               <i className="exi-lueur" />
               {Array.from({ length: 12 }, (_, k) => (

@@ -1035,6 +1035,15 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
   // L'écran de chargement : toute l'étape de chargement, et au-delà tant que les images de l'intro manquent.
   const part = useChargement(b.type);
   const charge = nom === 'chargement' || (nom === 'intro' && part < 1);
+  // (l'Express attend ses images sur sa roue figée, comme au début de son intro)
+  if (charge && b.type === 'express')
+    return (
+      <div className="bw-bonus express">
+        <div className="bw-attente-express">
+          <RoueFigee />
+        </div>
+      </div>
+    );
   if (charge)
     return (
       <div className={`bw-bonus ${b.type}`}>
@@ -1318,7 +1327,13 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
         </strong>
       );
   }
-  const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat');
+  // L'Express n'a pas d'écran de chargement : la roue reste là, arrêtée sur l'Express, et son intro la change en horloge
+  // (ses images se chargent pendant ce temps).
+  const roueAvantExpress = v?.bonus?.type === 'express' && v.phase === 'bonus' && v.bonus.etapes[v.bonus.etape]?.nom === 'chargement';
+  const enBonus = !!v?.bonus && (v.phase === 'bonus' || v.phase === 'resultat') && !roueAvantExpress;
+  useEffect(() => {
+    if (roueAvantExpress) for (const src of IMAGES_BONUS_BW.express) void chargerImage(src);
+  }, [roueAvantExpress]);
   const gagnante = v && v.arret !== null && v.phase === 'resultat' ? ROUE_BW[v.arret] : null;
 
   return (
