@@ -20,6 +20,7 @@ import {
   DEGRES_CASE_BW,
   DUREES_BW,
   estBonusBW,
+  vedetteRestaurant,
   etapesBonusBW,
   gainBW,
   GAINS_CHIFFRES_BW,
@@ -186,7 +187,11 @@ export function creerBaronWheel(options: {
       };
     }
     // Le Wagon-Restaurant : les plats restent sous leur cloche jusqu'au service, quand plus personne ne peut choisir.
-    if (t.type === 'restaurant') v.restaurant = atteinte('service') ? { plats: t.plats, double: t.double, ordre: t.ordre } : { plats: null, double: null, ordre: null };
+    // (Le plat vedette, lui, est montré dès l'intro : on sait ce qu'il y a de mieux sur la table, pas sous quelle cloche.)
+    if (t.type === 'restaurant') {
+      const vedette = vedetteRestaurant(t.plats);
+      v.restaurant = atteinte('service') ? { plats: t.plats, double: t.double, ordre: t.ordre, vedette } : { plats: null, double: null, ordre: null, vedette };
+    }
     if (t.type === 'express') {
       // Le voyage se révèle gare après gare : rien de ce qui attend plus loin ne part vers les téléphones.
       const tunnelVu = (n: number) => atteinte(n === 0 ? 'tunnel1' : 'tunnel2');

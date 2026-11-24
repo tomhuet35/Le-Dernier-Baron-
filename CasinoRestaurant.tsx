@@ -22,6 +22,9 @@ export const IMAGES_RESTAURANT_NOMS = [
   'wr-cloche',
   'wr-cloche-or',
   'wr-chef',
+  'wr-cuisine',
+  'wr-cuisine-portrait',
+  'wr-chef-cuisine',
   'wr-chef-ravi',
   'wr-baron',
   'wr-menu',
@@ -54,6 +57,47 @@ const PLACES_HAUT = Array.from({ length: NB_CLOCHES }, (_, k) => ({ x: 20 + 30 *
 const BARON = { arrive: 500, dore: 1600, part: 2900 };
 const PAS = 1150;
 const debutService = (double: number | null) => (double !== null ? 3300 : 900);
+
+/**
+ * Le Baron, debout derrière la table, penché sur la cloche k : l'image est rognée à la lisière de la nappe (TABLES : la
+ * hauteur du dessus de table, en part du cadre). Sa main (à 20 % de la largeur de l'image) arrive au-dessus de la cloche ;
+ * il vient du côté où il y a de la place, et sort de derrière la table.
+ */
+const TABLES = { large: 74.5, haut: [53.8, 75.2] };
+const RATIO_BARON = 500 / 941;
+function BaronDerriere({ k }: { k: number }) {
+  const pl = PLACES_LARGE[k];
+  const ph = PLACES_HAUT[k];
+  // En largeur (cadre 2:1) : 68 % de la hauteur, la tête vers 24 %.
+  const hL = 68;
+  const wL = (hL * RATIO_BARON) / 2;
+  const sensL = k >= 3 ? -1 : 1;
+  const cxL = pl.x + sensL * (wL / 2 - wL * 0.2);
+  // En hauteur (cadre 2:3) : 40 % de la hauteur, la main un peu au-dessus de la cloche.
+  const ligneH = k < 3 ? TABLES.haut[0] : TABLES.haut[1];
+  const hH = 40;
+  const wH = hH * RATIO_BARON * 1.5;
+  const sensH = k % 3 === 2 ? -1 : 1;
+  const cxH = ph.x + sensH * (wH / 2 - wH * 0.2);
+  const hautH = ph.y - 18 - hH * 0.25;
+  const style = {
+    '--ligne-l': `${TABLES.large}%`,
+    '--x-l': `${cxL}%`,
+    '--top-l': `${(24 / TABLES.large) * 100}%`,
+    '--h-l': `${(hL / TABLES.large) * 100}%`,
+    '--sens-l': sensL,
+    '--ligne-h': `${ligneH}%`,
+    '--x-h': `${cxH}%`,
+    '--top-h': `${(hautH / ligneH) * 100}%`,
+    '--h-h': `${(hH / ligneH) * 100}%`,
+    '--sens-h': sensH,
+  } as CSSProperties;
+  return (
+    <div className="wr-baron-zone" style={style} aria-hidden="true">
+      <img className="wr-baron" src={IMG('wr-baron')} alt="" draggable={false} />
+    </div>
+  );
+}
 
 export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void }) {
   const r = b.restaurant;
@@ -130,10 +174,8 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
       <div className="wr-cadre">
         <img className="wr-salle large" src={IMG('wr-salle')} alt="" draggable={false} />
         <img className="wr-salle haut" src={IMG('wr-salle-portrait')} alt="" draggable={false} />
-        {/* Le Baron vient près de la cloche qu'il dore (dans la salle : il garde sa place quel que soit l'écran). */}
-        {baronLa && double !== null && (
-          <img className={`wr-baron ${double >= 3 ? 'droite-l' : ''} ${double % 3 === 2 ? 'droite-h' : ''}`} src={IMG('wr-baron')} alt="" draggable={false} style={{ '--xl': `${PLACES_LARGE[double].x}%`, '--xh': `${PLACES_HAUT[double].x}%`, '--yh': `${PLACES_HAUT[double].y}%` } as CSSProperties} />
-        )}
+        {/* Le Baron se penche au-dessus de la cloche qu'il dore, debout derrière la table : la nappe cache ses jambes. */}
+        {baronLa && double !== null && <BaronDerriere k={double} />}
         {Array.from({ length: NB_CLOCHES }, (_, k) => {
           const pl = PLACES_LARGE[k];
           const ph = PLACES_HAUT[k];
@@ -172,7 +214,22 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
       </div>
 
       {nom === 'intro' && <img className="wr-logo" src={IMG('wr-logo')} alt={tr('La Cloche', 'The Cloche')} draggable={false} />}
-      {nom === 'intro' && <img className="wr-chef" src={IMG('wr-chef')} alt="" draggable={false} />}
+      {/* En cuisine : le chef prépare le plat vedette de la manche (le plus cher des six cloches). */}
+      {nom === 'intro' && r?.vedette && (
+        <div className="wr-cuisine" aria-live="polite">
+          <img className="wr-cuisine-fond large" src={IMG('wr-cuisine')} alt="" draggable={false} />
+          <img className="wr-cuisine-fond haut" src={IMG('wr-cuisine-portrait')} alt="" draggable={false} />
+          <img className="wr-cuisine-chef" src={IMG('wr-chef-cuisine')} alt="" draggable={false} />
+          <img className={`wr-cuisine-plat ${r.vedette}`} src={IMG(`wr-plat-${r.vedette}`)} alt="" draggable={false} />
+          {!reduit && <img className="wr-cuisine-vapeur" src={IMG('wr-vapeur')} alt="" draggable={false} />}
+          <div className="wr-cuisine-titre">
+            <small>{tr('Ce soir, le chef prépare', 'Tonight, the chef is cooking')}</small>
+            <strong>{tr(...NOMS_PLATS[r.vedette])}</strong>
+            <b>{fx(MENU_RESTAURANT[r.vedette] * M)}</b>
+            <small>{tr('Il est sous l’une des six cloches…', 'It is under one of the six cloches…')}</small>
+          </div>
+        </div>
+      )}
       {/* Il se met du côté opposé à ma cloche, pour ne pas la cacher. */}
       {ravi && mien !== null && <img className={`wr-chef ravi ${mien >= 3 ? 'gauche-l' : ''} ${mien % 3 === 2 ? 'gauche-h' : ''}`} src={IMG('wr-chef-ravi')} alt="" draggable={false} />}
 
@@ -182,8 +239,11 @@ export function BonusRestaurant({ v, b, nom, ouvert, choisir }: { v: VueBW; b: V
           <strong>{tr('Menu', 'Menu')}</strong>
           <ol>
             {[...PLATS_RESTAURANT].reverse().map((p) => (
-              <li key={p} className={p === 'baron' ? 'baron' : ''}>
-                <span>{tr(...NOMS_PLATS[p])}</span>
+              <li key={p} className={`${p === 'baron' ? 'baron' : ''} ${p === r?.vedette ? 'vedette' : ''}`}>
+                <span>
+                  {p === r?.vedette ? '★ ' : ''}
+                  {tr(...NOMS_PLATS[p])}
+                </span>
                 <b>{fx(MENU_RESTAURANT[p] * M)}</b>
               </li>
             ))}

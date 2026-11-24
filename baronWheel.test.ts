@@ -410,12 +410,14 @@ describe('The Baron’s Wheel en direct', () => {
     arretImpose = indice('restaurant', 1);
     await emettre(a, 'casino_bw_miser', { case: 'restaurant', montant: 25_000 });
     const choix = await attendre(a, (y) => etape(y) === 'cloches');
-    expect(choix.bonus!.restaurant).toEqual({ plats: null, double: null, ordre: null });
+    const vedette = choix.bonus!.restaurant!.vedette;
+    expect(choix.bonus!.restaurant).toEqual({ plats: null, double: null, ordre: null, vedette });
     expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 6 })).erreur).toMatch(/impossible/);
     expect((await emettre(a, 'casino_bw_choisir', { etape: choix.bonus!.etape, choix: 4 })).ok).toBe(true);
     const service = await attendre(a, (y) => etape(y) === 'service');
     const r = service.bonus!.restaurant!;
     expect(r.plats).toHaveLength(6);
+    expect(Math.max(...r.plats!.map((p) => MENU_RESTAURANT[p]))).toBe(MENU_RESTAURANT[vedette!]);
     const fin = await attendre(a, (x) => x.phase === 'resultat' && x.numero === v.numero);
     const bz = fin.bonus!;
     const x = MENU_RESTAURANT[r.plats![4]] * (r.double === 4 ? 2 : 1) * bz.multiplicateur;
