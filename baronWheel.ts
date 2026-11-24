@@ -830,7 +830,7 @@ export const DUREES_BW: DureesBW = {
   // La course à trois : le départ ensemble, la séparation, ma voiture jusqu'au barrage ou au saut (voir COURSE_BW).
   poursuite: 24_000,
   revele: 5_500,
-  introExpress: 3_000,
+  introExpress: 10_000,
   introBraquage: 2_500,
   introEvasion: 6_000,
   introAiguillage: 7_000,

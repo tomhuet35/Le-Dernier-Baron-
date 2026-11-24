@@ -212,6 +212,35 @@ function CaseRoue({ i }: { i: number }) {
   );
 }
 
+/** La roue arrêtée sur l'Express (en haut, à midi), sans ses multiplicateurs : l'intro de l'Express la change en horloge. */
+export function RoueFigee() {
+  const cases = useMemo(() => ROUE_BW.map((c, i) => <CaseRoue key={i} i={i} />), []);
+  return (
+    <div className="bw-roue-figee">
+      <div className="bw-disque" style={{ transform: `rotate(${-DEGRES_CASE_BW / 2}deg)` }}>
+        <svg viewBox="-370 -370 740 740" aria-hidden="true">
+          <defs>
+            <linearGradient id="bw-or-grave" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#fff3c4" />
+              <stop offset="0.45" stopColor="#f0c45e" />
+              <stop offset="0.55" stopColor="#c88a2a" />
+              <stop offset="1" stopColor="#ffe08a" />
+            </linearGradient>
+          </defs>
+          <circle r="366" fill="#1a0f08" />
+          {cases}
+          {ROUE_BW.map((_, i) => (
+            <line key={i} x1="0" y1="-118" x2="0" y2="-363" transform={`rotate(${i * DEGRES_CASE_BW})`} className="bw-filet" />
+          ))}
+          <circle r="120" className="bw-anneau" />
+        </svg>
+        <img className="bw-rl-moyeu" src="/cartes/bw-rl-moyeu.webp" alt="" draggable={false} />
+      </div>
+      <img className="bw-rl-jante" src="/cartes/bw-rl-jante.webp" alt="" draggable={false} />
+    </div>
+  );
+}
+
 function Roue({ v, horloges, lampes, aiguille }: { v: VueBW; horloges: MutableRefObject<HorlogesRoue>; lampes: MutableRefObject<(HTMLDivElement | null)[]>; aiguille?: MutableRefObject<HTMLImageElement | null> }) {
   const disque = useRef<HTMLDivElement>(null);
   const frole = useRef<SVGPathElement>(null);
@@ -1030,13 +1059,14 @@ function SceneBonus({ v, appel, onErreur }: { v: VueBW; appel: Appel; onErreur: 
         />
       )}
       {b.type === 'restaurant' && <BonusRestaurant v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
-      {b.type === 'express' && <BonusExpress v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} />}
+      {b.type === 'express' && <BonusExpress v={v} b={b} nom={nom} ouvert={ouvert} choisir={choisir} roue={<RoueFigee />} />}
       <div className="bw-bonus-titre">
         <img src={CASES_VISUELS[b.type].image} alt="" />
         <strong>{tr(...NOMS_BONUS[b.type])}</strong>
         {b.multiplicateur > 1 && <em className="bw-bonus-multi">×{b.multiplicateur}</em>}
       </div>
-      {b.multiplicateur > 1 && nom === 'intro' && (
+      {/* (l'Express l'affiche sur son tableau des départs) */}
+      {b.multiplicateur > 1 && nom === 'intro' && b.type !== 'express' && (
         <div className="bw-bonus-annonce-multi" role="status">
           <small>{tr('Multiplicateur de la roue', 'Wheel multiplier')}</small>
           <strong>×{b.multiplicateur}</strong>
