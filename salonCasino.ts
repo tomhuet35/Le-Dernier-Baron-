@@ -114,13 +114,14 @@ import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type A
 import type { DureesCouronne } from '../shared/couronne';
 
 /**
- * Le grand spectacle de la roue du Baron (heure de Paris), une seule fois dans ce créneau : la roue s'arrête sur une case
- * du type c (avec ×x posé dessus par le Top Slot, si x est donné) (la Chaudière peut aussi avoir son point d'explosion imposé).
+ * Le grand spectacle de la roue du Baron (heure de Paris) : dans ce créneau, les premières manches s'arrêtent, une par
+ * une et dans l'ordre, sur les cases demandées (avec ×x posé dessus par le Top Slot si x est donné, sinon au hasard ; la
+ * Chaudière peut aussi avoir son point d'explosion imposé).
  */
-const SPECTACLE_BW: { debut: number; fin: number; c: CaseBW; x?: number; explosion?: number } = {
-  debut: Date.parse('2026-11-24T14:16:00+01:00'),
-  fin: Date.parse('2026-11-24T14:45:00+01:00'),
-  c: 'express',
+const SPECTACLE_BW: { debut: number; fin: number; manches: { c: CaseBW; x?: number; explosion?: number }[] } = {
+  debut: Date.parse('2026-11-24T14:47:00+01:00'),
+  fin: Date.parse('2026-11-24T15:20:00+01:00'),
+  manches: [{ c: 'express' }, { c: 'chaudiere' }],
 };
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
@@ -714,9 +715,9 @@ export function creerCasino(options: OptionsCasino) {
     const debut = ouvertures[CADEAU_OUVERTURE_BW];
     return debut === undefined ? null : debut + DUREE_OUVERTURE_BW;
   };
-  // Le grand spectacle : une fois, la première manche dont les mises ferment entre SPECTACLE_BW.debut et .fin.
-  const casesSpectacle = ROUE_BW.flatMap((c, i) => (c === SPECTACLE_BW.c ? [i] : []));
-  const spectacle = { fait: false, enCours: false, tirage: false };
+  // Le grand spectacle : les premières manches dont les mises ferment entre SPECTACLE_BW.debut et .fin, une par une.
+  const casesDe = (c: CaseBW) => ROUE_BW.flatMap((x, i) => (x === c ? [i] : []));
+  const spectacle: { suivante: number; enCours: (typeof SPECTACLE_BW.manches)[number] | null; tirage: (typeof SPECTACLE_BW.manches)[number] | null } = { suivante: 0, enCours: null, tirage: null };
   const roueBW = creerBaronWheel({
     io,
     banque: banqueDe('baronWheel'),
@@ -724,28 +725,30 @@ export function creerCasino(options: OptionsCasino) {
     delais: options.delaisBaronWheel,
     multiplicateurs: () => {
       const t = horloge();
+      const m = SPECTACLE_BW.manches[spectacle.suivante];
       // (jamais dans les tests : ils règlent leurs délais)
-      if (!options.delaisBaronWheel && !options.multiplicateursBaronWheel && !spectacle.fait && t >= SPECTACLE_BW.debut && t < SPECTACLE_BW.fin) {
-        spectacle.enCours = true;
+      if (m && !options.delaisBaronWheel && !options.multiplicateursBaronWheel && t >= SPECTACLE_BW.debut && t < SPECTACLE_BW.fin) {
+        spectacle.enCours = m;
         // (sans multiplicateur imposé, le Top Slot tire au hasard)
-        const x = SPECTACLE_BW.x;
-        if (x !== undefined) return casesSpectacle.map((i) => ({ i, x }));
+        if (m.x !== undefined) return casesDe(m.c).map((i) => ({ i, x: m.x as number }));
       }
       return options.multiplicateursBaronWheel?.();
     },
     arret: () => {
-      if (spectacle.enCours) {
-        spectacle.enCours = false;
-        spectacle.fait = true;
-        spectacle.tirage = true;
-        return casesSpectacle[0];
+      const m = spectacle.enCours;
+      if (m) {
+        spectacle.enCours = null;
+        spectacle.suivante++;
+        spectacle.tirage = m;
+        return casesDe(m.c)[0];
       }
       return options.arretBaronWheel?.();
     },
     tirage: (c) => {
-      if (!spectacle.tirage || c !== SPECTACLE_BW.c || c !== 'chaudiere' || SPECTACLE_BW.explosion === undefined) return undefined;
-      spectacle.tirage = false;
-      return { type: 'chaudiere', explosion: SPECTACLE_BW.explosion };
+      const m = spectacle.tirage;
+      spectacle.tirage = null;
+      if (!m || c !== m.c || c !== 'chaudiere' || m.explosion === undefined) return undefined;
+      return { type: 'chaudiere', explosion: m.explosion };
     },
     ouverture: finOuvertureBW,
     annoncer: (a) => annoncer(a),
