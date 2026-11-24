@@ -20,7 +20,7 @@ import { jouerEffet, mouvementReduit } from './ui';
 import './chaudiere.css';
 
 /** Les images de la Chaudière (sans chemin ni extension), préchargées avant le bonus. */
-export const IMAGES_CHAUDIERE_NOMS = ['bw-ex-gare-depart', 'ai-train-34', 'ch-logo', 'ch-cabine-vitres', 'ch-cabine-noire', 'ch-paysage', 'ch-jet', 'ch-mano-brise', 'ch-sifflet', 'ch-mecanicien', 'ch-explosion', 'bw-mano-cadran', 'bw-mano-aiguille', 'bw-vapeur-face'];
+export const IMAGES_CHAUDIERE_NOMS = ['ch-intro-voie', 'ch-intro-face', 'ch-intro-phare', 'ch-intro-profil', 'ch-intro-rails', 'ch-intro-etincelles', 'ch-intro-cabine', 'ch-logo', 'ch-cabine-vitres', 'ch-cabine-noire', 'ch-paysage', 'ch-jet', 'ch-mano-brise', 'ch-sifflet', 'ch-mecanicien', 'ch-explosion', 'bw-mano-cadran', 'bw-mano-aiguille', 'bw-vapeur-face'];
 
 /** Les fuites de vapeur aux joints de la chaudière (position dans le décor, orientation), et la part de la montée où
  *  chacune lâche : la première à ×100, la dernière vers ×700. */
@@ -217,10 +217,12 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
   useEffect(() => {
     if (nom !== 'intro' || mouvementReduit()) return;
     const sons: [number, () => void][] = [
-      [0, () => jouerEffet('bw_train_passe', { volume: 0.8 })],
-      [2_600, () => jouerEffet('ex_freins', { volume: 0.9 })],
-      [3_300, () => jouerEffet('ex_sifflet', { volume: 0.9 })],
-      [3_500, () => jouerEffet('bw_vapeur', { volume: 0.7 })],
+      [0, () => jouerEffet('bw_train_passe', { volume: 0.9 })],
+      [1_500, () => jouerEffet('ex_sifflet', { volume: 0.9 })],
+      [2_500, () => jouerEffet('bw_vapeur', { volume: 0.8 })],
+      [2_900, () => jouerEffet('ex_freins', { volume: 0.55 })],
+      [3_700, () => jouerEffet('bw_sifflet', { volume: 0.6 })],
+      [5_200, () => jouerEffet('bw_vapeur', { volume: 0.5 })],
     ];
     const ids = sons.filter(([t]) => t >= t0).map(([t, f]) => window.setTimeout(f, t - t0));
     return () => ids.forEach((i) => window.clearTimeout(i));
@@ -240,13 +242,37 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
     <div className={`ch ${nom} ${explosee && fin ? 'explosee' : ''} ${fin && !explosee ? 'pleine' : ''} ${danger && montee ? 'danger' : ''}`} style={style}>
       {nom === 'intro' && (
         <div className="ch-gare" aria-hidden="true">
-          <div className="ch-gare-cadre">
-            <img className="ch-gare-fond" src="/cartes/bw-ex-gare-depart.webp" alt="" draggable={false} />
-            <span className="ch-gare-train">
-              <img src="/cartes/ai-train-34.webp" alt="" draggable={false} />
-              <img className="ch-gare-vapeur" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
+          {/* 1. La charge : la voie de face ; la locomotive grossit depuis le point de fuite (une homothétie centrée sur
+              lui : elle reste exactement sur les rails), jusqu'à passer sur la caméra. */}
+          <div className="ch-gare-cadre ci-voie">
+            <img className="ci-fond" src="/cartes/ch-intro-voie.webp" alt="" draggable={false} />
+            <img className="ci-loin" src="/cartes/ch-intro-phare.webp" alt="" draggable={false} />
+            <div className="ci-approche">
+              <span className="ci-face">
+                <img src="/cartes/ch-intro-face.webp" alt="" draggable={false} />
+                <img className="ci-phare g" src="/cartes/ch-intro-phare.webp" alt="" draggable={false} />
+                <img className="ci-phare d" src="/cartes/ch-intro-phare.webp" alt="" draggable={false} />
+              </span>
+            </div>
+          </div>
+          {/* 2. Le travelling : de profil, à pleine vitesse ; les rails et la campagne filent, les roues crachent des étincelles. */}
+          <div className="ch-gare-cadre ci-profil">
+            <i className="ci-campagne" />
+            <i className="ci-rails" />
+            <span className="ci-loco">
+              <img src="/cartes/ch-intro-profil.webp" alt="" draggable={false} />
+              <img className="ci-etincelles a" src="/cartes/ch-intro-etincelles.webp" alt="" draggable={false} />
+              <img className="ci-etincelles b" src="/cartes/ch-intro-etincelles.webp" alt="" draggable={false} />
+              <img className="ci-lanterne" src="/cartes/ch-intro-phare.webp" alt="" draggable={false} />
+              <img className="ci-sifflet" src="/cartes/bw-vapeur-face.webp" alt="" draggable={false} />
             </span>
           </div>
+          {/* 3. Le plongeon : la cabine, le mécanicien devant le foyer ; la caméra entre par la vitre. */}
+          <div className="ch-gare-cadre ci-cabine">
+            <img className="ci-fond" src="/cartes/ch-intro-cabine.webp" alt="" draggable={false} />
+            <i className="ci-feu" />
+          </div>
+          <i className="ci-eclair" />
           <i className="ch-gare-fondu" />
           <img className="ch-logo" src="/cartes/ch-logo.webp" alt={tr('La Chaudière', 'The Boiler')} draggable={false} />
         </div>

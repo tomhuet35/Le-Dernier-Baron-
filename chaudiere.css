@@ -95,30 +95,86 @@
 .ch-siffles li.moi { border-color: #b8f0b4; }
 .ch.explosee .ch-siffles li:not(.moi) b, .ch.explosee .ch-siffles li b { color: #b8f0b4; }
 
-/* L'intro : le Rapide entre en gare (il vient du fond du hall, le long de la voie, et freine au bout du quai), puis la
-   caméra plonge dans sa cabine. Le cadre garde les proportions du décor (16:9) pour que le train reste sur la voie ; sur
-   un écran étroit, il est décalé pour garder le bout du quai en vue. Toutes les animations durent 6,5 s, calées sur le
-   temps déjà écoulé (--t0). */
-.ch-gare { position: absolute; inset: 0; z-index: 7; overflow: hidden; background: #000; animation: ch-gare-fin 6.5s linear var(--t0) both; }
-@keyframes ch-gare-fin { 0%, 88% { opacity: 1; } 100% { opacity: 0; } }
-.ch-gare-cadre { --lc: max(100cqw, 177.78cqh); position: absolute; left: 50%; top: 50%; width: var(--lc); height: calc(var(--lc) * 0.5625); translate: calc(-50% - (var(--lc) - 100cqw) * 0.22) -50%; transform-origin: 45% 76%; animation: ch-gare-zoom 6.5s cubic-bezier(0.55, 0, 0.85, 0.4) var(--t0) both; }
-@keyframes ch-gare-zoom { 0%, 57% { transform: none; } 100% { transform: scale(5.5); } }
-.ch-gare-fond { position: absolute; inset: 0; width: 100%; height: 100%; }
-/* Le train, retourné (la locomotive à droite) : son avant se pose au bout du quai, les voitures filent vers le fond. */
-.ch-gare-train { position: absolute; right: 3%; bottom: 2%; width: 90%; transform-origin: 100% 100%; animation: ch-gare-arrivee 6.5s var(--t0) both; }
-.ch-gare-train > img:first-child { display: block; width: 100%; height: auto; transform: scaleX(-1); filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.8)) brightness(0.95); }
-@keyframes ch-gare-arrivee {
-  0% { transform: translate(-78%, -110%) scale(0.06); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.15, 0.35, 1); }
-  6% { opacity: 1; }
-  42% { transform: translate(0.6%, 0) scale(1.005); animation-timing-function: ease-out; }
-  48%, 100% { transform: none; }
+/* L'intro, en trois plans (7,5 s, calés sur le temps déjà écoulé : --t0). Chaque plan garde les proportions de ses images
+   (16:9, « cover », centré).
+   1. La charge (0 → 2,65 s) : la voie de face ; la locomotive grandit par une homothétie centrée sur le point de fuite (elle
+      glisse le long des rails, à la bonne largeur de voie), puis passe sur la caméra : éclair.
+   2. Le travelling (2,65 → 5 s) : de profil ; les rails et la campagne filent dessous et derrière, étincelles, coup de sifflet.
+   3. Le plongeon (5 → 7,5 s) : la cabine vue de dehors ; la caméra entre par la vitre, vers le foyer, et la Chaudière commence. */
+.ch-gare { position: absolute; inset: 0; z-index: 7; overflow: hidden; background: #000; animation: ch-gare-fin 7.5s linear var(--t0) both; }
+@keyframes ch-gare-fin { 0%, 94.7% { opacity: 1; } 100% { opacity: 0; } }
+.ch-gare-cadre { --lc: max(100cqw, 177.78cqh); position: absolute; left: 50%; top: 50%; width: var(--lc); height: calc(var(--lc) * 0.5625); overflow: hidden; translate: -50% -50%; }
+.ci-fond { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* 1. La charge. Le point de fuite : (50 %, 50,8 %). À l'échelle 1, l'avant de la locomotive touche la voie 100 px (sur 941)
+   sous l'horizon, où les rails sont écartés de 340 px : elle fait 39,1 % de large. */
+.ci-voie { animation: ci-voie 7.5s linear var(--t0) both; }
+@keyframes ci-voie {
+  0%, 30% { opacity: 1; transform: none; }
+  31.3% { transform: translate(0.3%, -0.4%); }
+  32.6% { transform: translate(-0.5%, 0.5%); }
+  33.9% { transform: translate(0.7%, -0.3%); }
+  35.3% { opacity: 1; transform: translate(-0.9%, 0.8%); }
+  35.4%, 100% { opacity: 0; }
 }
-.ch-gare-vapeur { position: absolute; right: 8%; top: -18%; width: 42%; height: auto; max-width: none; opacity: 0; transform-origin: 70% 90%; animation: ch-gare-vapeur 6.5s ease-out var(--t0) both; }
-@keyframes ch-gare-vapeur { 0%, 44% { opacity: 0; transform: scale(0.4); } 52% { opacity: 0.7; } 70% { opacity: 0.5; transform: translate(-25%, -10%) scale(1.4); } 100% { opacity: 0; transform: translate(-40%, -20%) scale(1.8); } }
+.ci-loin { position: absolute; left: 50%; top: 50.3%; width: 10%; height: auto; translate: -50% -50%; opacity: 0; animation: ci-loin 7.5s linear var(--t0) both; }
+@keyframes ci-loin { 0% { opacity: 0; transform: scale(0.5); } 5% { opacity: 0.95; transform: none; } 11% { opacity: 0.75; transform: scale(1.1); } 16% { opacity: 0.9; } 21%, 100% { opacity: 0; transform: scale(1.3); } }
+.ci-approche { position: absolute; inset: 0; transform-origin: 50% 50.8%; will-change: transform; animation: ci-approche 7.5s linear var(--t0) both; }
+@keyframes ci-approche {
+  0% { transform: scale(0.03); }
+  8% { transform: scale(0.045); }
+  16% { transform: scale(0.08); }
+  22.7% { transform: scale(0.16); }
+  27.3% { transform: scale(0.3); }
+  30.7% { transform: scale(0.5); }
+  32.7% { transform: scale(0.85); }
+  34% { transform: scale(1.6); }
+  35.3%, 100% { transform: scale(3.2); }
+}
+.ci-face { position: absolute; left: 30.45%; bottom: 38.4%; width: 39.1%; animation: ci-face 7.5s linear var(--t0) both; }
+.ci-face > img:first-child { display: block; width: 100%; height: auto; }
+@keyframes ci-face { 0% { filter: brightness(0.35) blur(0.6px); } 20% { filter: brightness(0.6); } 29%, 100% { filter: brightness(1.05); } }
+/* Les phares (le halo grandit avec elle). */
+.ci-phare { position: absolute; top: 52.8%; width: 50%; height: auto; max-width: none; translate: -50% -50%; animation: ci-phare 0.18s ease-in-out infinite alternate; }
+.ci-phare.g { left: 19.8%; }
+.ci-phare.d { left: 80.2%; }
+@keyframes ci-phare { from { opacity: 0.8; } to { opacity: 1; } }
+/* L'éclair : elle passe sur la caméra. */
+.ci-eclair { position: absolute; inset: 0; z-index: 2; opacity: 0; background: radial-gradient(circle at 50% 30%, #fff 0%, #fff0c8 22%, rgba(255, 176, 70, 0.9) 50%, rgba(90, 30, 5, 0.6) 100%); pointer-events: none; animation: ci-eclair 7.5s linear var(--t0) both; }
+@keyframes ci-eclair { 0%, 32.7% { opacity: 0; } 35.3% { opacity: 1; } 37% { opacity: 0.85; } 41.3%, 100% { opacity: 0; } }
+
+/* 2. Le travelling. Le haut du rail : à 76,1 % ; le bas des roues de la locomotive : à 90,5 % de son image. */
+.ci-profil { opacity: 0; animation: ci-profil 7.5s linear var(--t0) both; }
+@keyframes ci-profil { 0%, 35.3% { opacity: 0; } 35.4%, 64.7% { opacity: 1; } 66.7%, 100% { opacity: 0; } }
+@keyframes ci-file { to { transform: translate3d(calc(var(--tuile) * -1), 0, 0); } }
+.ci-campagne { --tuile: calc(var(--lc) * 0.2411); position: absolute; left: 0; top: 0; height: 80%; width: calc(100% + var(--tuile) * 2); background: url('/cartes/ch-paysage.webp') repeat-x 0 0 / var(--tuile) 100%; filter: brightness(0.7) blur(1.2px); will-change: transform; animation: ci-file 0.45s linear infinite; }
+.ci-rails { --tuile: calc(var(--lc) * 0.3263); position: absolute; left: 0; bottom: 0; height: 36%; width: calc(100% + var(--tuile) * 2); background: url('/cartes/ch-intro-rails.webp') repeat-x 0 0 / var(--tuile) 100%; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 26%); mask-image: linear-gradient(to bottom, transparent, #000 26%); will-change: transform; animation: ci-file 0.16s linear infinite; }
+.ci-loco { position: absolute; left: 3%; top: 15.4%; width: 88%; animation: ci-loco 7.5s var(--t0) both; }
+@keyframes ci-loco { 0%, 35.3% { transform: translateX(-80%); animation-timing-function: cubic-bezier(0.15, 0.7, 0.3, 1); } 48% { transform: none; animation-timing-function: linear; } 66.7%, 100% { transform: translateX(3%); } }
+.ci-loco > img:first-child { display: block; width: 100%; height: auto; animation: ci-cahot 0.11s ease-in-out infinite alternate; }
+@keyframes ci-cahot { to { transform: translateY(0.4%); } }
+.ci-etincelles { position: absolute; width: 45%; height: auto; max-width: none; transform-origin: 97.5% 88.7%; animation: ci-etincelles 0.09s steps(2) infinite alternate; }
+.ci-etincelles.a { left: 14.6%; top: 38.1%; }
+.ci-etincelles.b { left: 2.1%; top: 38.1%; scale: 0.75; animation-duration: 0.13s; }
+@keyframes ci-etincelles { from { opacity: 0.55; transform: scaleX(0.9); } to { opacity: 1; transform: scaleX(1.06) rotate(-2deg); } }
+.ci-lanterne { position: absolute; left: 92.7%; top: 50.6%; width: 30%; height: auto; max-width: none; translate: -50% -50%; animation: ci-phare 0.15s ease-in-out infinite alternate; }
+.ci-sifflet { position: absolute; left: 50%; top: 36%; width: 22%; height: auto; max-width: none; translate: -50% -88%; opacity: 0; transform-origin: 50% 100%; animation: ci-sifflet 7.5s ease-out var(--t0) both; }
+@keyframes ci-sifflet { 0%, 49.3% { opacity: 0; transform: scale(0.3); } 51% { opacity: 0.9; transform: scale(0.9); } 62%, 100% { opacity: 0; transform: translate(-45%, -25%) scale(1.7); } }
+
+/* 3. Le plongeon : la vitre de la cabine est à (50,8 %, 39,9 %). */
+.ci-cabine { opacity: 0; transform-origin: 50.8% 39.9%; animation: ci-cabine 7.5s var(--t0) both; }
+@keyframes ci-cabine {
+  0%, 66.6% { opacity: 0; transform: scale(1.04); }
+  68.7% { opacity: 1; }
+  81.3% { transform: scale(1.15); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  94.7%, 100% { opacity: 1; transform: scale(6); }
+}
+.ci-feu { position: absolute; left: 50.8%; top: 39.9%; width: 42%; aspect-ratio: 1.6; translate: -50% -50%; background: radial-gradient(closest-side, rgba(255, 140, 40, 0.55), rgba(255, 90, 20, 0.2) 60%, transparent); mix-blend-mode: screen; animation: ci-feu 0.23s ease-in-out infinite alternate; }
+@keyframes ci-feu { from { opacity: 0.55; } to { opacity: 1; } }
 /* À la fin du plongeon, tout s'assombrit vers la lueur du foyer. */
-.ch-gare-fondu { position: absolute; inset: 0; background: radial-gradient(circle at 50% 60%, rgba(255, 110, 30, 0.6), #070302 70%); opacity: 0; animation: ch-gare-fondu 6.5s ease-in var(--t0) both; }
-@keyframes ch-gare-fondu { 0%, 74% { opacity: 0; } 92%, 100% { opacity: 1; } }
-.ch.intro .ch-consigne { animation-delay: calc(5.6s + var(--t0, 0ms)); z-index: 8; }
+.ch-gare-fondu { position: absolute; inset: 0; z-index: 3; background: radial-gradient(circle at 50% 60%, rgba(255, 110, 30, 0.6), #070302 70%); opacity: 0; animation: ch-gare-fondu 7.5s ease-in var(--t0) both; }
+@keyframes ch-gare-fondu { 0%, 86% { opacity: 0; } 94.7%, 100% { opacity: 1; } }
+.ch.intro .ch-consigne { animation-delay: calc(6.6s + var(--t0, 0ms)); z-index: 8; }
 
 /* L'explosion, ou la pleine pression. */
 .ch.explosee .ch-mano { animation: none; }
@@ -142,10 +198,10 @@
   .ch-eclats, .ch-nuage { display: none; }
 }
 /* Pendant la montée en pression, le titre du bonus s'efface (le manomètre occupe le haut). */
-.bw-bonus.chaudiere:has(.ch.pression) .bw-bonus-titre, .bw-bonus.chaudiere:has(.ch.explosion) .bw-bonus-titre, .bw-bonus.chaudiere:has(.ch.revele) .bw-bonus-titre { display: none; }
+.bw-bonus.chaudiere:has(.ch.intro) .bw-bonus-titre, .bw-bonus.chaudiere:has(.ch.pression) .bw-bonus-titre, .bw-bonus.chaudiere:has(.ch.explosion) .bw-bonus-titre, .bw-bonus.chaudiere:has(.ch.revele) .bw-bonus-titre { display: none; }
 /* Le logo, pendant l'arrivée du train. */
-.ch-logo { position: absolute; left: 50%; top: 16%; width: min(62%, 460px); height: auto; translate: -50% 0; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.85)); animation: ch-logo 6.5s ease-out var(--t0) both; }
-@keyframes ch-logo { 0% { opacity: 0; transform: scale(0.4); } 6% { opacity: 1; transform: scale(1.06); } 9% { transform: none; } 40% { opacity: 1; } 50%, 100% { opacity: 0; transform: translateY(-20%); } }
+.ch-logo { position: absolute; left: 50%; top: 4%; width: min(48%, 420px); height: auto; translate: -50% 0; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.85)); z-index: 4; animation: ch-logo 7.5s ease-out var(--t0) both; }
+@keyframes ch-logo { 0% { opacity: 0; transform: scale(0.4); } 4% { opacity: 1; transform: scale(1.06); } 7% { transform: none; } 18% { opacity: 1; } 23%, 100% { opacity: 0; transform: translateY(-20%); } }
 /* Le sifflet sur le bouton : son levier part quand on tire. */
 .ch-sifflet { padding-left: 64px; }
 .ch-sifflet-img { position: absolute; left: 6px; bottom: 4px; height: 128%; width: auto; transform-origin: 50% 100%; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)); }
@@ -158,7 +214,7 @@
 @media (max-width: 699px) {
   .ch-compteur strong { font-size: clamp(28px, min(11cqw, 12cqh), 60px); }
   .ch-mecanicien { height: 44%; left: -8%; }
-  .ch-logo { top: 30%; width: 80%; }
+  .ch-logo { top: 7%; width: 78%; }
 }
 @container (max-width: 560px) {
   .ch-siffles li { grid-template-columns: 22px auto; padding-right: 6px; }
