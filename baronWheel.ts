@@ -405,6 +405,8 @@ export const TABLE_RESTAURANT: TableBW<PlatBW> = [
 ];
 /** La chance que le Baron passe dorer une cloche (son plat compte double). */
 export const DOUBLE_RESTAURANT = 0.6;
+/** Le plat vedette de la manche : le plus cher des six (le chef le prépare en cuisine, sous les yeux de tous). */
+export const vedetteRestaurant = (plats: PlatBW[]): PlatBW => plats.reduce((a, p) => (MENU_RESTAURANT[p] > MENU_RESTAURANT[a] ? p : a), plats[0]);
 
 /**
  * LE BRAQUAGE (il a quitté la roue de l'Express : le Wagon-Restaurant a pris ses cases ; il rejoindra la roue du Casse,
@@ -751,7 +753,7 @@ export const DUREES_BW: DureesBW = {
   revelePick: 7_000,
   introCourse: 3_000,
   sprint: 15_000,
-  introRestaurant: 3_000,
+  introRestaurant: 5_000,
   service: 11_000,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
@@ -1008,7 +1010,7 @@ export interface VueBonusBW {
    * Le Wagon-Restaurant : rien avant le service (les cloches restent fermées pendant le choix) ; au service, le plat de
    * chaque cloche, celle que le Baron dore et l'ordre où le chef les soulève.
    */
-  restaurant?: { plats: PlatBW[] | null; double: number | null; ordre: number[] | null };
+  restaurant?: { plats: PlatBW[] | null; double: number | null; ordre: number[] | null; vedette: PlatBW | null };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**
