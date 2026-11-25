@@ -9,10 +9,10 @@
  *   Toutes les cases ont la même chance (1 sur 30). Les cases chiffres paient ×2, ×3, ×5 et ×10 (mise comprise) ;
  *   les bonus, plus rares, paient gros (×5 à ×1 000) : ce que les petites cases ont perdu en passant de ×2,7 et ×3,3 à
  *   ×2 et ×3 a été rendu aux bonus, sous forme de nouveaux gros multiples (voir rtpBW).
- * - Les multiplicateurs : une fois les mises fermées, 3 à 7 cases de la roue reçoivent un multiplicateur (×5 à ×100).
+ * - Les multiplicateurs : une fois les mises fermées, le Top Slot pose un multiplicateur (×2 à ×200) sur un type de case.
  *   Si la roue s'arrête sur l'une d'elles, ses gains sont multipliés (pour un bonus : tous ses multiplicateurs, sauf les
- *   jackpots, qui restent fixes). Choix du créateur : la roue est le jeu généreux du salon ; multiplicateurs compris,
- *   chaque mise rend en moyenne environ 1,7 fois ce qu'elle coûte (rtpBW).
+ *   jackpots, qui restent fixes). Choix du créateur : un jeu honnête, comme un vrai show ; multiplicateurs compris,
+ *   chaque case rend en moyenne environ 97 % de ce qu'on y mise (rtpBW).
  * - Tout est tiré par le serveur avant les animations : la case d'arrêt au départ de la roue, et toutes les récompenses
  *   cachées d'un bonus dès qu'il commence. Les choix du joueur désignent l'une de ces récompenses cachées ; aucune
  *   animation ne décide de rien.
@@ -60,20 +60,35 @@ export const MAX_MANCHE_BW = 1_000_000_000;
 // Les multiplicateurs : le Top Slot, une fois les mises fermées
 
 /**
- * Le Top Slot : au-dessus de la roue, deux rouleaux s'arrêtent sur une case (l'une des 9, autant de chances pour
- * chacune) et un multiplicateur ; toutes les cases de ce type sur la roue reçoivent ce multiplicateur. Un seul
- * multiplicateur par manche.
+ * Le Top Slot : au-dessus de la roue, deux rouleaux s'arrêtent sur une case et un multiplicateur ; toutes les cases de
+ * ce type sur la roue reçoivent ce multiplicateur. Un seul multiplicateur par manche.
+ *
+ * La roue est un jeu honnête, comme un vrai show : chaque case rend environ 97 % de ce qu'on y mise (la maison garde
+ * 3 %). Pour cela, le Top Slot ne tombe pas aussi souvent sur chaque case : souvent sur les petites cases (qui en ont
+ * besoin), rarement sur le Contrôleur (son trésor cache déjà un jackpot) et presque jamais sur le Rapide de Minuit.
  */
-/** Les multiplicateurs du Top Slot (×2 à ×200), et leur poids : ×14,68 en moyenne. */
+/** Les multiplicateurs du Top Slot (×2 à ×200), et leur poids : ×4,2 en moyenne. */
 export const MULTIPLICATEURS_BW: [number, number][] = [
-  [2, 30],
-  [3, 22],
-  [5, 18],
-  [10, 12],
-  [20, 8],
-  [50, 6],
-  [100, 3],
-  [200, 1.93],
+  [2, 64],
+  [3, 20],
+  [5, 11],
+  [10, 5.5],
+  [20, 2.2],
+  [50, 0.9],
+  [100, 0.3],
+  [200, 0.1],
+];
+/** Sur quelle case tombe le Top Slot (sur 1 000) : chaque case y trouve juste de quoi rendre 97 %. */
+export const CASES_TOP_SLOT_BW: TableBW<CaseBW> = [
+  ['x1', 193],
+  ['x2', 193],
+  ['x5', 142],
+  ['x10', 142],
+  ['controleur', 22],
+  ['course', 101],
+  ['chaudiere', 101],
+  ['restaurant', 104],
+  ['express', 4],
 ];
 /** Un tirage du Top Slot : la case multipliée et son multiplicateur. */
 export interface TirageTopSlotBW {
@@ -524,11 +539,11 @@ export const perceeCasseBW = (k: number) => CASSE_BW.premiere + (k - 1) * CASSE_
 export const descenteCasseBW = (etage: number) => perceeCasseBW(etage) + (etage >= ETAGES_BRAQUAGE.length ? CASSE_BW.siecle : CASSE_BW.alarme + CASSE_BW.fuite);
 
 /**
- * Le Top Slot d'une manche : une case et son multiplicateur. À l'heure de pointe, le multiplicateur vaut au moins ×5
- * (une table sans ×2 ni ×3, avec moins de très gros) : la roue rend autant en moyenne.
+ * Le Top Slot d'une manche : une case et son multiplicateur. À l'heure de pointe, le multiplicateur vaut au moins ×3
+ * (une table sans ×2, avec moins de très gros) : la roue rend autant en moyenne.
  */
 export function tirerTopSlotBW(h: Hasard, pointe = false): TirageTopSlotBW[] {
-  const c = CASES_BW[Math.min(CASES_BW.length - 1, Math.floor(h() * CASES_BW.length))];
+  const c = tirerTable(CASES_TOP_SLOT_BW, h);
   return [{ c, x: tirerTable(pointe ? MULTIPLICATEURS_POINTE_BW : MULTIPLICATEURS_BW, h) }];
 }
 /** Les cases de la roue multipliées par le Top Slot (toutes celles du type tiré). */
@@ -545,16 +560,17 @@ export const tirerMultiplicateursBW = (h: Hasard, pointe = false): BoostBW[] => 
 // -------------------------------------------------------------------------------------------------------------
 // Les événements de la gare (heure de Paris)
 
-/** L'heure de pointe : chaque soir de 19 h à 20 h, le Top Slot donne toujours au moins ×5. */
+/** L'heure de pointe : chaque soir de 19 h à 20 h, le Top Slot donne toujours au moins ×3. */
 export const HEURE_DE_POINTE_BW = { debut: 19, fin: 20 };
-/** La table du Top Slot à l'heure de pointe : jamais moins de ×5, moins de très gros (×14,73 en moyenne). */
+/** La table du Top Slot à l'heure de pointe : jamais moins de ×3, moins de très gros (×4,2 en moyenne, comme d'habitude). */
 export const MULTIPLICATEURS_POINTE_BW: [number, number][] = [
-  [5, 52],
-  [10, 25],
-  [20, 12],
-  [50, 8],
-  [100, 2.4],
-  [200, 0.4],
+  [3, 102],
+  [5, 11],
+  [10, 4.5],
+  [20, 1.6],
+  [50, 0.6],
+  [100, 0.2],
+  [200, 0.08],
 ];
 /** Le Grand Départ : le samedi et le dimanche de 18 h à 22 h, l'XP compte double sur la roue. */
 export const GRAND_DEPART_BW = { jours: [6, 0], debut: 18, fin: 22 };
@@ -601,36 +617,36 @@ export const multiplicateurDe = (boosts: BoostBW[] | null | undefined, i: number
  * - Les Alpes (le train file sans s'arrêter), puis Venise : chaque wagon restant ouvre un coffre (×10 à ×1 000).
  * - Tunnel des Balkans : la police décroche 2 des 3 wagons restants.
  * - Istanbul : le dernier wagon arrive et ouvre le Coffre du Baron (×50 à ×10 000).
- * Aucun petit multiplicateur : tout ce qui s'ouvre vaut ×10 au moins. Le multiplicateur de la roue multiplie tout :
- * c'est le bonus le plus généreux de la roue.
+ * Aucun petit multiplicateur : tout ce qui s'ouvre vaut ×10 au moins (le plus souvent ×10, les gros coffres sont rares).
+ * Le multiplicateur de la roue multiplie tout (le Top Slot n'y tombe presque jamais).
  */
 export const NB_WAGONS = 5;
 /** Combien de wagons la police décroche dans chaque tunnel (5 → 3 → 1). */
 export const DECROCHES_PAR_TUNNEL = [2, 2];
 export const BUTIN_PARIS: TableBW<number> = [
-  [10, 80],
-  [25, 15],
-  [50, 4],
-  [100, 1],
+  [10, 97],
+  [25, 2.4],
+  [50, 0.5],
+  [100, 0.1],
 ];
 export const COFFRES_VENISE: TableBW<number> = [
-  [10, 75],
-  [25, 18],
-  [50, 5],
-  [100, 1.5],
-  [250, 0.4],
-  [500, 0.1],
-  [1000, 0.03],
+  [10, 96],
+  [25, 3],
+  [50, 0.7],
+  [100, 0.2],
+  [250, 0.07],
+  [500, 0.02],
+  [1000, 0.01],
 ];
 export const COFFRE_DU_BARON: TableBW<number> = [
-  [50, 72],
-  [100, 18],
-  [250, 6],
-  [500, 2.3],
-  [1000, 1],
-  [2500, 0.3],
-  [5000, 0.08],
-  [10000, 0.02],
+  [50, 96.5],
+  [100, 2.2],
+  [250, 0.8],
+  [500, 0.35],
+  [1000, 0.1],
+  [2500, 0.04],
+  [5000, 0.008],
+  [10000, 0.002],
 ];
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -993,28 +1009,29 @@ export function esperanceBonusBW(type: BonusBW): { multipliable: number; jackpot
   }
 }
 /**
- * Ce que les multiplicateurs ajoutent en moyenne à une case : le Top Slot tire 1 case sur 9 par manche, à ×14,68 en
- * moyenne, soit ×2,52 (à l'heure de pointe, au moins ×5 : ×14,73 en moyenne, autant).
+ * Ce que les multiplicateurs ajoutent en moyenne à une case : le Top Slot tombe sur elle avec sa chance (sur 1 000), à
+ * ×4,2 en moyenne (à l'heure de pointe, au moins ×3 : autant en moyenne).
  */
-export function facteurMultiplicateursBW(pointe = false): number {
+export function facteurMultiplicateursBW(c: CaseBW, pointe = false): number {
   const table = pointe ? MULTIPLICATEURS_POINTE_BW : MULTIPLICATEURS_BW;
-  const e = table.reduce((s, [x, p]) => s + x * p, 0) / table.reduce((s, [, p]) => s + p, 0);
-  // Chacune des 9 cases a autant de chances d'être tirée, une seule par manche.
-  return 1 + (e - 1) / CASES_BW.length;
+  const e = esperanceTable(table);
+  const total = CASES_TOP_SLOT_BW.reduce((s, [, p]) => s + p, 0);
+  const q = (CASES_TOP_SLOT_BW.find(([x]) => x === c)?.[1] ?? 0) / total;
+  return 1 + q * (e - 1);
 }
 /** Ce que rend chaque mise en moyenne (multiplicateurs compris). */
-export function rtpBW(): Record<CaseBW, number> {
-  const F = facteurMultiplicateursBW();
+export function rtpBW(pointe = false): Record<CaseBW, number> {
+  const F = (c: CaseBW) => facteurMultiplicateursBW(c, pointe);
   const p = (c: CaseBW) => COMPOSITION_BW[c] / NB_CASES_BW;
   const bonus = (c: BonusBW) => {
     const e = esperanceBonusBW(c);
-    return p(c) * (e.multipliable * F + e.jackpots);
+    return p(c) * (e.multipliable * F(c) + e.jackpots);
   };
   return {
-    x1: p('x1') * GAINS_CHIFFRES_BW.x1 * F,
-    x2: p('x2') * GAINS_CHIFFRES_BW.x2 * F,
-    x5: p('x5') * GAINS_CHIFFRES_BW.x5 * F,
-    x10: p('x10') * GAINS_CHIFFRES_BW.x10 * F,
+    x1: p('x1') * GAINS_CHIFFRES_BW.x1 * F('x1'),
+    x2: p('x2') * GAINS_CHIFFRES_BW.x2 * F('x2'),
+    x5: p('x5') * GAINS_CHIFFRES_BW.x5 * F('x5'),
+    x10: p('x10') * GAINS_CHIFFRES_BW.x10 * F('x10'),
     controleur: bonus('controleur'),
     course: bonus('course'),
     chaudiere: bonus('chaudiere'),
