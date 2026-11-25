@@ -1,0 +1,68 @@
+/* La Fontaine de champagne (la roue du Bal) : le bar du Grand Hôtel, la pyramide de coupes sur la table nappée.
+   Tout est placé par CasinoFontaine.tsx (positions en pixels) ; ici, les habits et les animations. */
+
+.bw-bonus.fontaine { background: #0a0504; }
+.fc { position: absolute; inset: 0; overflow: hidden; background: #0a0504; color: #fff1c4; container-type: size; contain: layout; }
+.fc-bar { position: absolute; inset: 0; background-size: cover; background-position: 50% 60%; }
+/* La flaque de lumière sur la table. */
+.fc-lumiere { position: absolute; left: 50%; bottom: 0; width: 90cqw; height: 80cqh; translate: -50% 0; background: radial-gradient(50% 55% at 50% 65%, rgba(255, 214, 140, 0.32), transparent 70%); mix-blend-mode: screen; pointer-events: none; }
+
+.fc-table, .fc-maitre, .fc-sabre, .fc-pop, .fc-bouchon { position: absolute; height: auto; max-width: none; pointer-events: none; }
+.fc-table { z-index: 5; filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.65)); }
+.fc-maitre { z-index: 4; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.55)); }
+/* Le maître se tient derrière la pyramide : le bas de son escabeau se fond dans l'ombre. */
+.fc-maitre { -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent 62%); mask-image: linear-gradient(180deg, #000 40%, transparent 62%); }
+.fc-sabre { z-index: 30; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.6)); }
+.fc-pop { z-index: 31; mix-blend-mode: screen; transform-origin: 30% 70%; }
+.fc-bouchon { z-index: 32; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.5)); }
+
+/* Les coupes. */
+.fc-coupe { position: absolute; display: block; pointer-events: none; }
+.fc-coupe > img { display: block; width: 100%; height: auto; }
+.fc-coupe > img:first-child { filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45)); }
+.fc-coupe > img.pleine { position: absolute; left: 0; top: 0; filter: drop-shadow(0 0 6px rgba(255, 210, 110, 0.6)); }
+.fc-coupe.remplie > img:first-child { filter: drop-shadow(0 0 8px rgba(255, 215, 120, 0.55)); }
+.fc-coupe.gagnante { animation: fc-gagnante 0.8s ease-in-out infinite alternate; }
+@keyframes fc-gagnante { to { filter: drop-shadow(0 0 18px rgba(255, 226, 140, 1)) brightness(1.2); scale: 1.06; } }
+/* La coupe pleine déborde : une éclaboussure sur son bord. */
+.fc-deborde { position: absolute; left: 35%; top: -40%; width: 110%; height: auto; max-width: none; mix-blend-mode: screen; opacity: 0.85; animation: fc-deborde 0.5s ease-out both; }
+@keyframes fc-deborde { from { opacity: 0; scale: 0.4; } 40% { opacity: 1; } to { opacity: 0.55; } }
+
+/* Les filets de champagne : un trait doré qui coule, des bulles qui défilent dedans. */
+.fc-filets { position: absolute; left: 0; top: 0; z-index: 25; pointer-events: none; overflow: visible; }
+.fc-filet { fill: none; stroke: url(#fc-or); stroke-linecap: round; filter: drop-shadow(0 0 3px rgba(255, 220, 140, 0.8)); }
+.fc-bulles { fill: none; stroke: rgba(255, 252, 235, 0.9); stroke-linecap: round; stroke-dasharray: 0.02 0.05; animation: fc-coule 0.5s linear infinite; }
+@keyframes fc-coule { to { stroke-dashoffset: -0.07; } }
+
+/* Le choix : un bouton sur chaque coupe du bas ; son multiplicateur sur le bord de la nappe. */
+.fc-choix { position: absolute; z-index: 26; padding: 0; border: 0; border-radius: 40% 40% 12% 12%; background: none; min-height: 0; color: inherit; font: inherit; }
+.fc-choix:disabled { cursor: default; opacity: 1; }
+.fc.fc-e-coupes .fc-choix:not(:disabled) { cursor: pointer; animation: fc-invite 1.3s ease-in-out infinite; }
+@keyframes fc-invite { 50% { box-shadow: 0 0 14px 2px rgba(255, 215, 110, 0.55); background: rgba(255, 220, 140, 0.08); } }
+.fc-choix.mienne { box-shadow: 0 0 16px 3px rgba(255, 215, 110, 0.9); background: rgba(255, 220, 140, 0.12); }
+.fc-nb { position: absolute; right: -6px; top: -6px; min-width: 20px; padding: 0 5px; border-radius: 99px; background: #ffd774; color: #2a0a04; font-style: normal; font-weight: 900; font-size: 11px; line-height: 20px; text-align: center; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.fc-toi { position: absolute; left: 50%; top: -4px; padding: 0 7px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #c98a1c); color: #2a0a04; font-style: normal; font-size: 10px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; transform: translate(-50%, -100%); white-space: nowrap; }
+.fc-multi { position: absolute; z-index: 27; translate: -50% 0; padding: 0 6px 1px; border-radius: 8px; border: 1px solid rgba(214, 168, 75, 0.9); background: rgba(30, 10, 10, 0.9); font-family: 'Limelight', var(--titre), serif; font-size: clamp(11px, 2.2cqh, 18px); line-height: 1.25; color: #fff1c4; white-space: nowrap; pointer-events: none; }
+.fc-multi.gros { border-color: #ffd774; color: #ffd774; box-shadow: 0 0 10px rgba(255, 210, 110, 0.5); }
+.fc-multi.mienne { outline: 2px solid #ffd774; outline-offset: 1px; }
+.fc-multi.gagne { scale: 1.35; background: radial-gradient(120% 140% at 50% 0%, rgba(120, 82, 14, 0.97), rgba(30, 16, 4, 0.97)); box-shadow: 0 0 20px rgba(255, 210, 110, 0.95); transition: scale 0.3s cubic-bezier(0.3, 1.6, 0.5, 1); }
+
+/* Les annonces. */
+.fc-annonce { position: absolute; left: 50%; bottom: 3%; z-index: 40; padding: 6px 22px 8px; border-radius: 16px; border: 2px solid #d6a84b; background: radial-gradient(130% 150% at 50% 0%, rgba(80, 22, 26, 0.95), rgba(14, 6, 6, 0.95)); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.7); transform: translateX(-50%); white-space: nowrap; pointer-events: none; animation: fc-annonce 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.fc-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 3.8cqw, 30px); color: #ffd774; }
+@keyframes fc-annonce { from { opacity: 0; transform: translateX(-50%) scale(0.5); } }
+.fc-resultat { position: absolute; left: 50%; top: calc(56px + 3%); z-index: 40; display: grid; justify-items: center; padding: 6px 22px 8px; border-radius: 16px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(110, 76, 14, 0.96), rgba(30, 14, 4, 0.96)); box-shadow: 0 0 30px rgba(255, 210, 110, 0.6), 0 12px 24px rgba(0, 0, 0, 0.7); transform: translateX(-50%); white-space: nowrap; pointer-events: none; animation: fc-annonce 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.fc-resultat small { font-size: clamp(10px, 1.6cqw, 13px); font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: #ffcf6b; }
+.fc-resultat strong { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: clamp(28px, 6cqw, 52px); line-height: 1.05; color: #fff1c4; text-shadow: 0 0 16px rgba(255, 200, 110, 0.9); }
+.fc-resultat.trinque { border-color: #fff0b0; box-shadow: 0 0 44px rgba(255, 225, 140, 0.95), 0 12px 24px rgba(0, 0, 0, 0.7); }
+
+/* Le résultat de la manche attend que le champagne soit arrivé. */
+.bw-bonus.fontaine .bw-bonus-resultat { animation-delay: 1.8s; animation-fill-mode: both; }
+
+@media (max-width: 640px) {
+  .fc-resultat { top: 96px; }
+  .fc-multi { font-size: 10px; padding: 0 3px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fc-bulles, .fc-coupe.gagnante, .fc-choix { animation: none !important; }
+}
