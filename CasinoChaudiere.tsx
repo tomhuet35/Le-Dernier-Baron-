@@ -204,9 +204,7 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
   // Mon sifflet.
   const [envoi, setEnvoi] = useState(false);
   const monSifflet = c?.monSifflet ?? null;
-  // (le sifflet s'ouvre à ×10, une fois la chaudière chauffée)
-  const chauffe = montee && m < CHAUDIERE_BW.depart;
-  const peut = montee && !chauffe && b.mise > 0 && monSifflet === null && !envoi;
+  const peut = montee && b.mise > 0 && monSifflet === null && !envoi;
   const siffler = () => {
     if (!peut) return;
     setEnvoi(true);
@@ -347,11 +345,10 @@ export function BonusChaudiere({ v, b, nom, onSiffler }: { v: VueBW; b: VueBonus
                   <b>{fmt(monSifflet)}</b>
                   <small>+{dollars(Math.floor(b.mise * monSifflet * M))}</small>
                 </>
-              ) : chauffe || nom === 'intro' ? (
+              ) : nom === 'intro' ? (
                 <>
                   <span>{tr('Ça chauffe…', 'Warming up…')}</span>
                   <b>{fmt(arrondiChaudiere(affiche))}</b>
-                  <small>{tr(`Sifflet ouvert à ${fmt(CHAUDIERE_BW.depart)}`, `Whistle opens at ${fmt(CHAUDIERE_BW.depart)}`)}</small>
                 </>
               ) : (
                 <>
