@@ -293,37 +293,30 @@ export function BonusControleur({ v, b, nom, ouvert, choisir, roue }: { v: VueBW
           d'une lueur jaune. */}
       {enChoix && (
         <div className="ct-portes-choix" role="group" aria-label={tr('Choisis ton compartiment', 'Pick your compartment')}>
-          {[0, 1].map((r) => (
-            <div key={r} className="ct-rangee">
-              <div className="ct-rangee-portes">
-                {Array.from({ length: NB_COMPARTIMENTS / 2 }, (_, j) => {
-                  const k = r * (NB_COMPARTIMENTS / 2) + j;
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      className={`ct-porte choix ${mien === k ? 'mienne' : ''} ${mien !== null && mien !== k ? 'autre' : ''}`}
-                      style={{ '--k': j } as CSSProperties}
-                      onClick={() => choisir(k)}
-                      disabled={!ouvert}
-                      aria-pressed={mien === k}
-                      aria-label={tr(`Compartiment ${k + 1}`, `Compartment ${k + 1}`)}
-                    >
-                      <i className="ct-lueur-choix" />
-                      <img className="ct-battant" src={IMG('ct-porte')} alt="" draggable={false} />
-                      <b className="ct-numero">{k + 1}</b>
-                      {(mien === k || (salon[k] ?? 0) > 0) && (
-                        <span className="ct-caches">
-                          {mien === k && <i>★</i>}
-                          {(salon[k] ?? 0) > 0 && <small>{salon[k]}</small>}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <div className="ct-portes-grille">
+            {Array.from({ length: NB_COMPARTIMENTS }, (_, k) => (
+              <button
+                key={k}
+                type="button"
+                className={`ct-porte-choix ${mien === k ? 'mienne' : ''} ${mien !== null && mien !== k ? 'autre' : ''}`}
+                style={{ '--k': k } as CSSProperties}
+                onClick={() => choisir(k)}
+                disabled={!ouvert}
+                aria-pressed={mien === k}
+                aria-label={tr(`Compartiment ${k + 1}`, `Compartment ${k + 1}`)}
+              >
+                <i className="ct-lueur-choix" />
+                <img src={IMG('ct-porte')} alt="" draggable={false} />
+                <b className="ct-numero">{k + 1}</b>
+                {(mien === k || (salon[k] ?? 0) > 0) && (
+                  <span className="ct-caches">
+                    {mien === k && <i>★</i>}
+                    {(salon[k] ?? 0) > 0 && <small>{salon[k]}</small>}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -368,10 +361,10 @@ export function BonusControleur({ v, b, nom, ouvert, choisir, roue }: { v: VueBW
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// L'intro (8 s) : « Le sifflet dans la nuit ». La roue est encore là ; ses lumières vacillent et s'éteignent d'un coup.
+// L'intro (7,3 s) : « Le sifflet dans la nuit ». La roue est encore là ; ses lumières vacillent et s'éteignent d'un coup.
 // Dans le noir, un sifflet ; le faisceau d'une lanterne balaie l'écran et n'éclaire que ce qu'il touche : une porte de
-// compartiment, une poignée qui tourne, le contrôleur sous sa casquette, sifflet aux lèvres. Puis la lumière inonde
-// l'écran : on est dans le couloir, dont les numéros des portes s'allument un à un.
+// compartiment, une poignée qui tourne, le contrôleur sous sa casquette, sifflet aux lèvres. Puis sa lanterne l'éclaire
+// tout entier, l'image s'assombrit : « Cachez-vous ! », et les huit portes du choix apparaissent devant lui.
 
 const INTRO_CT = { noir: 900, sifflet: 1_250, porte: 1_500, poignee: 3_050, controleur: 4_600, lumiere: 6_300 };
 
@@ -384,8 +377,7 @@ function IntroControleur({ t0, roue }: { t0: number; roue?: ReactNode }) {
       [INTRO_CT.sifflet, () => jouerEffet('bw_sifflet', { volume: 1, vitesse: 1.15 })],
       [INTRO_CT.poignee + 650, () => jouerEffet('cti_grince', { volume: 0.9 })],
       [INTRO_CT.controleur + 750, () => jouerEffet('bw_sifflet', { volume: 1, vitesse: 1.25 })],
-      [INTRO_CT.lumiere, () => jouerEffet('gd_eclat', { volume: 0.7 })],
-      [INTRO_CT.lumiere + 250, () => jouerEffet('ct_toc', { volume: 0.6 })],
+      [INTRO_CT.lumiere + 100, () => jouerEffet('gd_eclat', { volume: 0.55 })],
     ];
     const ids = sons.filter(([x]) => x >= t0).map(([x, f]) => window.setTimeout(f, x - t0));
     return () => ids.forEach((i) => window.clearTimeout(i));
