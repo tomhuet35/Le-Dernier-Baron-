@@ -64,23 +64,14 @@ describe('The Baron’s Wheel : les règles', () => {
     for (let i = 0; i < 30; i++) expect(ROUE_BW[i]).not.toBe(ROUE_BW[(i + 1) % 30]);
   });
 
-  it('est le jeu généreux du salon (calcul exact) : les petites cases rendent moins, les bonus davantage, l’Express bien plus', () => {
-    const r = rtpBW();
-    // Les petites cases (×2 et ×3) ont cédé une part de leur retour aux bonus ; ×5 et ×10 rendent environ 1,7 fois la mise.
-    expect(r.x1).toBeCloseTo(1.515, 2);
-    expect(r.x2).toBeCloseTo(1.515, 2);
-    for (const c of ['x5', 'x10'] as const) {
-      expect(r[c]).toBeGreaterThan(1.6);
-      expect(r[c]).toBeLessThan(1.75);
+  it('est un jeu honnête (calcul exact) : chaque case rend environ 97 % de la mise, à toute heure', () => {
+    for (const pointe of [false, true]) {
+      const r = rtpBW(pointe);
+      for (const c of CASES_BW) {
+        expect(r[c]).toBeGreaterThan(0.965);
+        expect(r[c]).toBeLessThan(0.975);
+      }
     }
-    // Ce que les petites cases ont perdu est rendu aux quatre bonus (environ 0,15 chacun) : 1,8 à 1,9 fois la mise.
-    for (const c of ['controleur', 'course', 'chaudiere', 'restaurant'] as const) {
-      expect(r[c]).toBeGreaterThan(1.8);
-      expect(r[c]).toBeLessThan(1.9);
-    }
-    // L'Express, le bonus le plus généreux de la roue.
-    for (const c of CASES_BW) if (c !== 'express') expect(r.express).toBeGreaterThan(1.8 * r[c]);
-    expect(r.express).toBeLessThan(4.5);
   });
 
   it('tire au Top Slot une seule case par manche et un multiplicateur de ×2 à ×200', () => {
@@ -100,8 +91,9 @@ describe('The Baron’s Wheel : les règles', () => {
       expect(b.length).toBe(COMPOSITION_BW[t[0].c]);
       for (const x of b) expect(ROUE_BW[x.i]).toBe(t[0].c);
     }
-    // Autant de chances pour chacune des 9 cases.
-    for (const c of CASES_BW) expect((cases.get(c) ?? 0) / N).toBeCloseTo(1 / 9, 1);
+    // Chaque case avec sa chance (souvent les petites, presque jamais l'Express).
+    expect((cases.get('x1') ?? 0) / N).toBeCloseTo(0.193, 1);
+    expect((cases.get('express') ?? 0) / N).toBeLessThan(0.01);
     expect([...vus].sort((a, b) => a - b)).toEqual([2, 3, 5, 10, 20, 50, 100, 200]);
     expect(multiplicateurDe([{ i: 7, x: 25 }], 7)).toBe(25);
   });
@@ -111,8 +103,8 @@ describe('The Baron’s Wheel : les règles', () => {
     for (const c of CASES_BW) expect(s.frequences[c] / s.manches).toBeCloseTo(COMPOSITION_BW[c] / 30, 2);
     // Le Top Slot (jusqu'à ×200 sur une seule case) rend la simulation plus dispersée : la moyenne exacte est vérifiée
     // par le calcul plus haut.
-    expect(s.retourTotal).toBeGreaterThan(1.6);
-    expect(s.retourTotal).toBeLessThan(2.5);
+    expect(s.retourTotal).toBeGreaterThan(0.85);
+    expect(s.retourTotal).toBeLessThan(1.1);
     expect(s.jackpots.grand).toBeLessThan(s.jackpots.mini);
     expect(s.volatilite).toBeGreaterThan(1);
   });
@@ -217,14 +209,14 @@ describe('The Baron’s Wheel : les règles', () => {
 
 
 describe('The Baron Express : les événements de la gare', () => {
-  it('à l’heure de pointe, au moins ×5, sans changer ce que rend la roue', () => {
-    expect(Math.abs(facteurMultiplicateursBW(true) / facteurMultiplicateursBW() - 1)).toBeLessThan(0.01);
+  it('à l’heure de pointe, au moins ×3, sans changer ce que rend la roue', () => {
+    for (const c of CASES_BW) expect(Math.abs(facteurMultiplicateursBW(c, true) / facteurMultiplicateursBW(c) - 1)).toBeLessThan(0.01);
     let k = 0;
     const h = () => ((k = (k * 9301 + 49297) % 233280) / 233280);
     for (let j = 0; j < 200; j++) {
       const t = tirerTopSlotBW(h, true);
       expect(t).toHaveLength(1);
-      expect(t[0].x).toBeGreaterThanOrEqual(5);
+      expect(t[0].x).toBeGreaterThanOrEqual(3);
     }
   });
 
