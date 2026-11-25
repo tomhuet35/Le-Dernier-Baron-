@@ -39,7 +39,9 @@
 .dr-draisine[data-pose='chute'] > img.chute { visibility: visible; animation: dr-chute 1.2s cubic-bezier(0.3, 0.6, 0.4, 1) both; }
 @keyframes dr-chute { 0% { transform: rotate(0deg); } 30% { transform: translate(6%, -10%) rotate(-10deg); } 100% { transform: translate(14%, 18%) rotate(8deg); } }
 .dr-draisine.mienne > img.a, .dr-draisine.mienne > img.b { filter: drop-shadow(0 0 calc(var(--u) * 0.02) #ffd774) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.55)); }
-.dr-poussiere { position: absolute; right: 70%; bottom: -4%; width: 120%; height: auto; opacity: calc(var(--vitesse, 0) * 0.8); transform-origin: 100% 100%; scale: calc(0.4 + var(--vitesse, 0) * 0.7) 1; pointer-events: none; }
+.dr-poussiere { position: absolute; right: 70%; bottom: -4%; width: 120%; height: auto; opacity: calc(var(--vitesse, 0) * 0.8); transform-origin: 100% 100%; scale: calc(0.4 + var(--vitesse, 0) * 0.7) 1; pointer-events: none; animation: dr-poussiere 0.85s ease-in-out infinite alternate; }
+/* (la poussière gonfle et s'étire, elle ne reste pas figée) */
+@keyframes dr-poussiere { from { transform: scaleY(0.9) skewX(0deg); } to { transform: translateX(-3%) scaleY(1.08) skewX(-5deg); } }
 .dr-draisine[data-pose='chute'] .dr-poussiere { opacity: 0.9; scale: 1.2; }
 .dr-etincelles { position: absolute; right: 20%; bottom: -6%; width: 80% !important; height: auto; mix-blend-mode: screen; animation: dr-crepite 0.12s steps(2) infinite; }
 @keyframes dr-crepite { 50% { opacity: 0.6; transform: scaleY(0.85); } }

@@ -271,10 +271,12 @@
   .bwx-baron { right: -4%; height: 46%; }
   .bwx-accroche { left: 4%; right: auto; top: auto; bottom: 15%; max-width: 62%; padding: 6px 12px 8px; }
   .bwx-chef { display: none; }
-  .bwx-choix { left: 50%; top: 50%; gap: 8px; width: 94%; }
-  .bwx-choix-wagon { flex-basis: 44%; padding: 6px 6px 5px; }
-  .bwx-terminus { width: 80%; top: 50px; }
-  .bwx-gagnant { top: calc(50px + 80cqw * 0.36); }
+  /* (entre le titre du bonus, en haut, et la consigne, en bas) */
+  .bwx-choix { left: 50%; top: 86px; bottom: 104px; align-content: center; gap: 6px 10px; width: 92%; transform: translateX(-50%); }
+  .bwx-choix-wagon { flex-basis: 38%; gap: 2px; padding: 4px 6px 4px; border-radius: 12px; }
+  .bwx-choix-wagon span { font-size: 12px; }
+  .bwx-terminus { width: 72%; top: 88px; }
+  .bwx-gagnant { top: calc(88px + 72cqw * 0.36); }
   .bwx-coffre-baron { top: 62%; padding: 10px 16px 12px; }
   .bwx-coffre-baron strong { white-space: normal; font-size: 22px; line-height: 1.15; }
   .bwx-coffre-baron strong.enorme { font-size: 25px; }
