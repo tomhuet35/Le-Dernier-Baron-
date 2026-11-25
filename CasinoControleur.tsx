@@ -33,6 +33,7 @@ export const IMAGES_CONTROLEUR_NOMS = [
   'ct-logo',
   'ct-couloir',
   'ct-porte',
+  'ct-plaque',
   'ct-porte-vide',
   'ct-porte-fouillee',
   'ct-porte-tresor',
@@ -255,7 +256,7 @@ export function BonusControleur({ v, b, nom, ouvert, choisir, roue }: { v: VueBW
             return (
               <div
                 key={k}
-                className={`ct-porte ${ov ? 'ouverte' : ''} ${feinteEnCours === k ? 'tremble' : ''} ${mien === k ? 'mienne' : ''} ${ov && k === tresor ? 'tresor' : ''} ${peutChoisir ? 'choix' : ''}`}
+                className={`ct-porte ${ov ? 'ouverte' : ''} ${feinteEnCours === k ? 'tremble' : ''} ${mien === k ? 'mienne' : ''} ${ov && k === tresor ? 'tresor' : ''} ${peutChoisir ? 'choix' : ''} ${enTournee && seg?.porte === k && !ov ? 'vise' : ''}`}
                 style={{ '--k': k } as CSSProperties}
                 {...(peutChoisir
                   ? { role: 'button', tabIndex: 0, 'aria-label': tr(`Compartiment ${k + 1}`, `Compartment ${k + 1}`), onClick: () => choisir(k), onKeyDown: (e: { key: string }) => (e.key === 'Enter' || e.key === ' ') && choisir(k) }
