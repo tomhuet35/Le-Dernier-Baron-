@@ -119,9 +119,9 @@ import type { DureesCouronne } from '../shared/couronne';
  * Chaudière peut aussi avoir son point d'explosion imposé).
  */
 const SPECTACLE_BW: { debut: number; fin: number; manches: { c: CaseBW; x?: number; explosion?: number }[] } = {
-  debut: Date.parse('2026-11-24T14:47:00+01:00'),
-  fin: Date.parse('2026-11-24T15:20:00+01:00'),
-  manches: [{ c: 'express' }, { c: 'chaudiere' }],
+  debut: Date.parse('2026-11-25T10:29:00+01:00'),
+  fin: Date.parse('2026-11-25T11:30:00+01:00'),
+  manches: [{ c: 'controleur' }, { c: 'course' }, { c: 'chaudiere' }, { c: 'restaurant' }, { c: 'express' }],
 };
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string; casino?: VueCasino };
