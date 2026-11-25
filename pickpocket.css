@@ -45,16 +45,10 @@
 /* B. L'éclat du collier, au ralenti ; une étoile de lumière traverse les diamants. */
 .ppi-plan.b { animation-name: ppi-b; }
 @keyframes ppi-b { 0%, 31.6% { opacity: 0; } 32.2%, 43.2% { opacity: 1; } 43.8%, 100% { opacity: 0; } }
-.ppi-cam { position: absolute; inset: 0; transform-origin: 52% 66%; animation: ppi-b-cam 9s linear var(--t0, 0ms) both; }
-.ppi-cam > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; max-width: none; }
+.ppi-plan.b > img:first-child { transform-origin: 52% 66%; animation: ppi-b-cam 9s linear var(--t0, 0ms) both; }
 @keyframes ppi-b-cam { 0%, 31.6% { transform: scale(1.04); } 44%, 100% { transform: scale(1.15); } }
-/* Les éclats : une étoile de lumière s'allume sur chaque diamant, l'une après l'autre. */
-.ppi-eclat, .pp-eclats > i { position: absolute; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; mix-blend-mode: screen; opacity: 0;
-  background: radial-gradient(circle, #fff 0 5%, rgba(255, 255, 255, 0.75) 9%, rgba(235, 242, 255, 0.25) 18%, transparent 30%), linear-gradient(90deg, transparent 48.4%, rgba(255, 255, 255, 0.95) 50%, transparent 51.6%), linear-gradient(0deg, transparent 48.4%, rgba(255, 255, 255, 0.95) 50%, transparent 51.6%), linear-gradient(45deg, transparent 49.2%, rgba(255, 255, 255, 0.45) 50%, transparent 50.8%), linear-gradient(-45deg, transparent 49.2%, rgba(255, 255, 255, 0.45) 50%, transparent 50.8%);
-  -webkit-mask-image: radial-gradient(circle, #000 25%, transparent 70%); mask-image: radial-gradient(circle, #000 25%, transparent 70%); }
-.ppi-eclat { width: 16cqh; }
-.ppi-plan.b .ppi-eclat { animation: pp-scintille 1.4s ease-in-out infinite; animation-delay: calc(var(--d) * -1.4s); }
-@keyframes pp-scintille { 0%, 55%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); } 72% { opacity: 1; transform: scale(1) rotate(18deg); } 86% { opacity: 0.4; transform: scale(0.6) rotate(30deg); } }
+.ppi-etoile { position: absolute; left: calc(50% + 4cqh); top: 63%; width: min(40cqh, 70cqw); height: auto; max-width: none; translate: -50% -50%; mix-blend-mode: screen; opacity: 0; animation: ppi-etoile 9s linear var(--t0, 0ms) both; }
+@keyframes ppi-etoile { 0%, 33.5% { opacity: 0; transform: scale(0.3) rotate(0deg); } 36.5% { opacity: 0.8; transform: scale(1) rotate(25deg); } 41.5%, 100% { opacity: 0; transform: scale(0.7) rotate(60deg); } }
 
 /* C. Le Pickpocket se faufile : un panoramique de gauche à droite à travers la foule. */
 .ppi-plan.c { animation-name: ppi-c; }
@@ -101,24 +95,14 @@
 @keyframes pp-arrivee { from { opacity: 0; filter: brightness(2.2); } }
 
 /* Tout ce qui est placé à chaque image. */
-.pp-objet, .pp-chapeau, .pp-eclats { position: absolute; left: 0; top: 0; height: auto; max-width: none; visibility: hidden; pointer-events: none; will-change: transform; transform-origin: 50% 100%; }
+.pp-objet, .pp-chapeau, .pp-lumiere, .pp-poursuite { position: absolute; left: 0; top: 0; height: auto; max-width: none; visibility: hidden; pointer-events: none; will-change: transform; transform-origin: 50% 100%; }
+.pp-poursuite { z-index: 4; mix-blend-mode: screen; }
 .pp-objet { z-index: 4; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.6)); }
-.pp-objet.collier { filter: drop-shadow(0 0 10px rgba(255, 245, 220, 0.7)) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.6)); }
-/* Les éclats sur les diamants du collier (la boîte du collier, placée à chaque image). */
-.pp-eclats { z-index: 7; aspect-ratio: 900 / 855; }
-.pp-eclats > i { width: 26%; animation: pp-scintille 1.6s ease-in-out infinite; }
-
-/* Le projecteur : la salle s'assombrit autour du collier retrouvé ; un faisceau tombe du plafond, plein de poussières. */
-.pp-projo { position: absolute; inset: 0; z-index: 6; pointer-events: none; opacity: var(--pj, 0); background: radial-gradient(ellipse var(--pr, 100px) calc(var(--pr, 100px) * 1.15) at var(--px, 50%) var(--py, 50%), transparent 35%, rgba(0, 0, 0, 0.7) 100%); }
-.pp-faisceau { position: absolute; left: 0; top: 0; z-index: 7; visibility: hidden; pointer-events: none; opacity: var(--pj, 0); overflow: hidden; mix-blend-mode: screen;
-  background: conic-gradient(from calc(180deg - var(--fa, 20deg)) at 50% -2%, transparent 0deg, rgba(255, 238, 205, 0.12) calc(var(--fa, 20deg) * 0.4), rgba(255, 240, 212, 0.34) calc(var(--fa, 20deg) * 0.8), rgba(255, 244, 220, 0.4) var(--fa, 20deg), rgba(255, 240, 212, 0.34) calc(var(--fa, 20deg) * 1.2), rgba(255, 238, 205, 0.12) calc(var(--fa, 20deg) * 1.6), transparent calc(var(--fa, 20deg) * 2));
-  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.25), #000 70%); mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.25), #000 70%); }
-.pp-faisceau::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: 0; height: 18%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 240, 210, 0.45), transparent); }
-.pp-faisceau > i { position: absolute; bottom: 4%; width: 3px; height: 3px; border-radius: 50%; background: rgba(255, 246, 225, 0.95); box-shadow: 0 0 4px rgba(255, 240, 210, 0.9); opacity: 0; animation: pp-poussiere 4s linear infinite; }
-@keyframes pp-poussiere { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 0.9; } 85% { opacity: 0.6; } 100% { opacity: 0; transform: translate(12px, -70cqh); } }
+.pp-objet.collier { filter: drop-shadow(0 0 12px rgba(255, 245, 220, 0.9)) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.6)); }
+.pp-lumiere { z-index: 7; mix-blend-mode: screen; transform-origin: 50% 50%; }
 
 /* Les chapeaux : les boutons du choix. */
-.pp-chapeau { z-index: 5; padding: 0; border: 0; background: none; min-height: 0; color: inherit; font: inherit; transform-origin: 50% 62%; }
+.pp-chapeau { z-index: 5; padding: 0; border: 0; background: none; min-height: 0; color: inherit; font: inherit; transform-origin: 30% 100%; }
 .pp-chapeau > img { display: block; width: 100%; height: auto; filter: drop-shadow(0 12px 10px rgba(0, 0, 0, 0.7)); transition: translate 0.2s, scale 0.2s, filter 0.3s; }
 .pp-chapeau:disabled { cursor: default; opacity: 1; }
 .pp.pp-e-mallettes .pp-chapeau { pointer-events: auto; }
@@ -147,16 +131,6 @@
 .pp-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(20px, 4.2cqw, 34px); color: #ffd774; text-shadow: 0 0 14px rgba(255, 200, 100, 0.6); }
 @keyframes pp-annonce { from { opacity: 0; transform: translateX(-50%) scale(0.5); } }
 
-/* Le noir : les lustres s'éteignent pendant les passes dans l'obscurité. */
-.pp-noir { position: absolute; inset: 0; z-index: 15; background: #000; opacity: 0; pointer-events: none; }
-
-/* La pluie de diamants, quand je retrouve le collier. */
-.pp-pluie { position: absolute; inset: 0; z-index: 16; overflow: hidden; pointer-events: none; }
-.pp-pluie > img { position: absolute; top: -8%; height: auto; max-width: none; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.85)); animation: pp-chute linear 2 both; }
-.pp-pluie > i { position: absolute; top: -5%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(255, 232, 170, 0.95), rgba(255, 200, 110, 0.4) 45%, transparent 70%); mix-blend-mode: screen; filter: blur(1.5px); animation: pp-chute-b linear 2 both; }
-@keyframes pp-chute { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(var(--derive, 0), 118cqh) rotate(var(--tour, 360deg)); } }
-@keyframes pp-chute-b { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 1; } 100% { opacity: 0.2; transform: translate(var(--derive, 0), 112cqh); } }
-
 /* Le résultat de la manche attend que mon chapeau soit levé (et le salut du voleur, s'il garde le collier). */
 .bw-bonus.pickpocket .bw-bonus-resultat { animation-delay: 4.4s; animation-fill-mode: both; }
 
@@ -168,5 +142,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pp-chapeau > img { animation: none !important; }
-  .ppi-plan > img, .ppi-cam, .ppi-traine, .pp-pluie > * { animation-name: none !important; }
+  .ppi-plan > img, .ppi-etoile, .ppi-traine { animation-name: none !important; }
 }
