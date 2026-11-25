@@ -169,12 +169,12 @@ export function calendrierControleur(tournee: PassageCT[]): { segments: SegmentC
     const cible = p.porte + 0.5 + DEVANT_CT;
     const d = Math.abs(cible - x);
     if (d > 0.01) {
-      const dt = Math.round(280 + 500 * Math.sqrt(d));
+      const dt = Math.round(420 + 760 * Math.sqrt(d));
       segments.push({ t0: t, t1: t + dt, type: 'marche', porte: p.porte, de: x, vers: cible, i: -1, feinte: null });
       t += dt;
       x = cible;
     }
-    const dt = p.feinte ? 1300 : 1350 + 80 * i;
+    const dt = p.feinte ? 1600 : 1700 + 110 * i;
     segments.push({ t0: t, t1: t + dt, type: p.feinte ? 'feinte' : 'ouvre', porte: p.porte, de: x, vers: x, i: p.feinte ? -1 : i, feinte: p.feinte });
     t += dt;
     if (!p.feinte) i += 1;
