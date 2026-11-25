@@ -199,7 +199,8 @@
 .wri-chef { position: absolute; left: 10%; top: 25.3%; height: 182.6%; aspect-ratio: 700 / 1226; animation: wr-monte 0.7s cubic-bezier(0.3, 1.2, 0.5, 1) calc(2350ms + var(--t0)) both; }
 .wri-chef > img:first-child { display: block; width: 100%; height: 100%; filter: drop-shadow(8px 8px 18px rgba(0, 0, 0, 0.6)); }
 /* La gerbe de feu, qui part du fond de la poêle. */
-.wri-flammes { position: absolute; left: 45.9%; top: -12.4%; width: 72%; height: auto; max-width: none; transform-origin: 50% 98%; opacity: 0; animation: wri-feu 0.65s cubic-bezier(0.2, 0.8, 0.3, 1.2) calc(3000ms + var(--t0)) both, wri-flamme 0.16s ease-in-out calc(3650ms + var(--t0)) infinite alternate; }
+/* (le pied du feu, à 46 % et 97 % de son image, posé au fond de la poêle : 81,6 % et 31 % du chef ; il naît dans la poêle) */
+.wri-flammes { position: absolute; left: 58.6%; top: 3.4%; width: 50%; height: auto; max-width: none; transform-origin: 46% 97%; -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 9%); mask-image: linear-gradient(to top, transparent 0%, #000 9%); opacity: 0; animation: wri-feu 0.65s cubic-bezier(0.2, 0.8, 0.3, 1.2) calc(3000ms + var(--t0)) both, wri-flamme 0.16s ease-in-out calc(3650ms + var(--t0)) infinite alternate; }
 @keyframes wri-feu { 0% { opacity: 0; transform: scale(0.08, 0.15); } 30% { opacity: 1; } 70% { transform: scale(1.08, 1.12); } 100% { opacity: 1; transform: none; } }
 @keyframes wri-flamme { from { scale: 1 1; } to { scale: 1.03 0.96; } }
 .wri-lueur { position: absolute; inset: 0; background: radial-gradient(circle at 44% 50%, rgba(255, 150, 50, 0.7), rgba(255, 110, 30, 0.25) 35%, transparent 65%); mix-blend-mode: screen; opacity: 0; animation: wri-lueur 3.2s ease-out calc(3000ms + var(--t0)) both; }
@@ -221,6 +222,6 @@
   .wri-secoue { --d: 52cqh; }
   .wri-cloche { width: 98cqw; }
   .wri-chef { left: -6%; top: 51%; height: 142.6%; }
-  .wri-plat { left: 75%; top: 58%; width: 42%; }
-  .wri-plat-vapeur { left: 75%; top: 42%; width: 12%; }
+  .wri-plat { left: 79%; top: 61%; width: 38%; }
+  .wri-plat-vapeur { left: 79%; top: 46%; width: 11%; }
 }

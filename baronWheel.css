@@ -470,3 +470,13 @@
 
 /* Le Top Slot dans le cadre de la roue, juste dessous : posé sur le quai, devant les rails. */
 .bw-plateau > .bw-topslot { z-index: 3; width: min(80%, 470px); margin: -7% 0 1%; }
+
+/* Les règles et les probabilités, repliées sous le récapitulatif de la manche. */
+.bw-regles { margin-top: 10px; border-top: 1px solid rgba(214, 168, 75, 0.35); padding-top: 8px; }
+.bw-regles > summary { display: flex; align-items: center; justify-content: center; gap: 8px; list-style: none; cursor: pointer; padding: 6px 10px; border-radius: 99px; color: var(--or-bw, #d6a84b); font-weight: 800; font-size: 14px; letter-spacing: 0.02em; user-select: none; }
+.bw-regles > summary::-webkit-details-marker { display: none; }
+.bw-regles > summary::after { content: '▾'; transition: transform 0.25s; }
+.bw-regles[open] > summary::after { transform: rotate(180deg); }
+.bw-regles > summary:hover { background: rgba(214, 168, 75, 0.12); }
+.bw-regles[open] > .cas-mention { animation: bw-regles-deroule 0.35s ease-out both; }
+@keyframes bw-regles-deroule { from { opacity: 0; transform: translateY(-6px); } }
