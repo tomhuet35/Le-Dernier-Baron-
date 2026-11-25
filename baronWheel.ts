@@ -825,7 +825,7 @@ export interface DureesBW {
   introDonne: number;
   donne: number;
   reveleDonne: number;
-  /** Le Pickpocket (le Bal du Grand Hôtel) : l'affiche, puis le retournement des chapeaux (le vol et le bonneteau : vol). */
+  /** Le Pickpocket (la roue du Bal) : l'intro « Le Vol du collier », puis le retournement des chapeaux (le collier posé et le bonneteau : vol). */
   introPick: number;
   revelePick: number;
   /** La Course des draisines : la présentation des quatre équipages, puis la course (feux, coup de pistolet, sprint). */
@@ -854,7 +854,7 @@ export const DUREES_BW: DureesBW = {
   choix: 10_000,
   descente: descenteCasseBW(5),
   // Le Bal : le vol du collier au milieu des danseurs, l'inspecteur, puis le bonneteau des trois chapeaux.
-  vol: 11_000,
+  vol: 6_500,
   // La course à trois : le départ ensemble, la séparation, ma voiture jusqu'au barrage ou au saut (voir COURSE_BW).
   poursuite: 24_000,
   revele: 5_500,
@@ -870,7 +870,7 @@ export const DUREES_BW: DureesBW = {
   introDonne: 2_500,
   donne: 6_000,
   reveleDonne: 7_500,
-  introPick: 2_500,
+  introPick: 9_000,
   revelePick: 7_000,
   introCourse: 8_500,
   sprint: 15_000,
