@@ -16,7 +16,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { DUREES_BW, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
 import { ValeurMultipliee } from './CasinoBaronExpress';
-import { PluieLingots } from './casinoOutils';
 import { tr } from './traduction';
 import { jouerEffet, mouvementReduit, type EffetSonore } from './ui';
 import './pickpocket.css';
@@ -36,8 +35,7 @@ export const IMAGES_PICKPOCKET_NOMS = [
   'ppb-collier',
   'ppb-montre',
   'ppb-bague',
-  'bw-pp-diamants',
-  'bw-pp-poursuite',
+  'ppb-diamant',
 ];
 
 /** Les rapports hauteur / largeur des objets. */
@@ -50,21 +48,55 @@ const TABLE = { w: 1672, h: 941, places: [580, 830, 1080], pose: 800, chapeau: 2
 
 const REF_VOL = DUREES_BW.vol;
 const REF_REVELE = DUREES_BW.revelePick;
-/** Le vol : le collier tombe sur le plateau, les chapeaux tombent (celui du milieu le couvre), puis le bonneteau. */
-const VOL = { collier: 250, pose: 800, chapeaux: [2_200, 2_450, 2_300], chute: 420, melange: 3_150 };
-/** Le bonneteau : les échanges de chapeaux (deux places) et leur durée, de plus en plus rapides. */
-const ECHANGES: [number, number][] = [
-  [0, 1],
-  [1, 2],
-  [0, 2],
-  [0, 1],
-  [1, 2],
-  [0, 2],
-  [0, 1],
-  [1, 2],
+/** Le vol : le collier tombe sur le plateau, les chapeaux tombent (celui du milieu le couvre), puis le tour. */
+const VOL = { collier: 250, pose: 800, chapeaux: [2_000, 2_250, 2_100], chute: 420, melange: 2_950 };
+/**
+ * Le tour de passe-passe : à chaque passe, deux chapeaux échangent leurs places ; l'un s'envole par-dessus l'autre en
+ * tournoyant, l'autre file en dessous. Deux fois, les lustres s'éteignent (noir) : quand la lumière revient, deux
+ * chapeaux ont changé de place dans l'obscurité.
+ */
+interface Passe {
+  a: number;
+  b: number;
+  d: number;
+  noir?: boolean;
+}
+const PASSES: Passe[] = [
+  { a: 0, b: 1, d: 520 },
+  { a: 1, b: 2, d: 470 },
+  { a: 0, b: 2, d: 430 },
+  { a: 0, b: 1, d: 420, noir: true },
+  { a: 1, b: 2, d: 380 },
+  { a: 0, b: 2, d: 340 },
+  { a: 1, b: 2, d: 420, noir: true },
 ];
-const DUREES_ECHANGES = ECHANGES.map((_, i) => Math.round(400 - i * 24));
-const DEBUTS_ECHANGES = DUREES_ECHANGES.map((_, i) => VOL.melange + DUREES_ECHANGES.slice(0, i).reduce((a, d) => a + d + 25, 0));
+const DEBUTS_PASSES = PASSES.map((_, i) => VOL.melange + PASSES.slice(0, i).reduce((a, p) => a + p.d + 40, 0));
+/** Le noir d'une passe dans l'obscurité : la lumière tombe, puis revient en hoquetant. */
+function noirA(s: number) {
+  let o = 0;
+  PASSES.forEach((p, i) => {
+    if (!p.noir) return;
+    const q = (s - DEBUTS_PASSES[i]) / p.d;
+    if (q <= 0 || q >= 1) return;
+    o = Math.max(o, q < 0.22 ? q / 0.22 : q < 0.7 ? 1 : q < 0.78 ? 0.35 : q < 0.84 ? 0.85 : (1 - q) / 0.16);
+  });
+  return o;
+}
+/** Les éclats du collier : où scintillent les diamants (en % de l'image du collier). */
+const ECLATS: [number, number][] = [
+  [50, 32],
+  [50, 43],
+  [50, 53],
+  [50, 64],
+  [50, 86],
+  [22, 28],
+  [78, 28],
+  [31, 46],
+  [69, 46],
+  [38, 60],
+  [62, 60],
+  [14, 14],
+];
 /** Le retournement : le premier chapeau des autres, le second, puis le mien ; un chapeau se lève en 450 ms. Si le
  * collier m'a échappé, le voleur salue (salut). */
 const RET = { premier: 500, second: 1500, mien: 3000, leve: 450, salut: 4_000 };
@@ -75,27 +107,29 @@ const lisse = (u: number) => {
   return x * x * (3 - 2 * x);
 };
 
-/** Où est chaque chapeau (place, et le déplacement en cours) pendant le bonneteau. */
-function chapeauxA(s: number): { place: number; vers: number; q: number; devant: boolean }[] {
+/** Où est chaque chapeau (place, et la passe en cours) pendant le tour. */
+function chapeauxA(s: number): { place: number; vers: number; q: number; haut: boolean; noir: boolean }[] {
   const place = [0, 1, 2];
-  const etat = place.map((p) => ({ place: p, vers: p, q: 0, devant: false }));
-  for (let i = 0; i < ECHANGES.length; i++) {
-    const [a, b] = ECHANGES[i];
-    const q = (s - DEBUTS_ECHANGES[i]) / DUREES_ECHANGES[i];
+  const etat = place.map((p) => ({ place: p, vers: p, q: 0, haut: false, noir: false }));
+  for (let i = 0; i < PASSES.length; i++) {
+    const { a, b, d, noir = false } = PASSES[i];
+    const q = (s - DEBUTS_PASSES[i]) / d;
     const ha = place.indexOf(a);
     const hb = place.indexOf(b);
-    if (q >= 1) {
+    // Dans le noir, l'échange se fait d'un coup, au cœur de l'obscurité.
+    if (q >= 1 || (noir && q >= 0.5)) {
       place[ha] = b;
       place[hb] = a;
-      continue;
+      if (q >= 1) continue;
+      break;
     }
-    if (q > 0) {
-      etat[ha] = { place: a, vers: b, q, devant: true };
-      etat[hb] = { place: b, vers: a, q, devant: false };
+    if (q > 0 && !noir) {
+      etat[ha] = { place: a, vers: b, q, haut: true, noir };
+      etat[hb] = { place: b, vers: a, q, haut: false, noir };
     }
     break;
   }
-  return etat.map((e, h) => (e.q > 0 ? e : { place: place[h], vers: place[h], q: 0, devant: false }));
+  return etat.map((e, h) => (e.q > 0 ? e : { place: place[h], vers: place[h], q: 0, haut: false, noir: false }));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -135,8 +169,9 @@ interface Refs {
   chapeaux: Ref<HTMLButtonElement>[];
   objets: Ref<HTMLImageElement>[];
   valeurs: Ref<HTMLSpanElement>[];
-  diamants: Ref<HTMLImageElement>;
-  poursuite: Ref<HTMLImageElement>;
+  eclats: Ref<HTMLDivElement>;
+  faisceau: Ref<HTMLDivElement>;
+  noir: Ref<HTMLDivElement>;
 }
 
 type Objet = 'collier' | 'montre' | 'bague';
@@ -207,14 +242,18 @@ function useTable(d: { current: Donnees }, r: Refs) {
           const u = lisse(m.q);
           cx = places[m.place] + (places[m.vers] - places[m.place]) * u;
           const arc = Math.sin(Math.PI * u);
-          y += m.devant ? arc * hh * 0.1 : -arc * hh * 0.28;
-          echelle = m.q > 0 ? (m.devant ? 1 + 0.07 * arc : 1 - 0.08 * arc) : 1;
+          // L'un s'envole par-dessus en tournoyant, l'autre file en dessous.
+          if (m.q > 0) {
+            y -= m.haut ? arc * hh * 1.5 : arc * hh * 0.3;
+            rot = m.haut ? 360 * u : -12 * arc;
+            echelle = m.haut ? 1 + 0.14 * arc : 1 - 0.06 * arc;
+          }
           // Les chapeaux tombent du ciel, avec un petit rebond.
           const q = (s - VOL.chapeaux[k]) / VOL.chute;
           visible = q > 0;
           if (q < 1) y -= H * 0.9 * (1 - q) ** 2;
           else if (q < 1.6) y -= Math.sin(Math.PI * ((q - 1) / 0.6)) * hh * 0.08;
-          if (rc.current) rc.current.style.zIndex = m.devant ? '6' : '5';
+          if (rc.current) rc.current.style.zIndex = m.haut ? '6' : '5';
         } else {
           const l = leveA(k);
           y -= hh * 1.1 * Math.sin((Math.PI / 2) * l);
@@ -241,23 +280,45 @@ function useTable(d: { current: Donnees }, r: Refs) {
         }
         if (vol) fois(`c${k}`, VOL.chapeaux[k] + VOL.chute - 60, () => jouerEffet('gd_retourne', { vitesse: 0.75 + k * 0.05, volume: 0.8 }));
       });
+      // Le noir des passes dans l'obscurité.
+      const nr = r.noir.current;
+      if (nr) nr.style.opacity = vol ? String(noirA(s)) : '0';
       // Le collier tombe au milieu du plateau ; le chapeau du milieu le recouvre.
       const qc = (s - VOL.collier) / (VOL.pose - VOL.collier);
       placer(r.collier.current, places[1], pose - hh * 0.02 - H * 0.6 * (1 - lisse(qc)), hw * 0.95, R.collier, { visible: vol && qc > 0 && s < VOL.chapeaux[1] + VOL.chute - 30 });
-      // La pluie de diamants et le projecteur, sur le collier retrouvé (ou posé).
+      // Les éclats : les diamants du collier scintillent, posé sur le plateau puis retrouvé.
       const lc = kc >= 0 ? leveA(kc) : 0;
-      const tc = kc >= 0 ? s - RET[(['premier', 'second', 'mien'] as const)[Math.max(0, x.ordre.indexOf(kc))]] : -1;
-      const tp = vol ? s - VOL.pose : -1;
-      const eclat = vol ? tp > 0 && tp < 1400 : lc > 0 && tc < 1400;
-      const te = vol ? tp : tc;
-      placer(r.diamants.current, places[vol ? 1 : Math.max(0, kc)], pose + hw * 0.55, hw * 2.4, 1, { visible: eclat, opacite: 1 - borne((te - 700) / 700), rot: te / 30 });
-      placer(r.poursuite.current, places[Math.max(0, kc)], pose + hh * 0.4, hw * 2.2, 1, { visible: lc > 0 && salut < 1, opacite: Math.min(1, lc * 1.5) * 0.85 * (1 - salut) });
+      const posee = vol && s >= VOL.pose && s < VOL.chapeaux[1] + VOL.chute - 30;
+      placer(r.eclats.current, places[vol ? 1 : Math.max(0, kc)], pose - hh * 0.02, hw * 0.95, R.collier, { visible: posee || (lc > 0.1 && salut < 1), opacite: 1 - salut });
+      // Le projecteur : la salle s'assombrit, un faisceau tombe du plafond sur le collier retrouvé.
+      const pj = lc > 0 ? Math.min(1, lc * 1.4) * (1 - salut) : 0;
+      el.style.setProperty('--pj', String(pj));
+      el.style.setProperty('--px', `${places[Math.max(0, kc)]}px`);
+      el.style.setProperty('--py', `${pose - hh * 0.35}px`);
+      el.style.setProperty('--pr', `${hw * 1.25}px`);
+      const fa = r.faisceau.current;
+      if (fa) {
+        fa.style.visibility = pj > 0 ? 'visible' : 'hidden';
+        fa.style.width = `${hw * 4}px`;
+        fa.style.setProperty('--fa', `${((Math.atan((hw * 1.3) / (pose + hh * 0.15)) * 180) / Math.PI).toFixed(1)}deg`);
+        fa.style.height = `${pose + hh * 0.15}px`;
+        fa.style.transform = `translate3d(${places[Math.max(0, kc)] - hw * 2}px, 0, 0)`;
+      }
 
       // Les sons du vol : la musique reprend, le collier tombe, le bonneteau.
       if (vol) {
         fois('valse', 0, () => jouerEffet('pp_valse', { volume: 0.6 }));
         fois('pose', VOL.pose - 80, () => jouerEffet('ppi_clic', { volume: 0.9 }));
-        DEBUTS_ECHANGES.forEach((t0, i) => fois(`e${i}`, t0, () => jouerEffet('pp_glisse', { vitesse: 0.9 + (i % 3) * 0.1 })));
+        PASSES.forEach((p, i) => {
+          const t0 = DEBUTS_PASSES[i];
+          if (p.noir) {
+            fois(`n${i}`, t0, () => jouerEffet('cti_noir', { volume: 0.55 }));
+            fois(`g${i}`, t0 + p.d * 0.72, () => jouerEffet('ppi_gresille', { volume: 0.35 }));
+          } else {
+            fois(`e${i}`, t0, () => jouerEffet('pp_glisse', { vitesse: 1.15 + (i % 3) * 0.1 }));
+            fois(`p${i}`, t0 + p.d - 40, () => jouerEffet('gd_retourne', { vitesse: 1.1 + (i % 2) * 0.1, volume: 0.5 }));
+          }
+        });
       }
       if (salut > 0) fois('salut', RET.salut, () => jouerEffet('ppi_pizz', { volume: 0.7 }));
     };
@@ -284,6 +345,20 @@ const SONS_INTRO: [number, EffetSonore, number][] = [
   [6_700, 'ppi_cri', 1],
 ];
 
+/** Les éclats du plan B (l'image du cou de la Comtesse) : position en % de l'image, et l'ordre d'allumage (0 à 1). */
+const ECLATS_INTRO: [number, number, number][] = [
+  [52.5, 62, 0],
+  [51.5, 67.5, 0.15],
+  [52, 73.5, 0.3],
+  [55.5, 92, 0.55],
+  [34, 51, 0.1],
+  [58, 51, 0.4],
+  [44, 70, 0.25],
+  [39.5, 64, 0.5],
+  [61, 66, 0.7],
+  [40, 26, 0.85],
+];
+
 function IntroVol({ t0, roue }: { t0: number; roue?: ReactNode }) {
   const reduit = mouvementReduit();
   useEffect(() => {
@@ -300,8 +375,12 @@ function IntroVol({ t0, roue }: { t0: number; roue?: ReactNode }) {
       </div>
       {/* B. L'éclat du collier. */}
       <div className="ppi-plan b">
-        <img src={IMG('ppi-eclat')} alt="" draggable={false} />
-        <img className="ppi-etoile" src={IMG('bw-pp-diamants')} alt="" draggable={false} />
+        <div className="ppi-cam">
+          <img src={IMG('ppi-eclat')} alt="" draggable={false} />
+          {ECLATS_INTRO.map(([ex, ey, d], i) => (
+            <i key={i} className="ppi-eclat" style={{ left: `calc(50% + ${((ex - 50) * 1.777).toFixed(1)}cqh)`, top: `${ey}%`, '--d': `${d}` } as CSSProperties} />
+          ))}
+        </div>
       </div>
       {/* C. Le Pickpocket se faufile (panoramique). */}
       <div className="ppi-plan c">
@@ -319,6 +398,31 @@ function IntroVol({ t0, roue }: { t0: number; roue?: ReactNode }) {
       <i className="ppi-vacille" />
       <i className="ppi-flash" />
       <i className="ppi-vignette" />
+    </div>
+  );
+}
+
+/** La pluie de diamants : les pierres du collier et des reflets dorés tombent en tournoyant (positions fixes, tirées
+ * d'une suite pseudo-aléatoire pour ne pas changer à chaque rendu). */
+function PluieDiamants({ n }: { n: number }) {
+  const g = (i: number, k: number) => {
+    const x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  return (
+    <div className="pp-pluie" aria-hidden="true">
+      {Array.from({ length: n }, (_, i) => (
+        <img
+          key={`d${i}`}
+          src={IMG('ppb-diamant')}
+          alt=""
+          draggable={false}
+          style={{ left: `${g(i, 1) * 100}%`, width: `${18 + g(i, 2) * 30}px`, animationDuration: `${1.9 + g(i, 3) * 1.6}s`, animationDelay: `${g(i, 4) * 1.4}s`, '--tour': `${(g(i, 5) - 0.5) * 900}deg`, '--derive': `${(g(i, 6) - 0.5) * 12}cqw` } as CSSProperties}
+        />
+      ))}
+      {Array.from({ length: Math.round(n * 0.8) }, (_, i) => (
+        <i key={`b${i}`} style={{ left: `${g(i, 7) * 100}%`, width: `${6 + g(i, 8) * 22}px`, animationDuration: `${2.6 + g(i, 9) * 2}s`, animationDelay: `${g(i, 10) * 1.6}s`, '--derive': `${(g(i, 11) - 0.5) * 8}cqw` } as CSSProperties} />
+      ))}
     </div>
   );
 }
@@ -371,8 +475,9 @@ export function BonusPickpocket({ v, b, nom, ouvert, choisir, roue }: { v: VueBW
       chapeaux: [ref(), ref(), ref()],
       objets: [ref(), ref(), ref()],
       valeurs: [ref(), ref(), ref()],
-      diamants: ref(),
-      poursuite: ref(),
+      eclats: ref(),
+      faisceau: ref(),
+      noir: ref(),
     };
   const r = refs.current;
   useTable(donnees, r);
@@ -391,12 +496,21 @@ export function BonusPickpocket({ v, b, nom, ouvert, choisir, roue }: { v: VueBW
             <img className="table" src={IMG('ppb-table')} alt="" draggable={false} />
             <img className="salut" src={IMG('ppb-salut')} alt="" draggable={false} />
           </div>
-          <img className="pp-poursuite" ref={r.poursuite} src={IMG('bw-pp-poursuite')} alt="" draggable={false} />
+          <div className="pp-projo" aria-hidden="true" />
+          <div className="pp-faisceau" ref={r.faisceau} aria-hidden="true">
+            {Array.from({ length: 9 }, (_, i) => (
+              <i key={i} style={{ left: `${30 + ((i * 37) % 40)}%`, animationDelay: `${-i * 0.7}s`, animationDuration: `${4 + (i % 3)}s` } as CSSProperties} />
+            ))}
+          </div>
           <img className="pp-objet collier" ref={r.collier} src={IMG('ppb-collier')} alt="" draggable={false} />
           {[0, 1, 2].map((k) => (
             <img key={`o${k}`} className={`pp-objet ${objets[k] ?? ''}`} ref={r.objets[k]} src={IMG(`ppb-${objets[k] ?? 'montre'}`)} alt="" draggable={false} />
           ))}
-          <img className="pp-lumiere diamants" ref={r.diamants} src={IMG('bw-pp-diamants')} alt="" draggable={false} />
+          <div className="pp-eclats" ref={r.eclats} aria-hidden="true">
+            {ECLATS.map(([ex, ey], i) => (
+              <i key={i} style={{ left: `${ex}%`, top: `${ey}%`, animationDelay: `${-((i * 0.37) % 1.6)}s` } as CSSProperties} />
+            ))}
+          </div>
           {[0, 1, 2].map((k) => (
             <button
               key={`c${k}`}
@@ -435,7 +549,8 @@ export function BonusPickpocket({ v, b, nom, ouvert, choisir, roue }: { v: VueBW
               <strong>{tr('Sous quel chapeau ?', 'Under which hat?')}</strong>
             </div>
           )}
-          {mienRevele && choix !== null && objets[choix] === 'collier' && <PluieLingots n={portrait ? 10 : 16} objets={['billet', 'lingot', 'billet']} />}
+          <div className="pp-noir" ref={r.noir} aria-hidden="true" />
+          {mienRevele && choix !== null && objets[choix] === 'collier' && <PluieDiamants n={portrait ? 18 : 32} />}
         </>
       )}
     </div>
