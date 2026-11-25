@@ -19,8 +19,9 @@
 .ct-porte.tresor .ct-interieur { filter: drop-shadow(0 0 calc(var(--hc) * 0.06) rgba(255, 200, 90, 0.9)); }
 .ct-lueur { left: 30% !important; top: 30% !important; width: 220% !important; height: auto !important; mix-blend-mode: screen; opacity: 0.85; animation: ct-lueur 1.6s ease-in-out infinite alternate; }
 @keyframes ct-lueur { to { opacity: 0.45; } }
-.ct-numero { position: absolute; left: 50%; top: 9.5%; translate: -50% -50%; font-family: var(--titre); font-weight: 400; font-size: calc(var(--hc) * 0.05); font-weight: 400; line-height: 1; color: #2a1004; text-shadow: 0 1px 0 rgba(255, 240, 200, 0.7); }
-.ct-porte.ouverte .ct-numero { color: #ffe9b0; text-shadow: 0 1px 3px #000; }
+/* Le numéro : une plaque de laiton au-dessus de la porte, bien lisible. */
+.ct-numero { position: absolute; left: 50%; top: -1%; z-index: 1; translate: -50% -100%; min-width: 1.9em; padding: 0.14em 0.4em 0.08em; border-radius: 0.28em; border: max(1px, 0.06em) solid #6b4410; background: linear-gradient(180deg, #fff1b8 0%, #e9bf5c 42%, #b8862b 58%, #f3cf72 100%); box-shadow: 0 0.08em 0.2em rgba(0, 0, 0, 0.7), inset 0 0.05em 0 rgba(255, 255, 255, 0.6); font-family: var(--titre); font-weight: 400; font-size: calc(var(--hc) * 0.075); line-height: 1; color: #2a1004; text-align: center; text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6); }
+.ct-porte.ouverte .ct-numero { filter: brightness(1.1); }
 .ct-caches { position: absolute; left: 50%; top: 32%; translate: -50% 0; display: flex; gap: 4px; align-items: center; }
 .ct-caches i { font-style: normal; font-size: calc(var(--hc) * 0.07); color: #ffd774; text-shadow: 0 0 10px rgba(255, 200, 100, 0.9), 0 2px 3px #000; }
 .ct-caches small { min-width: 1.6em; height: 1.6em; padding: 0 0.4em; border-radius: 99px; display: grid; place-items: center; background: #d6a84b; color: #1b120c; font-weight: 900; font-size: calc(var(--hc) * 0.035); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
@@ -113,11 +114,12 @@
 
 /* Le choix : les huit portes, détourées, grandes, sur le même écran (deux rangées de quatre), devant le contrôleur
    qui guette sous sa casquette. --d : la hauteur d'une porte (790 × 1525). */
-.ct-portes-choix { position: absolute; inset: 0; z-index: 4; container-type: size; display: grid; place-items: center; padding: 11cqh 3cqw 3cqh; overflow: hidden; background: #0d0604; }
+.ct-portes-choix { position: absolute; inset: 0; z-index: 4; container-type: size; display: grid; place-items: center; overflow: hidden; background: #0d0604; }
 /* (le même cadrage que la fin de l'intro, qui s'y fond) */
 .ct-portes-choix::before { content: ''; position: absolute; inset: 0; background: url('/cartes/cti-controleur.webp') 50% 50% / cover no-repeat; filter: brightness(0.42) saturate(0.9); }
 .ct-portes-choix::after { content: ''; position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 55%, rgba(13, 6, 4, 0.15) 0%, rgba(13, 6, 4, 0.55) 60%, rgba(13, 6, 4, 0.92) 100%); }
-.ct-portes-grille { --d: min(39cqh, calc((94cqw - 3 * 2.4cqw) / 4 / 0.518)); position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, calc(var(--d) * 0.518)); gap: 3.5cqh 2.4cqw; }
+/* (deux rangées dans la hauteur laissée libre : le direct en haut, la consigne en bas ; quatre portes dans la largeur) */
+.ct-portes-grille { --haut: 12cqh; --bas: 22cqh; --d: min(calc((100cqh - var(--haut) - var(--bas) - 6cqh) / 2), calc((94cqw - 3 * 2.4cqw) / 4 / 0.518)); translate: 0 calc((var(--haut) - var(--bas)) / 2); position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, calc(var(--d) * 0.518)); gap: 6cqh 2.4cqw; }
 .ct-porte-choix { position: relative; height: var(--d); aspect-ratio: 790 / 1525; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; animation: ct-porte-in 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) calc(var(--k) * 55ms) both; }
 @keyframes ct-porte-in { from { opacity: 0; transform: translateY(8%) scale(0.94); } }
 .ct-porte-choix:disabled { cursor: default; opacity: 1; }
@@ -130,8 +132,8 @@
 @keyframes ct-lueur-respire { to { opacity: 0.6; } }
 .ct-porte-choix.mienne > img { filter: brightness(1.15) drop-shadow(0 0 calc(var(--d) * 0.05) rgba(255, 210, 110, 0.6)); transform: translateY(-1.5%); }
 .ct-porte-choix.autre > img { filter: brightness(0.6) drop-shadow(0 calc(var(--d) * 0.03) calc(var(--d) * 0.04) rgba(0, 0, 0, 0.7)); }
-.ct-porte-choix .ct-numero { top: 9.5%; font-size: calc(var(--d) * 0.085); color: #ffe9b0; text-shadow: 0 0 calc(var(--d) * 0.02) rgba(255, 210, 110, 0.9), 0 1px 2px #000; }
-.ct-porte-choix.mienne .ct-numero { color: #fff6dc; text-shadow: 0 0 calc(var(--d) * 0.03) #ffd774, 0 0 calc(var(--d) * 0.06) rgba(255, 200, 90, 0.9); }
+.ct-porte-choix .ct-numero { top: 0; translate: -50% -60%; font-size: calc(var(--d) * 0.1); }
+.ct-porte-choix.mienne .ct-numero { box-shadow: 0 0 calc(var(--d) * 0.04) rgba(255, 215, 116, 0.95), 0 0.08em 0.2em rgba(0, 0, 0, 0.7); }
 .ct-porte-choix .ct-caches i { font-size: calc(var(--d) * 0.12); }
 .ct-porte-choix .ct-caches small { font-size: calc(var(--d) * 0.055); }
 .bw-bonus.controleur:has(.ct.intro) .bw-bonus-titre { display: none; }
@@ -193,9 +195,7 @@
 .cti-cri { position: absolute; left: 50%; top: 10%; z-index: 2; margin: 0; width: max-content; max-width: 92%; translate: -50% 0; font-family: var(--titre); font-weight: 400; font-size: clamp(30px, 9cqw, 80px); line-height: 1; color: #ffd774; text-shadow: 0 4px 0 #3a1505, 0 0 18px rgba(255, 190, 80, 0.7), 0 10px 18px rgba(0, 0, 0, 0.8); opacity: 0; animation: cti-cri 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) calc(6400ms + var(--t0)) both; }
 @keyframes cti-cri { 0% { opacity: 0; transform: scale(0.3) rotate(-6deg); } 100% { opacity: 1; transform: none; } }
 /* Pendant l'intro, les numéros des portes du couloir s'allument un à un. */
-.ct.intro .ct-couloir .ct-numero { animation: ct-numero-allume 0.5s ease-out calc(6650ms + var(--k) * 130ms + var(--t0)) both; }
-@keyframes ct-numero-allume { 0% { color: #2a1004; text-shadow: none; } 40% { color: #fff6dc; text-shadow: 0 0 calc(var(--hc) * 0.03) #ffd774, 0 0 calc(var(--hc) * 0.06) rgba(255, 200, 90, 0.8); } 100% { color: #ffe9b0; text-shadow: 0 0 calc(var(--hc) * 0.02) rgba(255, 210, 110, 0.8); } }
 @container (max-aspect-ratio: 1 / 1) {
   .cti-roue { height: 65cqh; }
-  .ct-portes-choix { padding-top: 16cqh; }
+  .ct-portes-grille { --haut: 11cqh; --bas: 28cqh; }
 }
