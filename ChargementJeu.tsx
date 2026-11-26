@@ -24,10 +24,19 @@ const NOM_DU_JEU: Record<JeuACharger, JeuCasino> = {
   chute: 'chute',
   course: 'course',
   baronWheel: 'baronWheel',
+  balWheel: 'baronWheel',
   tickets: 'tickets',
   toits: 'toits',
   blackjack: 'blackjack',
   roulette: 'roulette',
+};
+
+/** Les jeux qui ont un logo dessiné : il remplace la vignette et le nom pendant le chargement. */
+const LOGOS: Partial<Record<JeuACharger, [string, string]>> = {
+  bulles: ['/cartes/bl-logo.webp', 'The Baron’s Bubbles'],
+  folleNuit: ['/cartes/fn-logo.webp', 'La Folle Nuit'],
+  baronWheel: ['/cartes/bw-logo.webp', 'Le Baron Express'],
+  balWheel: ['/cartes/bal-logo.webp', 'Le Bal du Grand Hôtel'],
 };
 
 const PHRASES: [string, string][] = [
@@ -81,6 +90,8 @@ export function ChargementJeu({ jeu, children }: { jeu: JeuACharger; children: R
         if (!fini) setFaits(++n);
       }
     };
+    const leLogo = LOGOS[jeu];
+    if (leLogo) void charger(leLogo[0]);
     const tout = Promise.all(Array.from({ length: 6 }, ouvrier));
     const limite = new Promise((ok) => window.setTimeout(ok, DUREE_MAX_MS));
     void Promise.race([tout, limite]).then(async () => {
@@ -101,12 +112,21 @@ export function ChargementJeu({ jeu, children }: { jeu: JeuACharger; children: R
   const id = NOM_DU_JEU[jeu];
   // Les Bulles du Baron ont leur propre affiche et leur nom (le jeu compte comme une machine à sous).
   const bulles = jeu === 'bulles';
+  const logo = LOGOS[jeu];
   const part = liste.length ? Math.round((faits / liste.length) * 100) : 100;
   return (
     <div className="chj" role="status" aria-live="polite" style={bulles ? { background: "linear-gradient(180deg, rgba(10,2,4,.4), rgba(10,2,4,.85)), url('/cartes/bl-chargement.webp') center / cover no-repeat" } : undefined}>
       <div className="chj-rayons" aria-hidden="true" />
-      <img className="chj-vignette" src={bulles ? '/cartes/vignette-bulles.webp' : `/cartes/vignette-${VIGNETTES_ALBUM[id]}.webp`} alt="" draggable={false} />
-      <h1 className="chj-nom">{bulles ? 'The Baron’s Bubbles' : tr(...NOMS_JEUX_CASINO[id])}</h1>
+      {logo ? (
+        <h1 className="chj-titre">
+          <img className="chj-logo" src={logo[0]} alt={logo[1]} draggable={false} />
+        </h1>
+      ) : (
+        <>
+          <img className="chj-vignette" src={`/cartes/vignette-${VIGNETTES_ALBUM[id]}.webp`} alt="" draggable={false} />
+          <h1 className="chj-nom">{tr(...NOMS_JEUX_CASINO[id])}</h1>
+        </>
+      )}
       <div className="chj-barre" aria-label={tr(`Chargement : ${part} %`, `Loading: ${part}%`)}>
         <span style={{ width: `${part}%` }} />
       </div>

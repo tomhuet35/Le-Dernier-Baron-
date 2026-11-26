@@ -10,4 +10,7 @@
 .chj-barre span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #a8761e, #ffd774, #e7b84a); box-shadow: 0 0 10px rgba(255, 215, 116, 0.6); transition: width 0.25s ease-out; }
 .chj-phrase { position: relative; margin: 0; min-height: 1.4em; font-size: 14px; opacity: 0.9; }
 .chj-phrase b { color: #ffd774; font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .chj-rayons, .chj-vignette { animation: none; } }
+.chj-titre { position: relative; margin: 0 0 6px; }
+.chj-logo { display: block; width: min(88vw, 520px); height: auto; filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.75)); animation: chj-logo 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both, chj-flotte 3.2s ease-in-out 0.6s infinite; }
+@keyframes chj-logo { from { opacity: 0; scale: 0.82; } to { opacity: 1; scale: 1; } }
+@media (prefers-reduced-motion: reduce) { .chj-rayons, .chj-vignette, .chj-logo { animation: none; } }
