@@ -2,7 +2,7 @@
  * Ce que chaque jeu du casino charge avant d'ouvrir (écran de chargement du jeu) : images, musique et sons.
  * Fichier généré à partir du code des jeux : relancer le générateur après avoir ajouté des images à un jeu.
  */
-export type JeuACharger = 'machine' | 'nuits' | 'bulles' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'toits' | 'blackjack' | 'roulette';
+export type JeuACharger = 'machine' | 'nuits' | 'bulles' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'balWheel' | 'tickets' | 'toits' | 'blackjack' | 'roulette';
 export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
   machine: [
     '/cartes/machine-bas.webp',
@@ -243,7 +243,8 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/son-course-perdu.mp3',
     '/cartes/son-course-sabots.mp3',
   ],
-  baronWheel: [
+  // Le Bal du Grand Hôtel : la scène et les deux roues (les mini-jeux se chargent ensuite en fond, pendant les mises).
+  balWheel: [
     '/cartes/bal-anneau.webp',
     '/cartes/bal-cr-champagne.webp',
     '/cartes/bal-cr-laque.webp',
@@ -261,6 +262,14 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bal-matiere-velours.webp',
     '/cartes/bal-moyeu.webp',
     '/cartes/bal-pointeur.webp',
+    '/cartes/bal-obj-pickpocket.webp',
+    '/cartes/bal-obj-donne.webp',
+    '/cartes/bal-obj-fontaine.webp',
+    '/cartes/bal-obj-chaises.webp',
+    '/cartes/bal-obj-minuit.webp',
+    '/cartes/bal-logo.webp',
+  ],
+  baronWheel: [
     '/cartes/avatar-1.webp',
     '/cartes/avatar-10.webp',
     '/cartes/avatar-11.webp',

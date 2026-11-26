@@ -2763,9 +2763,7 @@ export default function Casino({
     ecran === 'table' && table
       ? table.jeu
       : ecran === 'machine' || ecran === 'nuits' || ecran === 'bulles' || ecran === 'folleNuit' || ecran === 'festin' || ecran === 'couronne' || ecran === 'chute' || ecran === 'course' || ecran === 'baronWheel' || ecran === 'balWheel' || ecran === 'tickets' || ecran === 'toits'
-        ? ecran === 'balWheel'
-          ? 'baronWheel'
-          : ecran
+        ? ecran
         : null;
   if (vue && jeuACharger) contenu = <ChargementJeu key={jeuACharger} jeu={jeuACharger}>{contenu}</ChargementJeu>;
   return (

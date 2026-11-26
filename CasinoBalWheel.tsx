@@ -52,13 +52,13 @@ export const NOMS_BONUS_BAL: Record<BonusBal, [string, string]> = {
   chaises: ['Les Chaises musicales', 'Musical Chairs'],
   minuit: ['Le Bal masqué', 'The Masked Ball'],
 };
-/** Le médaillon de chaque bonus (sur la roue et sur le tapis). */
+/** L'objet de chaque bonus (sur la roue, le tapis, l'historique et le titre du bonus). */
 export const SYMBOLES_BAL: Record<BonusBal, string> = {
-  pickpocket: '/cartes/bw-sym-pickpocket2.webp',
-  donne: '/cartes/bw-sym-baron2.webp',
-  fontaine: '/cartes/bw-fc-coupe-pleine.webp',
-  chaises: '/cartes/bw-cm-chaise.webp',
-  minuit: '/cartes/bw-rm-moyeu.webp',
+  pickpocket: '/cartes/bal-obj-pickpocket.webp',
+  donne: '/cartes/bal-obj-donne.webp',
+  fontaine: '/cartes/bal-obj-fontaine.webp',
+  chaises: '/cartes/bal-obj-chaises.webp',
+  minuit: '/cartes/bal-obj-minuit.webp',
 };
 const MATIERE: Record<CaseBal, string> = {
   b1: 'nacre',
@@ -142,7 +142,7 @@ function GrandeRoue({ refRoue }: { refRoue: MutableRefObject<SVGSVGElement | nul
             <path d={secteur(236, 362, a - A / 2, a + A / 2)} fill={fond} />
             <image href={`/cartes/bal-cs-${mat}.webp`} x="-23" y="-363" width="46" height="129" transform={`rotate(${a.toFixed(3)})`} preserveAspectRatio="none" />
             {estBonusBal(c) ? (
-              <image href={SYMBOLES_BAL[c]} x="-19" y="-320" width="38" height="38" transform={`rotate(${a.toFixed(3)})`} />
+              <image href={SYMBOLES_BAL[c]} x="-22" y="-326" width="44" height="44" transform={`rotate(${a.toFixed(3)})`} />
             ) : (
               <text transform={`rotate(${a.toFixed(3)}) translate(0 -300) rotate(-90)`} className={`ch ${VALEUR_CHIFFRE_BAL[c] >= 12 ? 'gros' : ''}`} textAnchor="middle" dominantBaseline="central">
                 ×{VALEUR_CHIFFRE_BAL[c]}
@@ -486,7 +486,9 @@ export function JeuBalWheel({ vue, appel, onRetour }: { vue: VueCasino; appel: A
         <button type="button" className="cas-retour" onClick={onRetour}>
           ‹ {tr('Salon', 'Lounge')}
         </button>
-        <h1 className="bal-titre">{tr('Le Bal du Grand Hôtel', 'The Grand Hotel Ball')}</h1>
+        <h1 className="bal-titre">
+          <img src="/cartes/bal-logo.webp" alt={tr('Le Bal du Grand Hôtel', 'The Grand Hotel Ball')} draggable={false} />
+        </h1>
         <span className={`cas-solde-petit bw-solde ${credit ? 'credite' : ''}`}>
           {dollars(solde)}
           {credit && (
