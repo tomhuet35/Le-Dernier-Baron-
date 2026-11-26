@@ -2,17 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { COUPES_FONTAINE, MAX_VERSEMENTS_FONTAINE, chanceCoupeFontaine, coupeFinaleFontaine, esperanceFontaine, estDoubleFontaine, gainFontaine, multiFontaine, tirerVersementsFontaine } from '../shared/baronWheel';
 
 describe('Fontaine de champagne', () => {
-  it('vaut à peu près ×6,2 en moyenne, relances comprises (97 % avec la petite roue)', () => {
+  it('vaut à peu près ×12 en moyenne, relances comprises (97 % sur la roue du Bal)', () => {
     expect(COUPES_FONTAINE.reduce<number>((a, _, k) => a + chanceCoupeFontaine(k), 0)).toBeCloseTo(1, 9);
-    expect(esperanceFontaine()).toBeGreaterThan(6.1);
-    expect(esperanceFontaine()).toBeLessThan(6.3);
+    expect(esperanceFontaine()).toBeGreaterThan(11.8);
+    expect(esperanceFontaine()).toBeLessThan(12.1);
+    // La case : 2 chances sur 54, la petite roue ≈ ×2,2.
+    expect((esperanceFontaine() * 2.2 * 2) / 54).toBeCloseTo(0.977, 2);
   });
   it('une coupe Double fait reverser, les multiplicateurs doublent', () => {
-    expect(multiFontaine(0, 0)).toBe(100);
-    expect(multiFontaine(0, 2)).toBe(400);
+    expect(multiFontaine(0, 0)).toBe(200);
+    expect(multiFontaine(0, 2)).toBe(800);
     expect(multiFontaine(1, 3)).toBe('double');
-    // Double, puis ×5 : ×10.
-    expect(gainFontaine([[1, 0, 0, 0, 0, 0, 0], [1, 1, 0, 0, 0, 0, 0]])).toBe(10);
+    // Double, puis ×9 : ×18.
+    expect(gainFontaine([[1, 0, 0, 0, 0, 0, 0], [1, 1, 0, 0, 0, 0, 0]])).toBe(18);
   });
   it('le tirage suit les chances', () => {
     let g = 1;
@@ -34,6 +36,6 @@ describe('Fontaine de champagne', () => {
     }
     c.forEach((x, k) => expect(x / n).toBeCloseTo(chanceCoupeFontaine(k), 2));
     expect(relances / n).toBeCloseTo(0.109 / (1 - 0.109), 2);
-    expect(Math.abs(s / n - esperanceFontaine())).toBeLessThan(0.15);
+    expect(Math.abs(s / n - esperanceFontaine())).toBeLessThan(0.3);
   });
 });

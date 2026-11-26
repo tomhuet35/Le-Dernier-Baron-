@@ -271,17 +271,18 @@ export const PETITES_MALLETTES: TableBW<number> = [
  * monde gagne le multiplicateur de cette coupe.
  * Deux coupes du bas sont des coupes « Double » : si le champagne y finit, tous les multiplicateurs doublent, on vide la
  * pyramide et le maître reverse (au plus six versements ; au sixième, la coupe Double paie le multiplicateur du bord).
- * Les chances vont de 1 sur 128 (les bords, ×100) à 35 sur 128 (les deux coupes du centre, ×3) ; les coupes Double
- * (7 sur 128 chacune) font monter la moyenne de 4,84 à ≈ ×6,2 (97 % avec la petite roue).
+ * Les chances vont de 1 sur 128 (les bords, ×200) à 35 sur 128 (les deux coupes du centre, ×6) ; les coupes Double
+ * (7 sur 128 chacune) font monter la moyenne de 9,36 à ≈ ×12 : sur la roue du Bal (54 cases, deux pour la Fontaine,
+ * petite roue ≈ ×2,2 en moyenne), la case rend ≈ 97 %.
  */
 export const ETAGES_FONTAINE = 8;
 export type CoupeFontaine = number | 'double';
-export const COUPES_FONTAINE: CoupeFontaine[] = [100, 'double', 5, 3, 3, 5, 'double', 100];
+export const COUPES_FONTAINE: CoupeFontaine[] = [200, 'double', 9, 6, 6, 9, 'double', 200];
 export const NB_COUPES_FONTAINE = COUPES_FONTAINE.length;
 /** Au plus six versements (cinq doubles : les multiplicateurs ×32). */
 export const MAX_VERSEMENTS_FONTAINE = 6;
 /** Ce que paie la coupe Double au dernier versement permis : le multiplicateur du bord. */
-const DOUBLE_AU_DERNIER = 100;
+const DOUBLE_AU_DERNIER = 200;
 /** Le chemin du champagne : à chaque étage sous le sommet, 0 s'il déborde à gauche, 1 à droite. */
 export const tirerCheminFontaine = (h: Hasard): number[] => Array.from({ length: ETAGES_FONTAINE - 1 }, () => (h() < 0.5 ? 0 : 1));
 /** La coupe du bas où finit le champagne (0 : tout à gauche). */
