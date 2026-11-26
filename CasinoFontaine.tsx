@@ -282,7 +282,7 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
         return (
           <span
             key={`${i}-${nAffiche}`}
-            className={`fc-multi ${x === 'double' ? 'double' : x >= 100 ? 'gros' : ''} ${nAffiche > 0 && x !== 'double' ? 'doublee' : ''} ${touchee ? 'gagne' : ''}`}
+            className={`fc-multi ${x === 'double' ? 'double' : x >= 200 ? 'gros' : ''} ${nAffiche > 0 && x !== 'double' ? 'doublee' : ''} ${touchee ? 'gagne' : ''}`}
             style={{ left: g.x(bas, i), top: g.plateau + g.ch * 0.08, '--fd': `${Math.min(15, g.cw * 0.25).toFixed(1)}px` } as CSSProperties}
           >
             {x === 'double' ? tr('Double', 'Double') : `×${x}`}
