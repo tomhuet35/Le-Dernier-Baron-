@@ -80,15 +80,16 @@
 .fci-plan.fci-la-roue > * { position: absolute; inset: 0; width: 100% !important; height: 100% !important; max-width: none; }
 @keyframes fci-roue { 0%, 10% { opacity: 1; } 11%, 100% { opacity: 0; } }
 
-/* Les portes : les deux battants pivotent vers la caméra, la lueur dorée envahit l'écran. */
-.fci-plan.portes { animation-name: fci-portes; perspective: 900px; background: #000; }
+/* Les portes : fermées, une fente de lumière s'élargit au milieu, puis le fondu sur les portes ouvertes ; la caméra
+   avance dans l'embrasure. */
+.fci-plan.portes { animation-name: fci-portes; background: #000; }
 @keyframes fci-portes { 0%, 8.5% { opacity: 0; } 9.5%, 24.5% { opacity: 1; } 25.5%, 100% { opacity: 0; } }
-.fci-lueur { position: absolute; inset: 0; background: radial-gradient(60% 70% at 50% 55%, #fffaf0, #ffd98a 40%, #b8741c 80%, #3a1806); animation-name: fci-lueur; }
-@keyframes fci-lueur { 0%, 14% { opacity: 0.4; } 20%, 100% { opacity: 1; } }
-.fci-battant { position: absolute; inset: 0; background-size: cover; background-position: 50% 50%; animation-name: fci-battant-g; animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.35); transform-origin: 0 50%; clip-path: inset(0 50% 0 0); }
-.fci-battant.d { animation-name: fci-battant-d; transform-origin: 100% 50%; clip-path: inset(0 0 0 50%); }
-@keyframes fci-battant-g { 0%, 10% { transform: scale(1); } 14% { transform: scale(1.08); } 23%, 100% { transform: scale(1.25) rotateY(-100deg); } }
-@keyframes fci-battant-d { 0%, 10% { transform: scale(1); } 14% { transform: scale(1.08); } 23%, 100% { transform: scale(1.25) rotateY(100deg); } }
+.fci-plan.portes .fci-photo { transform-origin: 50% 52%; animation-name: fci-portes-cam; }
+@keyframes fci-portes-cam { 0%, 9.5% { transform: scale(1); } 15% { transform: scale(1.06); } 25%, 100% { transform: scale(1.75); } }
+.fci-plan.portes .fermees { animation-name: fci-portes-cam, fci-fermees; }
+@keyframes fci-fermees { 0%, 14% { opacity: 1; } 17%, 100% { opacity: 0; } }
+.fci-fente { position: absolute; left: 50%; top: 8%; bottom: 8%; width: 1.2cqw; translate: -50% 0; background: linear-gradient(90deg, transparent, #fff6dc 35%, #fffdf5 50%, #fff6dc 65%, transparent); filter: blur(4px) drop-shadow(0 0 30px #ffd27a); mix-blend-mode: screen; opacity: 0; animation-name: fci-fente; }
+@keyframes fci-fente { 0%, 11% { opacity: 0; width: 0.4cqw; } 13% { opacity: 1; width: 1.5cqw; } 16% { opacity: 0.9; width: 22cqw; } 18.5%, 100% { opacity: 0; width: 40cqw; } }
 
 /* La pyramide sous le projecteur : la caméra monte de la base au sommet. */
 .fci-plan.pyramide { animation-name: fci-pyramide; background: #0a0504; }
@@ -125,5 +126,5 @@
   .fci-plan.pyramide .fci-photo { animation-name: none; background-position: 50% 50%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fci-photo, .fci-battant, .fci-bouchon, .fci-mousse { animation-name: none !important; }
+  .fci-photo, .fci-fente, .fci-bouchon, .fci-mousse { animation-name: none !important; }
 }
