@@ -35,7 +35,7 @@ const NOMS: Record<string, [string, string]> = {
 /** Les proportions des images (largeur / hauteur). */
 const RATIO: Record<string, number> = {
   chaise: 310 / 520,
-  'comtesse-danse': 409 / 700,
+  'comtesse-danse': 458 / 700,
   'colonel-danse': 435 / 700,
   'charleston-danse': 383 / 700,
   'magnat-danse': 449 / 700,
@@ -49,7 +49,7 @@ const RATIO: Record<string, number> = {
   'magnat-elimine': 389 / 700,
 };
 /** Les images de danse qui regardent à gauche (on les retourne pour qu'elles regardent toutes à droite). */
-const DANSE_A_GAUCHE = new Set(['comtesse']);
+const DANSE_A_GAUCHE = new Set<string>([]);
 
 // ---------------------------------------------------------------------------------------------------------------
 // Le calendrier (un tour de 6 s : la musique, l'arrêt, la ruée, assis, on se relève)
