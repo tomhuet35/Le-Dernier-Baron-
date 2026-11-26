@@ -49,6 +49,7 @@ import type { JeuACharger } from './ressourcesJeux';
 import { JeuBulles } from './CasinoBulles';
 import { JeuCourse } from './CasinoCourse';
 import { BandeauOuvertureBW, JeuBaronWheel } from './CasinoBaronWheel';
+import { JeuBalWheel } from './CasinoBalWheel';
 import { BandeauAffiche, PuceAffiche } from './CasinoAffiche';
 import { BarreXp, CadreAvatar, CelebrationNiveau, EcranAmis, EcranDefis, EcranProfil, PuceDefi, texteDefi, texteSocial, type FeteNiveau } from './CasinoSocial';
 import { JEUX_CASINO, type JeuCasino, type PositionCasino, type VueDefi } from '../../shared/profilCasino';
@@ -1213,8 +1214,9 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // ---------------------------------------------------------------------------------------------------------------
 // Le salon
 
-const JEUX: { id: 'baronWheel' | 'folleNuit' | 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'tickets' | 'toits' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+const JEUX: { id: 'baronWheel' | 'balWheel' | 'folleNuit' | 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'tickets' | 'toits' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
   { id: 'baronWheel', nom: ['Le Baron Express', 'The Baron Express'], image: '/cartes/casino-baron-wheel-affiche.webp', repli: '/cartes/casino-baron-wheel-bandeau-petit.webp' },
+  { id: 'balWheel', nom: ['Le Bal du Grand Hôtel', 'The Grand Hotel Ball'], image: '/cartes/casino-bal-affiche.webp', repli: '/cartes/bal-decor-paysage.webp' },
   { id: 'folleNuit', nom: ['La Folle Nuit', 'Crazy Night'], image: '/cartes/casino-folle-nuit-affiche.webp', repli: '/cartes/casino-folle-nuit.webp' },
   { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines-affiche.webp', repli: '/cartes/casino-machines.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
@@ -1324,6 +1326,10 @@ function rubanJeu(id: (typeof JEUX)[number]['id'], vue: VueCasino): string | und
                         : vue.baronWheel?.enDirect && vue.baronWheel.spectateurs
                           ? tr('En direct', 'Live')
                           : tr('Nouveau', 'New')
+                    : id === 'balWheel'
+                      ? vue.balWheel?.enDirect && vue.balWheel.spectateurs
+                        ? tr('En direct', 'Live')
+                        : tr('Nouveau', 'New')
                     : id === 'course'
                       ? vue.course?.enDirect && vue.course.spectateurs
                         ? tr('En direct', 'Live')
@@ -1523,13 +1529,13 @@ function etageDeVignette(id: (typeof JEUX)[number]['id']): Etage {
 }
 const niveauDuJeu = (id: (typeof JEUX)[number]['id']) => etage(etageDeVignette(id)).niveau;
 /** L'ordre des jeux de même niveau dans la grille. */
-const ORDRE_JEUX: (typeof JEUX)[number]['id'][] = ['machines', 'tickets', 'festin', 'toits', 'blackjack', 'roulette', 'baronWheel', 'folleNuit', 'course', 'couronne', 'chute'];
+const ORDRE_JEUX: (typeof JEUX)[number]['id'][] = ['machines', 'tickets', 'festin', 'toits', 'blackjack', 'roulette', 'baronWheel', 'balWheel', 'folleNuit', 'course', 'couronne', 'chute'];
 
 /** Les jeux de chaque étage de l'hôtel (cartes de l'accueil). La Folle Nuit a sa propre carte, sur la scène. */
 const JEUX_ETAGE: Record<Etage, (typeof JEUX)[number]['id'][]> = {
   bar: ['machines', 'festin', 'tickets', 'toits'],
   tables: ['blackjack', 'roulette', 'poker'],
-  scene: ['folleNuit', 'baronWheel', 'course', 'couronne', 'chute'],
+  scene: ['folleNuit', 'baronWheel', 'balWheel', 'course', 'couronne', 'chute'],
   penthouse: [],
 };
 
@@ -2340,7 +2346,7 @@ export default function Casino({
 }) {
   const [vue, setVue] = useState<VueCasino | null>(null);
   const contexteSalon = useMemo(() => ({ compte, appel }), [compte, appel]);
-  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'bulles' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'tickets' | 'toits' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'cercles' | 'bourse' | 'marche' | 'tailleur'>('salon');
+  const [ecran, setEcran] = useState<'salon' | 'machines' | 'machine' | 'nuits' | 'bulles' | 'table' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'balWheel' | 'tickets' | 'toits' | 'profil' | 'amis' | 'defis' | 'contrats' | 'album' | 'ventes' | 'bureau' | 'cercles' | 'bourse' | 'marche' | 'tailleur'>('salon');
   /** Grand Hôtel : l'étage ouvert, l'étage fermé montré par le Groom, la Semaine du Baron. */
   const [etageActif, setEtageActif] = useState<Etage>('bar');
   const [etageFerme, setEtageFerme] = useState<Etage | null>(null);
@@ -2504,7 +2510,7 @@ export default function Casino({
 
   // Où je joue, pour que mes amis puissent me rejoindre.
   const position: PositionCasino['ecran'] =
-    ecran === 'machine' || ecran === 'bulles' ? 'machine' : ecran === 'nuits' ? 'nuits' : ecran === 'folleNuit' ? 'folleNuit' : ecran === 'festin' ? 'coffres' : ecran === 'couronne' ? 'couronne' : ecran === 'chute' ? 'chute' : ecran === 'course' ? 'course' : ecran === 'baronWheel' ? 'baronWheel' : ecran === 'tickets' ? 'tickets' : ecran === 'toits' ? 'toits' : ecran === 'table' && table ? table.jeu : 'salon';
+    ecran === 'machine' || ecran === 'bulles' ? 'machine' : ecran === 'nuits' ? 'nuits' : ecran === 'folleNuit' ? 'folleNuit' : ecran === 'festin' ? 'coffres' : ecran === 'couronne' ? 'couronne' : ecran === 'chute' ? 'chute' : ecran === 'course' ? 'course' : ecran === 'baronWheel' || ecran === 'balWheel' ? 'baronWheel' : ecran === 'tickets' ? 'tickets' : ecran === 'toits' ? 'toits' : ecran === 'table' && table ? table.jeu : 'salon';
   useEffect(() => {
     if (entrees) socket.emit('casino_position', { ecran: position });
   }, [position, entrees]);
@@ -2682,6 +2688,7 @@ export default function Casino({
   else if (ecran === 'toits') contenu = <JeuToits vue={vue} appel={appel} onVue={setVue} onRetour={() => retourEtage('toits')} />;
   else if (ecran === 'course') contenu = <JeuCourse vue={vue} appel={appel} onRetour={() => retourEtage('course')} />;
   else if (ecran === 'baronWheel') contenu = <JeuBaronWheel vue={vue} appel={appel} onRetour={() => retourEtage('baronWheel')} />;
+  else if (ecran === 'balWheel') contenu = <JeuBalWheel vue={vue} appel={appel} onRetour={() => retourEtage('baronWheel')} />;
   else if (ecran === 'profil')
     contenu = (
       <EcranProfil
@@ -2755,8 +2762,10 @@ export default function Casino({
   const jeuACharger: JeuACharger | null =
     ecran === 'table' && table
       ? table.jeu
-      : ecran === 'machine' || ecran === 'nuits' || ecran === 'bulles' || ecran === 'folleNuit' || ecran === 'festin' || ecran === 'couronne' || ecran === 'chute' || ecran === 'course' || ecran === 'baronWheel' || ecran === 'tickets' || ecran === 'toits'
-        ? ecran
+      : ecran === 'machine' || ecran === 'nuits' || ecran === 'bulles' || ecran === 'folleNuit' || ecran === 'festin' || ecran === 'couronne' || ecran === 'chute' || ecran === 'course' || ecran === 'baronWheel' || ecran === 'balWheel' || ecran === 'tickets' || ecran === 'toits'
+        ? ecran === 'balWheel'
+          ? 'baronWheel'
+          : ecran
         : null;
   if (vue && jeuACharger) contenu = <ChargementJeu key={jeuACharger} jeu={jeuACharger}>{contenu}</ChargementJeu>;
   return (
