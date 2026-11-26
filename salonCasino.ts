@@ -108,6 +108,7 @@ import { creerTickets } from './ticketsCasino';
 import { creerToits } from './toitsCasino';
 import { creerCourse } from './courseCasino';
 import { creerBaronWheel } from './baronWheelCasino';
+import { creerBalWheel } from './balWheelCasino';
 import { CADEAU_OUVERTURE_BW, DUREE_OUVERTURE_BW, evenementsBW, ROUE_BW, type BoostBW, type CaseBW, type DureesBW } from '../shared/baronWheel';
 import type { DureesCourse } from '../shared/course';
 import { afficheCasino, BONUS_AFFICHE, PLAFOND_BONUS_AFFICHE, XP_AFFICHE, type AfficheCasino } from '../shared/afficheCasino';
@@ -753,6 +754,14 @@ export function creerCasino(options: OptionsCasino) {
     ouverture: finOuvertureBW,
     annoncer: (a) => annoncer(a),
   });
+  // Le Bal du Grand Hôtel : la roue du bal (même banque que le Baron Express, ses mises comptent pour la roue).
+  const roueBal = creerBalWheel({
+    io,
+    banque: banqueDe('baronWheel'),
+    horloge,
+    ...(options.delaisBaronWheel ? { delais: { mises: 2_000, tour: 1_000, resultat: 1_000 }, delaisBonus: options.delaisBaronWheel } : {}),
+    annoncer: (a) => annoncer(a),
+  });
   // -------------------------------------------------------------------------------------------------------------
   // Salle des ventes et Bureau du Baron (shared/ventes.ts, server/ventesCasino.ts)
 
@@ -878,6 +887,7 @@ export function creerCasino(options: OptionsCasino) {
       couronne: couronne.resume(),
       course: course.resume(),
       baronWheel: roueBW.resume(),
+      balWheel: roueBal.resume(),
       ...(p ? { profil: { ...progressionCasino(p.mise + p.bonusXp), demandes: p.recues.length, invitations: defis.invitations(uid), defi: defis.enCours(uid) } } : {}),
       ...(p ? { contrats: vueContrats(uid, p) } : {}),
       ventes: ventes.vue(),
@@ -1039,6 +1049,7 @@ export function creerCasino(options: OptionsCasino) {
     toits.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     course.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
     roueBW.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
+    roueBal.brancher(socket, { acces, enSalon: (uid) => dans && portes.has(uid), L });
 
     socket.on('casino_entrer', async (_data: unknown, rappel?: Rappel) => {
       const id = await acces(rappel);
@@ -1083,6 +1094,7 @@ export function creerCasino(options: OptionsCasino) {
       couronne.sortir(socket.id);
       course.sortir(socket.id);
       roueBW.sortir(socket.id);
+      roueBal.sortir(socket.id);
       void socket.leave(SALLE);
       dans = false;
       partir();
@@ -1717,7 +1729,7 @@ export function creerCasino(options: OptionsCasino) {
    * une mise dont le coup ne sera jamais joué.
    */
   async function vider() {
-    for (const jeu of [tables, roulettes, show, couronne, course, roueBW, coffres, toits]) {
+    for (const jeu of [tables, roulettes, show, couronne, course, roueBW, roueBal, coffres, toits]) {
       try {
         jeu.rendreMisesEnCours();
       } catch (e) {
@@ -1730,6 +1742,7 @@ export function creerCasino(options: OptionsCasino) {
     couronne.fermer();
     course.fermer();
     roueBW.fermer();
+    roueBal.fermer();
     chute.fermer();
     tickets.fermer();
     defis.fermer();

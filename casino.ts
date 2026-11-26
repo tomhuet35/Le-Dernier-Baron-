@@ -135,6 +135,8 @@ export interface VueCasino {
   course?: { enDirect: boolean; spectateurs: number; historique: { cheval: number; nom: string; cote: number }[] };
   /** The Baron's Wheel : en direct, les derniers résultats, la grande ouverture (millisecondes avant la fin). */
   baronWheel?: { enDirect: boolean; spectateurs: number; historique: CaseBW[]; ouverture: number | null };
+  /** Le Bal du Grand Hôtel : en direct ou non, combien regardent, ses derniers résultats. */
+  balWheel?: { enDirect: boolean; spectateurs: number; historique: string[] };
   /** Le jeu à l'affiche (XP doublée, bonus sur les gains) et le bonus déjà touché pendant son créneau. */
   affiche?: VueAffiche;
   /** Grand Hôtel du Baron : rubis, contrats du jour et de la semaine, album, dépannage. */
