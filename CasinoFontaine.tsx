@@ -3,13 +3,14 @@
  * sur une table nappée. L'intro : le maître d'hôtel sabre un magnum (le bouchon s'envole), puis monte sur son escabeau.
  * Le versement : il verse au sommet ; chaque coupe pleine déborde à gauche ou à droite, de coupe en coupe, jusqu'à l'une
  * des huit du bas, qui porte son multiplicateur. Personne ne choisit : tout le monde gagne le même, et l'on trinque.
- * Parfois, au début du versement, une ou deux coupes du bas reçoivent un ×2 doré : qui y finit paie double.
+ * Deux coupes du bas sont des coupes « Double » : si le champagne y finit, tous les multiplicateurs doublent, la
+ * pyramide se vide et le maître reverse.
  *
  * Le serveur a tiré le chemin du champagne dès le début du bonus ; il ne l'envoie qu'au versement.
  * Tout est placé d'après la taille de la scène (la pyramide, la table, le maître) et l'horloge de l'étape.
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { COUPES_FONTAINE, DUREES_BW, ETAGES_FONTAINE, coupeFinaleFontaine, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
+import { COUPES_FONTAINE, DUREES_BW, ETAGES_FONTAINE, coupeFinaleFontaine, estDoubleFontaine, gainFontaine, multiFontaine, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
 import { ValeurMultipliee } from './CasinoBaronExpress';
 import { tr } from './traduction';
 import { jouerEffet } from './ui';
@@ -34,8 +35,9 @@ const INTRO = { entre: 700, pop: 2_900, monte: 4_300 };
 /** Le versement : le filet du magnum, la coupe du sommet, puis une coupe par étage ; la dernière, plus lente. */
 const VERSE = { filet: 200, sommet: 500, etages: [1_350, 2_200, 3_000, 3_800, 4_600, 5_500, 6_500], remplir: 700, dernier: 1_000 };
 const FIN_VERSE = VERSE.etages[6] + VERSE.dernier;
-/** Les ×2 des coupes doublées tombent au début du versement, l'un après l'autre. */
-const DOUBLES = { debut: 0, pas: 450 };
+/** Un versement dure DUREES_BW.versement ; après une coupe Double : l'annonce, les multiplicateurs qui doublent, puis
+ * la pyramide qui se vide avant le versement suivant. */
+const DOUBLE = { annonce: FIN_VERSE + 150, double: FIN_VERSE + 700, vide: FIN_VERSE + 1_300, fin: FIN_VERSE + 1_850 };
 
 const borne = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u);
 const lisse = (u: number) => {
@@ -79,8 +81,8 @@ const goulotA = (g: Geo) => ({ x: g.x(0, 0) - g.cw * 1.3, y: g.pied(0) - g.ch * 
 export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; nom: string; roue?: ReactNode }) {
   void roue;
   const M = Math.max(1, b.multiplicateur);
-  const chemin = b.fontaine?.chemin ?? null;
-  const doubles = b.fontaine?.doubles ?? [];
+  const versements = b.fontaine?.versements ?? null;
+  const nbV = versements?.length ?? 1;
 
   // L'horloge de l'étape (recalée sur le serveur) ; au résultat, tout est déjà versé.
   const cle = `${v.numero}-${b.etape}`;
@@ -98,7 +100,7 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
     const id = window.setInterval(() => setMaintenant(performance.now()), 40);
     return () => window.clearInterval(id);
   }, []);
-  const ref = nom === 'intro' ? DUREES_BW.introFontaine : nom === 'versement' ? DUREES_BW.versement : 0;
+  const ref = nom === 'intro' ? DUREES_BW.introFontaine : nom === 'versement' ? DUREES_BW.versement * nbV : 0;
   const echelle = v.phase === 'bonus' && v.duree && ref ? ref / v.duree : 1;
   const s = (maintenant - horloge.current.debut) * echelle;
 
@@ -128,7 +130,11 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
   const g = mesurer(W, H);
   const intro = nom === 'intro';
   const verse = nom === 'versement' || nom === 'revele';
-  const sv = nom === 'revele' ? 60_000 : nom === 'versement' ? s : -1;
+  const svTotal = nom === 'revele' ? 1e9 : nom === 'versement' ? s : -1;
+  // Le versement en cours (n), et le temps depuis son début.
+  const n = verse && versements ? Math.min(nbV - 1, Math.max(0, Math.floor(svTotal / DUREES_BW.versement))) : 0;
+  const sv = verse ? (nom === 'revele' ? 60_000 : svTotal - n * DUREES_BW.versement) : -1;
+  const chemin = versements ? versements[n] : null;
 
   // Le chemin : la coupe remplie à chaque étage, et quand elle commence à se remplir.
   const indices = chemin ? chemin.reduce<number[]>((a, d) => [...a, a[a.length - 1] + d], [0]) : null;
@@ -136,19 +142,25 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
   const dureeEtage = (r: number) => (r === ETAGES_FONTAINE - 1 ? VERSE.dernier : VERSE.remplir);
   const plein = (r: number) => (indices && verse ? borne((sv - debutEtage(r)) / dureeEtage(r)) : 0);
   const finale = chemin ? coupeFinaleFontaine(chemin) : null;
-  const arrive = verse && sv >= FIN_VERSE;
-  const double = finale !== null && doubles.includes(finale);
+  const relance = finale !== null && estDoubleFontaine(finale) && n < nbV - 1;
+  const arrive = verse && sv >= FIN_VERSE && !relance;
+  // Après une coupe Double : les multiplicateurs passent au versement suivant, la pyramide se vide.
+  const nAffiche = relance && sv >= DOUBLE.double ? n + 1 : n;
+  const vidange = relance ? borne((sv - DOUBLE.vide) / 500) : 0;
 
   // Les sons.
   if (intro) {
     fois('pop', INTRO.pop, () => jouerEffet('fc_pop'));
   }
   if (nom === 'versement' && indices) {
-    doubles.forEach((_, j) => fois(`d${j}`, DOUBLES.debut + j * DOUBLES.pas, () => jouerEffet('gd_eclat', { vitesse: 1.2, volume: 0.6 })));
-    fois('verse', VERSE.filet, () => jouerEffet('fc_verse'));
-    fois('verse2', VERSE.filet + 1_500, () => jouerEffet('fc_verse', { volume: 0.4 }));
-    for (let r = 0; r < ETAGES_FONTAINE; r++) fois(`t${r}`, debutEtage(r) + dureeEtage(r) - 120, () => jouerEffet('fc_ting', { vitesse: 0.85 + r * 0.06, volume: r === ETAGES_FONTAINE - 1 ? 0.9 : 0.55 }));
-    fois('fin', FIN_VERSE + 100, () => jouerEffet('fc_trinque'));
+    const at = (c: string, t0: number, f: () => void) => fois(`${n}:${c}`, n * DUREES_BW.versement + t0, f);
+    at('verse', VERSE.filet, () => jouerEffet('fc_verse'));
+    at('verse2', VERSE.filet + 1_500, () => jouerEffet('fc_verse', { volume: 0.4 }));
+    for (let r = 0; r < ETAGES_FONTAINE; r++) at(`t${r}`, debutEtage(r) + dureeEtage(r) - 120, () => jouerEffet('fc_ting', { vitesse: 0.85 + r * 0.06, volume: r === ETAGES_FONTAINE - 1 ? 0.9 : 0.55 }));
+    if (relance) {
+      at('double', DOUBLE.annonce, () => jouerEffet('gd_eclat'));
+      at('doublent', DOUBLE.double, () => jouerEffet('fc_pop', { vitesse: 1.3, volume: 0.6 }));
+    } else at('fin', FIN_VERSE + 100, () => jouerEffet('fc_trinque'));
   }
 
   // L'intro : la scène s'allume, le maître entre en sabrant, puis il passe à l'escabeau.
@@ -171,7 +183,7 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
 
   // Les filets de champagne : du magnum au sommet, puis de coupe en coupe.
   const filets: { d: string; p: number; k: string }[] = [];
-  if (indices && verse) {
+  if (indices && verse && vidange === 0) {
     const c0 = coupeA(g, 0, 0);
     filets.push({ k: 'm', p: borne((sv - VERSE.filet) / 300), d: `M${gl.x} ${gl.y} Q${gl.x + g.cw * 1.1} ${gl.y - g.ch * 0.25} ${c0.x} ${c0.y}` });
     for (let r = 1; r < ETAGES_FONTAINE; r++) {
@@ -199,12 +211,12 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
       {Array.from({ length: ETAGES_FONTAINE }, (_, r) =>
         Array.from({ length: r + 1 }, (_, i) => {
           const f = indices && indices[r] === i ? plein(r) : 0;
-          const derniere = r === bas && f >= 1 && arrive;
+          const derniere = r === bas && f >= 1 && (arrive || (relance && sv < DOUBLE.vide));
           return (
             <span key={`${r}-${i}`} className={`fc-coupe ${f > 0 ? 'remplie' : ''} ${derniere ? 'gagnante' : ''}`} style={{ width: g.cw, left: g.x(r, i) - g.cw / 2, top: g.pied(r) - g.ch, zIndex: 10 + r }}>
               <img src={IMG('coupe-vide')} alt="" draggable={false} />
-              {f > 0 && <img className="pleine" src={IMG('coupe-pleine')} alt="" draggable={false} style={{ clipPath: `inset(${(2 + (1 - f) * (COUPE.coupe - 0.02) * 100).toFixed(1)}% 0 0 0)` }} />}
-              {f >= 1 && r < bas && <img className="fc-deborde" src={IMG('eclaboussure')} alt="" draggable={false} style={{ transform: chemin![r] ? undefined : 'scaleX(-1)' }} />}
+              {f > 0 && <img className="pleine" src={IMG('coupe-pleine')} alt="" draggable={false} style={{ opacity: 1 - vidange, clipPath: `inset(${(2 + (1 - f) * (COUPE.coupe - 0.02) * 100).toFixed(1)}% 0 0 0)` }} />}
+              {f >= 1 && r < bas && vidange === 0 && <img className="fc-deborde" src={IMG('eclaboussure')} alt="" draggable={false} style={{ transform: chemin![r] ? undefined : 'scaleX(-1)' }} />}
             </span>
           );
         }),
@@ -230,16 +242,31 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
       )}
 
       {/* Le multiplicateur de chacune des huit coupes du bas, sur le bord de la nappe. */}
-      {COUPES_FONTAINE.map((x, i) => {
-        const j = verse ? doubles.indexOf(i) : -1;
-        const doublee = j >= 0 && sv >= DOUBLES.debut + j * DOUBLES.pas;
+      {COUPES_FONTAINE.map((_, i) => {
+        const x = multiFontaine(i, nAffiche);
+        const touchee = finale === i && (arrive || (relance && sv >= FIN_VERSE && sv < DOUBLE.vide));
         return (
-          <span key={i} className={`fc-multi ${x >= 15 ? 'gros' : ''} ${doublee ? 'doublee' : ''} ${arrive && finale === i ? 'gagne' : ''}`} style={{ left: g.x(bas, i), top: g.plateau + g.ch * 0.08 }}>
-            ×{doublee ? x * 2 : x}
-            {doublee && <b className="fc-double" style={{ bottom: g.ch * 1.15 }}>×2</b>}
+          <span
+            key={`${i}-${nAffiche}`}
+            className={`fc-multi ${x === 'double' ? 'double' : x >= 100 ? 'gros' : ''} ${nAffiche > 0 && x !== 'double' ? 'doublee' : ''} ${touchee ? 'gagne' : ''}`}
+            style={{ left: g.x(bas, i), top: g.plateau + g.ch * 0.08, '--fd': `${Math.min(15, g.cw * 0.25).toFixed(1)}px` } as CSSProperties}
+          >
+            {x === 'double' ? tr('Double', 'Double') : `×${x}`}
           </span>
         );
       })}
+      {/* Les doubles déjà gagnés : un médaillon ×2, ×4… au-dessus de la pyramide. */}
+      {verse && nAffiche > 0 && (
+        <div className="fc-cumul" key={`c${nAffiche}`} style={{ top: g.pied(0) - g.ch * 2.1 }}>
+          ×{2 ** nAffiche}
+        </div>
+      )}
+      {relance && sv >= DOUBLE.annonce && sv < DOUBLE.vide + 300 && (
+        <div className="fc-annonce-double" role="status">
+          <strong>{tr('Double !', 'Double!')}</strong>
+          <small>{tr('Tous les multiplicateurs doublent, on reverse !', 'All multipliers double, pour again!')}</small>
+        </div>
+      )}
 
       {/* L'intro : le maître sabre le magnum, le bouchon s'envole. */}
       {sabreStyle && <img className="fc-sabre" src={IMG('sabre')} alt="" draggable={false} style={{ ...sabreStyle, clipPath: popT < 0 ? CACHE_MOUSSE : undefined }} />}
@@ -251,11 +278,11 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
       )}
 
       {/* Le résultat : la coupe où finit le champagne, le même gain pour tous. */}
-      {arrive && finale !== null && (
+      {arrive && versements && (
         <div className="fc-resultat" role="status">
-          <small>{double ? tr('Coupe doublée ! À votre santé !', 'Doubled glass! Cheers!') : tr('À votre santé !', 'Cheers!')}</small>
+          <small>{tr('À votre santé !', 'Cheers!')}</small>
           <strong>
-            <ValeurMultipliee x={COUPES_FONTAINE[finale] * (double ? 2 : 1)} m={M} son />
+            <ValeurMultipliee x={gainFontaine(versements)} m={M} son />
           </strong>
         </div>
       )}
