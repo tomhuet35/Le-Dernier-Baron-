@@ -939,7 +939,7 @@ export const DUREES_BW: DureesBW = {
   service: 11_000,
   introControleur: 7_300,
   tournee: 17_000,
-  introFontaine: 8_000,
+  introFontaine: 9_000,
   versement: 9_500,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.

@@ -1,6 +1,7 @@
 /**
  * La Fontaine de champagne (la roue du Bal) : un plinko de coupes, au bar du Grand Hôtel. Une pyramide de huit étages
- * sur une table nappée. L'intro : le maître d'hôtel sabre un magnum (le bouchon s'envole), puis monte sur son escabeau.
+ * sur une table nappée. L'intro « Le Sabrage de minuit » (9 s) : le toast sur la roue, les portes du bar qui s'ouvrent, la
+ * pyramide sous le projecteur, l'entrée du maître d'hôtel, le sabrage au ralenti ; puis le bar s'illumine.
  * Le versement : il verse au sommet ; chaque coupe pleine déborde à gauche ou à droite, de coupe en coupe, jusqu'à l'une
  * des huit du bas, qui porte son multiplicateur. Personne ne choisit : tout le monde gagne le même, et l'on trinque.
  * Deux coupes du bas sont des coupes « Double » : si le champagne y finit, tous les multiplicateurs doublent, la
@@ -13,25 +14,69 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { COUPES_FONTAINE, DUREES_BW, ETAGES_FONTAINE, coupeFinaleFontaine, estDoubleFontaine, gainFontaine, multiFontaine, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
 import { ValeurMultipliee } from './CasinoBaronExpress';
 import { tr } from './traduction';
-import { jouerEffet } from './ui';
+import { jouerEffet, type EffetSonore } from './ui';
 import './fontaine.css';
 
 const IMG = (n: string) => `/cartes/bw-fc-${n}.webp`;
 
 /** Toutes les images de la Fontaine (sans chemin ni extension), préchargées avant le bonus. */
-export const IMAGES_FONTAINE_NOMS = ['bar-paysage', 'bar-portrait', 'table', 'coupe-vide', 'coupe-pleine', 'maitre', 'sabre', 'bouchon', 'eclaboussure'].map((n) => `bw-fc-${n}`);
+export const IMAGES_FONTAINE_NOMS = [
+  ...['bar-paysage', 'bar-portrait', 'table', 'coupe-vide', 'coupe-pleine', 'maitre', 'bouchon', 'eclaboussure'].map((n) => `bw-fc-${n}`),
+  ...['portes', 'pyramide', 'entree', 'lame'].map((n) => `bw-fci-${n}`),
+];
 
 /** Les images : leurs proportions, et les points qui comptent (en part de l'image). */
 const COUPE = { r: 302 / 240, coupe: 0.42 };
 const TABLE = { r: 573 / 1200, plateau: 0.2 };
 const MAITRE = { r: 1100 / 520, goulot: [0.981, 0.165] as const };
-const SABRE = { r: 900 / 569, goulot: [0.782, 0.144] as const };
 
 // ---------------------------------------------------------------------------------------------------------------
 // Le calendrier (millisecondes d'une intro de 8 s, d'un versement de 9,5 s)
 
-/** L'intro : la scène s'allume, le maître entre, sabre (pop), puis monte sur l'escabeau. */
-const INTRO = { entre: 700, pop: 2_900, monte: 4_300 };
+/** L'intro (9 s) : les plans de cinéma par-dessus la scène, puis le bar s'illumine (les pourcentages de fontaine.css
+ * sont des centièmes de 9 s). */
+const INTRO = { pop: 6_350, lumiere: 6_900 };
+const SONS_INTRO: [number, EffetSonore, number][] = [
+  [0, 'fci_toast', 1],
+  [1_100, 'fci_portes', 1],
+  [2_300, 'fc_ting', 0.6],
+  [2_900, 'fc_ting', 0.5],
+  [3_800, 'fci_bravo', 0.7],
+  [5_300, 'gd_retourne', 0.5],
+  [6_350, 'fc_pop', 1],
+  [6_700, 'fci_bravo', 1],
+];
+
+/** Les plans de l'intro, par-dessus la scène : la roue, les portes qui s'ouvrent, la pyramide, l'entrée, la lame. */
+function IntroSabrage({ t0, roue }: { t0: number; roue?: ReactNode }) {
+  useEffect(() => {
+    const ids = SONS_INTRO.filter(([x]) => x >= t0).map(([x, son, volume]) => window.setTimeout(() => jouerEffet(son, { volume }), x - t0));
+    return () => ids.forEach((i) => window.clearTimeout(i));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const img = (n: string) => `url(/cartes/bw-fci-${n}.webp)`;
+  return (
+    <div className="fci" aria-hidden="true" style={{ '--t0': `${-t0}ms` } as CSSProperties}>
+      <div className="fci-plan fci-la-roue">{roue}</div>
+      <div className="fci-plan portes">
+        <i className="fci-lueur" />
+        <i className="fci-battant g" style={{ backgroundImage: img('portes') }} />
+        <i className="fci-battant d" style={{ backgroundImage: img('portes') }} />
+      </div>
+      <div className="fci-plan pyramide">
+        <i className="fci-photo" style={{ backgroundImage: img('pyramide') }} />
+      </div>
+      <div className="fci-plan entree">
+        <i className="fci-photo" style={{ backgroundImage: img('entree') }} />
+      </div>
+      <div className="fci-plan lame">
+        <i className="fci-photo" style={{ backgroundImage: img('lame') }} />
+        <img className="fci-mousse" src={IMG('eclaboussure')} alt="" draggable={false} />
+        <img className="fci-bouchon" src={IMG('bouchon')} alt="" draggable={false} />
+      </div>
+      <i className="fci-flash" />
+    </div>
+  );
+}
 /** Le versement : le filet du magnum, la coupe du sommet, puis une coupe par étage ; la dernière, plus lente. */
 const VERSE = { filet: 200, sommet: 500, etages: [1_350, 2_200, 3_000, 3_800, 4_600, 5_500, 6_500], remplir: 700, dernier: 1_000 };
 const FIN_VERSE = VERSE.etages[6] + VERSE.dernier;
@@ -44,9 +89,6 @@ const lisse = (u: number) => {
   const x = borne(u);
   return x * x * (3 - 2 * x);
 };
-
-/** Avant le pop, la mousse et le bouchon peints sur l'image du sabrage sont cachés. */
-const CACHE_MOUSSE = 'polygon(0 0, 60% 0, 60% 8.5%, 77% 10%, 77% 13.5%, 84% 13%, 84% 30%, 100% 30%, 100% 100%, 0 100%)';
 
 // ---------------------------------------------------------------------------------------------------------------
 // La géométrie
@@ -79,7 +121,6 @@ const goulotA = (g: Geo) => ({ x: g.x(0, 0) - g.cw * 1.3, y: g.pied(0) - g.ch * 
 // Le bonus
 
 export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; nom: string; roue?: ReactNode }) {
-  void roue;
   const M = Math.max(1, b.multiplicateur);
   const versements = b.fontaine?.versements ?? null;
   const nbV = versements?.length ?? 1;
@@ -103,6 +144,10 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
   const ref = nom === 'intro' ? DUREES_BW.introFontaine : nom === 'versement' ? DUREES_BW.versement * nbV : 0;
   const echelle = v.phase === 'bonus' && v.duree && ref ? ref / v.duree : 1;
   const s = (maintenant - horloge.current.debut) * echelle;
+
+  // Le point de départ de l'intro (fixé une fois : on peut arriver en cours de route).
+  const t0IntroRef = useRef({ cle: '', t0: 0 });
+  if (t0IntroRef.current.cle !== cle) t0IntroRef.current = { cle, t0: nom === 'intro' ? Math.max(0, (v.duree ?? 0) - (v.reste ?? 0)) * echelle : 0 };
 
   // La taille de la scène.
   const scene = useRef<HTMLDivElement>(null);
@@ -149,9 +194,6 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
   const vidange = relance ? borne((sv - DOUBLE.vide) / 500) : 0;
 
   // Les sons.
-  if (intro) {
-    fois('pop', INTRO.pop, () => jouerEffet('fc_pop'));
-  }
   if (nom === 'versement' && indices) {
     const at = (c: string, t0: number, f: () => void) => fois(`${n}:${c}`, n * DUREES_BW.versement + t0, f);
     at('verse', VERSE.filet, () => jouerEffet('fc_verse'));
@@ -163,23 +205,16 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
     } else at('fin', FIN_VERSE + 100, () => jouerEffet('fc_trinque'));
   }
 
-  // L'intro : la scène s'allume, le maître entre en sabrant, puis il passe à l'escabeau.
-  const lumiere = intro ? lisse(s / 900) : 1;
-  const mSabre = intro ? { x: lisse((s - INTRO.entre) / 900), o: 1 - borne((s - INTRO.monte) / 400) } : null;
-  const mVerse = intro ? borne((s - INTRO.monte) / 500) : 1;
-  const popT = intro ? s - INTRO.pop : -1;
+  // L'intro : sous les plans, le bar s'illumine en cascade quand la lumière revient.
+  const lumiere = intro ? lisse((s - INTRO.lumiere) / 1_100) : 1;
+  const mVerse = 1;
+  const t0Intro = t0IntroRef.current.t0;
 
   // Le maître qui verse, sur son grand escabeau posé au sol : son goulot au-dessus de la coupe du sommet.
   const gl = goulotA(g);
   const hm = (H * (g.portrait ? 0.985 : 0.975) - gl.y) / (1 - MAITRE.goulot[1]);
   const wm = hm / MAITRE.r;
   const maitreStyle: CSSProperties = { width: wm, left: gl.x - MAITRE.goulot[0] * wm, top: gl.y - MAITRE.goulot[1] * hm, opacity: mVerse };
-  // Le maître qui sabre : debout, à gauche de la table.
-  const hs = g.portrait ? H * 0.58 : H * 0.82;
-  const ws = hs / SABRE.r;
-  const xs = (g.portrait ? W * 0.3 : W * 0.5 - g.tw * 0.5) - ws * 0.5;
-  const sabreStyle: CSSProperties | null = mSabre ? { width: ws, left: xs - (1 - mSabre.x) * (xs + ws + 40), top: g.sol - hs, opacity: mSabre.o } : null;
-  const goulotSabre = { x: xs + SABRE.goulot[0] * ws, y: g.sol - hs + SABRE.goulot[1] * hs };
 
   // Les filets de champagne : du magnum au sommet, puis de coupe en coupe.
   const filets: { d: string; p: number; k: string }[] = [];
@@ -268,14 +303,9 @@ export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; no
         </div>
       )}
 
-      {/* L'intro : le maître sabre le magnum, le bouchon s'envole. */}
-      {sabreStyle && <img className="fc-sabre" src={IMG('sabre')} alt="" draggable={false} style={{ ...sabreStyle, clipPath: popT < 0 ? CACHE_MOUSSE : undefined }} />}
-      {intro && popT >= 0 && popT < 1_800 && (
-        <>
-          <img className="fc-pop" src={IMG('eclaboussure')} alt="" draggable={false} style={{ width: g.cw * 3.2, left: goulotSabre.x - g.cw * 1.2, top: goulotSabre.y - g.cw * 2.2, opacity: 1 - borne((popT - 500) / 600), transform: `rotate(-30deg) scale(${0.4 + lisse(popT / 250) * 0.8})` }} />
-          <img className="fc-bouchon" src={IMG('bouchon')} alt="" draggable={false} style={{ width: g.cw * 1.1, left: goulotSabre.x + (popT / 1_000) * W * 0.5, top: goulotSabre.y - (popT / 1_000) * H * 0.9 + (popT / 1_000) ** 2 * H * 0.5, transform: `rotate(${popT * 0.9}deg)` }} />
-        </>
-      )}
+      {/* L'intro : les plans de cinéma, par-dessus la scène. */}
+      {intro && <IntroSabrage key={cle} t0={t0Intro} roue={roue} />}
+
 
       {/* Le résultat : la coupe où finit le champagne, le même gain pour tous. */}
       {arrive && versements && (
