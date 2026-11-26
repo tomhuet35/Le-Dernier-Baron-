@@ -1,0 +1,116 @@
+/* La Roue de Minuit (le Bal masqué, au penthouse) : la roue, les masques et les annonces sont placés par
+   CasinoMinuit.tsx ; ici, les habits et les animations. */
+
+.bw-bonus.minuit { background: #05060f; }
+.rm { position: absolute; inset: 0; overflow: hidden; background: #05060f; color: #fff1c4; container-type: size; contain: layout; }
+.rm-salle { position: absolute; inset: 0; background-size: cover; background-position: 50% 55%; }
+.rm-halo { position: absolute; translate: -50% -50%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 210, 120, 0.35), rgba(255, 190, 90, 0.12) 55%, transparent); mix-blend-mode: screen; pointer-events: none; animation: rm-halo 2.4s ease-in-out infinite alternate; }
+@keyframes rm-halo { to { opacity: 0.6; scale: 1.05; } }
+
+/* La roue : les cases et le moyeu tournent, la jante reste. */
+.rm-roue { position: absolute; z-index: 10; filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.7)); }
+.rm-tourne { position: absolute; inset: 0; will-change: transform; }
+.rm-cases, .rm-lues { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rm-cases { animation: rm-cases 0.7s cubic-bezier(0.3, 1.5, 0.5, 1); }
+@keyframes rm-cases { from { filter: brightness(2.2) saturate(1.4); } }
+.rm-txt { font-family: 'Limelight', var(--titre), serif; fill: #ffe7a6; paint-order: stroke; stroke: #05060f; stroke-width: 4px; stroke-linejoin: round; }
+.rm-txt.gros { fill: #3a1606; stroke: #fff2c0; stroke-width: 2.5px; }
+.rm-txt.special { fill: #fff3c8; stroke: #3a0208; letter-spacing: 1px; }
+.rm-filet { stroke: #d9a548; stroke-width: 2.5; }
+.rm-moyeu { position: absolute; left: 35%; top: 35%; width: 30%; height: auto; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); }
+.rm-jante { position: absolute; left: 0; width: 100%; max-width: none; pointer-events: none; }
+.rm-lue { fill: rgba(255, 230, 150, 0.28); stroke: #ffe9a8; stroke-width: 4; mix-blend-mode: screen; animation: rm-lue 0.7s ease-in-out infinite alternate; }
+.rm-lue.mienne { fill: rgba(255, 236, 170, 0.5); stroke-width: 7; }
+.rm-lue.speciale { fill: rgba(255, 120, 120, 0.45); stroke: #ffd0b0; }
+@keyframes rm-lue { to { opacity: 0.55; } }
+
+/* Les masques-pointeurs. */
+.rm-pointeur { position: absolute; z-index: 20; padding: 0; border: 0; background: none; min-height: 0; color: inherit; font: inherit; }
+.rm-pointeur > img { display: block; width: 100%; height: 100%; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); transition: filter 0.3s; }
+.rm-pointeur:disabled { cursor: default; opacity: 1; }
+.rm.rm-e-masques .rm-pointeur:not(:disabled) { cursor: pointer; }
+.rm.rm-e-masques .rm-pointeur:not(:disabled) > img { animation: rm-invite 1.2s ease-in-out infinite; }
+@keyframes rm-invite { 50% { filter: drop-shadow(0 0 16px rgba(255, 215, 110, 0.95)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); } }
+.rm-pointeur.mien > img { filter: drop-shadow(0 0 16px rgba(255, 220, 120, 1)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); }
+.rm-pointeur.autre > img { filter: brightness(0.55) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); }
+.rm-pointeur.fini > img { filter: brightness(0.8) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.7)); }
+.rm-pointeur.mien.fini > img { filter: drop-shadow(0 0 22px rgba(255, 230, 140, 1)) brightness(1.1); }
+
+.rm-badge { position: absolute; z-index: 25; translate: -50% -50%; padding: 1px 10px 3px; border-radius: 99px; border: 1.5px solid rgba(214, 168, 75, 0.9); background: rgba(10, 10, 30, 0.9); font-family: 'Limelight', var(--titre), serif; font-size: clamp(11px, 2.1cqh, 17px); white-space: nowrap; pointer-events: none; animation: rm-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.rm-badge.mien { border-color: #ffd774; box-shadow: 0 0 12px rgba(255, 215, 110, 0.7); }
+.rm-badge.multiplie { border-color: #ff9a8a; background: radial-gradient(120% 140% at 50% 0%, rgba(170, 26, 40, 0.97), rgba(50, 4, 10, 0.97)); }
+.rm-badge.fini { border-color: #ffe08a; background: radial-gradient(120% 140% at 50% 0%, rgba(120, 82, 14, 0.97), rgba(30, 16, 4, 0.97)); color: #fff; }
+.rm-nb { margin-left: 6px; padding: 0 5px; border-radius: 99px; background: #ffd774; color: #2a0a04; font-family: system-ui, sans-serif; font-style: normal; font-weight: 900; font-size: 11px; }
+.rm-toi { position: absolute; left: 50%; top: -3px; padding: 0 7px; border-radius: 99px; background: linear-gradient(180deg, #ffe08a, #c98a1c); color: #2a0a04; font-family: system-ui, sans-serif; font-style: normal; font-size: 10px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; transform: translate(-50%, -100%); }
+@keyframes rm-pop { from { opacity: 0; scale: 1.7; } }
+
+/* Les annonces. */
+.rm-annonce { position: absolute; left: 50%; bottom: 3%; z-index: 40; padding: 6px 22px 8px; border-radius: 16px; border: 2px solid #d6a84b; background: radial-gradient(130% 150% at 50% 0%, rgba(30, 30, 80, 0.95), rgba(6, 6, 20, 0.95)); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.7); transform: translateX(-50%); white-space: nowrap; pointer-events: none; animation: rm-annonce 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.rm-annonce strong { font-family: var(--titre); font-weight: 400; font-size: clamp(18px, 3.8cqh, 30px); color: #ffd774; }
+@keyframes rm-annonce { from { opacity: 0; transform: translateX(-50%) scale(0.5); } }
+.rm-annonce-double { position: absolute; left: 50%; top: 50%; z-index: 45; display: grid; justify-items: center; gap: 2px; padding: 8px 26px 10px; border-radius: 18px; border: 2px solid #fff0b0; background: radial-gradient(120% 140% at 50% 0%, rgba(170, 26, 40, 0.97), rgba(40, 4, 8, 0.97)); box-shadow: 0 0 60px rgba(255, 150, 110, 0.95), 0 14px 30px rgba(0, 0, 0, 0.7); transform: translate(-50%, -50%); text-align: center; pointer-events: none; animation: rm-double 0.55s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.rm-annonce-double strong { white-space: nowrap; font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: clamp(34px, 8cqh, 72px); line-height: 1; color: #ffe7a6; text-shadow: 0 0 22px rgba(255, 200, 120, 0.95); }
+.rm-annonce-double small { max-width: 80cqw; font-size: clamp(11px, 1.9cqh, 15px); font-weight: 800; color: #ffd9a0; }
+@keyframes rm-double { from { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-10deg); } }
+.rm-resultat { position: absolute; left: 50%; top: 50%; z-index: 45; display: grid; justify-items: center; padding: 8px 26px 10px; border-radius: 18px; border: 2px solid #ffcf6b; background: radial-gradient(120% 140% at 50% 0%, rgba(110, 76, 14, 0.97), rgba(30, 14, 4, 0.97)); box-shadow: 0 0 50px rgba(255, 210, 110, 0.8), 0 14px 30px rgba(0, 0, 0, 0.7); transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none; animation: rm-double 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) 0.4s both; }
+.rm-resultat small { font-size: clamp(10px, 1.9cqh, 14px); font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #ffcf6b; }
+.rm-resultat strong { font-family: 'Limelight', var(--titre), serif; font-weight: 400; font-size: clamp(32px, 7cqh, 60px); line-height: 1.05; color: #fff1c4; text-shadow: 0 0 18px rgba(255, 200, 110, 0.9); }
+.bw-bonus.minuit .bw-bonus-resultat { animation-delay: 1.5s; animation-fill-mode: both; }
+
+/* ------------------------------------------------------------------------------------------------------------
+   L'intro « Minuit au penthouse » (10 s ; les pourcentages sont des centièmes de 10 s)
+   0 – 0,8 s la roue du Bal · 0,8 – 5 s la façade (on monte) · 5 – 6,5 s le penthouse vu de dehors ·
+   6,5 – 8 s l'entrée · 8 – 9,6 s le Baron · puis la roue. */
+.rmi { position: absolute; inset: 0; z-index: 60; overflow: hidden; pointer-events: none; container-type: size; }
+.rmi > *, .rmi-plan > * { animation-duration: 10s; animation-timing-function: linear; animation-delay: var(--t0, 0ms); animation-fill-mode: both; }
+.rmi-plan { position: absolute; inset: 0; overflow: hidden; opacity: 0; background: #05060f; }
+.rmi-photo { position: absolute; inset: 0; background-size: cover; background-position: 50% 50%; }
+.rmi-plan.rmi-la-roue { animation-name: rmi-roue; }
+.rmi-plan.rmi-la-roue > * { position: absolute; inset: 0; width: 100% !important; height: 100% !important; max-width: none; }
+@keyframes rmi-roue { 0%, 6% { opacity: 1; transform: scale(1); filter: brightness(1); } 8.5% { transform: scale(0.85); filter: brightness(0.35); } 9.5%, 100% { opacity: 0; transform: scale(0.8); } }
+
+/* La façade : la caméra monte du bal jusqu'au penthouse, au rythme des coups de minuit. */
+.rmi-plan.facade { animation-name: rmi-facade; }
+@keyframes rmi-facade { 0%, 7.5% { opacity: 0; } 9%, 49% { opacity: 1; } 50.5%, 100% { opacity: 0; } }
+.rmi-plan.facade .rmi-photo { background-size: 100% auto; animation-name: rmi-monte; animation-timing-function: cubic-bezier(0.45, 0, 0.35, 1); }
+@keyframes rmi-monte { 0%, 8% { background-position: 50% 100%; transform: scale(1.08); } 48%, 100% { background-position: 50% 0%; transform: scale(1.18); transform-origin: 50% 20%; } }
+.rmi-coups { position: absolute; inset: 0; background: radial-gradient(80% 60% at 50% 30%, rgba(255, 230, 160, 0.5), transparent 70%); mix-blend-mode: screen; opacity: 0; animation-name: rmi-coups; }
+@keyframes rmi-coups {
+  0%, 9% { opacity: 0; } 10% { opacity: 0.9; } 12% { opacity: 0; } 16% { opacity: 0.8; } 18% { opacity: 0; } 22% { opacity: 0.8; } 24% { opacity: 0; }
+  28% { opacity: 0.8; } 30% { opacity: 0; } 34% { opacity: 0.85; } 36% { opacity: 0; } 40% { opacity: 0.9; } 42% { opacity: 0; } 46% { opacity: 1; } 49%, 100% { opacity: 0; }
+}
+
+/* Le penthouse vu de dehors : on s'approche du dôme. */
+.rmi-plan.dehors { animation-name: rmi-dehors; }
+@keyframes rmi-dehors { 0%, 49.5% { opacity: 0; } 50.5%, 64.5% { opacity: 1; } 65.5%, 100% { opacity: 0; } }
+.rmi-plan.dehors .rmi-photo { animation-name: rmi-dehors-cam; transform-origin: 50% 42%; }
+@keyframes rmi-dehors-cam { 0%, 50% { transform: scale(1); } 65.5%, 100% { transform: scale(1.55); } }
+
+/* L'entrée : les portes s'écartent, on avance vers la roue. */
+.rmi-plan.entree { animation-name: rmi-entree; }
+@keyframes rmi-entree { 0%, 64.5% { opacity: 0; } 65.5%, 79.5% { opacity: 1; } 80.5%, 100% { opacity: 0; } }
+.rmi-plan.entree .rmi-photo { animation-name: rmi-entree-cam; transform-origin: 50% 44%; }
+@keyframes rmi-entree-cam { 0%, 65% { transform: scale(1); } 80.5%, 100% { transform: scale(1.45); } }
+
+/* Le Baron ordonne à la roue de tourner. */
+.rmi-plan.baron { animation-name: rmi-baron; }
+@keyframes rmi-baron { 0%, 79.5% { opacity: 0; } 80.5%, 95% { opacity: 1; } 99%, 100% { opacity: 0; } }
+.rmi-plan.baron .rmi-photo { animation-name: rmi-baron-cam; transform-origin: 40% 40%; }
+@keyframes rmi-baron-cam { 0%, 80% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+.rmi-flash { position: absolute; inset: 0; background: radial-gradient(70% 70% at 50% 45%, #fffdf5, #ffe3a6 60%, #d9a24a); opacity: 0; animation-name: rmi-flash; }
+@keyframes rmi-flash { 0%, 49.5% { opacity: 0; } 50.2% { opacity: 0.55; } 52%, 64.5% { opacity: 0; } 65.3% { opacity: 0.6; } 67%, 94% { opacity: 0; } 96% { opacity: 0.85; } 100% { opacity: 0; } }
+
+/* Sur téléphone : la façade remplit la hauteur, les plans larges sont recadrés sur ce qui compte. */
+@container (max-aspect-ratio: 1/1) {
+  .rmi-plan.facade .rmi-photo { background-size: 230% auto; }
+  .rmi-plan.baron .rmi-photo { background-position: 42% 50%; }
+  .rmi-plan.entree .rmi-photo, .rmi-plan.dehors .rmi-photo { background-position: 50% 50%; }
+}
+
+@media (max-width: 640px) {
+  .rm-badge { font-size: 11px; padding: 0 7px 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rmi-photo, .rm-halo, .rm-lue, .rm-pointeur > img { animation: none !important; }
+}

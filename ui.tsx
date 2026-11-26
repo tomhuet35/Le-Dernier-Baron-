@@ -686,6 +686,8 @@ export type EffetSonore = 'jouer' | 'lancement' | 'carte' | 'fin_de_pli' | 'duel
   | 'cm_ruee'
   | 'cm_ouf'
   | 'cm_roulement'
+  | 'rm_roule'
+  | 'rm_double'
   | 'drj_presse'
   | 'wri_flambe'
   | 'exi_palettes'
@@ -861,6 +863,8 @@ const EFFETS: Record<EffetSonore, { fichier: string; volume: number; baisserMusi
   cm_stop: { fichier: '/cartes/son-cm-stop.mp3', volume: 0.8, baisserMusique: false, aLaDemande: true },
   cm_ruee: { fichier: '/cartes/son-cm-ruee.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
   cm_ouf: { fichier: '/cartes/son-cm-ouf.mp3', volume: 0.6, baisserMusique: false, aLaDemande: true },
+  rm_roule: { fichier: '/cartes/son-rm-roule.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
+  rm_double: { fichier: '/cartes/son-rm-double.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
   cm_roulement: { fichier: '/cartes/son-cm-roulement.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
   fci_bravo: { fichier: '/cartes/son-fci-bravo.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
   fc_trinque: { fichier: '/cartes/son-fc-trinque.mp3', volume: 0.7, baisserMusique: false, aLaDemande: true },
@@ -1247,7 +1251,7 @@ const SONS_DES_JEUX: Record<LieuCasino, EffetSonore[]> = {
   coffres: ['cf_ouvre', 'cf_butin', 'cf_police', 'cf_encaisse', 'cf_gros', 'cf_perdu'],
   couronne: ['cv_tic', 'cv_envol', 'cv_pie', 'cv_perdu', 'cv_encaisse', 'cv_gros'],
   chute: ['chute_lacher', 'chute_clou', 'chute_case', 'chute_case_bas', 'chute_gros'],
-  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi', 'bw_vapeur', 'bw_sifflet', 'bw_palette', 'bw_cloche', 'bw_pression', 'bw_poincon', 'bw_train_passe', 'dr_feu', 'dr_pistolet', 'dr_rail', 'dr_flash', 'wr_cloche', 'ct_toc', 'ct_porte', 'exi_minuit', 'exi_palettes', 'wri_clang', 'wri_flambe', 'drj_flap', 'drj_presse', 'cti_noir', 'cti_grince', 'fc_pop', 'fc_verse', 'fc_ting', 'fc_trinque', 'fci_toast', 'fci_portes', 'fci_bravo', 'cm_musique', 'cm_stop', 'cm_ruee', 'cm_ouf', 'cm_roulement', 'course_depart', 'course_gain', 'course_appel', 'ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'br_moteur', 'br_meule', 'br_meule_long', 'br_percee', 'br_alarme', 'br_sifflet', 'ev_moteur', 'ev_passage', 'ev_fracas', 'ev_saut', 'gd_battage', 'gd_retourne', 'gd_eclat', 'pp_valse', 'pp_glisse', 'bj_carte', 'course_foule', 'lingots_pluie'],
+  baronWheel: ['bw_tic', 'bw_lancer', 'bw_arret', 'bw_gain', 'bw_gros', 'bw_perdu', 'bw_baron', 'bw_carte', 'bw_vol', 'bw_sirene', 'bw_evade', 'bw_menottes', 'bw_coffre', 'bw_cadran', 'bw_jackpot', 'bw_multi', 'bw_vapeur', 'bw_sifflet', 'bw_palette', 'bw_cloche', 'bw_pression', 'bw_poincon', 'bw_train_passe', 'dr_feu', 'dr_pistolet', 'dr_rail', 'dr_flash', 'wr_cloche', 'ct_toc', 'ct_porte', 'exi_minuit', 'exi_palettes', 'wri_clang', 'wri_flambe', 'drj_flap', 'drj_presse', 'cti_noir', 'cti_grince', 'fc_pop', 'fc_verse', 'fc_ting', 'fc_trinque', 'fci_toast', 'fci_portes', 'fci_bravo', 'cm_musique', 'cm_stop', 'cm_ruee', 'cm_ouf', 'cm_roulement', 'rm_roule', 'rm_double', 'course_depart', 'course_gain', 'course_appel', 'ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'br_moteur', 'br_meule', 'br_meule_long', 'br_percee', 'br_alarme', 'br_sifflet', 'ev_moteur', 'ev_passage', 'ev_fracas', 'ev_saut', 'gd_battage', 'gd_retourne', 'gd_eclat', 'pp_valse', 'pp_glisse', 'bj_carte', 'course_foule', 'lingots_pluie'],
   tickets: ['jeton', 'machine_pieces', 'lingots_pluie'],
   toits: ['jeton', 'selection', 'tt_pas', 'tt_saut', 'tt_atterrit', 'ex_sifflet', 'ex_decroche', 'ex_tunnel', 'ex_tonnerre', 'cf_encaisse', 'cf_gros', 'cf_perdu', 'lingots_pluie'],
   express: ['ex_sifflet', 'ex_tchou', 'ex_freins', 'ex_coffre', 'ex_tunnel', 'ex_police', 'ex_decroche', 'ex_arrivee', 'ex_vapeur', 'ex_vent', 'ex_tonnerre', 'ex_galop', 'ex_foule', 'ex_feux', 'ex_cadran', 'bw_menottes', 'bw_coffre', 'bw_multi', 'lingots_pluie'],
