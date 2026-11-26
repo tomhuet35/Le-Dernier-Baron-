@@ -265,27 +265,21 @@ export const PETITES_MALLETTES: TableBW<number> = [
 ];
 
 /**
- * LA FONTAINE DE CHAMPAGNE (elle rejoindra la roue du Bal) : une pyramide de coupes de huit étages, une coupe au
- * sommet, huit en bas. Le maître d'hôtel verse au sommet ; à chaque étage, la coupe pleine déborde à gauche ou à droite
- * (une chance sur deux), et le champagne finit dans l'une des huit coupes du bas, qui paie son multiplicateur. Chaque
- * joueur a choisi sa coupe avant le versement : si le champagne y finit, il trinque (son gain est doublé).
- * Les multiplicateurs vont en raison inverse des chances (×90 au bord : 1 chance sur 128 ; ×2,5 au centre : 35 sur
- * 128), si bien que chaque coupe vaut à peu près autant (≈ ×6,2 en moyenne), quelle que soit celle qu'on choisit.
+ * LA FONTAINE DE CHAMPAGNE (elle rejoindra la roue du Bal) : un plinko de coupes. Une pyramide de huit étages, une coupe
+ * au sommet, huit en bas. Le maître d'hôtel verse au sommet ; à chaque étage, la coupe pleine déborde à gauche ou à
+ * droite (une chance sur deux), et le champagne finit dans l'une des huit coupes du bas. Personne ne choisit : tout le
+ * monde gagne le multiplicateur de cette coupe.
+ * Les chances vont de 1 sur 128 (les bords, ×115) à 35 sur 128 (les deux coupes du centre, ×2) : en moyenne, ≈ ×6,17.
  */
 export const ETAGES_FONTAINE = 8;
-export const COUPES_FONTAINE = [90, 13, 4, 2.5, 2.5, 4, 13, 90];
+export const COUPES_FONTAINE = [115, 15, 5, 2, 2, 5, 15, 115];
 export const NB_COUPES_FONTAINE = COUPES_FONTAINE.length;
-/** Le gain est multiplié par ceci quand le champagne finit dans la coupe qu'on a choisie. */
-export const TRINQUE_FONTAINE = 2;
 /** Le chemin du champagne : à chaque étage sous le sommet, 0 s'il déborde à gauche, 1 à droite. */
 export const tirerCheminFontaine = (h: Hasard): number[] => Array.from({ length: ETAGES_FONTAINE - 1 }, () => (h() < 0.5 ? 0 : 1));
 /** La coupe du bas où finit le champagne (0 : tout à gauche). */
 export const coupeFinaleFontaine = (chemin: number[]) => chemin.reduce((a, d) => a + d, 0);
-/** Le multiplicateur gagné (avant celui de la roue) quand on a choisi la coupe `maCoupe`. */
-export function gainFontaine(chemin: number[], maCoupe: number | null): number {
-  const f = coupeFinaleFontaine(chemin);
-  return COUPES_FONTAINE[f] * (f === maCoupe ? TRINQUE_FONTAINE : 1);
-}
+/** Le multiplicateur gagné (avant celui de la roue), le même pour tous. */
+export const gainFontaine = (chemin: number[]) => COUPES_FONTAINE[coupeFinaleFontaine(chemin)];
 /** La chance que le champagne finisse dans la coupe k du bas. */
 export function chanceCoupeFontaine(k: number): number {
   const n = ETAGES_FONTAINE - 1;
@@ -293,9 +287,8 @@ export function chanceCoupeFontaine(k: number): number {
   for (let i = 0; i < k; i++) c = (c * (n - i)) / (i + 1);
   return c / 2 ** n;
 }
-/** L'espérance (avant le multiplicateur de la roue) pour qui a choisi la coupe `maCoupe`. */
-export const esperanceFontaine = (maCoupe: number) =>
-  COUPES_FONTAINE.reduce((a, x, k) => a + chanceCoupeFontaine(k) * x * (k === maCoupe ? TRINQUE_FONTAINE : 1), 0);
+/** L'espérance de la Fontaine (avant le multiplicateur de la roue). */
+export const esperanceFontaine = () => COUPES_FONTAINE.reduce((a, x, k) => a + chanceCoupeFontaine(k) * x, 0);
 
 /**
  * LA COURSE-POURSUITE (l'Évasion) : trois itinéraires ; plus le risque d'arrestation est grand, plus le butin l'est aussi.
@@ -1190,7 +1183,7 @@ export interface VueBonusBW {
   restaurant?: { plats: PlatBW[] | null; double: number | null; ordre: number[] | null; vedette: PlatBW | null };
   /** Le Contrôleur : sa tournée et le jackpot du trésor, une fois la tournée commencée (les choix sont faits). */
   controleur?: { tournee: PassageCT[] | null; jackpot: JackpotBW | null };
-  /** La Fontaine de champagne : le chemin du champagne, une fois le versement commencé (les coupes sont choisies). */
+  /** La Fontaine de champagne : le chemin du champagne, une fois le versement commencé. */
   fontaine?: { chemin: number[] | null };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;

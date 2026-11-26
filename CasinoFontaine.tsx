@@ -1,15 +1,14 @@
 /**
- * La Fontaine de champagne (la roue du Bal) : au bar du Grand Hôtel, une pyramide de coupes de huit étages sur une
- * table nappée. L'intro : le maître d'hôtel sabre un magnum (le bouchon s'envole), puis monte sur son escabeau. Le
- * choix : chaque joueur choisit sa coupe parmi les huit du bas (chacune porte son multiplicateur). Le versement : il
- * verse au sommet ; chaque coupe pleine déborde à gauche ou à droite, de coupe en coupe, jusqu'à l'une des huit du bas.
- * Si c'est la mienne, je trinque : mon gain est doublé.
+ * La Fontaine de champagne (la roue du Bal) : un plinko de coupes, au bar du Grand Hôtel. Une pyramide de huit étages
+ * sur une table nappée. L'intro : le maître d'hôtel sabre un magnum (le bouchon s'envole), puis monte sur son escabeau.
+ * Le versement : il verse au sommet ; chaque coupe pleine déborde à gauche ou à droite, de coupe en coupe, jusqu'à l'une
+ * des huit du bas, qui porte son multiplicateur. Personne ne choisit : tout le monde gagne le même, et l'on trinque.
  *
- * Le serveur a tiré le chemin du champagne dès le début du bonus ; il ne l'envoie qu'au versement (les choix sont faits).
+ * Le serveur a tiré le chemin du champagne dès le début du bonus ; il ne l'envoie qu'au versement.
  * Tout est placé d'après la taille de la scène (la pyramide, la table, le maître) et l'horloge de l'étape.
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { COUPES_FONTAINE, DUREES_BW, ETAGES_FONTAINE, TRINQUE_FONTAINE, coupeFinaleFontaine, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
+import { COUPES_FONTAINE, DUREES_BW, ETAGES_FONTAINE, coupeFinaleFontaine, type VueBonusBW, type VueBW } from '../../shared/baronWheel';
 import { ValeurMultipliee } from './CasinoBaronExpress';
 import { tr } from './traduction';
 import { jouerEffet } from './ui';
@@ -74,11 +73,9 @@ const goulotA = (g: Geo) => ({ x: g.x(0, 0) - g.cw * 1.3, y: g.pied(0) - g.ch * 
 // ---------------------------------------------------------------------------------------------------------------
 // Le bonus
 
-export function BonusFontaine({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; b: VueBonusBW; nom: string; ouvert: boolean; choisir: (o: number) => void; roue?: ReactNode }) {
+export function BonusFontaine({ v, b, nom, roue }: { v: VueBW; b: VueBonusBW; nom: string; roue?: ReactNode }) {
   void roue;
   const M = Math.max(1, b.multiplicateur);
-  const choix = b.mesChoix[0];
-  const salon = b.choixSalon[0] ?? Array(COUPES_FONTAINE.length).fill(0);
   const chemin = b.fontaine?.chemin ?? null;
 
   // L'horloge de l'étape (recalée sur le serveur) ; au résultat, tout est déjà versé.
@@ -136,7 +133,6 @@ export function BonusFontaine({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; 
   const plein = (r: number) => (indices && verse ? borne((sv - debutEtage(r)) / dureeEtage(r)) : 0);
   const finale = chemin ? coupeFinaleFontaine(chemin) : null;
   const arrive = verse && sv >= FIN_VERSE;
-  const trinque = arrive && finale !== null && finale === choix;
 
   // Les sons.
   if (intro) {
@@ -146,7 +142,7 @@ export function BonusFontaine({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; 
     fois('verse', VERSE.filet, () => jouerEffet('fc_verse'));
     fois('verse2', VERSE.filet + 1_500, () => jouerEffet('fc_verse', { volume: 0.4 }));
     for (let r = 0; r < ETAGES_FONTAINE; r++) fois(`t${r}`, debutEtage(r) + dureeEtage(r) - 120, () => jouerEffet('fc_ting', { vitesse: 0.85 + r * 0.06, volume: r === ETAGES_FONTAINE - 1 ? 0.9 : 0.55 }));
-    fois('fin', FIN_VERSE + 100, () => jouerEffet(choix !== null && finale === choix ? 'fc_trinque' : 'gd_eclat'));
+    fois('fin', FIN_VERSE + 100, () => jouerEffet('fc_trinque'));
   }
 
   // L'intro : la scène s'allume, le maître entre en sabrant, puis il passe à l'escabeau.
@@ -181,9 +177,7 @@ export function BonusFontaine({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; 
     }
   }
 
-  // Les coupes du bas : le choix, les multiplicateurs.
   const bas = ETAGES_FONTAINE - 1;
-  const choisirOuvert = nom === 'coupes' && ouvert && choix === null;
 
   return (
     <div className={`fc fc-e-${nom} ${g.portrait ? 'portrait' : ''} ${arrive ? 'arrive' : ''}`} ref={scene}>
@@ -229,30 +223,12 @@ export function BonusFontaine({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; 
         </svg>
       )}
 
-      {/* Les huit coupes du bas : le choix, et le multiplicateur de chacune sur le bord de la nappe. */}
-      {COUPES_FONTAINE.map((x, i) => {
-        const cx = g.x(bas, i);
-        const mienne = choix === i;
-        const gagne = arrive && finale === i;
-        return (
-          <div key={i}>
-            <button
-              type="button"
-              className={`fc-choix ${mienne ? 'mienne' : ''} ${choix !== null && !mienne && nom === 'coupes' ? 'autre' : ''}`}
-              style={{ width: g.cw * 0.98, height: g.ch, left: cx - (g.cw * 0.98) / 2, top: g.pied(bas) - g.ch }}
-              onClick={() => choisir(i)}
-              disabled={!choisirOuvert}
-              aria-label={tr(`Coupe ${i + 1}, ×${x}`, `Glass ${i + 1}, ×${x}`)}
-            >
-              {nom === 'coupes' && salon[i] ? <i className="fc-nb">{salon[i]}</i> : null}
-              {mienne && <em className="fc-toi">{tr('Toi', 'You')}</em>}
-            </button>
-            <span className={`fc-multi ${x >= 13 ? 'gros' : ''} ${gagne ? 'gagne' : ''} ${mienne ? 'mienne' : ''}`} style={{ left: cx, top: g.plateau + g.ch * 0.08 }}>
-              ×{String(x).replace('.', ',')}
-            </span>
-          </div>
-        );
-      })}
+      {/* Le multiplicateur de chacune des huit coupes du bas, sur le bord de la nappe. */}
+      {COUPES_FONTAINE.map((x, i) => (
+        <span key={i} className={`fc-multi ${x >= 15 ? 'gros' : ''} ${arrive && finale === i ? 'gagne' : ''}`} style={{ left: g.x(bas, i), top: g.plateau + g.ch * 0.08 }}>
+          ×{x}
+        </span>
+      ))}
 
       {/* L'intro : le maître sabre le magnum, le bouchon s'envole. */}
       {sabreStyle && <img className="fc-sabre" src={IMG('sabre')} alt="" draggable={false} style={{ ...sabreStyle, clipPath: popT < 0 ? CACHE_MOUSSE : undefined }} />}
@@ -263,17 +239,12 @@ export function BonusFontaine({ v, b, nom, ouvert, choisir, roue }: { v: VueBW; 
         </>
       )}
 
-      {/* Le choix, puis le résultat. */}
-      {nom === 'coupes' && (
-        <div className="fc-annonce" role="status">
-          <strong>{choix === null ? tr('Choisis ta coupe', 'Pick your glass') : tr('À ta santé !', 'Cheers!')}</strong>
-        </div>
-      )}
+      {/* Le résultat : la coupe où finit le champagne, le même gain pour tous. */}
       {arrive && finale !== null && (
-        <div className={`fc-resultat ${trinque ? 'trinque' : ''}`} role="status">
-          {trinque && <small>{tr('C’est ta coupe : tu trinques ! ×2', 'It’s your glass: cheers! ×2')}</small>}
+        <div className="fc-resultat" role="status">
+          <small>{tr('À votre santé !', 'Cheers!')}</small>
           <strong>
-            <ValeurMultipliee x={COUPES_FONTAINE[finale] * (trinque ? TRINQUE_FONTAINE : 1)} m={M} son />
+            <ValeurMultipliee x={COUPES_FONTAINE[finale]} m={M} son />
           </strong>
         </div>
       )}
