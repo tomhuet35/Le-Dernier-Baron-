@@ -265,6 +265,56 @@ export const PETITES_MALLETTES: TableBW<number> = [
 ];
 
 /**
+ * LA ROUE DE MINUIT (le Bal masqué, la case unique de la roue du Bal ; au penthouse) : une roue géante de 32 cases et
+ * trois masques-pointeurs (Argent, Or, Rubis) en haut. Chacun choisit son masque. La roue tourne : chaque masque lit sa
+ * case. Un multiplicateur : c'est le gain de ce masque. « Double » ou « Triple » : toutes les cases de ce masque doublent
+ * ou triplent, et la roue repart (tant qu'un masque attend ; au plus six tours, après quoi il paie le ×200 multiplié).
+ * Chaque masque lit une case uniforme à chaque tour : les trois valent pareil, ≈ ×23,8 en moyenne (≈ 97 % sur la case
+ * unique de la roue du Bal à 54 cases, avec la petite roue).
+ */
+export type CaseMinuit = number | 'double' | 'triple';
+export const CASES_MINUIT: CaseMinuit[] = [
+  3, 8, 3, 12, 3, 'double', 8, 3, 20, 3, 12, 200, 3, 8, 12, 3, 'double', 8, 40, 3, 12, 'triple', 8, 20, 3, 12, 100, 'double', 8, 3, 20, 8,
+];
+export const NB_CASES_MINUIT = CASES_MINUIT.length;
+/** Où sont les trois masques (en cases, depuis le haut de la roue) : Argent, Or, Rubis. */
+export const POINTEURS_MINUIT = [-4, 0, 4];
+export const MAX_TOURS_MINUIT = 6;
+const PLAFOND_MINUIT = 200;
+const facteurCase = (c: CaseMinuit) => (c === 'double' ? 2 : c === 'triple' ? 3 : 1);
+/** La case lue par le masque p quand la roue s'est arrêtée sur r (la case sous le masque du milieu). */
+export const caseMinuit = (r: number, p: number): CaseMinuit => CASES_MINUIT[(((r + POINTEURS_MINUIT[p]) % NB_CASES_MINUIT) + NB_CASES_MINUIT) % NB_CASES_MINUIT];
+/** Le parcours d'un masque : son facteur avant chaque tour, le tour où il s'arrête (null : jamais) et son gain. */
+export function parcoursMinuit(tours: number[], p: number): { facteurs: number[]; fin: number | null; gain: number } {
+  const facteurs: number[] = [];
+  let f = 1;
+  for (let k = 0; k < tours.length; k++) {
+    facteurs.push(f);
+    const c = caseMinuit(tours[k], p);
+    if (typeof c === 'number') return { facteurs, fin: k, gain: c * f };
+    f *= facteurCase(c);
+  }
+  return { facteurs, fin: null, gain: PLAFOND_MINUIT * f };
+}
+/** Les tours de roue du bonus : on relance tant qu'un masque attend (au plus six tours). */
+export function tirerToursMinuit(h: Hasard): number[] {
+  const t: number[] = [];
+  do t.push(Math.floor(h() * NB_CASES_MINUIT));
+  while (t.length < MAX_TOURS_MINUIT && POINTEURS_MINUIT.some((_, p) => parcoursMinuit(t, p).fin === null));
+  return t;
+}
+export const gainMinuit = (tours: number[], p: number) => parcoursMinuit(tours, p).gain;
+/** L'espérance d'un masque (avant la petite roue). */
+export function esperanceMinuit(): number {
+  const n = NB_CASES_MINUIT;
+  const a = CASES_MINUIT.reduce<number>((x, c) => x + (typeof c === 'number' ? c : 0), 0) / n;
+  const d = CASES_MINUIT.reduce<number>((x, c) => x + (typeof c === 'number' ? 0 : facteurCase(c)), 0) / n;
+  let e = 0;
+  for (let k = 0; k < MAX_TOURS_MINUIT; k++) e += a * d ** k;
+  return e + PLAFOND_MINUIT * d ** MAX_TOURS_MINUIT;
+}
+
+/**
  * LES CHAISES MUSICALES (elles rejoindront la roue du Bal) : quatre invités dansent autour de trois chaises. À chaque
  * arrêt de la musique, l'invité resté debout quitte la piste et l'on retire une chaise (trois arrêts). Chacun a parié sur
  * un invité : il gagne selon le moment où son invité sort (×2, ×6, ×10), ×30 s'il est le dernier assis.
@@ -921,6 +971,9 @@ export interface DureesBW {
   introFontaine: number;
   /** Les Chaises musicales : l'orchestre et les invités, puis la musique (trois arrêts de 6 s). */
   introChaises: number;
+  /** La Roue de Minuit : la montée au penthouse, puis un tour de roue (l'étape des tours dure tourMinuit × tours). */
+  introMinuit: number;
+  tourMinuit: number;
   musique: number;
   versement: number;
   gare: number;
@@ -966,6 +1019,8 @@ export const DUREES_BW: DureesBW = {
   tournee: 17_000,
   introFontaine: 9_000,
   introChaises: 9_000,
+  introMinuit: 10_000,
+  tourMinuit: 7_000,
   musique: 18_000,
   versement: 9_500,
   gare: 11_000,
@@ -1247,6 +1302,8 @@ export interface VueBonusBW {
   fontaine?: { versements: number[][] | null };
   /** Les Chaises musicales : l'ordre de sortie des invités, une fois la musique lancée (les paris sont faits). */
   chaises?: { ordre: number[] | null };
+  /** La Roue de Minuit : les arrêts de la roue (la case sous le masque du milieu), une fois les masques choisis. */
+  minuit?: { tours: number[] | null };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**
