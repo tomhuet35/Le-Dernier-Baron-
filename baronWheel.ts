@@ -269,17 +269,34 @@ export const PETITES_MALLETTES: TableBW<number> = [
  * au sommet, huit en bas. Le maître d'hôtel verse au sommet ; à chaque étage, la coupe pleine déborde à gauche ou à
  * droite (une chance sur deux), et le champagne finit dans l'une des huit coupes du bas. Personne ne choisit : tout le
  * monde gagne le multiplicateur de cette coupe.
- * Les chances vont de 1 sur 128 (les bords, ×115) à 35 sur 128 (les deux coupes du centre, ×2) : en moyenne, ≈ ×6,17.
+ * Avant le versement, parfois, une ou deux coupes du bas (au hasard) sont doublées : 35 % des fois aucune, 50 % une,
+ * 15 % deux ; une coupe donnée l'est donc une fois sur dix.
+ * Les chances vont de 1 sur 128 (les bords, ×100) à 35 sur 128 (les deux coupes du centre, ×2) : ≈ ×5,61 en moyenne,
+ * ≈ ×6,17 avec les doubles (97 % avec la petite roue).
  */
 export const ETAGES_FONTAINE = 8;
-export const COUPES_FONTAINE = [115, 15, 5, 2, 2, 5, 15, 115];
+export const COUPES_FONTAINE = [100, 15, 4, 2, 2, 4, 15, 100];
 export const NB_COUPES_FONTAINE = COUPES_FONTAINE.length;
 /** Le chemin du champagne : à chaque étage sous le sommet, 0 s'il déborde à gauche, 1 à droite. */
 export const tirerCheminFontaine = (h: Hasard): number[] => Array.from({ length: ETAGES_FONTAINE - 1 }, () => (h() < 0.5 ? 0 : 1));
 /** La coupe du bas où finit le champagne (0 : tout à gauche). */
 export const coupeFinaleFontaine = (chemin: number[]) => chemin.reduce((a, d) => a + d, 0);
+/** Les coupes du bas doublées pour ce versement (aucune, une ou deux, distinctes). */
+export function tirerDoublesFontaine(h: Hasard): number[] {
+  const u = h();
+  const n = u < 0.35 ? 0 : u < 0.85 ? 1 : 2;
+  const coupes = COUPES_FONTAINE.map((_, k) => k);
+  const doubles: number[] = [];
+  for (let i = 0; i < n; i++) doubles.push(coupes.splice(Math.floor(h() * coupes.length), 1)[0]);
+  return doubles.sort((a, b) => a - b);
+}
+/** La chance qu'une coupe donnée soit doublée (le nombre moyen de doubles, réparti sur les huit coupes). */
+export const CHANCE_DOUBLE_FONTAINE = (0.5 * 1 + 0.15 * 2) / 8;
 /** Le multiplicateur gagné (avant celui de la roue), le même pour tous. */
-export const gainFontaine = (chemin: number[]) => COUPES_FONTAINE[coupeFinaleFontaine(chemin)];
+export function gainFontaine(chemin: number[], doubles: number[] = []): number {
+  const f = coupeFinaleFontaine(chemin);
+  return COUPES_FONTAINE[f] * (doubles.includes(f) ? 2 : 1);
+}
 /** La chance que le champagne finisse dans la coupe k du bas. */
 export function chanceCoupeFontaine(k: number): number {
   const n = ETAGES_FONTAINE - 1;
@@ -288,7 +305,7 @@ export function chanceCoupeFontaine(k: number): number {
   return c / 2 ** n;
 }
 /** L'espérance de la Fontaine (avant le multiplicateur de la roue). */
-export const esperanceFontaine = () => COUPES_FONTAINE.reduce((a, x, k) => a + chanceCoupeFontaine(k) * x, 0);
+export const esperanceFontaine = () => COUPES_FONTAINE.reduce((a, x, k) => a + chanceCoupeFontaine(k) * x, 0) * (1 + CHANCE_DOUBLE_FONTAINE);
 
 /**
  * LA COURSE-POURSUITE (l'Évasion) : trois itinéraires ; plus le risque d'arrestation est grand, plus le butin l'est aussi.
@@ -1183,8 +1200,8 @@ export interface VueBonusBW {
   restaurant?: { plats: PlatBW[] | null; double: number | null; ordre: number[] | null; vedette: PlatBW | null };
   /** Le Contrôleur : sa tournée et le jackpot du trésor, une fois la tournée commencée (les choix sont faits). */
   controleur?: { tournee: PassageCT[] | null; jackpot: JackpotBW | null };
-  /** La Fontaine de champagne : le chemin du champagne, une fois le versement commencé. */
-  fontaine?: { chemin: number[] | null };
+  /** La Fontaine de champagne : le chemin du champagne et les coupes doublées, une fois le versement commencé. */
+  fontaine?: { chemin: number[] | null; doubles?: number[] | null };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**
