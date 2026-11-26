@@ -22,7 +22,7 @@ const IMG = (n: string) => `/cartes/bw-fc-${n}.webp`;
 /** Toutes les images de la Fontaine (sans chemin ni extension), préchargées avant le bonus. */
 export const IMAGES_FONTAINE_NOMS = [
   ...['bar-paysage', 'bar-portrait', 'table', 'coupe-vide', 'coupe-pleine', 'maitre', 'bouchon', 'eclaboussure'].map((n) => `bw-fc-${n}`),
-  ...['portes', 'pyramide', 'entree', 'lame'].map((n) => `bw-fci-${n}`),
+  ...['portes', 'portes-ouvertes', 'pyramide', 'entree', 'lame'].map((n) => `bw-fci-${n}`),
 ];
 
 /** Les images : leurs proportions, et les points qui comptent (en part de l'image). */
@@ -58,9 +58,9 @@ function IntroSabrage({ t0, roue }: { t0: number; roue?: ReactNode }) {
     <div className="fci" aria-hidden="true" style={{ '--t0': `${-t0}ms` } as CSSProperties}>
       <div className="fci-plan fci-la-roue">{roue}</div>
       <div className="fci-plan portes">
-        <i className="fci-lueur" />
-        <i className="fci-battant g" style={{ backgroundImage: img('portes') }} />
-        <i className="fci-battant d" style={{ backgroundImage: img('portes') }} />
+        <i className="fci-photo ouvertes" style={{ backgroundImage: img('portes-ouvertes') }} />
+        <i className="fci-photo fermees" style={{ backgroundImage: img('portes') }} />
+        <i className="fci-fente" />
       </div>
       <div className="fci-plan pyramide">
         <i className="fci-photo" style={{ backgroundImage: img('pyramide') }} />
