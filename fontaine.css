@@ -7,12 +7,9 @@
 /* La flaque de lumière sur la table. */
 .fc-lumiere { position: absolute; left: 50%; bottom: 0; width: 90cqw; height: 80cqh; translate: -50% 0; background: radial-gradient(50% 55% at 50% 65%, rgba(255, 214, 140, 0.32), transparent 70%); mix-blend-mode: screen; pointer-events: none; }
 
-.fc-table, .fc-maitre, .fc-sabre, .fc-pop, .fc-bouchon { position: absolute; height: auto; max-width: none; pointer-events: none; }
+.fc-table, .fc-maitre { position: absolute; height: auto; max-width: none; pointer-events: none; }
 .fc-table { z-index: 5; filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.65)); }
 .fc-maitre { z-index: 4; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.55)); }
-.fc-sabre { z-index: 30; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.6)); }
-.fc-pop { z-index: 31; mix-blend-mode: screen; transform-origin: 30% 70%; }
-.fc-bouchon { z-index: 32; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.5)); }
 
 /* Les coupes. */
 .fc-coupe { position: absolute; display: block; pointer-events: none; }
@@ -103,28 +100,33 @@
 .fci-plan.entree .fci-photo { animation-name: fci-entree-cam; transform-origin: 50% 35%; }
 @keyframes fci-entree-cam { 0%, 43% { transform: scale(1.14); } 59%, 100% { transform: scale(1); } }
 
-/* La lame : un ralenti qui glisse vers le goulot ; au pop, la mousse jaillit et le bouchon vole vers la caméra. */
+/* La lame : un ralenti qui glisse vers le goulot. */
 .fci-plan.lame { animation-name: fci-lame; }
 @keyframes fci-lame { 0%, 58% { opacity: 0; } 59%, 77% { opacity: 1; } 79.5%, 100% { opacity: 0; } }
 .fci-plan.lame .fci-photo { animation-name: fci-lame-cam; transform-origin: 72% 28%; }
 @keyframes fci-lame-cam { 0%, 58% { transform: scale(1.02) translateX(3%); } 70.5% { transform: scale(1.18) translateX(0); } 71%, 100% { transform: scale(1.24) translateX(-1%) rotate(-1deg); } }
-.fci-mousse, .fci-bouchon { position: absolute; height: auto; max-width: none; opacity: 0; }
-.fci-mousse { left: 58%; top: -12%; width: 55cqh; mix-blend-mode: screen; animation-name: fci-mousse; transform-origin: 20% 80%; }
-@keyframes fci-mousse { 0%, 70.5% { opacity: 0; transform: scale(0.3) rotate(-20deg); } 71.5% { opacity: 1; } 78%, 100% { opacity: 0.9; transform: scale(1.7) rotate(-30deg); } }
-.fci-bouchon { left: 74%; top: 6%; width: 9cqh; translate: -50% -50%; animation-name: fci-bouchon; animation-timing-function: cubic-bezier(0.4, 0, 1, 1); }
-@keyframes fci-bouchon { 0%, 70.5% { opacity: 0; transform: translate(0, 0) scale(0.8) rotate(0deg); } 71% { opacity: 1; } 76.5% { opacity: 1; transform: translate(-30cqw, 32cqh) scale(10) rotate(300deg); } 77.5%, 100% { opacity: 0; transform: translate(-32cqw, 34cqh) scale(11) rotate(320deg); } }
+/* Le pop : on passe d'un coup au plan d'après la coupe (le geyser, le bouchon qui s'envole), avec une secousse et une
+   avancée de la caméra. */
+.fci-plan.lame .fci-photo.pop { opacity: 0; transform-origin: 70% 35%; animation-name: fci-pop; }
+@keyframes fci-pop {
+  0%, 70.4% { opacity: 0; transform: scale(1.12); }
+  70.8% { opacity: 1; transform: scale(1.12) translate(-1%, 0.8%); }
+  71.4% { transform: scale(1.1) translate(0.8%, -0.6%); }
+  72% { transform: scale(1.09) translate(-0.4%, 0.3%); }
+  72.6% { transform: scale(1.08) translate(0, 0); }
+  79.5%, 100% { opacity: 1; transform: scale(1.0); }
+}
 
 /* Les flashs : l'ouverture des portes, et le pop. */
 .fci-flash { position: absolute; inset: 0; background: radial-gradient(70% 70% at 50% 45%, #fffdf5, #ffe3a6 60%, #d9a24a); opacity: 0; animation-name: fci-flash; }
-@keyframes fci-flash { 0%, 21% { opacity: 0; } 24% { opacity: 0.95; } 27%, 70.5% { opacity: 0; } 71% { opacity: 0.45; } 74%, 100% { opacity: 0; } }
+@keyframes fci-flash { 0%, 21% { opacity: 0; } 24% { opacity: 0.95; } 27%, 70.5% { opacity: 0; } 70.8% { opacity: 0.7; } 73%, 100% { opacity: 0; } }
 
 /* Sur téléphone, les plans sont recadrés sur ce qui compte. */
 @container (max-aspect-ratio: 1/1) {
   .fci-plan.lame .fci-photo { background-position: 70% 50%; }
-  .fci-mousse { left: 40%; }
-  .fci-bouchon { left: 62%; }
+  .fci-plan.lame .fci-photo.pop { background-position: 72% 50%; }
   .fci-plan.pyramide .fci-photo { animation-name: none; background-position: 50% 50%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fci-photo, .fci-fente, .fci-bouchon, .fci-mousse { animation-name: none !important; }
+  .fci-photo:not(.pop), .fci-fente { animation-name: none !important; }
 }
