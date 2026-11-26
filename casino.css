@@ -54,7 +54,7 @@
 @media (max-width: 699px) { .cas-jeux:not(:has(> .baronWheel)) > .cas-vignette:last-child:nth-child(odd), .cas-jeux:has(> .baronWheel) > .cas-vignette:last-child:nth-child(even):not(.baronWheel) { grid-column: 1 / -1; aspect-ratio: 2 / 1.1; } }
 /* The Baron's Wheel : sa grande affiche sur toute la largeur, en tête des jeux (le logo est dans l'image). */
 .cas-jeux > .cas-vignette.baronWheel { grid-column: 1 / -1; aspect-ratio: 3 / 1; }
-.cas-vignette.baronWheel .cas-vignette-nom { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.cas-vignette.baronWheel .cas-vignette-nom, .cas-vignette.balWheel .cas-vignette-nom { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Le menu des machines à sous */
 .cas-choix-machines { gap: 10px; }
