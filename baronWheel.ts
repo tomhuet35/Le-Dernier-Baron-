@@ -265,6 +265,27 @@ export const PETITES_MALLETTES: TableBW<number> = [
 ];
 
 /**
+ * LES CHAISES MUSICALES (elles rejoindront la roue du Bal) : quatre invités dansent autour de trois chaises. À chaque
+ * arrêt de la musique, l'invité resté debout quitte la piste et l'on retire une chaise (trois arrêts). Chacun a parié sur
+ * un invité : il gagne selon le moment où son invité sort (×2, ×6, ×10), ×30 s'il est le dernier assis.
+ * L'ordre de sortie est tiré au hasard : chaque invité vaut ×12 en moyenne (≈ 97 % sur la roue du Bal à 54 cases).
+ */
+export const INVITES_CHAISES = ['comtesse', 'colonel', 'charleston', 'magnat'] as const;
+export const GAINS_CHAISES = [2, 6, 10, 30];
+/** L'ordre de sortie : les trois premiers quittent la piste l'un après l'autre, le dernier reste assis. */
+export function tirerOrdreChaises(h: Hasard): number[] {
+  const o = INVITES_CHAISES.map((_, i) => i);
+  for (let i = o.length - 1; i > 0; i--) {
+    const j = Math.floor(h() * (i + 1));
+    [o[i], o[j]] = [o[j], o[i]];
+  }
+  return o;
+}
+/** Le multiplicateur gagné (avant celui de la roue) par qui a parié sur l'invité `mien`. */
+export const gainChaises = (ordre: number[], mien: number) => GAINS_CHAISES[ordre.indexOf(mien)];
+export const esperanceChaises = () => GAINS_CHAISES.reduce((a, x) => a + x, 0) / GAINS_CHAISES.length;
+
+/**
  * LA FONTAINE DE CHAMPAGNE (elle rejoindra la roue du Bal) : un plinko de coupes. Une pyramide de huit étages, une coupe
  * au sommet, huit en bas. Le maître d'hôtel verse au sommet ; à chaque étage, la coupe pleine déborde à gauche ou à
  * droite (une chance sur deux), et le champagne finit dans l'une des huit coupes du bas. Personne ne choisit : tout le
@@ -898,6 +919,9 @@ export interface DureesBW {
   /** La Fontaine de champagne : le bar et le sabrage, puis le versement (la cascade de coupe en coupe), par versement :
    * l'étape dure versement × le nombre de versements. */
   introFontaine: number;
+  /** Les Chaises musicales : l'orchestre et les invités, puis la musique (trois arrêts de 6 s). */
+  introChaises: number;
+  musique: number;
   versement: number;
   gare: number;
   tunnel: number;
@@ -941,6 +965,8 @@ export const DUREES_BW: DureesBW = {
   introControleur: 7_300,
   tournee: 17_000,
   introFontaine: 9_000,
+  introChaises: 9_000,
+  musique: 18_000,
   versement: 9_500,
   gare: 11_000,
   // L'embuscade (Alpes, puis Balkans) : le paysage, la police à cheval, deux wagons déviés l'un après l'autre.
@@ -1219,6 +1245,8 @@ export interface VueBonusBW {
   /** La Fontaine de champagne : le chemin de chaque versement (on reverse après une coupe Double), une fois le
    * versement commencé. */
   fontaine?: { versements: number[][] | null };
+  /** Les Chaises musicales : l'ordre de sortie des invités, une fois la musique lancée (les paris sont faits). */
+  chaises?: { ordre: number[] | null };
   /** Le Braquage : le sous-sol où s'arrête la perceuse et le jackpot du Coffre du Siècle, révélés quand elle part. */
   casse?: { etage: number; jackpot: JackpotBW | null } | null;
   /**
