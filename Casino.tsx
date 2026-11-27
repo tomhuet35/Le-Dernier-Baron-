@@ -63,7 +63,7 @@ import { EcranBourse } from './CasinoBourse';
 import { EcranMarche } from './CasinoMarche';
 import { EcranTailleur } from './CasinoTailleur';
 import { cadreSpecial, type VueVentes } from '../../shared/ventes';
-import { AccueilGroom, AnnoncesHotel, CadeauBienvenue, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, JeuFerme, Penthouse } from './CasinoHotel';
+import { AccueilGroom, AnnoncesHotel, CadeauBienvenue, BandeauHappyHour, CarteDeMembre, EtageFerme, FenetreSemaine, JeuFerme, Penthouse, PremiersPas } from './CasinoHotel';
 import { ContexteSalon, FenetreParametres, IconeParametres, RappelPause } from './CasinoParametres';
 import { etage, etageDuJeu, etageOuvert, ETAGES, jeuOuvert, NIVEAUX_JEUX, type CadeauSemaine, type Etage, type JeuNiveau } from '../../shared/hotel';
 import { MORCEAUX_PAGE, morceauxDe } from '../../shared/contrats';
@@ -2323,6 +2323,8 @@ function Accueil({
           {tr('Gros lot de The Golden Heist', 'The Golden Heist jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
         </p>
       </section>
+
+      <PremiersPas vue={vue} appel={appel} onVue={onVue} onRoue={onRoue} onMachines={() => onVignette('machines')} onExpress={() => onVignette('baronWheel')} />
 
       <nav className="ac-dock" aria-label={tr('Le salon', 'The lounge')}>
         <div className="ac-dock-defile">

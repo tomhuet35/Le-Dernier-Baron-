@@ -5,7 +5,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { VueCasino } from '../../shared/casino';
-import { CARTES_MEMBRE, carteMembre, carteSuivante, COFFRE_COMPLET, ETAGES, etageOuvert, type AnnonceHotel, type CadeauSemaine, type Etage, NIVEAUX_JEUX, NOMS_JEUX_NIVEAU, type JeuNiveau } from '../../shared/hotel';
+import { CADEAU_PREMIERS_PAS, CARTES_MEMBRE, carteMembre, carteSuivante, COFFRE_COMPLET, ETAGES, etageOuvert, type AnnonceHotel, type CadeauSemaine, type Etage, NIVEAUX_JEUX, NOMS_JEUX_NIVEAU, type JeuNiveau } from '../../shared/hotel';
 import type { Appel } from './App';
 import { Rubis } from './CasinoContrats';
 import { dollars } from './casinoOutils';
@@ -93,11 +93,125 @@ export function AccueilGroom() {
       <strong>{tr('Bienvenue au Grand Hôtel du Baron !', 'Welcome to the Baron’s Grand Hotel!')}</strong>
       <p>
         {tr(
-          'Je suis le Groom. Chaque étage a ses jeux : le bar et ses machines au rez-de-chaussée, les tables au 1er, les spectacles au 2e, et tout en haut le Penthouse. Les étages s’ouvrent avec ton niveau.',
-          'I’m the Bellboy. Each floor has its games: the bar and its slots on the ground floor, the tables on the 1st, the shows on the 2nd, and the Penthouse at the top. Floors open as you level up.',
+          'Je suis le Groom. Suis-moi pour une petite visite : la roulette du salon, un tour de machine, puis le Baron Express. Trois minutes, et une récompense t’attend au bout ! Mes indications sont en bas de l’écran.',
+          'I’m the Bellboy. Follow me for a short tour: the lounge wheel, a slot spin, then the Baron Express. Three minutes, and a reward awaits at the end! My tips are at the bottom of the screen.',
         )}
       </p>
     </Groom>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Les premiers pas : la visite guidée du Groom pour les nouveaux (roulette du salon, un tour de machine, l'Express)
+
+const CLE_PASSER_VISITE = 'baron-visite-passee';
+type EtapeVisite = 'roue' | 'machine' | 'express';
+const ETAPES_VISITE: { id: EtapeVisite; titre: [string, string]; texte: [string, string]; bouton: [string, string] }[] = [
+  {
+    id: 'roue',
+    titre: ['La roulette du salon', 'The lounge wheel'],
+    texte: ['Commençons par un cadeau : chaque jour, la roulette du salon t’offre un tour gratuit.', 'Let’s start with a gift: every day, the lounge wheel gives you a free spin.'],
+    bouton: ['Tourner la roulette', 'Spin the wheel'],
+  },
+  {
+    id: 'machine',
+    titre: ['Un tour de machine', 'A slot spin'],
+    texte: ['Au bar, les machines à sous : choisis ta mise et tire le levier. Un seul tour suffit !', 'At the bar, the slot machines: pick your bet and pull the lever. One spin is enough!'],
+    bouton: ['Aller aux machines', 'Go to the slots'],
+  },
+  {
+    id: 'express',
+    titre: ['Le Baron Express', 'The Baron Express'],
+    texte: ['Le grand show en direct : pose un jeton sur une case de la roue avant le départ. Les bonus t’emmènent dans les mini-jeux.', 'The big live show: place a chip on a spot before the wheel spins. Bonuses take you into the mini-games.'],
+    bouton: ['Monter dans l’Express', 'Board the Express'],
+  },
+];
+
+/** La visite guidée : une carte du Groom au-dessus du dock, l'étape en cours, puis la récompense. */
+export function PremiersPas({ vue, appel, onVue, onRoue, onMachines, onExpress }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onRoue: () => void; onMachines: () => void; onExpress: () => void }) {
+  const pp = vue.hotel?.premiersPas;
+  const [passee, setPassee] = useState(() => {
+    try {
+      return !!localStorage.getItem(CLE_PASSER_VISITE);
+    } catch {
+      return false;
+    }
+  });
+  const [cadeau, setCadeau] = useState<CadeauSemaine | null>(null);
+  const [occupe, setOccupe] = useState(false);
+  if (cadeau)
+    return (
+      <Groom pose="bravo" onFermer={() => setCadeau(null)}>
+        <strong>{tr('Bravo, la visite est finie !', 'Well done, the tour is over!')}</strong>
+        <p>{tr('Tu connais la maison. Voici ta récompense, de la part du Baron :', 'You know the house now. Here is your reward, from the Baron:')}</p>
+        <Gain c={cadeau} />
+        <p className="discret">{tr('Les autres jeux s’ouvrent avec ton niveau : chaque mise te fait monter.', 'More games open as you level up: every bet counts.')}</p>
+      </Groom>
+    );
+  if (!pp || passee) return null;
+  const faites = ETAPES_VISITE.filter((e) => pp[e.id]).length;
+  const etape = ETAPES_VISITE.find((e) => !pp[e.id]);
+  const passer = () => {
+    try {
+      localStorage.setItem(CLE_PASSER_VISITE, '1');
+    } catch {
+      /* stockage indisponible */
+    }
+    setPassee(true);
+  };
+  const aller = () => {
+    jouerEffet('clic');
+    if (!etape) return;
+    if (etape.id === 'roue') onRoue();
+    else if (etape.id === 'machine') onMachines();
+    else onExpress();
+  };
+  const recuperer = async () => {
+    setOccupe(true);
+    const r = (await appel('casino_premiers_pas')) as { ok: boolean; cadeau?: CadeauSemaine; casino?: VueCasino };
+    setOccupe(false);
+    if (r.casino) onVue(r.casino);
+    if (r.ok && r.cadeau) {
+      jouerEffet('roulette_gros_lot');
+      setCadeau(r.cadeau);
+    }
+  };
+  return (
+    <aside className={`pp-guide ${etape ? '' : 'fini'}`} aria-label={tr('Visite guidée', 'Guided tour')}>
+      <img className="pp-groom" src={`/cartes/groom-${etape ? 'explique' : 'bravo'}.webp`} alt="" />
+      <div className="pp-bulle">
+        <div className="pp-tete">
+          <small>{tr(`Visite de l’hôtel · ${faites}/3`, `Hotel tour · ${faites}/3`)}</small>
+          <button type="button" className="pp-passer" onClick={passer} aria-label={tr('Passer la visite', 'Skip the tour')}>
+            ×
+          </button>
+        </div>
+        <ol className="pp-etapes" aria-hidden="true">
+          {ETAPES_VISITE.map((e) => (
+            <li key={e.id} className={pp[e.id] ? 'faite' : e === etape ? 'en-cours' : ''} />
+          ))}
+        </ol>
+        {etape ? (
+          <>
+            <strong>{tr(...etape.titre)}</strong>
+            <p>{tr(...etape.texte)}</p>
+            <button type="button" className="principal petit" onClick={aller}>
+              {tr(...etape.bouton)}
+            </button>
+          </>
+        ) : (
+          <>
+            <strong>{tr('Visite terminée !', 'Tour complete!')}</strong>
+            <p>
+              {tr('Ta récompense t’attend :', 'Your reward awaits:')} <Gain c={CADEAU_PREMIERS_PAS} />
+            </p>
+            <button type="button" className="principal petit" disabled={occupe} onClick={() => void recuperer()}>
+              {tr('Récupérer', 'Collect')}
+            </button>
+          </>
+        )}
+      </div>
+    </aside>
   );
 }
 

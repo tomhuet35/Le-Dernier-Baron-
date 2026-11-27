@@ -143,6 +143,10 @@ export function cadeauSemaine(jour: number, niveau: number, pris: readonly numbe
 
 /** Cadeau de bienvenue des membres : offert une fois, à la première entrée au salon avec un compte (pas en invité). */
 export const CADEAU_COMPTE: CadeauSemaine = { dollars: 10_000_000, rubis: 15 };
+/** Les premiers pas (la visite guidée du Groom : roulette du salon, un tour de machine, une manche de l'Express) : leur récompense. */
+export const CADEAU_PREMIERS_PAS: CadeauSemaine = { dollars: 5_000_000, rubis: 5 };
+/** La visite n'est proposée qu'aux nouveaux (sous ce niveau). */
+export const NIVEAU_MAX_PREMIERS_PAS = 10;
 
 /** Le champagne du Penthouse : une fois par jour, pour les membres du Penthouse. */
 export const champagnePenthouse = (niveau: number): CadeauSemaine => ({ dollars: 1_000_000 * echelleNiveau(niveau), rubis: 3 });
@@ -160,6 +164,8 @@ export interface VueHotel {
   champagne: CadeauSemaine | null;
   /** Les jeux auxquels on a déjà misé (ils restent ouverts même sous leur niveau). */
   joues?: JeuCasino[];
+  /** La visite guidée du Groom (seulement tant qu'elle n'est pas finie, pour les nouveaux) : les étapes faites. */
+  premiersPas?: { roue: boolean; machine: boolean; express: boolean };
 }
 
 /** Ce que le serveur annonce au téléphone : la Ristourne du lundi. */

@@ -64,7 +64,7 @@ import { creerBourse } from './bourseCasino';
 import { avatarCasino, tenue as tenueDe } from '../shared/tailleur';
 import { etal, PRIX_RELANCE, rafraichirMarche, RELANCES_MAX, valeurObjetMarche, type VueMarche } from '../shared/marche';
 import { ACTIONS_MAX, acheter, devisAchat, estAction, MONTANTS_ACHAT, produitVente, vendre, type VueBourse } from '../shared/bourse';
-import { CADEAU_COMPTE, cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type JeuNiveau, type VueHotel } from '../shared/hotel';
+import { CADEAU_COMPTE, CADEAU_PREMIERS_PAS, NIVEAU_MAX_PREMIERS_PAS, cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type JeuNiveau, type VueHotel } from '../shared/hotel';
 import {
   ajouterObjet,
   cadreSpecial,
@@ -599,6 +599,9 @@ export function creerCasino(options: OptionsCasino) {
     if (valeurCollection(p.salonJ.collection) > 0) majCollection(uid, p.nom, p.avatar, p.salonJ);
   }
 
+  /** Les étapes de la visite guidée : la roulette du salon (déjà tournée un jour), un tour de machine, une manche de l'Express. */
+  const etapesPremiersPas = (p: Porte) => ({ roue: !!p.roue, machine: (p.jeux.machine?.mise ?? 0) > 0, express: (p.jeux.baronWheel?.mise ?? 0) > 0 });
+
   function vueHotel(uid: string, p: Porte): VueHotel {
     rafraichirSalon(uid, p);
     const t = horloge();
@@ -612,6 +615,7 @@ export function creerCasino(options: OptionsCasino) {
       happyHour: happyHour(t),
       champagne: etageOuvert(niveau, 'penthouse') && p.salonJ.champagne !== jourParis(t) ? champagnePenthouse(niveau) : null,
       joues: (Object.keys(p.jeux) as JeuCasino[]).filter((j) => (p.jeux[j]?.mise ?? 0) > 0),
+      ...(!p.salonJ.premiersPas && niveau < NIVEAU_MAX_PREMIERS_PAS ? { premiersPas: etapesPremiersPas(p) } : {}),
     };
   }
 
@@ -1528,6 +1532,23 @@ export function creerCasino(options: OptionsCasino) {
     });
 
     // Semaine du Baron : le télégramme du jour (du lundi au dimanche, heure de Paris), une fois par jour.
+    // La visite guidée finie : sa récompense, une seule fois (les trois étapes vérifiées ici).
+    socket.on('casino_premiers_pas', async (_data: unknown, rappel?: Rappel) => {
+      const id = await acces(rappel);
+      if (!id) return;
+      const p = portes.get(id.uid);
+      if (!p || !dans) return repondre(rappel, INTROUVABLE);
+      if (p.salonJ.premiersPas) return repondre(rappel, { ok: false, erreur: L('Récompense déjà reçue.', 'Reward already received.'), casino: vue(id.uid) });
+      const e = etapesPremiersPas(p);
+      if (!e.roue || !e.machine || !e.express) return repondre(rappel, { ok: false, erreur: L('La visite n’est pas finie.', 'The tour isn’t finished.'), casino: vue(id.uid) });
+      p.salonJ.premiersPas = true;
+      p.salonJ.rubis = Math.min(RUBIS_MAX, p.salonJ.rubis + CADEAU_PREMIERS_PAS.rubis);
+      mouvement(id.uid, p, CADEAU_PREMIERS_PAS.dollars);
+      p.salonAEcrire = true;
+      planifier(id.uid, p);
+      repondre(rappel, { ok: true, cadeau: CADEAU_PREMIERS_PAS, casino: vue(id.uid) });
+    });
+
     socket.on('casino_semaine', async (_data: unknown, rappel?: Rappel) => {
       const id = await acces(rappel);
       if (!id) return;
