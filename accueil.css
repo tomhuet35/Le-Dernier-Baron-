@@ -705,3 +705,9 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
   .ac-barre.en-jeu .ac-boutique, .ac-barre.en-jeu .ac-boutique > img { width: 62px !important; height: 62px !important; }
   .ac-barre.en-jeu .ac-menu, .ac-barre.en-jeu .ac-menu img { width: 58px !important; height: 58px !important; }
 }
+
+/* Les onglets des jeux (Pour toi, Shows, Machines, Tables, Éclair) */
+.ac-onglets { display: flex; gap: 5px; padding: 2px 8px 6px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.ac-onglets::-webkit-scrollbar { display: none; }
+.ac-onglets button { flex: none; padding: 6px 11px; border-radius: 99px; border: 1px solid rgba(201, 154, 62, 0.7); background: rgba(20, 8, 6, 0.75); color: #f1dca8; font-family: var(--titre, serif); font-size: 13px; letter-spacing: 0.01em; white-space: nowrap; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
+.ac-onglets button.actif { background: linear-gradient(180deg, #ffe39a, #c9952e); color: #3a0a10; border-color: #ffe39a; box-shadow: 0 0 12px rgba(255, 210, 110, 0.55); font-weight: 700; }
