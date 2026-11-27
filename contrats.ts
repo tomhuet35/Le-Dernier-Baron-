@@ -187,6 +187,8 @@ export interface EtatSalonJoueur {
   tenue: number | null;
   /** Le cadeau de bienvenue du compte a été remis. */
   bienvenue?: boolean;
+  /** La récompense des premiers pas (visite guidée du Groom) a été remise. */
+  premiersPas?: boolean;
   /** Les missions des jeux (avancement) et leurs trophées gagnés (shared/missions.ts). */
   missions: Partial<Record<string, number>>;
   trophees: IdTrophee[];
@@ -576,6 +578,7 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   e.tenues = normaliserTenues(b.tenues);
   e.tenue = estTenue(b.tenue) && e.tenues.includes(b.tenue) ? b.tenue : null;
   if (b.bienvenue === true) e.bienvenue = true;
+  if (b.premiersPas === true) e.premiersPas = true;
   const mi = normaliserMissions(b.missions, b.trophees);
   e.missions = mi.missions;
   e.trophees = mi.trophees;
