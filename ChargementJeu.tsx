@@ -37,6 +37,14 @@ const LOGOS: Partial<Record<JeuACharger, [string, string]>> = {
   folleNuit: ['/cartes/fn-logo.webp', 'La Folle Nuit'],
   baronWheel: ['/cartes/bw-logo.webp', 'Le Baron Express'],
   balWheel: ['/cartes/bal-logo.webp', 'Le Bal du Grand Hôtel'],
+  machine: ['/cartes/lg-gh.webp', 'The Golden Heist'],
+  blackjack: ['/cartes/lg-bj.webp', 'Blackjack'],
+  roulette: ['/cartes/lg-rl.webp', 'Roulette'],
+  tickets: ['/cartes/lg-tk.webp', 'Les Tickets du Baron'],
+  festin: ['/cartes/lg-cf.webp', 'Les Coffres du Baron'],
+  chute: ['/cartes/lg-cdc.webp', 'La Chute des Écus'],
+  toits: ['/cartes/lg-tt.webp', 'Sur les toits'],
+  couronne: ['/cartes/lg-cv.webp', 'Le Vol de la Couronne'],
 };
 
 const PHRASES: [string, string][] = [

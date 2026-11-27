@@ -512,8 +512,8 @@ export function JeuChute({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
         <button type="button" className="cas-retour" onClick={onRetour}>
           ‹ {tr('Salon', 'Lounge')}
         </button>
-        <h1 className="cdc-titre">
-          <span>{tr('La Chute', 'The Falling')}</span> <span>{tr('des Écus', 'Crowns')}</span>
+        <h1 className="cdc-titre jeu-logo-titre">
+          <img src="/cartes/lg-cdc.webp" alt={tr('La Chute des Écus', 'The Falling Crowns')} draggable={false} style={{ height: 'clamp(36px, 7vw, 64px)', width: 'auto', maxWidth: '100%' }} />
         </h1>
         <span className={`cas-solde-petit cdc-solde ${credit && credit.montant > 0 ? 'credite' : ''}`}>
           {dollars(solde)}

@@ -5,6 +5,7 @@
 export type JeuACharger = 'machine' | 'nuits' | 'bulles' | 'folleNuit' | 'festin' | 'couronne' | 'chute' | 'course' | 'baronWheel' | 'balWheel' | 'tickets' | 'toits' | 'blackjack' | 'roulette';
 export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
   machine: [
+    '/cartes/lg-gh.webp',
     '/cartes/machine-bas.webp',
     '/cartes/machine-champagne.webp',
     '/cartes/machine-cigare.webp',
@@ -124,6 +125,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/son-fn-tic.mp3',
   ],
   festin: [
+    '/cartes/lg-cf.webp',
     '/cartes/festin-butin.webp',
     '/cartes/festin-coffre.webp',
     '/cartes/festin-police.webp',
@@ -137,6 +139,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/son-cf-police.mp3',
   ],
   couronne: [
+    '/cartes/lg-cv.webp',
     '/cartes/avatar-1.webp',
     '/cartes/avatar-10.webp',
     '/cartes/avatar-11.webp',
@@ -174,6 +177,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/son-cv-tic.mp3',
   ],
   chute: [
+    '/cartes/lg-cdc.webp',
     '/cartes/chute-case.webp',
     '/cartes/chute-clou.webp',
     '/cartes/chute-distributeur.webp',
@@ -573,6 +577,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/son-bandit-gain.mp3',
   ],
   toits: [
+    '/cartes/lg-tt.webp',
     '/cartes/bw-ex2-alpes-voie.webp',
     '/cartes/bw-ex2-loco.webp',
     '/cartes/bw-ex2-wagon-1.webp',
@@ -613,6 +618,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/son-lingots-pluie.mp3',
   ],
   tickets: [
+    '/cartes/lg-tk.webp',
     '/cartes/musique-casino.mp3',
     '/cartes/son-jeton.mp3',
     '/cartes/son-lingots-pluie.mp3',
@@ -623,6 +629,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/tickets-fond.webp',
   ],
   blackjack: [
+    '/cartes/lg-bj.webp',
     '/cartes/avatar-1.webp',
     '/cartes/avatar-10.webp',
     '/cartes/avatar-11.webp',
@@ -666,6 +673,7 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/table-blackjack.webp',
   ],
   roulette: [
+    '/cartes/lg-rl.webp',
     '/cartes/avatar-1.webp',
     '/cartes/avatar-10.webp',
     '/cartes/avatar-11.webp',

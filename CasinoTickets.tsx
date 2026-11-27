@@ -226,7 +226,9 @@ export function JeuTickets({ vue, appel, onVue, onRetour }: { vue: VueCasino; ap
         <button type="button" className="cas-retour" onClick={onRetour}>
           ‹ {tr('Salon', 'Lounge')}
         </button>
-        <h1 className="tk-titre">{tr('Les Tickets du Baron', 'The Baron’s Tickets')}</h1>
+        <h1 className="tk-titre jeu-logo-titre">
+          <img src="/cartes/lg-tk.webp" alt={tr('Les Tickets du Baron', 'The Baron’s Tickets')} draggable={false} style={{ height: 'clamp(36px, 7vw, 64px)', width: 'auto', maxWidth: '100%' }} />
+        </h1>
         <SoldeJeu solde={soldeAffiche} />
         <span className="cas-solde-petit">{dollars(soldeAffiche)}</span>
       </header>

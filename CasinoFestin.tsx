@@ -258,8 +258,8 @@ export function JeuFestin({ vue, appel, onVue, onRetour }: { vue: VueCasino; app
         <button type="button" className="cas-retour" onClick={onRetour}>
           ‹ {tr('Salon', 'Lounge')}
         </button>
-        <h1 className="fe-titre">
-          <span>{tr('Les Coffres', 'The Baron’s')}</span> <span>{tr('du Baron', 'Safes')}</span>
+        <h1 className="fe-titre jeu-logo-titre">
+          <img src="/cartes/lg-cf.webp" alt={tr('Les Coffres du Baron', 'The Baron’s Safes')} draggable={false} style={{ height: 'clamp(36px, 7vw, 64px)', width: 'auto', maxWidth: '100%' }} />
         </h1>
         <span className={`cas-solde-petit fe-solde ${credit ? 'credite' : ''}`}>
           {dollars(solde)}

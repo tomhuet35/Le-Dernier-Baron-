@@ -909,3 +909,8 @@
 /* Dans un jeu : le profil, le Tailleur ou le Marché noir en plein écran par-dessus la partie, qui continue dessous. */
 .cas.cas-calque { position: fixed; inset: 0; z-index: 19; min-height: 0; overflow-y: auto; overscroll-behavior: contain; background: radial-gradient(120% 80% at 50% 0%, #2a070c, #120204 70%); animation: cas-calque 0.25s ease-out both; }
 @keyframes cas-calque { from { opacity: 0; transform: translateY(12px); } }
+
+/* Le logo dessiné d'un jeu, à la place du titre en texte (en haut de la page du jeu). */
+.cas-barre h1.jeu-logo-titre { flex: 0 1 auto; width: auto; height: auto; font-size: 0; margin: 0; padding: 0; line-height: 0; display: flex; justify-content: center; min-width: 0; background: none; border: 0; box-shadow: none; }
+.cas-barre h1.jeu-logo-titre::before, .cas-barre h1.jeu-logo-titre::after { display: none; }
+.cas-barre h1.jeu-logo-titre > img, h1.jeu-logo-titre > img { display: block; height: clamp(36px, 7vw, 64px) !important; max-height: 64px !important; width: auto !important; max-width: 100% !important; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6)); }

@@ -718,10 +718,11 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
 .ac-paire { flex: none; width: max-content; height: min(calc(100cqh - 46px), 560px); display: flex; flex-direction: column; justify-content: flex-start; gap: clamp(8px, 1.6vh, 14px); }
 .ac-page .ac-paire > .ac-carte.carre { flex: none; height: calc((min(calc(100cqh - 46px), 560px) - clamp(8px, 1.6vh, 14px)) / 2) !important; width: auto !important; aspect-ratio: 1 / 1; min-height: 0; }
 /* La petite carte : un cadre doré simple (le grand cadre aux éventails est fait pour l'affiche en hauteur). */
-.ac-carte.carre::after { background: none; inset: 0; border-radius: 12px; border: 2.5px solid #d6a84b; box-shadow: inset 0 0 0 1px #4a3112, 0 0 0 1px #4a3112, 0 8px 16px rgba(0, 0, 0, 0.6); filter: none; }
-.ac-carte.carre .cas-vignette { inset: 0; border-radius: 11px; }
+/* Le même cadre doré aux éventails que les grandes affiches, découpé pour ne pas déformer ses coins sur un carré. */
+.ac-carte.carre::after { background: none; inset: 0; border-style: solid; border-color: transparent; border-image: url('/cartes/cadre-carte-jeu.webp') 120 90 90 90 / 16.7% 19% 12.5% 19% stretch; }
+.ac-carte.carre .cas-vignette { inset: 8.6% 6.7% 4.2% 6.5%; border-radius: 6px; }
 .ac-carte.carre .cas-vignette img { object-position: center 30%; }
 .ac-carte.carre .cas-vignette-nom { padding: 18px 6px 7px; font-size: clamp(12px, 1.7vh, 16px); }
-.ac-carte.carre .ac-cadenas { inset: 0; border-radius: 11px; font-size: 28px; }
+.ac-carte.carre .ac-cadenas { inset: 8.6% 6.7% 4.2% 6.5%; border-radius: 6px; font-size: 28px; }
 .ac-cadenas img { width: clamp(34px, 26%, 72px); height: auto; filter: grayscale(1) brightness(0.95) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.75)); }
 .ac-carte.carre .ac-cadenas img { width: 34%; }
