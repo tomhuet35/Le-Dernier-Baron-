@@ -7,7 +7,7 @@
  * - Gros coups de la semaine : 3 objectifs du lundi 0 h au lundi suivant (heure de Paris), payés en rubis.
  * - Album du Baron : une page par jeu, 6 morceaux de vignette par page. Un morceau vient de chaque contrat, et de la
  *   première victoire du jour à chaque jeu. Une page complète, puis l'album complet, rapportent des rubis.
- * - Missions permanentes : à chaque jeu, gagner 5 coups, puis 20, 50, 100… jusqu'à 10 000 ; chaque palier rapporte
+ * - Missions permanentes (Blackjack et Roulette seulement, des jeux où l'on choisit son coup) : gagner 5 coups, puis 20, 50, 100… jusqu'à 10 000 ; chaque palier rapporte
  *   des rubis et des dollars (de plus en plus).
  * - Rubis : jamais gagnés aux jeux d'argent, jamais envoyés à un autre joueur, et jamais achetés avec de l'argent
  *   réel. Le dépannage (rubis contre dollars, quand on est ruiné) ne marche que dans ce sens.
@@ -44,6 +44,8 @@ export const PRIX_DEPANNAGE = 5;
 /** Missions permanentes : les paliers de coups gagnants à chaque jeu, et les rubis de chacun. */
 export const PALIERS = [5, 20, 50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000];
 export const RUBIS_PALIERS = [1, 2, 3, 5, 8, 10, 15, 20, 30, 50];
+/** Les jeux qui ont des missions permanentes. */
+export const JEUX_PERMANENTS: JeuCasino[] = ['blackjack', 'roulette'];
 /** Dollars d'un palier : ceux d'un contrat du jour, multipliés par le rang du palier (1 à 10). */
 export const dollarsPalier = (k: number, niveau: number) => dollarsContrat(niveau) * (k + 1);
 /** Le palier suivant (index), ou null quand tout est fait. */
@@ -411,7 +413,7 @@ export function noterEvenement(e: EtatSalonJoueur, ev: EvenementJeu, niveau: num
     r.rubis += RUBIS_TOUS_CONTRATS;
   }
   // Missions permanentes : un coup gagnant de plus à ce jeu ; un palier franchi paie ses rubis et ses dollars.
-  if (ev.type === 'gain' && estVictoire(ev)) {
+  if (ev.type === 'gain' && estVictoire(ev) && JEUX_PERMANENTS.includes(ev.jeu)) {
     const n = (e.gagnes[ev.jeu] ?? 0) + 1;
     e.gagnes = { ...e.gagnes, [ev.jeu]: n };
     const k = PALIERS.indexOf(n);
@@ -578,7 +580,7 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   e.missions = mi.missions;
   e.trophees = mi.trophees;
   if (b.gagnes && typeof b.gagnes === 'object')
-    for (const [j, n] of Object.entries(b.gagnes as Record<string, unknown>)) if (JEUX_CASINO.includes(j as JeuCasino)) e.gagnes[j as JeuCasino] = entier(n);
+    for (const [j, n] of Object.entries(b.gagnes as Record<string, unknown>)) if (JEUX_PERMANENTS.includes(j as JeuCasino)) e.gagnes[j as JeuCasino] = entier(n);
   // L'album complet donne son cadre (comptes d'avant le cadre compris).
   if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;
