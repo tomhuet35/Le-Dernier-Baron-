@@ -532,10 +532,10 @@ export function creerCasino(options: OptionsCasino) {
 
   /** Verse les rubis, les dollars et les morceaux d'album gagnés, et prévient le téléphone. */
   function verserContrats(uid: string, p: Porte, r: RecompensesContrats) {
-    if (!r.contrats.length && !r.morceaux.length && !r.rubis && !r.dollars) return;
+    if (!r.contrats.length && !r.morceaux.length && !r.paliers.length && !r.rubis && !r.dollars) return;
     const e = p.salonJ;
     const rubisAvant = e.rubis;
-    const annonce: AnnonceContrats = { contrats: r.contrats, tous: r.tous, rubis: 0, dollars: r.dollars, morceaux: [] };
+    const annonce: AnnonceContrats = { contrats: r.contrats, tous: r.tous, rubis: 0, dollars: r.dollars, morceaux: [], paliers: r.paliers };
     e.rubis = Math.min(RUBIS_MAX, e.rubis + r.rubis);
     for (const jeu of r.morceaux) {
       // Une page (ou l'album) complétée ajoute ses rubis ; l'album déjà complet donne un rubis à la place du morceau.
@@ -579,6 +579,7 @@ export function creerCasino(options: OptionsCasino) {
       tenue: e.tenue,
       missions: e.missions,
       trophees: e.trophees,
+      gagnes: e.gagnes,
     };
   }
 

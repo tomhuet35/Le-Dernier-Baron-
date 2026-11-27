@@ -7,6 +7,8 @@
  * - Gros coups de la semaine : 3 objectifs du lundi 0 h au lundi suivant (heure de Paris), payés en rubis.
  * - Album du Baron : une page par jeu, 6 morceaux de vignette par page. Un morceau vient de chaque contrat, et de la
  *   première victoire du jour à chaque jeu. Une page complète, puis l'album complet, rapportent des rubis.
+ * - Missions permanentes : à chaque jeu, gagner 5 coups, puis 20, 50, 100… jusqu'à 10 000 ; chaque palier rapporte
+ *   des rubis et des dollars (de plus en plus).
  * - Rubis : jamais gagnés aux jeux d'argent, jamais envoyés à un autre joueur, et jamais achetés avec de l'argent
  *   réel. Le dépannage (rubis contre dollars, quand on est ruiné) ne marche que dans ce sens.
  *
@@ -39,6 +41,16 @@ const PAGE_COMPLETE = (1 << MORCEAUX_PAGE) - 1;
 /** Dépannage : sous ce solde, on peut échanger des rubis contre des dollars, une fois par jour. */
 export const SEUIL_DEPANNAGE = 10_000;
 export const PRIX_DEPANNAGE = 5;
+/** Missions permanentes : les paliers de coups gagnants à chaque jeu, et les rubis de chacun. */
+export const PALIERS = [5, 20, 50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000];
+export const RUBIS_PALIERS = [1, 2, 3, 5, 8, 10, 15, 20, 30, 50];
+/** Dollars d'un palier : ceux d'un contrat du jour, multipliés par le rang du palier (1 à 10). */
+export const dollarsPalier = (k: number, niveau: number) => dollarsContrat(niveau) * (k + 1);
+/** Le palier suivant (index), ou null quand tout est fait. */
+export const palierSuivant = (n: number) => {
+  const k = PALIERS.findIndex((p) => p > n);
+  return k < 0 ? null : k;
+};
 /** Plafond des rubis (garde-fou). */
 export const RUBIS_MAX = 1_000_000;
 
@@ -176,6 +188,8 @@ export interface EtatSalonJoueur {
   /** Les missions des jeux (avancement) et leurs trophées gagnés (shared/missions.ts). */
   missions: Partial<Record<string, number>>;
   trophees: IdTrophee[];
+  /** Missions permanentes : coups gagnants comptés à chaque jeu. */
+  gagnes: Partial<Record<JeuCasino, number>>;
 }
 
 /** Petit hasard reproductible (le même jour donne les mêmes contrats, même si le serveur redémarre). */
@@ -229,6 +243,7 @@ export function etatSalonVide(): EtatSalonJoueur {
     tenues: [],
     missions: {},
     trophees: [],
+    gagnes: {},
     tenue: null,
   };
 }
@@ -313,9 +328,11 @@ export interface RecompensesContrats {
   dollars: number;
   /** Morceaux d'album gagnés (à coller avec collerMorceau). */
   morceaux: (JeuCasino | null)[];
+  /** Paliers de missions permanentes atteints. */
+  paliers: { jeu: JeuCasino; cible: number; rubis: number }[];
 }
 
-const recompensesVides = (): RecompensesContrats => ({ contrats: [], tous: false, rubis: 0, dollars: 0, morceaux: [] });
+const recompensesVides = (): RecompensesContrats => ({ contrats: [], tous: false, rubis: 0, dollars: 0, morceaux: [], paliers: [] });
 
 /** Un coup gagnant : un gain plus grand que la mise (une mise simplement rendue, comme une égalité, ne compte pas). */
 export const estVictoire = (ev: { montant: number; derniereMise: number }) => ev.montant > Math.max(0, ev.derniereMise);
@@ -392,6 +409,17 @@ export function noterEvenement(e: EtatSalonJoueur, ev: EvenementJeu, niveau: num
     c.tous = true;
     r.tous = true;
     r.rubis += RUBIS_TOUS_CONTRATS;
+  }
+  // Missions permanentes : un coup gagnant de plus à ce jeu ; un palier franchi paie ses rubis et ses dollars.
+  if (ev.type === 'gain' && estVictoire(ev)) {
+    const n = (e.gagnes[ev.jeu] ?? 0) + 1;
+    e.gagnes = { ...e.gagnes, [ev.jeu]: n };
+    const k = PALIERS.indexOf(n);
+    if (k >= 0) {
+      r.paliers.push({ jeu: ev.jeu, cible: n, rubis: RUBIS_PALIERS[k] });
+      r.rubis += RUBIS_PALIERS[k];
+      r.dollars += dollarsPalier(k, niveau);
+    }
   }
   if (ev.type === 'gain' && estVictoire(ev) && !c.victoires.includes(ev.jeu)) {
     c.victoires = [...c.victoires, ev.jeu];
@@ -472,6 +500,8 @@ export interface VueContrats {
   /** Les missions des jeux : avancement et trophées gagnés. */
   missions: Partial<Record<string, number>>;
   trophees: IdTrophee[];
+  /** Missions permanentes : coups gagnants à chaque jeu. */
+  gagnes: Partial<Record<JeuCasino, number>>;
 }
 
 /** Ce que le serveur envoie au téléphone quand un contrat se termine, un morceau se colle, ou une page se complète. */
@@ -481,6 +511,8 @@ export interface AnnonceContrats {
   rubis: number;
   dollars: number;
   morceaux: { jeu: JeuCasino; case: number; page: boolean; album: boolean }[];
+  /** Paliers de missions permanentes atteints. */
+  paliers?: { jeu: JeuCasino; cible: number; rubis: number }[];
 }
 
 /** Le texte d'un contrat, avec son objectif ([français, anglais]). */
@@ -545,6 +577,8 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   const mi = normaliserMissions(b.missions, b.trophees);
   e.missions = mi.missions;
   e.trophees = mi.trophees;
+  if (b.gagnes && typeof b.gagnes === 'object')
+    for (const [j, n] of Object.entries(b.gagnes as Record<string, unknown>)) if (JEUX_CASINO.includes(j as JeuCasino)) e.gagnes[j as JeuCasino] = entier(n);
   // L'album complet donne son cadre (comptes d'avant le cadre compris).
   if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;

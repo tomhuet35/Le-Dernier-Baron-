@@ -6,6 +6,10 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { formatDollars, type VueCasino } from '../../shared/casino';
 import {
   dollarsContrat,
+  dollarsPalier,
+  PALIERS,
+  palierSuivant,
+  RUBIS_PALIERS,
   modeleContrat,
   MORCEAUX_PAGE,
   morceauxDe,
@@ -23,6 +27,7 @@ import {
   type VueContrats,
 } from '../../shared/contrats';
 import { JEUX_CASINO, NOMS_JEUX_CASINO, niveauCasino, type JeuCasino } from '../../shared/profilCasino';
+import { jeuOuvert, JEUX_RETIRES } from '../../shared/hotel';
 import type { Appel } from './App';
 import { dollars } from './casinoOutils';
 import { useAttente } from './RouletteDuJour';
@@ -157,6 +162,71 @@ function Dossier({ c, index, niveau, change, onChanger }: { c: Contrat; index: n
   );
 }
 
+/** Ce qu'on gagne à chaque jeu, au singulier et au pluriel ([français, anglais]). */
+const COUPS: Record<JeuCasino, [string, string, string, string]> = {
+  machine: ['tour aux Machines à sous', 'tours aux Machines à sous', 'spin on the Slots', 'spins on the Slots'],
+  nuits: ['tour', 'tours', 'spin', 'spins'],
+  blackjack: ['main au Blackjack', 'mains au Blackjack', 'Blackjack hand', 'Blackjack hands'],
+  roulette: ['pari à la Roulette', 'paris à la Roulette', 'Roulette bet', 'Roulette bets'],
+  folleNuit: ['manche à la Folle Nuit', 'manches à la Folle Nuit', 'Crazy Night round', 'Crazy Night rounds'],
+  baronWheel: ['manche au Baron Express ou au Bal', 'manches au Baron Express ou au Bal', 'Baron Express or Ball round', 'Baron Express or Ball rounds'],
+  coffres: ['partie aux Coffres du Baron', 'parties aux Coffres du Baron', 'Baron’s Safes game', 'Baron’s Safes games'],
+  couronne: ['envol au Vol de la Couronne', 'envols au Vol de la Couronne', 'Crown flight', 'Crown flights'],
+  chute: ['lâcher à la Chute des Écus', 'lâchers à la Chute des Écus', 'Falling Crowns drop', 'Falling Crowns drops'],
+  course: ['course aux Écuries', 'courses aux Écuries', 'Stables race', 'Stables races'],
+  tickets: ['ticket du Baron', 'tickets du Baron', 'Baron’s ticket', 'Baron’s tickets'],
+  toits: ['course Sur les toits', 'courses Sur les toits', 'Rooftops run', 'Rooftops runs'],
+};
+const texteCoups = (j: JeuCasino, n: number) => {
+  const [s, p, se, pe] = COUPS[j];
+  return tr(`Gagner ${n} ${n > 1 ? p : s}`, `Win ${n} ${n > 1 ? pe : se}`);
+};
+
+/** Les missions permanentes : à chaque jeu ouvert, le palier en cours (5, 20, 50… 10 000 coups gagnants). */
+function MissionsPermanentes({ vue, niveau }: { vue: VueCasino; niveau: number }) {
+  const gagnes = vue.contrats?.gagnes ?? {};
+  const joues = vue.hotel?.joues ?? [];
+  const jeux = JEUX_CASINO.filter((j) => !JEUX_RETIRES.includes(j) && jeuOuvert(niveau, j, joues.includes(j)));
+  return (
+    <section className="ct-semaine ct-permanentes">
+      <h2>{tr('Missions permanentes', 'Permanent missions')}</h2>
+      <ul>
+        {jeux.map((j) => {
+          const n = gagnes[j] ?? 0;
+          const k = palierSuivant(n);
+          const cible = k === null ? PALIERS[PALIERS.length - 1] : PALIERS[k];
+          const pct = Math.min(100, Math.round((100 * n) / cible));
+          return (
+            <li key={j} className={`ct-gros-coup ${k === null ? 'fait' : ''}`}>
+              <img className="ct-permanente-vignette" src={vignette(j)} alt="" />
+              <span className="ct-gros-coup-texte">
+                <strong>{texteCoups(j, cible)}</strong>
+                <span className="ct-barre fine">
+                  <i style={{ width: `${pct}%` }} />
+                </span>
+                <small className="ct-permanente-detail">
+                  {Math.min(n, cible).toLocaleString(EN ? 'en-US' : 'fr-FR')} / {cible.toLocaleString(EN ? 'en-US' : 'fr-FR')} · {tr(`palier ${(k ?? PALIERS.length - 1) + 1}/${PALIERS.length}`, `tier ${(k ?? PALIERS.length - 1) + 1}/${PALIERS.length}`)}
+                </small>
+              </span>
+              <span className="ct-gros-coup-gain">
+                {k === null ? (
+                  '✓'
+                ) : (
+                  <>
+                    <Rubis n={RUBIS_PALIERS[k]} taille={16} />
+                    <small>+{dollars(dollarsPalier(k, niveau))}</small>
+                  </>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="ct-fin">{tr('Elles ne s’arrêtent jamais : 5, 20, 50, 100… jusqu’à 10 000 coups gagnants par jeu.', 'They never end: 5, 20, 50, 100… up to 10,000 wins per game.')}</p>
+    </section>
+  );
+}
+
 function GrosCoup({ c }: { c: Contrat }) {
   const pct = Math.round((100 * c.progres) / Math.max(1, c.cible));
   return (
@@ -220,6 +290,7 @@ export function EcranContrats({ vue, appel, onVue, onRetour }: { vue: VueCasino;
         </ul>
         {finSemaine && <p className="ct-fin">{tr(`Fin lundi, dans ${finSemaine}`, `Ends Monday, in ${finSemaine}`)}</p>}
       </section>
+      <MissionsPermanentes vue={vue} niveau={vue.hotel?.niveau ?? niveau} />
       <p className="cas-mention">
         {tr(
           'Les rubis se gagnent avec les contrats et l’album, jamais aux jeux. Ils ne s’envoient pas et ne s’achètent pas.',
@@ -359,7 +430,7 @@ export function AnnoncesContrats({ onOuvrir, onAnnonce }: { onOuvrir: (ecran: 'c
     const surAnnonce = (a: AnnonceContrats) => {
       setFile((f) => [...f, { id: Date.now() + Math.random(), a }]);
       surAnnonceRef.current();
-      if (a.contrats.length || a.morceaux.some((m) => m.page)) jouerEffet('roulette_gain');
+      if (a.contrats.length || a.paliers?.length || a.morceaux.some((m) => m.page)) jouerEffet('roulette_gain');
       else jouerEffet('jeton');
     };
     socket.on('casino_contrats', surAnnonce);
@@ -370,15 +441,18 @@ export function AnnoncesContrats({ onOuvrir, onAnnonce }: { onOuvrir: (ecran: 'c
   const tete = file[0];
   useEffect(() => {
     if (!tete) return;
-    const t = window.setTimeout(() => setFile((f) => f.slice(1)), tete.a.contrats.length || tete.a.morceaux.some((m) => m.page) ? 4200 : 2600);
+    const t = window.setTimeout(() => setFile((f) => f.slice(1)), tete.a.contrats.length || tete.a.paliers?.length || tete.a.morceaux.some((m) => m.page) ? 4200 : 2600);
     return () => window.clearTimeout(t);
   }, [tete]);
   if (!tete) return null;
   const { a } = tete;
   const contrat = a.contrats[0];
+  const palier = a.paliers?.[0];
   const page = a.morceaux.find((m) => m.page);
   const morceau = a.morceaux[0];
-  const titre = contrat
+  const titre = palier
+    ? tr('Mission permanente réussie !', 'Permanent mission done!')
+    : contrat
     ? contrat.semaine
       ? tr('Gros coup réussi !', 'Big job done!')
       : a.tous
@@ -391,18 +465,18 @@ export function AnnoncesContrats({ onOuvrir, onAnnonce }: { onOuvrir: (ecran: 'c
       : morceau
         ? tr(`Nouveau morceau : ${nomJeu(morceau.jeu)}`, `New piece: ${nomJeu(morceau.jeu)}`)
         : tr('Récompense', 'Reward');
-  const detail = contrat ? texte(contrat) : '';
+  const detail = palier ? texteCoups(palier.jeu, palier.cible) : contrat ? texte(contrat) : '';
   return (
     <button
       type="button"
       key={tete.id}
-      className={`ct-annonce ${contrat || page ? 'grande' : ''}`}
+      className={`ct-annonce ${contrat || page || palier ? 'grande' : ''}`}
       onClick={() => {
         setFile((f) => f.slice(1));
-        onOuvrir(contrat ? 'contrats' : 'album');
+        onOuvrir(contrat || palier ? 'contrats' : 'album');
       }}
     >
-      {contrat ? <img className="ct-annonce-tampon" src="/cartes/contrat-tampon.webp" alt="" /> : morceau ? <img className="ct-annonce-vignette" src={vignette(morceau.jeu)} alt="" /> : null}
+      {palier ? <img className="ct-annonce-vignette" src={vignette(palier.jeu)} alt="" /> : contrat ? <img className="ct-annonce-tampon" src="/cartes/contrat-tampon.webp" alt="" /> : morceau ? <img className="ct-annonce-vignette" src={vignette(morceau.jeu)} alt="" /> : null}
       <span>
         <strong>{titre}</strong>
         {detail && <small>{detail}</small>}
