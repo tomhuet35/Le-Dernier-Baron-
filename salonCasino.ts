@@ -15,7 +15,7 @@
  *   niveaux et leurs bonus, statistiques par jeu, scores des défis). Amis du casino, envois d'argent entre amis, et
  *   défis 1 contre 1 (defisCasino.ts, gardés avec les réglages du serveur).
  */
-import { FIGURANTS, FIGURANTS_ACTIFS, niveauFigurant, soldeFigurant } from './figurants';
+import { estFigurant, FIGURANTS, FIGURANTS_ACTIFS, figurantEnLigne, niveauFigurant, profilFigurant, soldeFigurant } from './figurants';
 import { avancerMissions, avatarGagne, type MancheMission } from '../shared/missions';
 import { estMisePlinko, lacherBille, MULTI_MAX_PLINKO } from '../shared/plinko';
 import { randomInt } from 'node:crypto';
@@ -896,7 +896,7 @@ export function creerCasino(options: OptionsCasino) {
     const liste: RicheSalon[] = [...riches.entries(), ...figurants]
       .sort(([, a], [, b]) => b.solde - a.solde)
       .slice(0, 10)
-      .map(([u, r]) => ({ nom: r.nom, avatar: r.avatar, solde: r.solde, ...(r.niveau ? { niveau: r.niveau } : {}), ...(u === uid ? { moi: true as const } : {}) }));
+      .map(([u, r]) => ({ uid: u, nom: r.nom, avatar: r.avatar, solde: r.solde, ...(r.niveau ? { niveau: r.niveau } : {}), ...(u === uid ? { moi: true as const } : {}) }));
     return {
       nom: p?.nom ?? '',
       avatar: p?.avatar ?? 1,
@@ -1450,6 +1450,11 @@ export function creerCasino(options: OptionsCasino) {
       if (!id) return;
       if (!portes.has(id.uid) || !dans) return repondre(rappel, INTROUVABLE);
       const cible = typeof data?.uid === 'string' && data.uid ? data.uid : id.uid;
+      const fig = estFigurant(cible) ? FIGURANTS.find((x) => x.uid === cible) : undefined;
+      if (fig) {
+        const pf = profilFigurant(fig, horloge());
+        return repondre(rappel, { ok: true, bureau: { uid: cible, nom: fig.nom, avatar: fig.avatar, niveau: pf.niveau, collection: {}, valeur: 0, cadre: null, moi: false, trophees: [], classement: classementCollections() } satisfies VueBureau });
+      }
       const q = portes.get(cible);
       let fiche: { nom: string; avatar: number; niveau: number; salon: EtatSalonJoueur } | null = null;
       if (q) fiche = { nom: q.nom, avatar: q.avatar, niveau: niveauDe(q), salon: q.salonJ };
@@ -1814,6 +1819,8 @@ export function creerCasino(options: OptionsCasino) {
 
   /** Un joueur du salon, en bref : son porte-monnaie s'il est en mémoire, sinon la liste des riches (null si inconnu). */
   function joueurCasino(uid: string): JoueurCasino | null {
+    const f = estFigurant(uid) ? FIGURANTS.find((x) => x.uid === uid) : undefined;
+    if (f) return FIGURANTS_ACTIFS ? { uid, nom: f.nom, avatar: f.avatar, niveau: niveauFigurant(f), enLigne: figurantEnLigne(f, horloge()), ou: null } : null;
     const p = portes.get(uid);
     const r = riches.get(uid);
     if (!p && !r) return null;
@@ -1843,18 +1850,21 @@ export function creerCasino(options: OptionsCasino) {
   async function vueAmis(uid: string): Promise<VueAmisCasino> {
     const p = portes.get(uid)!;
     const connus = new Set([...p.amis, ...p.recues, ...p.envoyees]);
-    const autres = [...riches.keys()].filter((u) => u !== uid && !connus.has(u));
+    const autres = [...riches.keys(), ...(FIGURANTS_ACTIFS ? FIGURANTS.map((f) => f.uid) : [])].filter((u) => u !== uid && !connus.has(u) && !(demandesFigurants.get(uid)?.has(u) ?? false));
     const fiches = await joueursCasino([...connus, ...autres]);
     const liste = (us: string[]) => us.map((u) => fiches[u]).filter((j): j is JoueurCasino => !!j);
     const parNiveau = (a: JoueurCasino, b: JoueurCasino) => Number(b.enLigne) - Number(a.enLigne) || b.niveau - a.niveau || a.nom.localeCompare(b.nom);
     return {
       amis: liste(p.amis).sort(parNiveau),
       recues: liste(p.recues),
-      envoyees: liste(p.envoyees),
+      envoyees: liste([...p.envoyees, ...(demandesFigurants.get(uid) ?? [])]),
       autres: liste(autres).sort(parNiveau).slice(0, 40),
       envoisRestants: Math.max(0, ENVOI_MAX_JOUR - envoisDuJour(p)),
     };
   }
+
+  /** Les demandes d'ami envoyées aux joueurs d'ambiance (gardées en mémoire, jamais acceptées). */
+  const demandesFigurants = new Map<string, Set<string>>();
 
   function brancherSocial(
     socket: Socket,
@@ -1887,6 +1897,14 @@ export function creerCasino(options: OptionsCasino) {
       if (!m) return;
       const { id, p } = m;
       const cible = typeof data?.uid === 'string' && data.uid ? data.uid : id.uid;
+      // Un joueur d'ambiance : son profil est fabriqué (server/figurants.ts) ; sa demande d'ami reste en attente.
+      const fig = estFigurant(cible) ? FIGURANTS.find((x) => x.uid === cible) : undefined;
+      if (fig) {
+        if (!FIGURANTS_ACTIFS) return erreur(rappel, 'Joueur introuvable.', 'Player not found.');
+        const { niveau: _n, ...pf } = profilFigurant(fig, horloge());
+        const profil: ProfilCasino = { uid: cible, ...pf, ...progressionCasino(pf.mise), enLigne: figurantEnLigne(fig, horloge()), ou: null, relation: demandesFigurants.get(id.uid)?.has(cible) ? 'demande_envoyee' : 'aucune' };
+        return repondre(rappel, { ok: true, profil });
+      }
       const q = portes.get(cible);
       let base: Omit<ProfilCasino, 'uid' | 'niveau' | 'xp' | 'xpNiveau' | 'xpSuivant' | 'bonusSuivant' | 'enLigne' | 'ou' | 'relation'> & { journal: EntreeJournalCasino[] };
       /** Mises comptées en plus pour l'XP (jeu à l'affiche). */
@@ -1919,6 +1937,15 @@ export function creerCasino(options: OptionsCasino) {
       const autre = data?.uid;
       const action = data?.action;
       if (typeof autre !== 'string' || !autre || (action !== 'demander' && action !== 'accepter' && action !== 'refuser' && action !== 'retirer')) return erreur(rappel, 'Demande impossible.', 'Invalid request.');
+      // Un joueur d'ambiance n'accepte jamais : la demande reste en attente (on peut l'annuler).
+      if (estFigurant(autre)) {
+        if (!FIGURANTS_ACTIFS || !FIGURANTS.some((f) => f.uid === autre)) return erreur(rappel, 'Joueur introuvable.', 'Player not found.');
+        const d = demandesFigurants.get(id.uid) ?? new Set<string>();
+        if (action === 'demander') d.add(autre);
+        else d.delete(autre);
+        demandesFigurants.set(id.uid, d);
+        return repondre(rappel, { ok: true, resultat: action === 'demander' ? 'envoyee' : 'retiree', amis: await vueAmis(id.uid), casino: vue(id.uid) });
+      }
       try {
         const r = await comptes.lienCasino(id.uid, autre, action);
         for (const [u, c] of Object.entries(r.comptes)) {

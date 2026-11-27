@@ -2076,6 +2076,7 @@ function Accueil({
   onAmis,
   onDefis,
   onProfil,
+  onProfilJoueur,
   onQuitter,
   ouverture,
   onOuverture,
@@ -2113,6 +2114,8 @@ function Accueil({
   onAmis: () => void;
   onDefis: () => void;
   onProfil: () => void;
+  /** Le profil d'un autre joueur (depuis les plus riches). */
+  onProfilJoueur?: (uid: string) => void;
   onQuitter: () => void;
   /** Venu d'un jeu par la barre du haut : la Boutique (sur un rayon) ou le menu à ouvrir en arrivant. */
   ouverture?: { boutique?: string; menu?: boolean } | null;
@@ -2353,7 +2356,7 @@ function Accueil({
         />
       )}
       {coffreRubis && <Plinko vue={vue} appel={appel} onVue={onVue} onFermer={() => setCoffreRubis(false)} />}
-      {riches && <FenetreRiches vue={vue} onFermer={() => setRiches(false)} />}
+      {riches && <FenetreRiches vue={vue} onFermer={() => setRiches(false)} onProfil={(uid) => (setRiches(false), uid ? onProfilJoueur?.(uid) : onProfil())} />}
     </div>
   );
 }
@@ -2394,7 +2397,7 @@ function MenuSalon(p: { onFermer: () => void; onProfil: () => void; onAmis: () =
   );
 }
 
-function FenetreRiches({ vue, onFermer }: { vue: VueCasino; onFermer: () => void }) {
+function FenetreRiches({ vue, onFermer, onProfil }: { vue: VueCasino; onFermer: () => void; onProfil?: (uid: string | null) => void }) {
   return (
     <Fenetre titre={tr('Les plus riches du salon', 'Richest in the lounge')} onFermer={onFermer}>
       <section className="cas-riches ac-riches">
@@ -2402,8 +2405,10 @@ function FenetreRiches({ vue, onFermer }: { vue: VueCasino; onFermer: () => void
           {vue.riches.map((r, i) => (
             <li key={`${i}-${r.nom}`} className={r.moi ? 'moi' : ''}>
               <span className="cas-riche-rang">{i + 1}</span>
-              <CadreAvatar avatar={r.avatar} niveau={r.niveau ?? 1} taille={34} sansNiveau />
-              <span className="cas-riche-nom">{r.nom || tr('Créateur', 'Creator')}</span>
+              <button type="button" className="bv-classement-qui" disabled={!onProfil || (!r.uid && !r.moi)} onClick={() => onProfil?.(r.moi ? null : (r.uid ?? null))}>
+                <CadreAvatar avatar={r.avatar} niveau={r.niveau ?? 1} taille={34} sansNiveau />
+                <span className="cas-riche-nom">{r.nom || tr('Créateur', 'Creator')}</span>
+              </button>
               <strong>{dollars(r.solde)}</strong>
             </li>
           ))}
@@ -2845,6 +2850,7 @@ export default function Casino({
         onAmis={() => setEcran('amis')}
         onDefis={() => ouvrirDefis()}
         onProfil={() => ouvrirProfil(null)}
+        onProfilJoueur={(uid) => ouvrirProfil(uid)}
         onQuitter={() => onQuitter()}
         ouverture={ouverture}
         onOuverture={finOuverture}
