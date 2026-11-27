@@ -25,3 +25,10 @@
 .mi-trophees li.vide img { filter: brightness(0) opacity(0.45); }
 .mi-trophees li strong { font-size: 13px; color: #ffe7a6; }
 .mi-trophees li small { font-size: 11px; color: #bfa77a; }
+.mi-avatar { display: flex; align-items: center; gap: 10px; margin: 2px 10px 8px; padding: 6px 8px; border-radius: 10px; border: 1px dashed rgba(214, 168, 75, 0.55); background: rgba(255, 220, 140, 0.05); }
+.mi-avatar img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #c9952e; filter: grayscale(0.9) brightness(0.6); }
+.mi-avatar.gagne { border-style: solid; border-color: #ffd774; }
+.mi-avatar.gagne img { filter: none; box-shadow: 0 0 10px rgba(255, 210, 110, 0.6); }
+.mi-avatar span { display: grid; gap: 1px; min-width: 0; }
+.mi-avatar strong { color: #ffe7a6; font-size: 13px; }
+.mi-avatar small { color: #bfa77a; font-size: 11px; }

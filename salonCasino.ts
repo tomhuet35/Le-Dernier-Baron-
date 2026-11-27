@@ -15,7 +15,7 @@
  *   niveaux et leurs bonus, statistiques par jeu, scores des défis). Amis du casino, envois d'argent entre amis, et
  *   défis 1 contre 1 (defisCasino.ts, gardés avec les réglages du serveur).
  */
-import { avancerMissions, type MancheMission } from '../shared/missions';
+import { avancerMissions, avatarGagne, type MancheMission } from '../shared/missions';
 import { estMisePlinko, lacherBille, MULTI_MAX_PLINKO } from '../shared/plinko';
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
@@ -613,10 +613,12 @@ export function creerCasino(options: OptionsCasino) {
     const p = portes.get(uid);
     if (!p) return;
     const r = avancerMissions(p.salonJ, m);
-    if (!r.finies.length && !r.trophee) return;
+    const avatar = avatarGagne(p.salonJ.tenues, m);
+    if (avatar !== null) p.salonJ.tenues = [...p.salonJ.tenues, avatar];
+    if (!r.finies.length && !r.trophee && avatar === null) return;
     p.salonAEcrire = true;
     planifier(uid, p);
-    notifier(uid, 'casino_mission', { finies: r.finies.map((x) => x.id), trophee: r.trophee });
+    notifier(uid, 'casino_mission', { finies: r.finies.map((x) => x.id), trophee: r.trophee, avatar });
   }
 
   /** Nouveau niveau : les bonus des niveaux franchis (chacun versé une seule fois), et la fête sur le téléphone. */
@@ -1632,6 +1634,7 @@ export function creerCasino(options: OptionsCasino) {
       const t = tenueDe(Number(d?.n));
       const e = p.salonJ;
       if (!t) return repondre(rappel, { ok: false, erreur: L('Tenue introuvable.', 'Outfit not found.') });
+      if (t.mission && !e.tenues.includes(t.n)) return repondre(rappel, { ok: false, erreur: L('Cette tenue ne s’achète pas : elle se gagne en faisant ×1 000 dans son jeu.', 'This outfit can’t be bought: win it with a ×1,000 in its game.') });
       if (e.tenues.includes(t.n)) return repondre(rappel, { ok: false, erreur: L('Cette tenue est déjà à toi.', 'You already own this outfit.') });
       if (t.monnaie === 'rubis') {
         if (e.rubis < t.prix) return repondre(rappel, { ok: false, erreur: L(`Il te faut ${t.prix} rubis.`, `You need ${t.prix} rubies.`) });

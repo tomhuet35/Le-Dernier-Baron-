@@ -2545,8 +2545,8 @@ export default function Casino({
       setFete({ ...f, id: Date.now() });
       rafraichir();
     };
-    const surMission = (e: { finies: string[]; trophee: IdTrophee | null }) => {
-      jouerEffet(e.trophee ? 'roulette_gros_lot' : 'casino_annonce');
+    const surMission = (e: { finies: string[]; trophee: IdTrophee | null; avatar?: number | null }) => {
+      jouerEffet(e.trophee || e.avatar ? 'roulette_gros_lot' : 'casino_annonce');
       montrer(texteMission(e), 'bureau');
       rafraichir();
     };

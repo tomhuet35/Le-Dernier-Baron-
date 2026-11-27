@@ -15,6 +15,11 @@ import './tailleur.css';
 
 const court = (n: number) => (n >= 1e9 ? `${n / 1e9} Md $` : n >= 1e6 ? `${n / 1e6} M $` : dollars(n));
 
+/** Une tenue de mission pas encore gagnée : où la gagner. */
+function AGagner({ t }: { t: Tenue }) {
+  return <>{t.mission === 'bal' ? tr('À gagner : ×1 000 au Bal du Grand Hôtel', 'Win it: ×1,000 at the Grand Hotel Ball') : tr('À gagner : ×1 000 au Baron Express', 'Win it: ×1,000 at the Baron Express')}</>;
+}
+
 export function EcranTailleur({ vue, appel, onVue, onRetour }: { vue: VueCasino; appel: Appel; onVue: (v: VueCasino) => void; onRetour: () => void }) {
   const c = vue.contrats;
   const [essai, setEssai] = useState<Tenue | null>(null);
@@ -61,7 +66,7 @@ export function EcranTailleur({ vue, appel, onVue, onRetour }: { vue: VueCasino;
           )}
         </div>
       </section>
-      {(['ville', 'soiree', 'prestige'] as Gamme[]).map((g) => (
+      {(['ville', 'soiree', 'prestige', 'mission'] as Gamme[]).map((g) => (
         <section key={g} className={`tl-gamme ${g}`}>
           <h2>{tr(...NOMS_GAMMES[g])}</h2>
           <ul>
@@ -73,7 +78,7 @@ export function EcranTailleur({ vue, appel, onVue, onRetour }: { vue: VueCasino;
                   <button type="button" className={`tl-tenue ${a ? 'possedee' : ''} ${portee ? 'portee' : ''} ${t.n === 20 ? 'baronne' : ''}`} onClick={() => setEssai(t)}>
                     <img src={`/cartes/avatar-${t.n}.webp`} alt="" />
                     <strong>{tr(...t.nom)}</strong>
-                    <span className="tl-etiquette">{portee ? tr('Portée', 'Worn') : a ? tr('À toi', 'Yours') : <Prix t={t} />}</span>
+                    <span className="tl-etiquette">{portee ? tr('Portée', 'Worn') : a ? tr('À toi', 'Yours') : t.mission ? <AGagner t={t} /> : <Prix t={t} />}</span>
                   </button>
                 </li>
               );
@@ -95,7 +100,11 @@ export function EcranTailleur({ vue, appel, onVue, onRetour }: { vue: VueCasino;
               <button type="button" onClick={() => setEssai(null)}>
                 {tr('Fermer', 'Close')}
               </button>
-              {possede.includes(essai.n) ? (
+              {!possede.includes(essai.n) && essai.mission ? (
+                <p className="discret">
+                  <AGagner t={essai} />
+                </p>
+              ) : possede.includes(essai.n) ? (
                 <button type="button" className="principal" disabled={occupe || porte === essai.n} onClick={() => void agir('casino_tailleur_porter', { n: essai.n }).then((ok) => ok && setEssai(null))}>
                   {porte === essai.n ? tr('Déjà portée', 'Already worn') : tr('Porter', 'Wear')}
                 </button>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avancerMissions, normaliserMissions, type EtatMissions } from '../shared/missions';
+import { avancerMissions, avatarGagne, normaliserMissions, type EtatMissions } from '../shared/missions';
 
 const vide = (): EtatMissions => ({ missions: {}, trophees: [] });
 const manche = { jeu: 'bal' as const, bonus: false, final: false, x: 1 };
@@ -30,5 +30,11 @@ describe('Missions des jeux', () => {
   });
   it('relit un état gardé en bornant les valeurs', () => {
     expect(normaliserMissions({ 'bal.manches': 999, 'bal.inconnue': 3, 'express.bonus': -2 }, ['horloge', 'faux', 'horloge'])).toEqual({ missions: { 'bal.manches': 50, 'express.bonus': 0 }, trophees: ['horloge'] });
+  });
+  it('un ×1 000 donne le personnage du jeu, une seule fois', () => {
+    expect(avatarGagne([], { jeu: 'express', bonus: false, final: false, x: 999 })).toBe(null);
+    expect(avatarGagne([], { jeu: 'express', bonus: false, final: false, x: 1000 })).toBe(23);
+    expect(avatarGagne([], { jeu: 'bal', bonus: true, final: true, x: 4000 })).toBe(22);
+    expect(avatarGagne([22], { jeu: 'bal', bonus: true, final: true, x: 4000 })).toBe(null);
   });
 });

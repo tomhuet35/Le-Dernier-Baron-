@@ -2,17 +2,20 @@
  * Le Tailleur du Baron (Grand Hôtel du Baron) : une boutique de tenues pour le salon. Chaque tenue est un personnage
  * complet (images cartes/avatar-10.webp à avatar-21.webp) qu'on achète une fois, puis qu'on porte au salon à la place
  * de son personnage habituel (tables, classements, cercles, défis…). Tenues de ville et de soirée en dollars, tenues
- * de prestige en rubis. On peut toujours revenir à son personnage habituel.
+ * de prestige en rubis ; les tenues de mission ne s'achètent pas : elles se gagnent en faisant ×1 000 au Baron Express
+ * ou au Bal du Grand Hôtel. On peut toujours revenir à son personnage habituel.
  */
 import type { EtatSalonJoueur } from './contrats';
 
-export type Gamme = 'ville' | 'soiree' | 'prestige';
+export type Gamme = 'ville' | 'soiree' | 'prestige' | 'mission';
 export interface Tenue {
   n: number;
   nom: [string, string];
   gamme: Gamme;
   prix: number;
   monnaie: 'dollars' | 'rubis';
+  /** Tenue de mission : introuvable en boutique, gagnée en faisant ×1 000 dans ce jeu (shared/missions.ts). */
+  mission?: 'express' | 'bal';
 }
 
 export const TENUES: Tenue[] = [
@@ -28,11 +31,14 @@ export const TENUES: Tenue[] = [
   { n: 18, nom: ['L’Espionne', 'The Spy'], gamme: 'prestige', prix: 150, monnaie: 'rubis' },
   { n: 19, nom: ['Le Magicien', 'The Magician'], gamme: 'prestige', prix: 150, monnaie: 'rubis' },
   { n: 20, nom: ['La Baronne', 'The Baroness'], gamme: 'prestige', prix: 300, monnaie: 'rubis' },
+  { n: 23, nom: ['Le Mécanicien du Rapide', 'The Express Engineer'], gamme: 'mission', prix: 0, monnaie: 'rubis', mission: 'express' },
+  { n: 22, nom: ['Le Masque de Minuit', 'The Midnight Mask'], gamme: 'mission', prix: 0, monnaie: 'rubis', mission: 'bal' },
 ];
 export const NOMS_GAMMES: Record<Gamme, [string, string]> = {
   ville: ['Tenues de ville', 'Day wear'],
   soiree: ['Tenues de soirée', 'Evening wear'],
   prestige: ['Tenues de prestige', 'Prestige wear'],
+  mission: ['Tenues de mission', 'Mission outfits'],
 };
 export const tenue = (n: number) => TENUES.find((t) => t.n === n) ?? null;
 export const estTenue = (n: unknown): n is number => typeof n === 'number' && TENUES.some((t) => t.n === n);

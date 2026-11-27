@@ -48,6 +48,12 @@ export const IDS_TROPHEES = Object.keys(TROPHEES) as IdTrophee[];
 export const estTrophee = (x: unknown): x is IdTrophee => IDS_TROPHEES.includes(x as IdTrophee);
 export const IDS_MISSIONS = Object.values(MISSIONS).flatMap((m) => m.missions.map((x) => x.id));
 
+/** Les tenues de mission : faire ×1 000 (ou plus) dans le jeu donne son personnage (shared/tailleur.ts). */
+export const SEUIL_AVATAR = 1000;
+export const AVATARS_MISSION: Record<JeuMission, number> = { express: 23, bal: 22 };
+/** La tenue gagnée par cette manche (null : rien de nouveau). */
+export const avatarGagne = (tenues: number[], m: MancheMission): number | null => (m.x >= SEUIL_AVATAR && !tenues.includes(AVATARS_MISSION[m.jeu]) ? AVATARS_MISSION[m.jeu] : null);
+
 /** Ce qu'une manche apporte aux missions d'un joueur. */
 export interface MancheMission {
   jeu: JeuMission;
