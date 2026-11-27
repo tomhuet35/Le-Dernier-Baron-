@@ -245,6 +245,12 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
   ],
   // Le Bal du Grand Hôtel : la scène et les deux roues (les mini-jeux se chargent ensuite en fond, pendant les mises).
   balWheel: [
+    '/cartes/en-bal-paysage-g.webp',
+    '/cartes/en-bal-paysage-d.webp',
+    '/cartes/en-bal-portrait-g.webp',
+    '/cartes/en-bal-portrait-d.webp',
+    '/cartes/en-bal-lambrequin.webp',
+    '/cartes/son-entree-rideau.mp3',
     '/cartes/bal-anneau.webp',
     '/cartes/bal-cr-champagne.webp',
     '/cartes/bal-cr-laque.webp',
@@ -270,6 +276,12 @@ export const RESSOURCES_JEUX: Record<JeuACharger, string[]> = {
     '/cartes/bal-logo.webp',
   ],
   baronWheel: [
+    '/cartes/en-bw-paysage-g.webp',
+    '/cartes/en-bw-paysage-d.webp',
+    '/cartes/en-bw-portrait-g.webp',
+    '/cartes/en-bw-portrait-d.webp',
+    '/cartes/en-bw-volant.webp',
+    '/cartes/son-entree-portes.mp3',
     '/cartes/avatar-1.webp',
     '/cartes/avatar-10.webp',
     '/cartes/avatar-11.webp',

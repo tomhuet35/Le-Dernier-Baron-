@@ -8,6 +8,7 @@
  *
  * Visuels : bal-*.webp (décor, jante, anneau, moyeu, éventail, lustre, matières des cases et des crans).
  */
+import { EntreeJeu } from './EntreeJeu';
 import { PanneauMissions } from './CasinoMissions';
 import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import type { VueBonusBW, VueBW } from '../../shared/baronWheel';
@@ -628,6 +629,7 @@ export function JeuBalWheel({ vue, appel, onRetour }: { vue: VueCasino; appel: A
         </aside>
       </div>
       {pluie && <PluieLingots key={`pluie-${pluie.id}`} n={pluie.n} objets={BUTIN_PLUIE} />}
+      <EntreeJeu jeu="bal" />
     </div>
   );
 }
