@@ -15,6 +15,7 @@
  *   niveaux et leurs bonus, statistiques par jeu, scores des défis). Amis du casino, envois d'argent entre amis, et
  *   défis 1 contre 1 (defisCasino.ts, gardés avec les réglages du serveur).
  */
+import { FIGURANTS, FIGURANTS_ACTIFS, niveauFigurant, soldeFigurant } from './figurants';
 import { avancerMissions, avatarGagne, type MancheMission } from '../shared/missions';
 import { estMisePlinko, lacherBille, MULTI_MAX_PLINKO } from '../shared/plinko';
 import { randomInt } from 'node:crypto';
@@ -726,9 +727,11 @@ export function creerCasino(options: OptionsCasino) {
   const tables = creerTablesBlackjack({ io, banque: banqueDe('blackjack'), horloge, delais: options.delaisTables, sabot: options.sabotBlackjack, vipAutorise });
   const roulettes = creerTablesRoulette({ io, banque: banqueDe('roulette'), horloge, delais: options.delaisRoulette, tirage: options.tirageRoulette, annoncer: (a) => annoncer(a), vipAutorise });
   const coffres = creerCoffres({ banque: banqueDe('coffres'), hasard: options.hasardCoffres, placer: options.placerBadgesCoffres, annoncer: (a) => annoncer(a) });
-  const show = creerShowFolleNuit({ io, banque: banqueDe('folleNuit'), horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, annoncer: (a) => annoncer(a) });
-  const couronne = creerVolCouronne({ io, banque: banqueDe('couronne'), horloge, delais: options.delaisCouronne, k: options.kCouronne, tirage: options.tirageCouronne, annoncer: (a) => annoncer(a) });
-  const course = creerCourse({ io, banque: banqueDe('course'), horloge, delais: options.delaisCourse, arrivee: options.arriveeCourse, annoncer: (a) => annoncer(a) });
+  /** Deux joueurs sont-ils amis du casino ? (les jeux en direct ne montrent que les mises des amis) */
+  const amis = (moi: string, autre: string) => !!portes.get(moi)?.amis.includes(autre);
+  const show = creerShowFolleNuit({ io, banque: banqueDe('folleNuit'), amis, horloge, hasard: options.hasardFolleNuit, delais: options.delaisFolleNuit, tirage: options.tirageFolleNuit, annoncer: (a) => annoncer(a) });
+  const couronne = creerVolCouronne({ io, banque: banqueDe('couronne'), amis, horloge, delais: options.delaisCouronne, k: options.kCouronne, tirage: options.tirageCouronne, annoncer: (a) => annoncer(a) });
+  const course = creerCourse({ io, banque: banqueDe('course'), amis, horloge, delais: options.delaisCourse, arrivee: options.arriveeCourse, annoncer: (a) => annoncer(a) });
   /** La grande ouverture de The Baron's Wheel : elle dure autant que son cadeau (ouvert à la mise en ligne). */
   const finOuvertureBW = (): number | null => {
     if (options.ouvertureBaronWheel) return options.ouvertureBaronWheel();
@@ -742,6 +745,7 @@ export function creerCasino(options: OptionsCasino) {
   const roueBW = creerBaronWheel({
     io,
     banque: banqueDe('baronWheel'),
+    amis,
     mission: (uid, m) => mission(uid, { jeu: 'express', ...m }),
     horloge,
     delais: options.delaisBaronWheel,
@@ -779,6 +783,7 @@ export function creerCasino(options: OptionsCasino) {
   const roueBal = creerBalWheel({
     io,
     banque: banqueDe('baronWheel', 'bal'),
+    amis,
     mission: (uid, m) => mission(uid, { jeu: 'bal', ...m }),
     horloge,
     ...(options.delaisBaronWheel ? { delais: { mises: 2_000, tour: 1_000, resultat: 1_000 }, delaisBonus: options.delaisBaronWheel } : {}),
@@ -886,7 +891,9 @@ export function creerCasino(options: OptionsCasino) {
   function vue(uid: string): VueCasino {
     const p = portes.get(uid);
     const t = horloge();
-    const liste: RicheSalon[] = [...riches.entries()]
+    // Les plus riches : les vrais joueurs, et les figurants du lancement (server/figurants.ts).
+    const figurants: [string, { nom: string; avatar: number; solde: number; niveau?: number }][] = FIGURANTS_ACTIFS ? FIGURANTS.map((f) => [f.uid, { nom: f.nom, avatar: f.avatar, solde: soldeFigurant(f, t), niveau: niveauFigurant(f) }]) : [];
+    const liste: RicheSalon[] = [...riches.entries(), ...figurants]
       .sort(([, a], [, b]) => b.solde - a.solde)
       .slice(0, 10)
       .map(([u, r]) => ({ nom: r.nom, avatar: r.avatar, solde: r.solde, ...(r.niveau ? { niveau: r.niveau } : {}), ...(u === uid ? { moi: true as const } : {}) }));

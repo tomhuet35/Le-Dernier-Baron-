@@ -33,6 +33,7 @@ import {
   type VueCourse,
 } from '../shared/course';
 import type { Identite } from './comptes';
+import { spectateursAffiches } from './figurants';
 import type { BanqueCasino } from './tablesCasino';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
@@ -55,6 +56,8 @@ const total = (ms: MiseCourse[]) => ms.reduce((s, m) => s + m.montant, 0);
 export function creerCourse(options: {
   io: Server;
   banque: BanqueCasino;
+  /** Les amis du casino : seuls eux (et soi) apparaissent dans la liste des joueurs de la manche. */
+  amis?: (moi: string, autre: string) => boolean;
   horloge?: () => number;
   delais?: Partial<DureesCourse>;
   hasard?: Hasard;
@@ -88,7 +91,7 @@ export function creerCourse(options: {
     const t = horloge();
     const j = uid ? joueurs.get(uid) : undefined;
     const liste: JoueurCourse[] = [...joueurs.values()]
-      .filter((x) => x.mises.length)
+      .filter((x) => (!options.amis || x.uid === uid || (!!uid && options.amis(uid, x.uid))) && x.mises.length)
       .map((x) => ({ nom: x.nom, avatar: x.avatar, mise: total(x.mises), gain: x.gain, ...(x.uid === uid ? { moi: true as const } : {}) }))
       .sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0) || b.mise - a.mise);
     return {
@@ -104,7 +107,7 @@ export function creerCourse(options: {
       monGain: phase === 'resultat' && j ? j.gain : null,
       joueurs: liste.slice(0, 20),
       historique,
-      spectateurs: uidsSpectateurs().size,
+      spectateurs: enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'course') : uidsSpectateurs().size,
       solde: uid ? banque.solde(uid) : 0,
     };
   }
@@ -289,7 +292,7 @@ export function creerCourse(options: {
   }
 
   /** Ce que l'accueil du salon montre : en direct ou non, combien regardent, les derniers gagnants. */
-  const resume = () => ({ enDirect: enCours, spectateurs: uidsSpectateurs().size, historique: historique.slice(0, 6) });
+  const resume = () => ({ enDirect: enCours, spectateurs: enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'course') : uidsSpectateurs().size, historique: historique.slice(0, 6) });
 
   /** Arrêt du serveur : une course pas encore jugée est annulée, ses mises rendues. */
   const rendreMisesEnCours = () => {

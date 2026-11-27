@@ -770,7 +770,7 @@ export function JeuCouronne({ vue, appel, onVue, onRetour }: { vue: VueCasino; a
             ))}
           </ol>
         ) : (
-          <p className="discret">{tr('Personne n’a encore misé sur cet envol.', 'Nobody has bet on this flight yet.')}</p>
+          <p className="discret">{tr('Aucun de tes amis n’a misé sur cet envol.', 'None of your friends has bet on this flight.')}</p>
         )}
         <p className="cas-mention">
           {tr(

@@ -1536,7 +1536,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
             ))}
           </ol>
         ) : (
-          <p className="discret">{tr('Personne n’a encore misé sur cette manche.', 'Nobody has bet on this round yet.')}</p>
+          <p className="discret">{tr('Aucun de tes amis n’a misé sur cette manche.', 'None of your friends has bet on this round.')}</p>
         )}
         {/* Les règles et les chances, repliées : un tap pour les dérouler. */}
         <PanneauMissions jeu="express" vue={vue} />

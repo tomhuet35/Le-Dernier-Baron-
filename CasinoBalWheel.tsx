@@ -614,7 +614,7 @@ export function JeuBalWheel({ vue, appel, onRetour }: { vue: VueCasino; appel: A
               ))}
             </ol>
           ) : (
-            <p className="discret">{tr('Personne n’a encore misé sur cette manche.', 'Nobody has bet on this round yet.')}</p>
+            <p className="discret">{tr('Aucun de tes amis n’a misé sur cette manche.', 'None of your friends has bet on this round.')}</p>
           )}
           <PanneauMissions jeu="bal" vue={vue} />
           <details className="bw-regles">

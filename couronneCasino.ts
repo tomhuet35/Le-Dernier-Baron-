@@ -31,6 +31,7 @@ import {
   type VueCouronne,
 } from '../shared/couronne';
 import type { Identite } from './comptes';
+import { spectateursAffiches } from './figurants';
 import type { BanqueCasino } from './tablesCasino';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
@@ -50,6 +51,8 @@ interface Joueur {
 export function creerVolCouronne(options: {
   io: Server;
   banque: BanqueCasino;
+  /** Les amis du casino : seuls eux (et soi) apparaissent dans la liste des joueurs de la manche. */
+  amis?: (moi: string, autre: string) => boolean;
   horloge?: () => number;
   delais?: Partial<DureesCouronne>;
   /** Vitesse de montée (tests). */
@@ -87,7 +90,7 @@ export function creerVolCouronne(options: {
     const t = horloge();
     const j = uid ? joueurs.get(uid) : undefined;
     const liste: JoueurCouronne[] = [...joueurs.values()]
-      .filter((x) => x.mises.some(Boolean))
+      .filter((x) => (!options.amis || x.uid === uid || (!!uid && options.amis(uid, x.uid))) && x.mises.some(Boolean))
       .map((x) => {
         const ms = x.mises.filter((m): m is MiseCouronne => !!m);
         const recuperees = ms.filter((m) => m.etat === 'recuperee');
@@ -113,7 +116,7 @@ export function creerVolCouronne(options: {
       historique,
       mesMises: j ? j.mises.map((m) => (m ? { ...m } : null)) : Array(MISES_PAR_MANCHE).fill(null),
       joueurs: liste.slice(0, 20),
-      spectateurs: uidsSpectateurs().size,
+      spectateurs: enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'cv') : uidsSpectateurs().size,
       solde: uid ? banque.solde(uid) : 0,
     };
   }
@@ -313,7 +316,7 @@ export function creerVolCouronne(options: {
   }
 
   /** Ce que l'accueil du salon montre : en direct ou non, combien regardent, les derniers envols. */
-  const resume = () => ({ enDirect: enCours, spectateurs: uidsSpectateurs().size, historique: historique.slice(0, 6) });
+  const resume = () => ({ enDirect: enCours, spectateurs: enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'cv') : uidsSpectateurs().size, historique: historique.slice(0, 6) });
   /** Une mise de ce joueur est-elle en vol ? */
   const misesEnVol = (uid: string) => {
     const j = joueurs.get(uid);

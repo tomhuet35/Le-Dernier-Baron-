@@ -633,7 +633,7 @@ export function JeuCourse({ vue, appel, onRetour }: { vue: VueCasino; appel: App
             ))}
           </ol>
         ) : (
-          <p className="discret">{tr('Personne n’a encore misé sur cette course.', 'Nobody has bet on this race yet.')}</p>
+          <p className="discret">{tr('Aucun de tes amis n’a misé sur cette course.', 'None of your friends has bet on this race.')}</p>
         )}
         <p className="cas-mention">
           {tr(

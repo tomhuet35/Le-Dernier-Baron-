@@ -39,9 +39,12 @@ import {
   type TopSlot,
   type VueBonusFN,
   type VueFolleNuit,
+  NOMBRES_FN,
+  BONUS_FN,
 } from '../shared/folleNuit';
 import { filtrerMessage } from '../shared/moderation';
 import type { Identite } from './comptes';
+import { casesFigurant, estFigurant, figurantsManche, miseFigurant, spectateursAffiches } from './figurants';
 import type { BanqueCasino } from './tablesCasino';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
@@ -66,6 +69,8 @@ interface Joueur {
 export function creerShowFolleNuit(options: {
   io: Server;
   banque: BanqueCasino;
+  /** Les amis du casino : seuls eux (et soi) apparaissent dans la liste des joueurs de la manche. */
+  amis?: (moi: string, autre: string) => boolean;
   horloge?: () => number;
   hasard?: Hasard;
   delais?: Partial<DureesFN>;
@@ -96,6 +101,28 @@ export function creerShowFolleNuit(options: {
   const ouvertes = () => phase === 'mises' && fin !== null && horloge() < fin - D.fermeture;
   const total = (l: { montant: number }[]) => l.reduce((s, p) => s + p.montant, 0);
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
+
+  // Les figurants (joueurs d'ambiance, server/figurants.ts) : ils arrivent pendant les mises et misent comme les autres.
+  let minuteriesFig: ReturnType<typeof setTimeout>[] = [];
+  function arreterFigurants() {
+    for (const m of minuteriesFig) clearTimeout(m);
+    minuteriesFig = [];
+  }
+  function inviterFigurants() {
+    arreterFigurants();
+    const h = () => hasard(1_000_000) / 1_000_000;
+    const liste = figurantsManche(h, uidsSpectateurs().size, horloge());
+    for (const f of liste) {
+      const m = setTimeout(() => {
+        if (!ouvertes()) return;
+        const poses = casesFigurant(h, NOMBRES_FN, BONUS_FN).map((c) => ({ case: c, montant: miseFigurant(f, h) }));
+        joueurs.set(f.uid, { uid: f.uid, nom: f.nom, avatar: f.avatar, poses, gain: null });
+        diffuser();
+      }, (0.08 + h() * 0.72) * D.mises);
+      m.unref?.();
+      minuteriesFig.push(m);
+    }
+  }
   /** Le jeu bonus en cours (après l'arrêt de la roue). */
   const bonusEnJeu = () => (tirage?.bonus && ['intro', 'choix', 'jeu', 'finBonus'].includes(phase) ? tirage.bonus : null);
   const avant = (p: PhaseFN) => {
@@ -121,7 +148,7 @@ export function creerShowFolleNuit(options: {
     const misesSalon: Partial<Record<CaseFN, number>> = {};
     for (const x of joueurs.values()) for (const p of x.poses) misesSalon[p.case] = (misesSalon[p.case] ?? 0) + p.montant;
     const liste: JoueurFN[] = [...joueurs.values()]
-      .filter((x) => x.poses.length)
+      .filter((x) => (!options.amis || x.uid === uid || (!!uid && options.amis(uid, x.uid))) && x.poses.length)
       .map((x) => ({ nom: x.nom, avatar: x.avatar, mise: total(x.poses), gain: paye ? x.gain : null, ...(x.uid === uid ? { moi: true as const } : {}) }))
       .sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0) || b.mise - a.mise);
     return {
@@ -137,7 +164,7 @@ export function creerShowFolleNuit(options: {
       misesSalon,
       monGain: paye && j?.poses.length ? j.gain : null,
       joueurs: liste.slice(0, 12),
-      spectateurs: uidsSpectateurs().size,
+      spectateurs: (enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'fn') : uidsSpectateurs().size),
       historique,
       solde: uid ? banque.solde(uid) : 0,
       peutRefaire: !!uid && !!precedentes.get(uid)?.length,
@@ -166,6 +193,7 @@ export function creerShowFolleNuit(options: {
     // Plus personne ne regarde et aucune mise en attente : le show s'arrête jusqu'au prochain spectateur.
     for (const [uid, j] of joueurs) if (!j.poses.length) joueurs.delete(uid);
     joueurs.clear();
+    arreterFigurants();
     tirage = null;
     paye = false;
     if (!spectateurs.size) {
@@ -177,13 +205,14 @@ export function creerShowFolleNuit(options: {
     }
     enCours = true;
     planifier(D.mises, 'mises', fermer);
+    inviterFigurants();
   }
 
   function fermer() {
     manche += 1;
     tirage = tirerManche(hasard, options.tirage?.());
     // Les mises de cette manche deviennent celles à « refaire » à la suivante.
-    for (const j of joueurs.values()) if (j.poses.length) precedentes.set(j.uid, j.poses.map((p) => ({ ...p })));
+    for (const j of joueurs.values()) if (!estFigurant(j.uid) && j.poses.length) precedentes.set(j.uid, j.poses.map((p) => ({ ...p })));
     planifier(D.topSlot, 'topSlot', () => planifier(D.roue, 'roue', apresRoue));
   }
 
@@ -226,6 +255,8 @@ export function creerShowFolleNuit(options: {
       if (!j.poses.length) continue;
       const retour = j.poses.reduce((r, p) => r + retourFN(p.case, p.montant, m, j.choix), 0);
       j.gain = retour - total(j.poses);
+      // Un figurant n'a pas de porte-monnaie : son gain se montre, sans rien verser ni annoncer.
+      if (estFigurant(j.uid)) continue;
       if (retour > 0) banque.crediter(j.uid, retour);
       if (j.gain >= GAIN_ANNONCE) options.annoncer?.({ nom: j.nom, jeu: 'folleNuit', gain: j.gain });
     }
@@ -373,12 +404,12 @@ export function creerShowFolleNuit(options: {
     paye = true;
     for (const j of joueurs.values()) {
       const t = total(j.poses);
-      if (t > 0) banque.rembourser(j.uid, t);
+      if (t > 0 && !estFigurant(j.uid)) banque.rembourser(j.uid, t);
       j.poses = [];
     }
   };
   /** Ce que l'accueil du salon montre du show : en direct ou non, les derniers résultats. */
-  const resume = () => ({ enDirect: enCours, spectateurs: uidsSpectateurs().size, historique: historique.slice(0, 6) });
+  const resume = () => ({ enDirect: enCours, spectateurs: (enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'fn') : uidsSpectateurs().size), historique: historique.slice(0, 6) });
 
   return { brancher, sortir, fermer: fermerShow, rendreMisesEnCours, resume, estBonus };
 }
