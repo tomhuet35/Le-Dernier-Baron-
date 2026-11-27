@@ -34,8 +34,8 @@ export const JEUX_RETIRES: JeuCasino[] = ['nuits'];
 /** Les jeux qui ont leur niveau d'ouverture : ceux du casino, et le Bal du Grand Hôtel (qui partage la caisse du Baron Express). */
 export type JeuNiveau = JeuCasino | 'bal';
 /**
- * Le niveau du casino qui ouvre chaque jeu. Repères (1 XP pour 1 000 $ misés) : niveau 5 ≈ 10 M$ misés au total,
- * 10 ≈ 45 M$, 20 ≈ 190 M$, 25 ≈ 300 M$, 30 ≈ 435 M$, 50 ≈ 1,2 Md$, 100 ≈ 5 Md$.
+ * Le niveau du casino qui ouvre chaque jeu, en trois paliers de 5 jeux (le Poker viendra compléter le dernier) :
+ * dès le départ, au niveau 15 (≈ 105 M$ misés au total), au niveau 40 (≈ 780 M$).
  */
 export const NIVEAUX_JEUX: Record<JeuNiveau, number> = {
   machine: 1,
@@ -43,14 +43,14 @@ export const NIVEAUX_JEUX: Record<JeuNiveau, number> = {
   blackjack: 1,
   baronWheel: 1,
   nuits: 1,
-  tickets: 5,
-  coffres: 10,
-  toits: 20,
-  folleNuit: 25,
-  chute: 25,
-  couronne: 50,
-  course: 30,
-  bal: 100,
+  tickets: 15,
+  coffres: 15,
+  toits: 15,
+  folleNuit: 40,
+  chute: 15,
+  couronne: 15,
+  course: 40,
+  bal: 40,
 };
 /** Le noms des jeux qui s'ouvrent par niveau (pour annoncer les déblocages). */
 export const NOMS_JEUX_NIVEAU: Record<JeuNiveau, [string, string]> = {
