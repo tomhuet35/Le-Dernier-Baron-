@@ -726,3 +726,5 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
 .ac-carte.carre .ac-cadenas { inset: 8.6% 6.7% 4.2% 6.5%; border-radius: 6px; font-size: 28px; }
 .ac-cadenas img { width: clamp(34px, 26%, 72px); height: auto; filter: grayscale(1) brightness(0.95) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.75)); }
 .ac-carte.carre .ac-cadenas img { width: 34%; }
+/* Les affiches portent leur titre peint : le nom écrit reste seulement pour les lecteurs d'écran. */
+.ac-carte .cas-vignette .cas-vignette-nom { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
