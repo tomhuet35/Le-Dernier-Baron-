@@ -657,7 +657,9 @@ export function JeuToits({ vue, appel, onVue, onRetour }: { vue: VueCasino; appe
         <button type="button" className="cas-retour" onClick={onRetour}>
           ‹ {tr('Salon', 'Lounge')}
         </button>
-        <h1 className="tt-titre">{tr('Sur les toits', 'On the Rooftops')}</h1>
+        <h1 className="tt-titre jeu-logo-titre">
+          <img src="/cartes/lg-tt.webp" alt={tr('Sur les toits', 'On the Rooftops')} draggable={false} style={{ height: 'clamp(36px, 7vw, 64px)', width: 'auto', maxWidth: '100%' }} />
+        </h1>
         <span className={`cas-solde-petit tt-solde ${credit ? 'credite' : ''}`}>
           {dollars(solde)}
           {credit && (

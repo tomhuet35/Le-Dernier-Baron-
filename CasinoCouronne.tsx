@@ -669,8 +669,8 @@ export function JeuCouronne({ vue, appel, onVue, onRetour }: { vue: VueCasino; a
         <button type="button" className="cas-retour" onClick={onRetour}>
           ‹ {tr('Salon', 'Lounge')}
         </button>
-        <h1 className="cv-titre">
-          <span>{tr('Le Vol', 'The Flight')}</span> <span>{tr('de la Couronne', 'of the Crown')}</span>
+        <h1 className="cv-titre jeu-logo-titre">
+          <img src="/cartes/lg-cv.webp" alt={tr('Le Vol de la Couronne', 'The Flight of the Crown')} draggable={false} style={{ height: 'clamp(36px, 7vw, 64px)', width: 'auto', maxWidth: '100%' }} />
         </h1>
         <span className={`cas-solde-petit cv-solde ${credit ? 'credite' : ''}`}>
           {dollars(solde)}
