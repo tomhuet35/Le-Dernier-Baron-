@@ -3,6 +3,8 @@
  * Étape 1 : le salon (solde, plus riches, annonces), la roulette du salon (une par jour) et la machine à sous
  * « Le Bandit du Baron ». Tout l'argent est fictif et tenu par le serveur.
  */
+import { texteMission } from './CasinoMissions';
+import type { IdTrophee } from '../../shared/missions';
 import { DOLLARS_PAR_RUBIS, MISES_PLINKO, MULTI_MAX_PLINKO, MULTIPLICATEURS_PLINKO, RANGEES_PLINKO, type MisePlinko } from '../../shared/plinko';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
@@ -2446,7 +2448,7 @@ export default function Casino({
   const [defis, setDefis] = useState<VueDefi[]>([]);
   const [fete, setFete] = useState<FeteNiveau | null>(null);
   const [bienvenue, setBienvenue] = useState<CadeauSemaine | null>(null);
-  const [toastSocial, setToastSocial] = useState<{ texte: string; vers: 'amis' | 'defis'; id: number } | null>(null);
+  const [toastSocial, setToastSocial] = useState<{ texte: string; vers: 'amis' | 'defis' | 'bureau'; id: number } | null>(null);
   const minuterieToast = useRef(0);
   const moi = compte.uid ?? '';
   /** Chaque (re)entrée au salon : le serveur repart de zéro pour ce téléphone (position, présence). */
@@ -2533,7 +2535,7 @@ export default function Casino({
         const casino = (r as unknown as { casino?: VueCasino }).casino;
         if (r.ok && casino) setVue(casino);
       });
-    const montrer = (texte: string, vers: 'amis' | 'defis') => {
+    const montrer = (texte: string, vers: 'amis' | 'defis' | 'bureau') => {
       if (!texte) return;
       setToastSocial({ texte, vers, id: Date.now() });
       window.clearTimeout(minuterieToast.current);
@@ -2541,6 +2543,11 @@ export default function Casino({
     };
     const surNiveau = (f: Omit<FeteNiveau, 'id'>) => {
       setFete({ ...f, id: Date.now() });
+      rafraichir();
+    };
+    const surMission = (e: { finies: string[]; trophee: IdTrophee | null }) => {
+      jouerEffet(e.trophee ? 'roulette_gros_lot' : 'casino_annonce');
+      montrer(texteMission(e), 'bureau');
       rafraichir();
     };
     const surSocial = (e: { type: string; nom: string; montant?: number }) => {
@@ -2566,6 +2573,7 @@ export default function Casino({
     const surVentes = (ventes: VueVentes) => setVue((v) => (v ? { ...v, ventes } : v));
     socket.on('casino_ventes', surVentes);
     socket.on('casino_niveau', surNiveau);
+    socket.on('casino_mission', surMission);
     socket.on('casino_social', surSocial);
     socket.on('casino_solde', surSolde);
     socket.on('casino_affiche', surAffiche);
@@ -2573,6 +2581,7 @@ export default function Casino({
     return () => {
       socket.off('casino_ventes', surVentes);
       socket.off('casino_niveau', surNiveau);
+      socket.off('casino_mission', surMission);
       socket.off('casino_social', surSocial);
       socket.off('casino_solde', surSolde);
       socket.off('casino_affiche', surAffiche);
@@ -2937,7 +2946,7 @@ export default function Casino({
       {defiActif && ecran !== 'defis' && <PuceDefi d={defiActif} moi={moi} onOuvrir={() => ouvrirDefis()} />}
       {vue?.affiche && position === vue.affiche.jeu && <PuceAffiche affiche={vue.affiche} defi={!!defiActif && ecran !== 'defis'} onFin={rafraichirVue} />}
       {toastSocial && (
-        <button type="button" key={toastSocial.id} className="toast cs-toast" onClick={() => (setToastSocial(null), toastSocial.vers === 'amis' ? setEcran('amis') : ouvrirDefis())}>
+        <button type="button" key={toastSocial.id} className="toast cs-toast" onClick={() => (setToastSocial(null), toastSocial.vers === 'amis' ? setEcran('amis') : toastSocial.vers === 'bureau' ? ouvrirBureau(null) : ouvrirDefis())}>
           {toastSocial.texte}
         </button>
       )}

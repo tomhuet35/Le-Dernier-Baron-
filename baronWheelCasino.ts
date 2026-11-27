@@ -104,6 +104,8 @@ export function creerBaronWheel(options: {
   /** Grande ouverture : sa fin (ms), ou null. */
   ouverture?: () => number | null;
   annoncer?: (a: AnnonceCasino) => void;
+  /** Une manche jouée (le joueur avait misé) : pour les missions du jeu (shared/missions.ts). */
+  mission?: (uid: string, m: { bonus: boolean; final: boolean; x: number }) => void;
 }) {
   const { io, banque } = options;
   const horloge = options.horloge ?? Date.now;
@@ -418,6 +420,7 @@ export function creerBaronWheel(options: {
       }
       j.gain = gain;
       if (gain > 0) banque.crediter(j.uid, gain);
+      options.mission?.(j.uid, { bonus: surCase > 0 && estBonusBW(c), final: false, x: surCase > 0 ? gain / surCase : 0 });
       const jour = jourParis(horloge());
       if (gain > 0 && (!record || record.jour !== jour || gain > record.gain)) record = { nom: j.nom, avatar: j.avatar, gain, c, jour };
       const mt = totaux.get(j.uid) ?? { manches: 0, mise: 0, gain: 0, bonus: { controleur: 0, course: 0, chaudiere: 0, restaurant: 0, express: 0 } };

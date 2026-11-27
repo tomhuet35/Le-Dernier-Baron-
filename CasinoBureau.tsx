@@ -3,6 +3,7 @@
  * (les objets gagnés, exposés dans ses vitrines ; « La plus belle collection »). Le serveur tient tout
  * (shared/ventes.ts, server/ventesCasino.ts) : ces écrans affichent la vue et envoient les enchères.
  */
+import { VitrinesTrophees } from './CasinoMissions';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import type { VueCasino } from '../../shared/casino';
 import {
@@ -253,6 +254,7 @@ export function EcranBureau({ uid, appel, onRetour, onVentes, onProfil }: { uid:
               );
             })}
           </ul>
+          <VitrinesTrophees trophees={b.trophees ?? []} moi={b.moi} />
           {b.moi && (
             <>
               <p className="discret bv-aide">

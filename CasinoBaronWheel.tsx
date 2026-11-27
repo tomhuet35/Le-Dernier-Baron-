@@ -10,6 +10,7 @@
  *
  * Visuels : bw-*.webp (roue, cerclage, aiguille, centre, symboles, plaques de jackpot, décors et personnages des bonus).
  */
+import { PanneauMissions } from './CasinoMissions';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import {
   BONUS_BW,
@@ -1536,6 +1537,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
           <p className="discret">{tr('Personne n’a encore misé sur cette manche.', 'Nobody has bet on this round yet.')}</p>
         )}
         {/* Les règles et les chances, repliées : un tap pour les dérouler. */}
+        <PanneauMissions jeu="express" vue={vue} />
         <details className="bw-regles">
           <summary>{tr('Règles et probabilités', 'Rules and odds')}</summary>
           <p className="cas-mention">

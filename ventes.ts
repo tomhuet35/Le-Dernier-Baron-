@@ -11,6 +11,7 @@
  * Tout ce fichier est pur : le serveur (server/ventesCasino.ts, server/salonCasino.ts) tient l'argent et les lots.
  */
 import { hasardGraine, RUBIS_MAX, type EtatSalonJoueur } from './contrats';
+import type { IdTrophee } from './missions';
 
 export type IdObjet = 'voiture' | 'tableau' | 'montre' | 'statuette' | 'gramophone' | 'perles' | 'champagne' | 'cigares' | 'globe' | 'piano';
 export type Rarete = 'commun' | 'rare' | 'precieux' | 'legendaire';
@@ -264,6 +265,8 @@ export interface VueBureau {
   valeur: number;
   cadre: CadreSpecial | null;
   moi: boolean;
+  /** Les trophées des jeux (missions finies). */
+  trophees?: IdTrophee[];
   /** La plus belle collection du salon (les 10 premiers). */
   classement: CollectionneurSalon[];
 }

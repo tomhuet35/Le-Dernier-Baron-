@@ -8,6 +8,7 @@
  *
  * Visuels : bal-*.webp (décor, jante, anneau, moyeu, éventail, lustre, matières des cases et des crans).
  */
+import { PanneauMissions } from './CasinoMissions';
 import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import type { VueBonusBW, VueBW } from '../../shared/baronWheel';
 import {
@@ -614,6 +615,7 @@ export function JeuBalWheel({ vue, appel, onRetour }: { vue: VueCasino; appel: A
           ) : (
             <p className="discret">{tr('Personne n’a encore misé sur cette manche.', 'Nobody has bet on this round yet.')}</p>
           )}
+          <PanneauMissions jeu="bal" vue={vue} />
           <details className="bw-regles">
             <summary>{tr('Règles et probabilités', 'Rules and odds')}</summary>
             <p className="cas-mention">
