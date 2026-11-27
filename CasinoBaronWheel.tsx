@@ -10,6 +10,7 @@
  *
  * Visuels : bw-*.webp (roue, cerclage, aiguille, centre, symboles, plaques de jackpot, décors et personnages des bonus).
  */
+import { EntreeJeu } from './EntreeJeu';
 import { PanneauMissions } from './CasinoMissions';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import {
@@ -1340,6 +1341,7 @@ export function JeuBaronWheel({ vue, appel, onRetour }: { vue: VueCasino; appel:
 
   return (
     <div className={`cas-ecran bw-ecran ${enBonus ? 'en-bonus' : ''}`} data-phase={v?.phase ?? 'mises'}>
+      <EntreeJeu jeu="express" />
       <header className="cas-barre">
         <button type="button" className="cas-retour" onClick={onRetour}>
           ‹ {tr('Salon', 'Lounge')}

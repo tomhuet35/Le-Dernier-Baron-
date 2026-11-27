@@ -1,0 +1,71 @@
+/* L'entrée du Bal (rideau) et du Baron Express (portes blindées) : par-dessus la page du jeu, puis elle s'efface. */
+.en-entree { position: fixed; inset: 0; z-index: 400; overflow: hidden; pointer-events: none; }
+.en-moitie { position: absolute; top: 0; bottom: 0; width: 50%; background-repeat: no-repeat; background-size: cover; will-change: transform; }
+.en-moitie.g { left: 0; background-position: right center; transform-origin: left center; }
+.en-moitie.d { right: 0; background-position: left center; transform-origin: right center; }
+.en-logo { position: absolute; left: 50%; top: 13%; width: min(78vw, 560px); translate: -50% 0; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.7)); }
+
+/* --- Le Bal : le rideau (2,7 s) --- */
+.bal .en-moitie.g { background-image: url(/cartes/en-bal-paysage-g.webp); }
+.bal .en-moitie.d { background-image: url(/cartes/en-bal-paysage-d.webp); }
+@media (orientation: portrait) {
+  .bal .en-moitie.g { background-image: url(/cartes/en-bal-portrait-g.webp); }
+  .bal .en-moitie.d { background-image: url(/cartes/en-bal-portrait-d.webp); }
+}
+.bal .en-moitie { animation: en-rideau 1.45s cubic-bezier(0.55, 0, 0.25, 1) 1.05s both; }
+/* Le velours se ramasse vers les coulisses : il se tasse, ondule, puis file. */
+@keyframes en-rideau {
+  0% { transform: scaleX(1) skewY(0deg); }
+  30% { transform: scaleX(0.82) skewY(0.6deg); }
+  70% { transform: scaleX(0.3) skewY(-0.4deg); }
+  100% { transform: scaleX(0.06) skewY(0deg); filter: brightness(0.6); }
+}
+.bal .en-moitie.d { animation-name: en-rideau-d; }
+@keyframes en-rideau-d {
+  0% { transform: scaleX(1) skewY(0deg); }
+  30% { transform: scaleX(0.82) skewY(-0.6deg); }
+  70% { transform: scaleX(0.3) skewY(0.4deg); }
+  100% { transform: scaleX(0.06) skewY(0deg); filter: brightness(0.6); }
+}
+.en-lambrequin { position: absolute; left: 50%; top: 0; width: max(100vw, 900px); translate: -50% 0; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.6)); animation: en-lambrequin 0.5s ease-in 2.2s both; }
+@keyframes en-lambrequin { to { transform: translateY(-105%); } }
+/* Les trois coups : le logo tressaille à chaque coup, puis s'efface quand le rideau s'ouvre. */
+.bal .en-logo { top: 28%; animation: en-logo-in 0.3s ease-out both, en-coup 0.18s ease-out 0s, en-coup 0.18s ease-out 0.32s, en-coup 0.18s ease-out 0.64s, en-logo-out 0.3s ease-in 0.95s both; }
+@keyframes en-logo-in { from { opacity: 0; scale: 0.85; } }
+@keyframes en-coup { 40% { scale: 1.05; } }
+@keyframes en-logo-out { to { opacity: 0; scale: 1.08; } }
+.en-entree.bal { animation: en-fin 0.25s ease-in 2.45s both; }
+@keyframes en-fin { to { opacity: 0; } }
+
+/* --- L'Express : les portes blindées (2,9 s) --- */
+.express .en-moitie.g { background-image: url(/cartes/en-bw-paysage-g.webp); }
+.express .en-moitie.d { background-image: url(/cartes/en-bw-paysage-d.webp); }
+@media (orientation: portrait) {
+  .express .en-moitie.g { background-image: url(/cartes/en-bw-portrait-g.webp); }
+  .express .en-moitie.d { background-image: url(/cartes/en-bw-portrait-d.webp); }
+}
+/* Les verrous claquent (0,78 s et 0,98 s) : les battants tressautent ; puis ils coulissent (1,2 → 2,5 s). */
+.express .en-moitie.g { animation: en-claque 0.98s linear both, en-porte-g 1.3s cubic-bezier(0.6, 0, 0.3, 1) 1.2s both; }
+.express .en-moitie.d { animation: en-claque 0.98s linear both, en-porte-d 1.3s cubic-bezier(0.6, 0, 0.3, 1) 1.2s both; }
+@keyframes en-claque {
+  0%, 78% { translate: 0 0; }
+  80% { translate: 0 -3px; }
+  84% { translate: 0 2px; }
+  88%, 98% { translate: 0 0; }
+  100% { translate: 0 -2px; }
+}
+@keyframes en-porte-g { to { transform: translateX(-102%); } }
+@keyframes en-porte-d { to { transform: translateX(102%); } }
+/* Le volant, au centre du renfoncement rond des portes. */
+.en-volant { position: absolute; left: 50%; top: 50%; width: calc(max(100vw, 177.7vh) * 0.235); translate: -50% -50%; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7)); animation: en-volant 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.05s both, en-volant-out 0.3s ease-in 1.05s both; }
+@media (orientation: portrait) {
+  .en-volant { width: calc(max(100vw, 56.28vh) * 0.42); top: calc(50% - max(100vh, 177.7vw) * 0.034); }
+}
+@keyframes en-volant { from { rotate: 0deg; } to { rotate: 300deg; } }
+@keyframes en-volant-out { to { opacity: 0; scale: 1.25; } }
+.express .en-logo { top: 6%; width: min(70vw, 460px); animation: en-logo-in 0.3s ease-out both, en-logo-out 0.3s ease-in 1.05s both; }
+.en-vapeur { position: absolute; left: 50%; bottom: -12%; width: max(130vw, 900px); translate: -50% 0; opacity: 0; animation: en-vapeur 1.6s ease-out 1.05s both; }
+@keyframes en-vapeur { 0% { opacity: 0; transform: scale(0.8) translateY(10%); } 30% { opacity: 0.85; } 100% { opacity: 0; transform: scale(1.2) translateY(-25%); } }
+.en-entree.express { animation: en-fin 0.3s ease-in 2.55s both; }
+
+@media (prefers-reduced-motion: reduce) { .en-entree { display: none; } }
