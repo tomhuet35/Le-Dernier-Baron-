@@ -35,7 +35,7 @@ export const JEUX_RETIRES: JeuCasino[] = ['nuits'];
 export type JeuNiveau = JeuCasino | 'bal';
 /**
  * Le niveau du casino qui ouvre chaque jeu. Repères (1 XP pour 1 000 $ misés) : niveau 5 ≈ 10 M$ misés au total,
- * 8 ≈ 30 M$, 14 ≈ 100 M$, 18 ≈ 150 M$, 21 ≈ 210 M$, 27 ≈ 360 M$, 36 ≈ 660 M$, 62 ≈ 1,9 Md$.
+ * 10 ≈ 45 M$, 20 ≈ 190 M$, 25 ≈ 300 M$, 30 ≈ 435 M$, 50 ≈ 1,2 Md$, 100 ≈ 5 Md$.
  */
 export const NIVEAUX_JEUX: Record<JeuNiveau, number> = {
   machine: 1,
@@ -44,13 +44,13 @@ export const NIVEAUX_JEUX: Record<JeuNiveau, number> = {
   baronWheel: 1,
   nuits: 1,
   tickets: 5,
-  coffres: 8,
-  toits: 14,
-  folleNuit: 18,
-  chute: 21,
-  couronne: 27,
-  course: 36,
-  bal: 62,
+  coffres: 10,
+  toits: 20,
+  folleNuit: 25,
+  chute: 25,
+  couronne: 50,
+  course: 30,
+  bal: 100,
 };
 /** Le noms des jeux qui s'ouvrent par niveau (pour annoncer les déblocages). */
 export const NOMS_JEUX_NIVEAU: Record<JeuNiveau, [string, string]> = {
