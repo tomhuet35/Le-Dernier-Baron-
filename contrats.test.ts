@@ -8,6 +8,7 @@ import {
   dollarsContrat,
   echelleNiveau,
   etatSalonVide,
+  palierSuivant,
   hasardGraine,
   modeleContrat,
   MORCEAUX_PAGE,
@@ -226,5 +227,28 @@ describe('contrats selon le niveau', () => {
     const vus = new Set<string>();
     for (let k = 0; k < 30; k++) { const e = etatSalonVide(); rafraichirContrats(e, `j${k}`, '2026-11-20', '2026-S47', 30); vus.add(e.contrats.liste.map((c) => c.id).sort().join()); }
     expect(vus.size > 10).toBe(true);
+  });
+});
+
+describe('Missions permanentes', () => {
+  it('paie chaque palier de coups gagnants une seule fois, de plus en plus', () => {
+    const e = etatSalonVide();
+    const gagne = () => noterEvenement(e, { type: 'gain', jeu: 'blackjack', montant: 200, derniereMise: 100 }, 5);
+    for (let k = 0; k < 4; k++) expect(gagne().paliers).toEqual([]);
+    const r5 = gagne();
+    expect(r5.paliers).toEqual([{ jeu: 'blackjack', cible: 5, rubis: 1 }]);
+    expect(r5.dollars).toBe(dollarsContrat(5));
+    // Une mise simplement rendue (égalité) ne compte pas.
+    noterEvenement(e, { type: 'gain', jeu: 'blackjack', montant: 100, derniereMise: 100 }, 5);
+    expect(e.gagnes.blackjack).toBe(5);
+    for (let k = 0; k < 14; k++) gagne();
+    const r20 = gagne();
+    expect(r20.paliers).toEqual([{ jeu: 'blackjack', cible: 20, rubis: 2 }]);
+    expect(r20.dollars).toBe(2 * dollarsContrat(5));
+    expect(palierSuivant(20)).toBe(2);
+    expect(palierSuivant(10_000)).toBe(null);
+  });
+  it('relit le compte gardé', () => {
+    expect(normaliserEtatSalon({ gagnes: { roulette: 37.8, faux: 4, toits: -3 } }).gagnes).toEqual({ roulette: 37, toits: 0 });
   });
 });

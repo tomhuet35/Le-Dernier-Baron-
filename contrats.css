@@ -124,3 +124,10 @@
   .ct-rubis-salon { grid-column: 1 / -1; justify-self: center; padding: 4px 12px; }
   .ct-sommaire { grid-template-columns: repeat(5, 1fr); gap: 5px; }
 }
+
+/* Missions permanentes */
+.ct-permanentes li.ct-gros-coup { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.ct-permanente-vignette { width: 40px; height: 40px; flex: none; border-radius: 8px; object-fit: cover; border: 1px solid rgba(214, 168, 75, 0.7); }
+.ct-permanente-detail { font-size: 11px; opacity: 0.8; }
+.ct-permanentes .ct-gros-coup-gain { display: grid; justify-items: end; gap: 1px; }
+.ct-permanentes .ct-gros-coup-gain small { font-size: 11px; white-space: nowrap; }
