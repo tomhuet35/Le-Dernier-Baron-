@@ -922,4 +922,4 @@
 .ac-carte.carre .cas-vignette-logo { width: 88%; }
 .ac-carte:not(.carre) .cas-vignette-logo { width: 80%; }
 /* Les affiches qui portent déjà leur titre peint : pas de nom en texte par-dessus. */
-.cas-vignette.machine .cas-vignette-nom, .cas-vignette.bulles .cas-vignette-nom, .cas-vignette.toits .cas-vignette-nom { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); }
+.cas-vignette.machine .cas-vignette-nom, .cas-vignette.bulles .cas-vignette-nom { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); }
