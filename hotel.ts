@@ -35,7 +35,7 @@ export const JEUX_RETIRES: JeuCasino[] = ['nuits'];
 export type JeuNiveau = JeuCasino | 'bal';
 /**
  * Le niveau du casino qui ouvre chaque jeu, en trois paliers de 5 jeux (le Poker viendra compléter le dernier) :
- * dès le départ, au niveau 15 (≈ 105 M$ misés au total), au niveau 40 (≈ 780 M$).
+ * dès le départ, au niveau 15 (≈ 105 M$ misés au total), au niveau 50 (≈ 1,2 Md$).
  */
 export const NIVEAUX_JEUX: Record<JeuNiveau, number> = {
   machine: 1,
@@ -46,11 +46,11 @@ export const NIVEAUX_JEUX: Record<JeuNiveau, number> = {
   tickets: 15,
   coffres: 15,
   toits: 15,
-  folleNuit: 40,
+  folleNuit: 50,
   chute: 15,
   couronne: 15,
-  course: 40,
-  bal: 40,
+  course: 50,
+  bal: 50,
 };
 /** Le noms des jeux qui s'ouvrent par niveau (pour annoncer les déblocages). */
 export const NOMS_JEUX_NIVEAU: Record<JeuNiveau, [string, string]> = {

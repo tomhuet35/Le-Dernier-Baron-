@@ -1299,6 +1299,7 @@ const LOGO_VIGNETTE: Partial<Record<(typeof JEUX)[number]['id'], string>> = {
   festin: '/cartes/lg-cf.webp',
   chute: '/cartes/lg-cdc.webp',
   couronne: '/cartes/lg-cv.webp',
+  toits: '/cartes/lg-tt.webp',
 };
 
 function Vignette({ jeu, onOuvrir, ruban, affiche }: { jeu: (typeof JEUX)[number]; onOuvrir?: () => void; ruban?: string; affiche?: boolean }) {

@@ -30,17 +30,17 @@ describe('Grand Hôtel : les étages', () => {
     for (const j of ['machine', 'roulette', 'blackjack', 'baronWheel'] as const) expect(jeuOuvert(1, j)).toBe(true);
     expect(jeuOuvert(14, 'tickets')).toBe(false);
     expect(jeuOuvert(15, 'tickets')).toBe(true);
-    expect(jeuOuvert(39, 'course')).toBe(false);
-    expect(jeuOuvert(40, 'course')).toBe(true);
-    expect(jeuOuvert(39, 'bal')).toBe(false);
-    expect(jeuOuvert(40, 'bal')).toBe(true);
+    expect(jeuOuvert(49, 'course')).toBe(false);
+    expect(jeuOuvert(50, 'course')).toBe(true);
+    expect(jeuOuvert(49, 'bal')).toBe(false);
+    expect(jeuOuvert(50, 'bal')).toBe(true);
     // Un jeu déjà joué reste ouvert sous son niveau.
     expect(jeuOuvert(3, 'course', true)).toBe(true);
     expect(jeuOuvert(999, 'nuits', true)).toBe(false);
   });
   it('annonce les jeux débloqués en montant de niveau', () => {
     expect(jeuxDebloques(14, 15)).toEqual(['tickets', 'coffres', 'toits', 'chute', 'couronne']);
-    expect(jeuxDebloques(39, 40)).toEqual(['folleNuit', 'course', 'bal']);
+    expect(jeuxDebloques(49, 50)).toEqual(['folleNuit', 'course', 'bal']);
     expect(jeuxDebloques(1, 1)).toEqual([]);
   });
 });
