@@ -62,7 +62,7 @@ import { creerBourse } from './bourseCasino';
 import { avatarCasino, tenue as tenueDe } from '../shared/tailleur';
 import { etal, PRIX_RELANCE, rafraichirMarche, RELANCES_MAX, valeurObjetMarche, type VueMarche } from '../shared/marche';
 import { ACTIONS_MAX, acheter, devisAchat, estAction, MONTANTS_ACHAT, produitVente, vendre, type VueBourse } from '../shared/bourse';
-import { CADEAU_COMPTE, cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type VueHotel } from '../shared/hotel';
+import { CADEAU_COMPTE, cadeauSemaine, carteMembre, champagnePenthouse, etageOuvert, happyHour, jeuOuvert, jourSemaineParis, ristourne, type AnnonceHotel, type JeuNiveau, type VueHotel } from '../shared/hotel';
 import {
   ajouterObjet,
   cadreSpecial,
@@ -247,7 +247,7 @@ const SALLE = 'casino';
 const INTROUVABLE: Reponse = { ok: false, erreur: 'Introuvable.' };
 /** Délai minimal entre deux tours de machine (les rouleaux tournent bien plus longtemps à l'écran). */
 const ECART_TOURS_MS = 350;
-const ETAGE_FERME: [string, string] = ['Cet étage de l’hôtel n’est pas encore ouvert pour toi : monte de niveau !', 'This floor of the hotel isn’t open to you yet: level up!'];
+const ETAGE_FERME: [string, string] = ['Ce jeu n’est pas encore ouvert pour toi : monte de niveau !', 'This game isn’t open to you yet: level up!'];
 
 export function creerCasino(options: OptionsCasino) {
   const { io, comptes } = options;
@@ -513,7 +513,7 @@ export function creerCasino(options: OptionsCasino) {
       }
       planifier(uid, p);
     }
-    if (rafraichirContrats(p.salonJ, uid, jourParis(t), semaine, niveauDe(p), (j) => jeuOuvert(niveauDe(p), j))) {
+    if (rafraichirContrats(p.salonJ, uid, jourParis(t), semaine, niveauDe(p), (j) => ouvertPour(p, j))) {
       p.salonAEcrire = true;
       planifier(uid, p);
     }
@@ -601,6 +601,7 @@ export function creerCasino(options: OptionsCasino) {
       semaine: { jour, pris, cadeau: pris.includes(jour) ? null : cadeauSemaine(jour, niveau, pris), coffreComplet: [0, 1, 2, 3, 4, 5].every((j) => pris.includes(j)) },
       happyHour: happyHour(t),
       champagne: etageOuvert(niveau, 'penthouse') && p.salonJ.champagne !== jourParis(t) ? champagnePenthouse(niveau) : null,
+      joues: (Object.keys(p.jeux) as JeuCasino[]).filter((j) => (p.jeux[j]?.mise ?? 0) > 0),
     };
   }
 
@@ -652,13 +653,15 @@ export function creerCasino(options: OptionsCasino) {
     },
   };
   /** Le porte-monnaie vu par un jeu : chaque mise, gain et remboursement y est suivi (XP, statistiques, défis). */
-  const banqueDe = (jeu: JeuCasino): BanqueCasino => ({
+  /** Le jeu est-il ouvert pour ce joueur (son niveau, ou un jeu auquel il a déjà misé) ? */
+  const ouvertPour = (p: Porte, jeu: JeuNiveau) => jeuOuvert(niveauDe(p), jeu, jeu !== 'bal' && (p.jeux[jeu]?.mise ?? 0) > 0);
+  const banqueDe = (jeu: JeuCasino, acces: JeuNiveau = jeu): BanqueCasino => ({
     solde: banque.solde,
     joueur: banque.joueur,
     debiter: (uid, montant) => {
       // Grand Hôtel : pas de mise dans un jeu dont l'étage n'est pas encore ouvert au joueur.
       const p = portes.get(uid);
-      if (p && !jeuOuvert(niveauDe(p), jeu)) return false;
+      if (p && !ouvertPour(p, acces)) return false;
       if (!banque.debiter(uid, montant)) return false;
       suivre(uid, jeu, montant, 0);
       return true;
@@ -757,7 +760,7 @@ export function creerCasino(options: OptionsCasino) {
   // Le Bal du Grand Hôtel : la roue du bal (même banque que le Baron Express, ses mises comptent pour la roue).
   const roueBal = creerBalWheel({
     io,
-    banque: banqueDe('baronWheel'),
+    banque: banqueDe('baronWheel', 'bal'),
     horloge,
     ...(options.delaisBaronWheel ? { delais: { mises: 2_000, tour: 1_000, resultat: 1_000 }, delaisBonus: options.delaisBaronWheel } : {}),
     annoncer: (a) => annoncer(a),
@@ -1180,7 +1183,7 @@ export function creerCasino(options: OptionsCasino) {
       if (p.bonus.length) return repondre(rappel, { ok: false, erreur: L('Termine d’abord ton bonus.', 'Finish your bonus first.'), casino: vue(id.uid) });
       const gratuit = p.toursGratuits > 0;
       const mise = gratuit ? p.miseGratuite : Number(data?.mise);
-      if (!jeuOuvert(niveauDe(p), 'machine')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
+      if (!ouvertPour(p, 'machine')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
       if (!gratuit && !MISES_MACHINE.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
       if (!gratuit && p.solde < mise) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant pour cette mise.', 'Not enough money for this bet.') });
       p.occupe = true;
@@ -1234,7 +1237,7 @@ export function creerCasino(options: OptionsCasino) {
       const t = horloge();
       if (p.occupe || t - p.dernierTour < ECART_TOURS_MS) return repondre(rappel, { ok: false, erreur: L('Patiente une seconde.', 'Wait a second.') });
       const mise = Number(data?.mise);
-      if (!jeuOuvert(niveauDe(p), 'machine')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
+      if (!ouvertPour(p, 'machine')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
       if (!MISES_BULLES.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
       if (p.solde < mise) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant pour cette mise.', 'Not enough money for this bet.') });
       p.occupe = true;
@@ -1277,7 +1280,7 @@ export function creerCasino(options: OptionsCasino) {
       const gratuit = e.gratuits > 0;
       // Pendant une descente de police, la mise reste celle du tour où elle a commencé.
       const mise = gratuit ? e.miseGratuite : (e.collantes?.mise ?? Number(data?.mise));
-      if (!jeuOuvert(niveauDe(p), 'nuits')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
+      if (!ouvertPour(p, 'nuits')) return repondre(rappel, { ok: false, erreur: L(ETAGE_FERME[0], ETAGE_FERME[1]) });
       if (!gratuit && !MISES_MACHINE.includes(mise)) return repondre(rappel, { ok: false, erreur: L('Mise impossible.', 'Invalid bet.') });
       if (!gratuit && p.solde < mise) return repondre(rappel, { ok: false, erreur: L('Solde insuffisant pour cette mise.', 'Not enough money for this bet.') });
       p.occupe = true;
@@ -1379,7 +1382,7 @@ export function creerCasino(options: OptionsCasino) {
       const p = portes.get(id.uid);
       if (!p || !dans) return repondre(rappel, INTROUVABLE);
       rafraichirSalon(id.uid, p);
-      const r = changerContrat(p.salonJ, Number(data?.index), niveauDe(p), (n) => randomInt(Math.max(1, n)), (j) => jeuOuvert(niveauDe(p), j));
+      const r = changerContrat(p.salonJ, Number(data?.index), niveauDe(p), (n) => randomInt(Math.max(1, n)), (j) => ouvertPour(p, j));
       if (r !== 'ok') {
         const msg: Record<typeof r, [string, string]> = {
           deja: ['Tu as déjà changé un contrat aujourd’hui.', 'You have already swapped a contract today.'],

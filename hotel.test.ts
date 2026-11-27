@@ -10,6 +10,7 @@ import {
   ETAGES,
   happyHour,
   jeuOuvert,
+  jeuxDebloques,
   jourSemaineParis,
   PART_RISTOURNE,
   ristourne,
@@ -26,11 +27,22 @@ describe('Grand Hôtel : les étages', () => {
     expect(etageDuJeu('machine')).toBe('bar');
     expect(etageDuJeu('blackjack')).toBe('tables');
     expect(etageDuJeu('baronWheel')).toBe('scene');
-    expect(jeuOuvert(1, 'machine')).toBe(true);
-    expect(jeuOuvert(4, 'roulette')).toBe(false);
-    expect(jeuOuvert(5, 'roulette')).toBe(true);
-    expect(jeuOuvert(14, 'course')).toBe(false);
-    expect(jeuOuvert(15, 'course')).toBe(true);
+    for (const j of ['machine', 'roulette', 'blackjack', 'baronWheel'] as const) expect(jeuOuvert(1, j)).toBe(true);
+    expect(jeuOuvert(4, 'tickets')).toBe(false);
+    expect(jeuOuvert(5, 'tickets')).toBe(true);
+    expect(jeuOuvert(35, 'course')).toBe(false);
+    expect(jeuOuvert(36, 'course')).toBe(true);
+    expect(jeuOuvert(61, 'bal')).toBe(false);
+    expect(jeuOuvert(62, 'bal')).toBe(true);
+    // Un jeu déjà joué reste ouvert sous son niveau.
+    expect(jeuOuvert(3, 'course', true)).toBe(true);
+    expect(jeuOuvert(999, 'nuits', true)).toBe(false);
+  });
+  it('annonce les jeux débloqués en montant de niveau', () => {
+    expect(jeuxDebloques(4, 8)).toEqual(['tickets', 'coffres']);
+    expect(jeuxDebloques(17, 18)).toEqual(['folleNuit']);
+    expect(jeuxDebloques(61, 70)).toEqual(['bal']);
+    expect(jeuxDebloques(1, 1)).toEqual([]);
   });
 });
 

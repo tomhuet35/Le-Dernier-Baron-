@@ -2,9 +2,8 @@
  * Le Grand Hôtel du Baron (troisième brique) : les étages du salon, la carte de membre, la Semaine du Baron, la happy
  * hour, la Ristourne du Baron et le champagne du Penthouse.
  *
- * - Étages, débloqués par niveau du casino : le bar (machines, Coffres) dès le niveau 1, les tables au niveau 5, la
- *   scène (spectacles en direct, Couronne, Chute) au niveau 15, le Penthouse au niveau 40. Le serveur refuse les mises
- *   d'un jeu dont l'étage est fermé.
+ * - Jeux, débloqués un par un selon le niveau du casino (NIVEAUX_JEUX) ; un jeu auquel on a déjà misé reste ouvert.
+ *   Le serveur refuse les mises d'un jeu fermé. Le Penthouse (tables VIP, champagne) s'ouvre au niveau 40.
  * - Carte de membre selon le niveau : bronze, argent (20), or (40), noire (70). Elle multiplie la roulette du salon,
  *   et la carte noire rend chaque lundi 5 % des pertes de la semaine passée (la Ristourne du Baron).
  * - Semaine du Baron : du lundi au dimanche (heure de Paris), un télégramme par jour de connexion ; le dimanche, le
@@ -32,7 +31,48 @@ export const etageOuvert = (niveau: number, id: Etage) => niveau >= etage(id).ni
 export const FACTEUR_VIP = 10;
 /** Jeux retirés du casino (plus d'accès, plus de contrats) : les Nuits du Baron, remplacées par les Bulles du Baron. */
 export const JEUX_RETIRES: JeuCasino[] = ['nuits'];
-export const jeuOuvert = (niveau: number, jeu: JeuCasino) => !JEUX_RETIRES.includes(jeu) && etageOuvert(niveau, etageDuJeu(jeu));
+/** Les jeux qui ont leur niveau d'ouverture : ceux du casino, et le Bal du Grand Hôtel (qui partage la caisse du Baron Express). */
+export type JeuNiveau = JeuCasino | 'bal';
+/**
+ * Le niveau du casino qui ouvre chaque jeu. Repères (1 XP pour 1 000 $ misés) : niveau 5 ≈ 10 M$ misés au total,
+ * 8 ≈ 30 M$, 14 ≈ 100 M$, 18 ≈ 150 M$, 21 ≈ 210 M$, 27 ≈ 360 M$, 36 ≈ 660 M$, 62 ≈ 1,9 Md$.
+ */
+export const NIVEAUX_JEUX: Record<JeuNiveau, number> = {
+  machine: 1,
+  roulette: 1,
+  blackjack: 1,
+  baronWheel: 1,
+  nuits: 1,
+  tickets: 5,
+  coffres: 8,
+  toits: 14,
+  folleNuit: 18,
+  chute: 21,
+  couronne: 27,
+  course: 36,
+  bal: 62,
+};
+/** Le noms des jeux qui s'ouvrent par niveau (pour annoncer les déblocages). */
+export const NOMS_JEUX_NIVEAU: Record<JeuNiveau, [string, string]> = {
+  machine: ['Les Machines à sous', 'Slot Machines'],
+  roulette: ['La Roulette', 'Roulette'],
+  blackjack: ['Le Blackjack', 'Blackjack'],
+  baronWheel: ['Le Baron Express', 'The Baron Express'],
+  nuits: ['Les Nuits du Baron', 'The Baron’s Nights'],
+  tickets: ['Les Tickets du Baron', 'The Baron’s Tickets'],
+  coffres: ['Les Coffres du Baron', 'The Baron’s Safes'],
+  toits: ['Sur les toits', 'On the Rooftops'],
+  folleNuit: ['La Folle Nuit', 'Crazy Night'],
+  chute: ['La Chute des Écus', 'The Falling Crowns'],
+  couronne: ['Le Vol de la Couronne', 'The Flight of the Crown'],
+  course: ['La Course des Écuries', 'The Stables’ Race'],
+  bal: ['Le Bal du Grand Hôtel', 'The Grand Hotel Ball'],
+};
+/** Un jeu est-il ouvert ? Oui à son niveau, ou s'il a déjà été joué (personne ne perd un jeu qu'il aimait). */
+export const jeuOuvert = (niveau: number, jeu: JeuNiveau, dejaJoue = false) => (jeu === 'bal' || !JEUX_RETIRES.includes(jeu)) && (dejaJoue || niveau >= NIVEAUX_JEUX[jeu]);
+/** Les jeux qui s'ouvrent en passant du niveau « avant » au niveau « apres ». */
+export const jeuxDebloques = (avant: number, apres: number): JeuNiveau[] =>
+  (Object.keys(NIVEAUX_JEUX) as JeuNiveau[]).filter((j) => (j === 'bal' || !JEUX_RETIRES.includes(j)) && NIVEAUX_JEUX[j] > avant && NIVEAUX_JEUX[j] <= apres);
 
 // ---------------------------------------------------------------------------------------------------------------
 // La carte de membre
@@ -118,6 +158,8 @@ export interface VueHotel {
   happyHour: { debut: number; fin: number; enCours: boolean };
   /** Penthouse : le champagne du jour est-il à prendre ? */
   champagne: CadeauSemaine | null;
+  /** Les jeux auxquels on a déjà misé (ils restent ouverts même sous leur niveau). */
+  joues?: JeuCasino[];
 }
 
 /** Ce que le serveur annonce au téléphone : la Ristourne du lundi. */

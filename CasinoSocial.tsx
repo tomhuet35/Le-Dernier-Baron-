@@ -3,6 +3,7 @@
  * du casino (demandes, où ils jouent, envois d'argent), défis 1 contre 1, la puce du défi en cours et la fête d'un
  * nouveau niveau. Le serveur tient tout : ces écrans ne font que montrer et demander.
  */
+import { jeuxDebloques, NOMS_JEUX_NIVEAU } from '../../shared/hotel';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { VueCasino } from '../../shared/casino';
 import {
@@ -947,6 +948,7 @@ export function CelebrationNiveau({ fete, avatar, onFermer }: { fete: FeteNiveau
         fete.bonus > 0 ? `+${dollars(fete.bonus)}` : null,
         nouveauTitre ? tr(`Nouveau titre : ${titre(fete.niveau)}`, `New title: ${titre(fete.niveau)}`) : null,
         cadre ? tr(`Nouveau cadre : ${tr(...cadre.nom)}`, `New frame: ${tr(...cadre.nom)}`) : null,
+        ...jeuxDebloques(fete.avant, fete.niveau).map((j) => tr(`Nouveau jeu : ${tr(...NOMS_JEUX_NIVEAU[j])} !`, `New game: ${tr(...NOMS_JEUX_NIVEAU[j])}!`)),
       ]
         .filter(Boolean)
         .join(' · ') || titre(fete.niveau)}

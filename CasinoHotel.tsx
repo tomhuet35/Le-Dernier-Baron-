@@ -5,7 +5,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { VueCasino } from '../../shared/casino';
-import { CARTES_MEMBRE, carteMembre, carteSuivante, COFFRE_COMPLET, ETAGES, etageOuvert, type AnnonceHotel, type CadeauSemaine, type Etage } from '../../shared/hotel';
+import { CARTES_MEMBRE, carteMembre, carteSuivante, COFFRE_COMPLET, ETAGES, etageOuvert, type AnnonceHotel, type CadeauSemaine, type Etage, NIVEAUX_JEUX, NOMS_JEUX_NIVEAU, type JeuNiveau } from '../../shared/hotel';
 import type { Appel } from './App';
 import { Rubis } from './CasinoContrats';
 import { dollars } from './casinoOutils';
@@ -168,6 +168,23 @@ export function EtageFerme({ id, niveau, onFermer }: { id: Etage; niveau: number
         {tr(
           `Désolé, cet étage est réservé aux membres de niveau ${e.niveau}. Tu es au niveau ${niveau} : encore ${e.niveau - niveau} niveau${e.niveau - niveau > 1 ? 'x' : ''}, et je t’y emmène !`,
           `Sorry, this floor is for level ${e.niveau} members. You’re level ${niveau}: ${e.niveau - niveau} more level${e.niveau - niveau > 1 ? 's' : ''} and I’ll take you up!`,
+        )}
+      </p>
+    </Groom>
+  );
+}
+
+/** Un jeu pas encore ouvert : le Groom dit à quel niveau il s'ouvre. */
+export function JeuFerme({ jeu, niveau, onFermer }: { jeu: JeuNiveau; niveau: number; onFermer: () => void }) {
+  const n = NIVEAUX_JEUX[jeu];
+  const nom = tr(...NOMS_JEUX_NIVEAU[jeu]);
+  return (
+    <Groom pose="explique" onFermer={onFermer}>
+      <strong>{tr(`${nom} : ouverture au niveau ${n}`, `${nom}: opens at level ${n}`)}</strong>
+      <p>
+        {tr(
+          `Patience ! ${nom} est réservé aux membres de niveau ${n}. Tu es au niveau ${niveau} : encore ${n - niveau} niveau${n - niveau > 1 ? 'x' : ''}. Chaque mise te rapproche de l’ouverture.`,
+          `Patience! ${nom} is for level ${n} members. You’re level ${niveau}: ${n - niveau} more level${n - niveau > 1 ? 's' : ''}. Every bet brings you closer.`,
         )}
       </p>
     </Groom>
