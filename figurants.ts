@@ -1,11 +1,14 @@
 /**
  * Les figurants du salon : des joueurs d'ambiance pour le lancement, pour que les premiers joueurs ne soient pas seuls.
  * Ils apparaissent dans « Les plus riches du salon » et misent dans les shows en direct (Baron Express, Bal, Folle
- * Nuit). Ils n'ont pas de compte : pas d'amis, pas de défis, pas de profil, et leurs gains ne sont versés nulle part
- * (aucune écriture, aucune annonce, aucun record). Leur nombre baisse quand de vrais joueurs sont là.
+ * Nuit). Ils ont un profil (consultable comme celui d'un joueur), mais pas de compte : ils n'acceptent aucune demande
+ * d'ami (elle reste en attente), donc pas de défis ni d'envois ; leurs gains ne sont versés nulle part (aucune
+ * écriture, aucune annonce, aucun record). Leur nombre baisse quand de vrais joueurs sont là.
  *
  * Les couper : la variable d'environnement FIGURANTS=0 (ils sont aussi coupés pendant les tests).
  */
+
+import type { JeuCasino } from '../shared/profilCasino';
 
 export const FIGURANTS_ACTIFS = process.env.FIGURANTS !== '0' && !process.env.VITEST && process.env.NODE_ENV !== 'test';
 
@@ -98,4 +101,39 @@ export function casesFigurant<C extends string>(hasard: () => number, chiffres: 
     if (l.length) choix.add(l[Math.floor(hasard() * l.length)]);
   }
   return [...choix];
+}
+
+/** Un figurant est-il « en ligne » ? Par périodes de 20 minutes, un peu moins d'une fois sur deux (plus le soir). */
+export function figurantEnLigne(f: Figurant, t: number): boolean {
+  const heure = new Date(t).getUTCHours() + 1;
+  const seuil = heure >= 18 || heure <= 1 ? 0.6 : heure >= 9 ? 0.4 : 0.15;
+  return graine(`${f.uid}-${Math.floor(t / 1_200_000)}`) < seuil;
+}
+
+/** Le profil d'un figurant : cohérent avec son niveau et sa fortune (mises, gains, jeux préférés, date d'arrivée). */
+export function profilFigurant(f: Figurant, t: number) {
+  const g = graine(f.uid);
+  const n = niveauFigurant(f);
+  const mise = (500 * (n - 1) * n + Math.round(g * 400 * n)) * 1_000;
+  const preferes: JeuCasino[] = (['baronWheel', 'roulette', 'blackjack', 'machine', 'folleNuit', 'couronne', 'chute', 'coffres'] as JeuCasino[]).filter((_, k) => graine(`${f.uid}-jeu-${k}`) < 0.55);
+  const jeux: Partial<Record<JeuCasino, { mise: number; gain: number }>> = {};
+  const parts = preferes.map((_, k) => 1 + graine(`${f.uid}-part-${k}`) * 3);
+  const somme = parts.reduce((a, b) => a + b, 0) || 1;
+  preferes.forEach((j, k) => {
+    const m = Math.round((mise * parts[k]) / somme / 1000) * 1000;
+    jeux[j] = { mise: m, gain: Math.round((m * (0.88 + graine(`${f.uid}-g-${k}`) * 0.11)) / 1000) * 1000 };
+  });
+  const gagne = Object.values(jeux).reduce((s, x) => s + (x?.gain ?? 0), 0);
+  return {
+    nom: f.nom,
+    avatar: f.avatar,
+    niveau: n,
+    solde: soldeFigurant(f, t),
+    mise,
+    gagne,
+    plusGrosGain: Math.round((f.mise * (150 + g * 900)) / 1000) * 1000,
+    jeux,
+    defis: { gagnes: 0, perdus: 0, nuls: 0 },
+    depuis: Date.UTC(2026, 10, 27) - Math.round((3 + g * 25) * JOUR),
+  };
 }

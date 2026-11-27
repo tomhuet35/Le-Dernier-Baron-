@@ -88,6 +88,8 @@ export function formatDollars(n: number, en = false): string {
 }
 
 export interface RicheSalon {
+  /** Pour ouvrir son profil. */
+  uid?: string;
   nom: string;
   avatar: number;
   solde: number;

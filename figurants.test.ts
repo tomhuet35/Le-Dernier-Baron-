@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { casesFigurant, estFigurant, FIGURANTS, miseFigurant, niveauFigurant, soldeFigurant } from '../server/figurants';
+import { casesFigurant, estFigurant, FIGURANTS, FIGURANTS_ACTIFS, miseFigurant, niveauFigurant, profilFigurant, soldeFigurant, spectateursAffiches } from '../server/figurants';
+import { progressionCasino } from '../shared/profilCasino';
 
 describe('Les figurants du salon', () => {
   it('ont des soldes qui ondulent sans jamais tomber trop bas', () => {
@@ -25,5 +26,20 @@ describe('Les figurants du salon', () => {
       expect(new Set(c).size).toBe(c.length);
       expect(miseFigurant(FIGURANTS[0], h)).toBeGreaterThanOrEqual(500_000);
     }
+  });
+  it('ont un profil cohérent avec leur niveau', () => {
+    const t = Date.UTC(2026, 10, 27, 20);
+    for (const f of FIGURANTS) {
+      const p = profilFigurant(f, t);
+      expect(progressionCasino(p.mise).niveau).toBe(niveauFigurant(f));
+      expect(p.gagne).toBeLessThanOrEqual(p.mise);
+      expect(p.depuis).toBeLessThan(t);
+    }
+  });
+  it('donnent un nombre de spectateurs qui bouge', () => {
+    const t0 = Date.UTC(2026, 10, 27, 20);
+    const vus = new Set(Array.from({ length: 30 }, (_, k) => spectateursAffiches(0, t0 + k * 5000, 'bw')));
+    if (FIGURANTS_ACTIFS) expect(vus.size).toBeGreaterThan(2);
+    else expect([...vus]).toEqual([0]);
   });
 });
