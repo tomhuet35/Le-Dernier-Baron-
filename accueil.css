@@ -438,7 +438,7 @@ body > .voile { z-index: 200; }
 .ac-page .ac-carte { height: auto; width: auto; max-width: 100%; max-height: 100%; aspect-ratio: 475 / 720; }
 /* La carte remplit sa case sans déborder : la plus grande qui tient en largeur et en hauteur. */
 .ac-page .ac-carte { width: min(100%, calc((100dvh - var(--dock) - 230px) / 2 * 475 / 720)); }
-.ac-page .ac-carte.fermee { filter: grayscale(0.55) brightness(0.62); }
+.ac-page .ac-carte.fermee .cas-vignette { filter: grayscale(0.55) brightness(0.62); }
 .ac-page .ac-cadenas { display: grid; justify-items: center; gap: 2px; }
 .ac-page .ac-cadenas small { padding: 2px 8px; border-radius: 99px; background: rgba(10, 4, 3, 0.85); border: 1px solid #c99a3e; color: #ffe3a3; font-size: 12px; font-weight: 700; }
 .ac-points { display: flex; justify-content: center; gap: 8px; padding: 4px 0 2px; }
@@ -723,3 +723,5 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
 .ac-carte.carre .cas-vignette img { object-position: center 30%; }
 .ac-carte.carre .cas-vignette-nom { padding: 18px 6px 7px; font-size: clamp(12px, 1.7vh, 16px); }
 .ac-carte.carre .ac-cadenas { inset: 0; border-radius: 11px; font-size: 28px; }
+.ac-cadenas img { width: clamp(34px, 26%, 72px); height: auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.75)); }
+.ac-carte.carre .ac-cadenas img { width: 34%; }
