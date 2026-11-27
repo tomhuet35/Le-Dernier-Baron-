@@ -1,0 +1,101 @@
+/**
+ * Les figurants du salon : des joueurs d'ambiance pour le lancement, pour que les premiers joueurs ne soient pas seuls.
+ * Ils apparaissent dans « Les plus riches du salon » et misent dans les shows en direct (Baron Express, Bal, Folle
+ * Nuit). Ils n'ont pas de compte : pas d'amis, pas de défis, pas de profil, et leurs gains ne sont versés nulle part
+ * (aucune écriture, aucune annonce, aucun record). Leur nombre baisse quand de vrais joueurs sont là.
+ *
+ * Les couper : la variable d'environnement FIGURANTS=0 (ils sont aussi coupés pendant les tests).
+ */
+
+export const FIGURANTS_ACTIFS = process.env.FIGURANTS !== '0' && !process.env.VITEST && process.env.NODE_ENV !== 'test';
+
+export interface Figurant {
+  uid: string;
+  nom: string;
+  avatar: number;
+  /** Solde de départ (le classement le fait onduler doucement, jour après jour). */
+  base: number;
+  /** Sa grosse mise habituelle (les jetons qu'il pose tournent autour). */
+  mise: number;
+}
+
+export const FIGURANTS: Figurant[] = [
+  { uid: 'fig-1', nom: 'Margaux', avatar: 16, base: 2_850_000_000, mise: 2_000_000 },
+  { uid: 'fig-2', nom: 'LeDuc', avatar: 17, base: 1_920_000_000, mise: 1_000_000 },
+  { uid: 'fig-3', nom: 'Victoria R.', avatar: 20, base: 1_310_000_000, mise: 500_000 },
+  { uid: 'fig-4', nom: 'Antoine75', avatar: 13, base: 640_000_000, mise: 250_000 },
+  { uid: 'fig-5', nom: 'LadyJazz', avatar: 14, base: 415_000_000, mise: 100_000 },
+  { uid: 'fig-6', nom: 'Hugo B.', avatar: 11, base: 268_000_000, mise: 100_000 },
+  { uid: 'fig-7', nom: 'Camille', avatar: 12, base: 152_000_000, mise: 50_000 },
+  { uid: 'fig-8', nom: 'Gatsby', avatar: 21, base: 96_000_000, mise: 50_000 },
+  { uid: 'fig-9', nom: 'Rosalie', avatar: 18, base: 58_000_000, mise: 25_000 },
+  { uid: 'fig-10', nom: 'Max le Flambeur', avatar: 19, base: 31_000_000, mise: 25_000 },
+  { uid: 'fig-11', nom: 'Sofia', avatar: 15, base: 17_500_000, mise: 10_000 },
+  { uid: 'fig-12', nom: 'Théo', avatar: 10, base: 8_200_000, mise: 5_000 },
+];
+
+export const estFigurant = (uid: string) => uid.startsWith('fig-');
+
+const JOUR = 86_400_000;
+/** Un petit hasard fixe par figurant (sa « personnalité » : rythme et ampleur de ses hauts et bas). */
+const graine = (uid: string) => [...uid].reduce((s, c) => (s * 31 + c.charCodeAt(0)) % 1_000_003, 7) / 1_000_003;
+
+/** Le solde d'un figurant à l'instant t : une lente croissance, et des hauts et des bas d'un jour à l'autre. */
+export function soldeFigurant(f: Figurant, t: number): number {
+  const g = graine(f.uid);
+  const jours = t / JOUR;
+  const vague = 1 + 0.18 * Math.sin(jours * (0.7 + g) + g * 40) + 0.07 * Math.sin(jours * (3.1 + 2 * g) + g * 13);
+  const croissance = 1 + 0.004 * Math.max(0, jours - 20_784);
+  return Math.round((f.base * vague * croissance) / 1000) * 1000;
+}
+
+/** Le niveau affiché d'un figurant (cohérent avec sa fortune). */
+export const niveauFigurant = (f: Figurant) => Math.max(3, Math.min(160, Math.round(Math.sqrt(f.base / 1_000_000) * 2.2)));
+
+/**
+ * Les figurants d'une manche en direct : 2 à 6 selon l'heure (plus le soir), moins quand de vrais joueurs sont là
+ * (aucun au-delà de 12 vrais joueurs). `hasard` rend un nombre dans [0, 1).
+ */
+export function figurantsManche(hasard: () => number, vrais: number, t: number): Figurant[] {
+  if (!FIGURANTS_ACTIFS) return [];
+  const heure = new Date(t).getUTCHours() + 1;
+  const soir = heure >= 18 || heure <= 1 ? 2 : heure >= 9 ? 1 : 0;
+  const n = Math.max(0, Math.min(FIGURANTS.length, 2 + soir + Math.floor(hasard() * 3) - Math.floor(vrais / 3)));
+  const tas = [...FIGURANTS];
+  const choisis: Figurant[] = [];
+  while (choisis.length < n && tas.length) choisis.push(tas.splice(Math.floor(hasard() * tas.length), 1)[0]);
+  return choisis;
+}
+
+/**
+ * Le nombre de spectateurs montré d'un show en direct : les vrais, plus une foule qui va et vient (quelques-uns de plus
+ * ou de moins toutes les quelques secondes, plus le soir). `cle` distingue les shows (chacun sa foule).
+ */
+export function spectateursAffiches(vrais: number, t: number, cle: string): number {
+  if (!FIGURANTS_ACTIFS) return vrais;
+  const g = graine(cle) * 100;
+  const heure = new Date(t).getUTCHours() + 1;
+  const soir = heure >= 18 || heure <= 1 ? 6 : heure >= 9 ? 3 : 1;
+  const instant = Math.floor(t / 4_000);
+  const bruit = Math.floor(graine(`${cle}-${instant}`) * 4) - 1;
+  const foule = soir + 4 + 3 * Math.sin(t / 47_000 + g) + 2 * Math.sin(t / 13_000 + 2 * g) + bruit;
+  return vrais + Math.max(1, Math.round(foule));
+}
+
+/** Une mise de figurant : autour de sa mise habituelle (×1/4 à ×2), arrondie à un jeton courant. */
+export function miseFigurant(f: Figurant, hasard: () => number): number {
+  const brut = f.mise * [0.25, 0.5, 1, 1, 2][Math.floor(hasard() * 5)];
+  const jetons = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000];
+  return jetons.reduce((m, j) => (Math.abs(j - brut) < Math.abs(m - brut) ? j : m), jetons[0]);
+}
+
+/** Les cases d'un figurant : 1 à 3, tirées dans la liste (les chiffres plus souvent que les bonus). */
+export function casesFigurant<C extends string>(hasard: () => number, chiffres: C[], bonus: C[]): C[] {
+  const n = 1 + Math.floor(hasard() * 3);
+  const choix = new Set<C>();
+  for (let k = 0; k < n * 3 && choix.size < n; k++) {
+    const l = hasard() < 0.65 ? chiffres : bonus;
+    if (l.length) choix.add(l[Math.floor(hasard() * l.length)]);
+  }
+  return [...choix];
+}

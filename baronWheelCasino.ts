@@ -57,9 +57,11 @@ import {
   type TirageBonusBW,
   type VueBonusBW,
   type VueBW,
+  CHIFFRES_BW,
 } from '../shared/baronWheel';
 import { jourParis } from '../shared/roulette';
 import type { Identite } from './comptes';
+import { casesFigurant, estFigurant, figurantsManche, miseFigurant, spectateursAffiches } from './figurants';
 import type { BanqueCasino } from './tablesCasino';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
@@ -92,6 +94,8 @@ const totalMises = (m: Partial<Record<CaseBW, number>>) => Object.values(m).redu
 export function creerBaronWheel(options: {
   io: Server;
   banque: BanqueCasino;
+  /** Les amis du casino : seuls eux (et soi) apparaissent dans la liste des joueurs de la manche. */
+  amis?: (moi: string, autre: string) => boolean;
   horloge?: () => number;
   delais?: Partial<DureesBW>;
   hasard?: Hasard;
@@ -143,6 +147,29 @@ export function creerBaronWheel(options: {
   let record: (NonNullable<VueBW['record']> & { jour: string }) | null = null;
 
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
+
+  // Les figurants (joueurs d'ambiance, server/figurants.ts) : ils arrivent pendant les mises et misent comme les autres.
+  let minuteriesFig: ReturnType<typeof setTimeout>[] = [];
+  function arreterFigurants() {
+    for (const m of minuteriesFig) clearTimeout(m);
+    minuteriesFig = [];
+  }
+  function inviterFigurants() {
+    arreterFigurants();
+    const h = hasard;
+    const liste = figurantsManche(h, uidsSpectateurs().size, horloge());
+    for (const f of liste) {
+      const m = setTimeout(() => {
+        if (phase !== 'mises') return;
+        const mises: Partial<Record<CaseBW, number>> = {};
+        for (const c of casesFigurant(h, CHIFFRES_BW, BONUS_BW.filter((b) => b !== 'chaudiere'))) mises[c] = miseFigurant(f, h);
+        joueurs.set(f.uid, { uid: f.uid, nom: f.nom, avatar: f.avatar, mises, poses: [], choix: [], gain: null });
+        diffuser();
+      }, (0.08 + h() * 0.72) * D.mises);
+      m.unref?.();
+      minuteriesFig.push(m);
+    }
+  }
   const bonusCourant = (): BonusBW | null => (tirage ? tirage.type : null);
   /** L'indice de l'étape de choix (0, 1, 2) correspondant à l'étape `k` du bonus, ou -1. */
   const rangChoix = (k: number) => (etapes[k]?.choix ? etapes.slice(0, k).filter((e) => e.choix > 0).length : -1);
@@ -223,7 +250,7 @@ export function creerBaronWheel(options: {
     const t = horloge();
     const j = uid ? joueurs.get(uid) : undefined;
     const liste: JoueurBW[] = [...joueurs.values()]
-      .filter((x) => totalMises(x.mises) > 0)
+      .filter((x) => (!options.amis || x.uid === uid || (!!uid && options.amis(uid, x.uid))) && totalMises(x.mises) > 0)
       .map((x) => ({
         nom: x.nom,
         avatar: x.avatar,
@@ -253,7 +280,7 @@ export function creerBaronWheel(options: {
       historique,
       depuis: { ...depuis },
       record: record && record.jour === jourParis(t) ? { nom: record.nom, avatar: record.avatar, gain: record.gain, c: record.c } : null,
-      spectateurs: uidsSpectateurs().size,
+      spectateurs: (enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'bw') : uidsSpectateurs().size),
       solde: uid ? banque.solde(uid) : 0,
       ouverture: ouverture === null ? null : ouverture - t,
       evenements: evenementsBW(t),
@@ -277,8 +304,9 @@ export function creerBaronWheel(options: {
 
   function ouvrirMises() {
     arreter();
-    for (const j of joueurs.values()) if (totalMises(j.mises) > 0) precedentes.set(j.uid, { ...j.mises });
+    for (const j of joueurs.values()) if (!estFigurant(j.uid) && totalMises(j.mises) > 0) precedentes.set(j.uid, { ...j.mises });
     joueurs.clear();
+    arreterFigurants();
     tirage = null;
     etapes = [];
     etape = 0;
@@ -301,6 +329,7 @@ export function creerBaronWheel(options: {
     topSlot = null;
     fin = horloge() + D.mises;
     duree = D.mises;
+    inviterFigurants();
     plusTard(poserMultiplicateurs, D.mises);
     diffuser();
   }
@@ -419,6 +448,8 @@ export function creerBaronWheel(options: {
         } else gain = gainBW(surCase, GAINS_CHIFFRES_BW[c] * m);
       }
       j.gain = gain;
+      // Un figurant n'a pas de porte-monnaie : son gain se montre, sans rien verser ni écrire.
+      if (estFigurant(j.uid)) continue;
       if (gain > 0) banque.crediter(j.uid, gain);
       options.mission?.(j.uid, { bonus: surCase > 0 && estBonusBW(c), final: false, x: surCase > 0 ? gain / surCase : 0 });
       const jour = jourParis(horloge());
@@ -602,7 +633,7 @@ export function creerBaronWheel(options: {
   /** Ce que l'accueil du salon montre : en direct ou non, combien regardent, les derniers résultats, la grande ouverture. */
   const resume = () => {
     const o = finOuverture();
-    return { enDirect: enCours, spectateurs: uidsSpectateurs().size, historique: historique.slice(0, 6).map((h) => h.c), ouverture: o === null ? null : o - horloge() };
+    return { enDirect: enCours, spectateurs: (enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'bw') : uidsSpectateurs().size), historique: historique.slice(0, 6).map((h) => h.c), ouverture: o === null ? null : o - horloge() };
   };
 
   /** Arrêt du serveur : une manche pas encore payée est annulée, ses mises rendues. */
@@ -611,7 +642,7 @@ export function creerBaronWheel(options: {
     if (paye) return;
     for (const j of joueurs.values()) {
       const m = totalMises(j.mises);
-      if (m > 0 && j.gain === null) banque.rembourser(j.uid, m);
+      if (m > 0 && j.gain === null && !estFigurant(j.uid)) banque.rembourser(j.uid, m);
     }
     joueurs.clear();
   };

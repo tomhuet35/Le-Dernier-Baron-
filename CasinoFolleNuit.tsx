@@ -1303,7 +1303,7 @@ export function ShowFolleNuit({ appel, onRetour }: { appel: Appel; onRetour: () 
               ))}
             </ul>
           ) : (
-            <p className="discret">{tr('Personne n’a encore misé cette manche.', 'Nobody has bet this round yet.')}</p>
+            <p className="discret">{tr('Aucun de tes amis n’a misé cette manche.', 'None of your friends has bet this round.')}</p>
           )}
         </div>
         <form

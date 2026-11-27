@@ -16,6 +16,8 @@ import type { AnnonceCasino } from '../shared/casino';
 import { DUREES_BW, type DureesBW, type Hasard } from '../shared/baronWheel';
 import {
   CASES_BAL,
+  BONUS_BAL,
+  CHIFFRES_BAL,
   DEGRES_CASE_BAL,
   DEGRES_CRAN_BAL,
   DUREES_BAL,
@@ -42,6 +44,7 @@ import {
   type VueBonusBal,
 } from '../shared/balWheel';
 import type { Identite } from './comptes';
+import { casesFigurant, estFigurant, figurantsManche, miseFigurant, spectateursAffiches } from './figurants';
 import type { BanqueCasino } from './tablesCasino';
 
 type Reponse = { ok: true; [cle: string]: unknown } | { ok: false; erreur: string };
@@ -69,6 +72,8 @@ const modulo = (a: number, n: number) => ((a % n) + n) % n;
 export function creerBalWheel(options: {
   io: Server;
   banque: BanqueCasino;
+  /** Les amis du casino : seuls eux (et soi) apparaissent dans la liste des joueurs de la manche. */
+  amis?: (moi: string, autre: string) => boolean;
   horloge?: () => number;
   /** Les durées du Bal (mises, tour, résultat) et celles des mini-jeux (raccourcies dans les tests). */
   delais?: Partial<typeof DUREES_BAL>;
@@ -108,6 +113,29 @@ export function creerBalWheel(options: {
   let historique: VueBal['historique'] = [];
 
   const uidsSpectateurs = () => new Set([...spectateurs.values()].map((s) => s.uid));
+
+  // Les figurants (joueurs d'ambiance, server/figurants.ts) : ils arrivent pendant les mises et misent comme les autres.
+  let minuteriesFig: ReturnType<typeof setTimeout>[] = [];
+  function arreterFigurants() {
+    for (const m of minuteriesFig) clearTimeout(m);
+    minuteriesFig = [];
+  }
+  function inviterFigurants() {
+    arreterFigurants();
+    const h = hasard;
+    const liste = figurantsManche(h, uidsSpectateurs().size, horloge());
+    for (const f of liste) {
+      const m = setTimeout(() => {
+        if (phase !== 'mises') return;
+        const mises: Partial<Record<CaseBal, number>> = {};
+        for (const c of casesFigurant(h, CHIFFRES_BAL, BONUS_BAL)) mises[c] = miseFigurant(f, h);
+        joueurs.set(f.uid, { uid: f.uid, nom: f.nom, avatar: f.avatar, mises, poses: [], choix: null, gain: null });
+        diffuser();
+      }, (0.08 + h() * 0.72) * D.mises);
+      m.unref?.();
+      minuteriesFig.push(m);
+    }
+  }
   const multiplicateur = () => (arretP === null ? 1 : PETITE_BAL[arretP]);
   /** L'étape `nom` est-elle atteinte (ou dépassée) ? */
   const atteinte = (nom: string) => {
@@ -152,7 +180,7 @@ export function creerBalWheel(options: {
     const t = horloge();
     const j = uid ? joueurs.get(uid) : undefined;
     const liste: JoueurBal[] = [...joueurs.values()]
-      .filter((x) => totalMises(x.mises) > 0)
+      .filter((x) => (!options.amis || x.uid === uid || (!!uid && options.amis(uid, x.uid))) && totalMises(x.mises) > 0)
       .map((x) => ({ nom: x.nom, avatar: x.avatar, mise: totalMises(x.mises), gain: x.gain, ...(x.uid === uid ? { moi: true as const } : {}) }))
       .sort((a, b) => (b.gain ?? 0) - (a.gain ?? 0) || b.mise - a.mise);
     return {
@@ -171,7 +199,7 @@ export function creerBalWheel(options: {
       bilan: phase === 'resultat' && j && j.gain !== null ? { mise: totalMises(j.mises), gain: j.gain } : null,
       joueurs: liste.slice(0, 20),
       historique,
-      spectateurs: uidsSpectateurs().size,
+      spectateurs: (enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'bal') : uidsSpectateurs().size),
       solde: uid ? banque.solde(uid) : 0,
     };
   }
@@ -191,8 +219,9 @@ export function creerBalWheel(options: {
 
   function ouvrirMises() {
     arreter();
-    for (const j of joueurs.values()) if (totalMises(j.mises) > 0) precedentes.set(j.uid, { ...j.mises });
+    for (const j of joueurs.values()) if (!estFigurant(j.uid) && totalMises(j.mises) > 0) precedentes.set(j.uid, { ...j.mises });
     joueurs.clear();
+    arreterFigurants();
     tirage = null;
     etapes = [];
     etape = 0;
@@ -212,6 +241,7 @@ export function creerBalWheel(options: {
     phase = 'mises';
     fin = horloge() + D.mises;
     duree = D.mises;
+    inviterFigurants();
     plusTard(lancer, D.mises);
     diffuser();
   }
@@ -294,6 +324,8 @@ export function creerBalWheel(options: {
       let gain = 0;
       if (surCase > 0) gain = estBonusBal(c) ? (j.resultat?.gain ?? 0) : gainBW(surCase, VALEUR_CHIFFRE_BAL[c] * multiplicateur());
       j.gain = gain;
+      // Un figurant n'a pas de porte-monnaie : son gain se montre, sans rien verser ni écrire.
+      if (estFigurant(j.uid)) continue;
       if (gain > 0) banque.crediter(j.uid, gain);
       options.mission?.(j.uid, { bonus: surCase > 0 && estBonusBal(c), final: surCase > 0 && c === 'minuit', x: surCase > 0 ? gain / surCase : 0 });
       if ((gain >= 10 * mise && gain >= 1_000_000) || gain >= 10_000_000) options.annoncer?.({ nom: j.nom, jeu: 'baronWheel', gain });
@@ -424,7 +456,7 @@ export function creerBalWheel(options: {
   }
 
   /** Ce que l'accueil du salon montre : en direct ou non, combien regardent, les derniers résultats. */
-  const resume = () => ({ enDirect: enCours, spectateurs: uidsSpectateurs().size, historique: historique.slice(0, 6).map((h) => h.c) });
+  const resume = () => ({ enDirect: enCours, spectateurs: (enCours ? spectateursAffiches(uidsSpectateurs().size, horloge(), 'bal') : uidsSpectateurs().size), historique: historique.slice(0, 6).map((h) => h.c) });
 
   /** Arrêt du serveur : une manche pas encore payée est annulée, ses mises rendues. */
   const rendreMisesEnCours = () => {
@@ -432,7 +464,7 @@ export function creerBalWheel(options: {
     if (paye) return;
     for (const j of joueurs.values()) {
       const m = totalMises(j.mises);
-      if (m > 0 && j.gain === null) banque.rembourser(j.uid, m);
+      if (m > 0 && j.gain === null && !estFigurant(j.uid)) banque.rembourser(j.uid, m);
     }
     joueurs.clear();
   };
