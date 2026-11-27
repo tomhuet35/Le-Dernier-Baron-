@@ -723,5 +723,5 @@ body > .voile:has(.ac-boutique-fenetre), .voile:has(.ac-boutique-fenetre) { z-in
 .ac-carte.carre .cas-vignette img { object-position: center 30%; }
 .ac-carte.carre .cas-vignette-nom { padding: 18px 6px 7px; font-size: clamp(12px, 1.7vh, 16px); }
 .ac-carte.carre .ac-cadenas { inset: 0; border-radius: 11px; font-size: 28px; }
-.ac-cadenas img { width: clamp(34px, 26%, 72px); height: auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.75)); }
+.ac-cadenas img { width: clamp(34px, 26%, 72px); height: auto; filter: grayscale(1) brightness(0.95) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.75)); }
 .ac-carte.carre .ac-cadenas img { width: 34%; }
