@@ -1216,11 +1216,13 @@ function FenetreFete({ fete, onFermer }: { fete: FeteMachine; onFermer: () => vo
 // ---------------------------------------------------------------------------------------------------------------
 // Le salon
 
-const JEUX: { id: 'baronWheel' | 'balWheel' | 'folleNuit' | 'machines' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'tickets' | 'toits' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
+const JEUX: { id: 'baronWheel' | 'balWheel' | 'folleNuit' | 'machines' | 'machine' | 'bulles' | 'roulette' | 'blackjack' | 'couronne' | 'festin' | 'chute' | 'course' | 'tickets' | 'toits' | 'poker'; nom: [string, string]; image: string; repli: string }[] = [
   { id: 'baronWheel', nom: ['Le Baron Express', 'The Baron Express'], image: '/cartes/casino-baron-wheel-affiche.webp', repli: '/cartes/casino-baron-wheel-bandeau-petit.webp' },
   { id: 'balWheel', nom: ['Le Bal du Grand Hôtel', 'The Grand Hotel Ball'], image: '/cartes/casino-bal-affiche.webp', repli: '/cartes/bal-decor-paysage.webp' },
   { id: 'folleNuit', nom: ['La Folle Nuit', 'Crazy Night'], image: '/cartes/casino-folle-nuit-affiche.webp', repli: '/cartes/casino-folle-nuit.webp' },
   { id: 'machines', nom: ['Machines à sous', 'Slot machines'], image: '/cartes/casino-machines-affiche.webp', repli: '/cartes/casino-machines.webp' },
+  { id: 'machine', nom: ['The Golden Heist', 'The Golden Heist'], image: '/cartes/casino-machine.webp', repli: '/cartes/casino-machines.webp' },
+  { id: 'bulles', nom: ['The Baron’s Bubbles', 'The Baron’s Bubbles'], image: '/cartes/casino-bulles.webp', repli: '/cartes/casino-machines.webp' },
   { id: 'roulette', nom: ['Roulette', 'Roulette'], image: '/cartes/casino-roulette.webp', repli: '/cartes/croupier.webp' },
   { id: 'blackjack', nom: ['Blackjack', 'Blackjack'], image: '/cartes/casino-blackjack.webp', repli: '/cartes/billets_05.webp' },
   { id: 'couronne', nom: ['Le Vol de la Couronne', 'The Flight of the Crown'], image: '/cartes/casino-couronne.webp', repli: '/cartes/baron.webp' },
@@ -1341,8 +1343,8 @@ function rubanJeu(id: (typeof JEUX)[number]['id'], vue: VueCasino): string | und
 }
 
 const VIGNETTE_DU_JEU: Record<JeuCasino, (typeof JEUX)[number]['id'] | null> = {
-  machine: 'machines',
-  nuits: 'machines',
+  machine: 'machine',
+  nuits: 'machine',
   blackjack: 'blackjack',
   roulette: 'roulette',
   folleNuit: 'folleNuit',
@@ -1533,6 +1535,8 @@ type IdVignette = (typeof JEUX)[number]['id'];
 /** Le jeu (au sens des niveaux) derrière chaque carte de l'accueil ; le poker n'est pas encore ouvert. */
 const JEU_DE_VIGNETTE: Record<IdVignette, JeuNiveau | null> = {
   machines: 'machine',
+  machine: 'machine',
+  bulles: 'machine',
   roulette: 'roulette',
   blackjack: 'blackjack',
   baronWheel: 'baronWheel',
@@ -1556,21 +1560,50 @@ const vignetteOuverte = (id: IdVignette, niveau: number, joues: JeuCasino[]) => 
   return !!j && jeuOuvert(niveau, j, j !== 'bal' && joues.includes(j));
 };
 /**
- * Les jeux de l'accueil, rangés par catégorie sur une seule rangée qu'on fait défiler : le nom de la catégorie au-dessus,
- * un espace entre deux catégories. Un bloc est une grande affiche (un jeu), ou une colonne de deux petites cartes carrées.
+ * Les jeux de l'accueil, sur une seule rangée qu'on fait défiler, rangés par niveau d'ouverture : « Dès le départ »,
+ * puis « Niveau 5 », « Niveau 10 »… (le nom de la rubrique au-dessus, un espace entre deux rubriques). Les grandes
+ * affiches gardent leur format ; les autres jeux sont des cartes carrées, deux par colonne.
  */
-const CATEGORIES: { id: string; nom: [string, string]; blocs: (IdVignette | IdVignette[])[] }[] = [
-  { id: 'shows', nom: ['Shows en direct', 'Live shows'], blocs: ['baronWheel', 'balWheel', ['folleNuit', 'course']] },
-  { id: 'machines', nom: ['Machines', 'Slots'], blocs: [['machines', 'tickets']] },
-  { id: 'tables', nom: ['Tables', 'Tables'], blocs: [['blackjack', 'roulette'], ['poker']] },
-  { id: 'eclair', nom: ['Jeux éclair', 'Quick games'], blocs: [['festin', 'toits'], ['couronne', 'chute']] },
+const RANGEE: { id: IdVignette; grand?: true }[] = [
+  { id: 'baronWheel', grand: true },
+  { id: 'machine' },
+  { id: 'bulles' },
+  { id: 'blackjack' },
+  { id: 'roulette' },
+  { id: 'tickets' },
+  { id: 'festin' },
+  { id: 'toits' },
+  { id: 'folleNuit' },
+  { id: 'chute' },
+  { id: 'course' },
+  { id: 'couronne' },
+  { id: 'balWheel', grand: true },
+  { id: 'poker' },
 ];
+/** Les rubriques : les jeux d'un même niveau, en blocs (une grande affiche, ou une colonne de deux carrés). */
+function rubriques(): { id: string; nom: [string, string]; blocs: (IdVignette | IdVignette[])[] }[] {
+  const res: { id: string; nom: [string, string]; blocs: (IdVignette | IdVignette[])[] }[] = [];
+  for (const x of RANGEE) {
+    const n = x.id === 'poker' ? -1 : niveauDuJeu(x.id);
+    const id = n < 0 ? 'bientot' : `n${n}`;
+    let r = res.find((y) => y.id === id);
+    if (!r) {
+      r = { id, nom: n < 0 ? ['Bientôt', 'Coming soon'] : n <= 1 ? ['Dès le départ', 'From the start'] : [`Niveau ${n}`, `Level ${n}`], blocs: [] };
+      res.push(r);
+    }
+    const dernier = r.blocs[r.blocs.length - 1];
+    if (x.grand) r.blocs.push(x.id);
+    else if (Array.isArray(dernier) && dernier.length < 2) dernier.push(x.id);
+    else r.blocs.push([x.id]);
+  }
+  return res;
+}
 /** L'ordre des jeux de même niveau dans la grille. */
 const ORDRE_JEUX: (typeof JEUX)[number]['id'][] = ['machines', 'tickets', 'festin', 'toits', 'blackjack', 'roulette', 'baronWheel', 'balWheel', 'folleNuit', 'course', 'couronne', 'chute'];
 
 /** Les jeux de chaque étage de l'hôtel (cartes de l'accueil). La Folle Nuit a sa propre carte, sur la scène. */
 const JEUX_ETAGE: Record<Etage, (typeof JEUX)[number]['id'][]> = {
-  bar: ['machines', 'festin', 'tickets', 'toits'],
+  bar: ['machines', 'machine', 'bulles', 'festin', 'tickets', 'toits'],
   tables: ['blackjack', 'roulette', 'poker'],
   scene: ['folleNuit', 'baronWheel', 'balWheel', 'course', 'couronne', 'chute'],
   penthouse: [],
@@ -2238,7 +2271,7 @@ function Accueil({
                 <ALaUne elements={une} />
               </div>
             )}
-            {CATEGORIES.map((cat) => (
+            {rubriques().map((cat) => (
               <section key={cat.id} className={`ac-categorie ${cat.id}`} aria-label={tr(...cat.nom)}>
                 <h2 className="ac-categorie-nom">{tr(...cat.nom)}</h2>
                 <div className="ac-categorie-jeux">
@@ -2261,7 +2294,7 @@ function Accueil({
         </p>
       </section>
 
-      <PremiersPas vue={vue} appel={appel} onVue={onVue} onRoue={onRoue} onMachines={() => onVignette('machines')} onExpress={() => onVignette('baronWheel')} />
+      <PremiersPas vue={vue} appel={appel} onVue={onVue} onRoue={onRoue} onMachines={() => onVignette('machine')} onExpress={() => onVignette('baronWheel')} />
 
       <nav className="ac-dock" aria-label={tr('Le salon', 'The lounge')}>
         <div className="ac-dock-defile">
@@ -2700,9 +2733,9 @@ export default function Casino({
   let contenu: ReactNode;
   if (!vue) contenu = <div className="chargement">{tr('Ouverture du salon…', 'Opening the lounge…')}</div>;
   else if (ecran === 'machines') contenu = <ChoixMachines vue={vue} onMachine={setEcran} onRetour={() => retourEtage('machine')} />;
-  else if (ecran === 'machine') contenu = <Machine vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
+  else if (ecran === 'machine') contenu = <Machine vue={vue} appel={appel} onVue={setVue} onRetour={() => retourEtage('machine')} />;
   else if (ecran === 'nuits') contenu = <MachineNuits vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
-  else if (ecran === 'bulles') contenu = <JeuBulles vue={vue} appel={appel} onVue={setVue} onRetour={() => setEcran('machines')} />;
+  else if (ecran === 'bulles') contenu = <JeuBulles vue={vue} appel={appel} onVue={setVue} onRetour={() => retourEtage('machine')} />;
   else if (ecran === 'table' && table?.jeu === 'blackjack') contenu = <TableBlackjack v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
   else if (ecran === 'table' && table?.jeu === 'roulette') contenu = <TableRoulette v={table.v} appel={appel} onQuitter={() => void quitterTable()} />;
   else if (ecran === 'festin')
