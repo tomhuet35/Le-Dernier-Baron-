@@ -1555,16 +1555,16 @@ const vignetteOuverte = (id: IdVignette, niveau: number, joues: JeuCasino[]) => 
   const j = JEU_DE_VIGNETTE[id];
   return !!j && jeuOuvert(niveau, j, j !== 'bal' && joues.includes(j));
 };
-/** Les onglets de l'accueil. « Pour toi » : les jeux ouverts (les déjà joués d'abord) et le prochain à débloquer. */
-type Onglet = 'pourToi' | 'shows' | 'machines' | 'tables' | 'eclair';
-const ONGLETS: { id: Onglet; nom: [string, string]; jeux: IdVignette[] }[] = [
-  { id: 'pourToi', nom: ['Pour toi', 'For you'], jeux: [] },
-  { id: 'shows', nom: ['Shows', 'Live shows'], jeux: ['baronWheel', 'folleNuit', 'balWheel', 'course'] },
-  { id: 'machines', nom: ['Machines', 'Slots'], jeux: ['machines', 'tickets'] },
-  { id: 'tables', nom: ['Tables', 'Tables'], jeux: ['blackjack', 'roulette', 'poker'] },
-  { id: 'eclair', nom: ['Éclair', 'Quick games'], jeux: ['festin', 'toits', 'couronne', 'chute'] },
+/**
+ * Les jeux de l'accueil, rangés par catégorie sur une seule rangée qu'on fait défiler : le nom de la catégorie au-dessus,
+ * un espace entre deux catégories. Un bloc est une grande affiche (un jeu), ou une colonne de deux petites cartes carrées.
+ */
+const CATEGORIES: { id: string; nom: [string, string]; blocs: (IdVignette | IdVignette[])[] }[] = [
+  { id: 'shows', nom: ['Shows en direct', 'Live shows'], blocs: ['baronWheel', 'balWheel', ['folleNuit', 'course']] },
+  { id: 'machines', nom: ['Machines', 'Slots'], blocs: [['machines', 'tickets']] },
+  { id: 'tables', nom: ['Tables', 'Tables'], blocs: [['blackjack', 'roulette'], ['poker']] },
+  { id: 'eclair', nom: ['Jeux éclair', 'Quick games'], blocs: [['festin', 'toits'], ['couronne', 'chute']] },
 ];
-const CLE_ONGLET = 'ldb-onglet-accueil';
 /** L'ordre des jeux de même niveau dans la grille. */
 const ORDRE_JEUX: (typeof JEUX)[number]['id'][] = ['machines', 'tickets', 'festin', 'toits', 'blackjack', 'roulette', 'baronWheel', 'balWheel', 'folleNuit', 'course', 'couronne', 'chute'];
 
@@ -2135,22 +2135,6 @@ function Accueil({
     onOuverture?.();
   }, [ouverture, onOuverture]);
   const niveau = vue.hotel?.niveau ?? vue.profil?.niveau ?? 1;
-  const [onglet, setOnglet] = useState<Onglet>(() => {
-    try {
-      const x = localStorage.getItem(CLE_ONGLET);
-      return ONGLETS.some((o) => o.id === x) ? (x as Onglet) : 'pourToi';
-    } catch {
-      return 'pourToi';
-    }
-  });
-  const choisirOnglet = (x: Onglet) => {
-    setOnglet(x);
-    try {
-      localStorage.setItem(CLE_ONGLET, x);
-    } catch {
-      /* préférence non gardée */
-    }
-  };
   const c = vue.contrats;
   const e = etage(etageActif);
   const ouvert = etageOuvert(niveau, etageActif);
@@ -2192,38 +2176,36 @@ function Accueil({
   }
   const restants = c ? c.jour.filter((x) => !x.fait).length : 0;
   const pieces = c ? JEUX_CASINO.reduce((s, j) => s + morceauxDe(c.album[j]), 0) : 0;
-  // Les jeux, du premier ouvert au dernier (le poker « bientôt » à la fin), par pages de 6.
   const joues = vue.hotel?.joues ?? [];
-  const tries = JEUX.filter((j) => j.id !== 'poker')
-    .map((j, i) => ({ j, i }))
-    .sort((x, y) => niveauDuJeu(x.j.id) - niveauDuJeu(y.j.id) || ORDRE_JEUX.indexOf(x.j.id) - ORDRE_JEUX.indexOf(y.j.id) || x.i - y.i)
-    .map((x) => x.j);
-  let ordre: (typeof JEUX)[number][];
-  if (onglet === 'pourToi') {
-    const ouverts = tries.filter((j) => vignetteOuverte(j.id, niveau, joues));
-    const dejaJoue = (id: IdVignette) => {
-      const x = JEU_DE_VIGNETTE[id];
-      return !!x && x !== 'bal' && joues.includes(x);
-    };
-    ordre = [...ouverts.filter((j) => dejaJoue(j.id)), ...ouverts.filter((j) => !dejaJoue(j.id))];
-    const prochain = tries.find((j) => !vignetteOuverte(j.id, niveau, joues));
-    if (prochain) ordre.push(prochain);
-  } else {
-    const ids = ONGLETS.find((o) => o.id === onglet)!.jeux;
-    ordre = [...tries.filter((j) => ids.includes(j.id)), ...JEUX.filter((j) => j.id === 'poker' && ids.includes('poker'))];
-  }
-  const pages: (typeof JEUX)[number][][] = [];
-  // Une seule rangée qu'on fait défiler : des cartes plus grandes.
-  pages.push(ordre);
+  const parId = (id: IdVignette) => JEUX.find((x) => x.id === id)!;
   // Happy Hour (tous les jeux) et jeu à l'affiche (XP double) : des flammes au-dessus de la carte.
   const happy = !!vue.hotel?.happyHour.enCours;
   const grille = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState(0);
   const [defile, setDefile] = useState({ gauche: false, droite: true });
   useEffect(() => {
     const g = grille.current;
     if (g) setDefile({ gauche: g.scrollLeft > 8, droite: g.scrollLeft + g.clientWidth < g.scrollWidth - 8 });
   }, []);
+
+  /** Une carte de jeu : grande affiche, ou petite carte carrée (deux par colonne). */
+  const carte = (j: (typeof JEUX)[number], carre: boolean) => {
+    const nv = niveauDuJeu(j.id);
+    const o = vignetteOuverte(j.id, niveau, joues);
+    const brille = o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id));
+    return (
+      <div key={j.id} className={`ac-carte ${carre ? 'carre' : ''} ${o ? '' : 'fermee'} ${brille ? 'dore' : ''}`}>
+        {brille && <span className="ac-reflet" aria-hidden="true" />}
+        {brille && <b className="ac-neon-badge">{!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id ? tr('XP ×2', 'XP ×2') : 'Happy Hour'}</b>}
+        <Vignette jeu={j} affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id} onOuvrir={j.id === 'poker' ? undefined : o ? () => onVignette(j.id) : () => onJeuFerme(JEU_DE_VIGNETTE[j.id]!)} ruban={o ? rubanJeu(j.id, vue) : undefined} />
+        {o && j.id !== 'poker' && !carre && <img className="ac-jouer" src="/cartes/bouton-jouer.webp" alt="" aria-hidden="true" />}
+        {!o && (
+          <span className="ac-cadenas">
+            🔒<small>{j.id === 'poker' ? tr('Bientôt', 'Soon') : tr(`Niveau ${nv}`, `Level ${nv}`)}</small>
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="ac ac-sans-etages">
@@ -2233,26 +2215,8 @@ function Accueil({
         <ALaUne elements={une} />
       </div>
 
-      {/* Les jeux, rangés par onglets ; chacun s'ouvre à son niveau. */}
+      {/* Les jeux, rangés par catégorie sur une rangée ; chacun s'ouvre à son niveau. */}
       <section className="ac-scene ac-grille-zone">
-        <div className="ac-onglets" role="tablist" aria-label={tr('Catégories de jeux', 'Game categories')}>
-          {ONGLETS.map((x) => (
-            <button
-              key={x.id}
-              type="button"
-              role="tab"
-              aria-selected={x.id === onglet}
-              className={x.id === onglet ? 'actif' : ''}
-              onClick={() => {
-                jouerEffet('jeton');
-                choisirOnglet(x.id);
-                grille.current?.scrollTo({ left: 0 });
-              }}
-            >
-              {tr(...x.nom)}
-            </button>
-          ))}
-        </div>
         <button type="button" className="ac-fleche gauche" disabled={!defile.gauche} onClick={() => grille.current?.scrollBy({ left: -grille.current.clientWidth * 0.8, behavior: 'smooth' })} aria-label={tr('Jeux précédents', 'Previous games')}>
           ‹
         </button>
@@ -2264,61 +2228,33 @@ function Accueil({
           ref={grille}
           onScroll={(ev) => {
             const g = ev.currentTarget;
-            setPage(Math.round(g.scrollLeft / Math.max(1, g.clientWidth)));
             setDefile({ gauche: g.scrollLeft > 8, droite: g.scrollLeft + g.clientWidth < g.scrollWidth - 8 });
           }}
         >
-          {pages.map((liste, k) => (
-            <div key={k} className="ac-page">
-              {k === 0 && une.length > 0 && (
-                <div className="ac-une-carte">
-                  <ALaUne elements={une} />
+          <div className="ac-page">
+            {une.length > 0 && (
+              <div className="ac-une-carte">
+                <ALaUne elements={une} />
+              </div>
+            )}
+            {CATEGORIES.map((cat) => (
+              <section key={cat.id} className={`ac-categorie ${cat.id}`} aria-label={tr(...cat.nom)}>
+                <h2 className="ac-categorie-nom">{tr(...cat.nom)}</h2>
+                <div className="ac-categorie-jeux">
+                  {cat.blocs.map((b) =>
+                    Array.isArray(b) ? (
+                      <div key={b.join('-')} className="ac-paire">
+                        {b.map((id) => carte(parId(id), true))}
+                      </div>
+                    ) : (
+                      carte(parId(b), false)
+                    ),
+                  )}
                 </div>
-              )}
-              {liste.map((j) => {
-                const nv = niveauDuJeu(j.id);
-                const o = vignetteOuverte(j.id, niveau, joues);
-                return (
-                  <div key={j.id} className={`ac-carte ${o ? '' : 'fermee'} ${o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) ? 'dore' : ''}`}>
-                    {o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) && (
-                      <span className="ac-reflet" aria-hidden="true" />
-                    )}
-                    {o && j.id !== 'poker' && (happy || (!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id)) && (
-                      <b className="ac-neon-badge">{!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id ? tr('XP ×2', 'XP ×2') : 'Happy Hour'}</b>
-                    )}
-                    <Vignette
-                      jeu={j}
-                      affiche={!!vue.affiche && VIGNETTE_DU_JEU[vue.affiche.jeu] === j.id}
-                      onOuvrir={j.id === 'poker' ? undefined : o ? () => onVignette(j.id) : () => onJeuFerme(JEU_DE_VIGNETTE[j.id]!)}
-                      ruban={o ? rubanJeu(j.id, vue) : undefined}
-                    />
-                    {o && j.id !== 'poker' && <img className="ac-jouer" src="/cartes/bouton-jouer.webp" alt="" aria-hidden="true" />}
-                    {!o && (
-                      <span className="ac-cadenas">
-                        🔒<small>{tr(`Niveau ${nv}`, `Level ${nv}`)}</small>
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-        {pages.length > 1 && (
-          <div className="ac-points" role="tablist" aria-label={tr('Pages des jeux', 'Game pages')}>
-            {pages.map((_, k) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={k === page}
-                aria-label={tr(`Page ${k + 1}`, `Page ${k + 1}`)}
-                className={k === page ? 'actif' : ''}
-                onClick={() => grille.current?.scrollTo({ left: k * grille.current.clientWidth, behavior: 'smooth' })}
-              />
+              </section>
             ))}
           </div>
-        )}
+        </div>
         <p className="cas-gros-lot ac-gros-lot">
           {tr('Gros lot de The Golden Heist', 'The Golden Heist jackpot')} : <strong>{dollars(vue.grosLot)}</strong>
         </p>
