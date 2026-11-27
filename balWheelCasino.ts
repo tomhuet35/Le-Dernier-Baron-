@@ -77,6 +77,8 @@ export function creerBalWheel(options: {
   /** Arrêts imposés (tests, démonstration) ; au hasard sinon. */
   arret?: () => { case?: number; cran?: number } | undefined;
   annoncer?: (a: AnnonceCasino) => void;
+  /** Une manche jouée (le joueur avait misé) : pour les missions du jeu (shared/missions.ts). */
+  mission?: (uid: string, m: { bonus: boolean; final: boolean; x: number }) => void;
 }) {
   const { io, banque } = options;
   const horloge = options.horloge ?? Date.now;
@@ -293,6 +295,7 @@ export function creerBalWheel(options: {
       if (surCase > 0) gain = estBonusBal(c) ? (j.resultat?.gain ?? 0) : gainBW(surCase, VALEUR_CHIFFRE_BAL[c] * multiplicateur());
       j.gain = gain;
       if (gain > 0) banque.crediter(j.uid, gain);
+      options.mission?.(j.uid, { bonus: surCase > 0 && estBonusBal(c), final: surCase > 0 && c === 'minuit', x: surCase > 0 ? gain / surCase : 0 });
       if ((gain >= 10 * mise && gain >= 1_000_000) || gain >= 10_000_000) options.annoncer?.({ nom: j.nom, jeu: 'baronWheel', gain });
     }
     phase = 'resultat';

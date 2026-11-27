@@ -12,6 +12,7 @@
  *
  * Tout ce fichier est pur : le serveur (salonCasino.ts) lui passe les événements et applique les récompenses.
  */
+import { normaliserMissions, type IdTrophee } from './missions';
 import { JEUX_CASINO, NOMS_JEUX_CASINO, type JeuCasino } from './profilCasino';
 import { normaliserCollection, type Collection } from './ventes';
 import { normaliserPortefeuille, type Portefeuille } from './bourse';
@@ -172,6 +173,9 @@ export interface EtatSalonJoueur {
   tenue: number | null;
   /** Le cadeau de bienvenue du compte a été remis. */
   bienvenue?: boolean;
+  /** Les missions des jeux (avancement) et leurs trophées gagnés (shared/missions.ts). */
+  missions: Partial<Record<string, number>>;
+  trophees: IdTrophee[];
 }
 
 /** Petit hasard reproductible (le même jour donne les mêmes contrats, même si le serveur redémarre). */
@@ -223,6 +227,8 @@ export function etatSalonVide(): EtatSalonJoueur {
     marche: { jour: '', relances: 0, achats: [] },
     cadreChoisi: null,
     tenues: [],
+    missions: {},
+    trophees: [],
     tenue: null,
   };
 }
@@ -463,6 +469,9 @@ export interface VueContrats {
   /** Le Tailleur : tenues achetées et tenue portée. */
   tenues: number[];
   tenue: number | null;
+  /** Les missions des jeux : avancement et trophées gagnés. */
+  missions: Partial<Record<string, number>>;
+  trophees: IdTrophee[];
 }
 
 /** Ce que le serveur envoie au téléphone quand un contrat se termine, un morceau se colle, ou une page se complète. */
@@ -533,6 +542,9 @@ export function normaliserEtatSalon(brut: unknown): EtatSalonJoueur {
   e.tenues = normaliserTenues(b.tenues);
   e.tenue = estTenue(b.tenue) && e.tenues.includes(b.tenue) ? b.tenue : null;
   if (b.bienvenue === true) e.bienvenue = true;
+  const mi = normaliserMissions(b.missions, b.trophees);
+  e.missions = mi.missions;
+  e.trophees = mi.trophees;
   // L'album complet donne son cadre (comptes d'avant le cadre compris).
   if (e.albumComplet && !e.cadres.includes('collectionneur')) e.cadres.push('collectionneur');
   return e;

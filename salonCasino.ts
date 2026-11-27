@@ -15,6 +15,7 @@
  *   niveaux et leurs bonus, statistiques par jeu, scores des défis). Amis du casino, envois d'argent entre amis, et
  *   défis 1 contre 1 (defisCasino.ts, gardés avec les réglages du serveur).
  */
+import { avancerMissions, type MancheMission } from '../shared/missions';
 import { estMisePlinko, lacherBille, MULTI_MAX_PLINKO } from '../shared/plinko';
 import { randomInt } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
@@ -576,6 +577,8 @@ export function creerCasino(options: OptionsCasino) {
       cadreChoisi: e.cadreChoisi,
       tenues: e.tenues,
       tenue: e.tenue,
+      missions: e.missions,
+      trophees: e.trophees,
     };
   }
 
@@ -603,6 +606,17 @@ export function creerCasino(options: OptionsCasino) {
       champagne: etageOuvert(niveau, 'penthouse') && p.salonJ.champagne !== jourParis(t) ? champagnePenthouse(niveau) : null,
       joues: (Object.keys(p.jeux) as JeuCasino[]).filter((j) => (p.jeux[j]?.mise ?? 0) > 0),
     };
+  }
+
+  /** Une manche jouée au Baron Express ou au Bal : les missions avancent ; la dernière donne le trophée du jeu. */
+  function mission(uid: string, m: MancheMission) {
+    const p = portes.get(uid);
+    if (!p) return;
+    const r = avancerMissions(p.salonJ, m);
+    if (!r.finies.length && !r.trophee) return;
+    p.salonAEcrire = true;
+    planifier(uid, p);
+    notifier(uid, 'casino_mission', { finies: r.finies.map((x) => x.id), trophee: r.trophee });
   }
 
   /** Nouveau niveau : les bonus des niveaux franchis (chacun versé une seule fois), et la fête sur le téléphone. */
@@ -725,6 +739,7 @@ export function creerCasino(options: OptionsCasino) {
   const roueBW = creerBaronWheel({
     io,
     banque: banqueDe('baronWheel'),
+    mission: (uid, m) => mission(uid, { jeu: 'express', ...m }),
     horloge,
     delais: options.delaisBaronWheel,
     multiplicateurs: () => {
@@ -761,6 +776,7 @@ export function creerCasino(options: OptionsCasino) {
   const roueBal = creerBalWheel({
     io,
     banque: banqueDe('baronWheel', 'bal'),
+    mission: (uid, m) => mission(uid, { jeu: 'bal', ...m }),
     horloge,
     ...(options.delaisBaronWheel ? { delais: { mises: 2_000, tour: 1_000, resultat: 1_000 }, delaisBonus: options.delaisBaronWheel } : {}),
     annoncer: (a) => annoncer(a),
@@ -1441,6 +1457,7 @@ export function creerCasino(options: OptionsCasino) {
         valeur: valeurCollection(fiche.salon.collection),
         cadre: cadreSpecial(fiche.salon.cadres, fiche.salon.cadreChoisi),
         moi: cible === id.uid,
+        trophees: fiche.salon.trophees ?? [],
         classement: classementCollections(),
       };
       repondre(rappel, { ok: true, bureau });
