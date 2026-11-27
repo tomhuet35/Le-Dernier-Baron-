@@ -2200,7 +2200,8 @@ function Accueil({
         {o && j.id !== 'poker' && !carre && <img className="ac-jouer" src="/cartes/bouton-jouer.webp" alt="" aria-hidden="true" />}
         {!o && (
           <span className="ac-cadenas">
-            🔒<small>{j.id === 'poker' ? tr('Bientôt', 'Soon') : tr(`Niveau ${nv}`, `Level ${nv}`)}</small>
+            <img src="/cartes/cadenas.webp" alt="" draggable={false} />
+            <small>{j.id === 'poker' ? tr('Bientôt', 'Soon') : tr(`Niveau ${nv}`, `Level ${nv}`)}</small>
           </span>
         )}
       </div>
