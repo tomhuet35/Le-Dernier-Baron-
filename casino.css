@@ -914,3 +914,12 @@
 .cas-barre h1.jeu-logo-titre { flex: 0 1 auto; width: auto; height: auto; font-size: 0; margin: 0; padding: 0; line-height: 0; display: flex; justify-content: center; min-width: 0; background: none; border: 0; box-shadow: none; }
 .cas-barre h1.jeu-logo-titre::before, .cas-barre h1.jeu-logo-titre::after { display: none; }
 .cas-barre h1.jeu-logo-titre > img, h1.jeu-logo-titre > img { display: block; height: clamp(36px, 7vw, 64px) !important; max-height: 64px !important; width: auto !important; max-width: 100% !important; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6)); }
+
+/* Le logo d'un jeu sur son affiche, à la place du nom en texte. */
+.cas-vignette-nom.avec-logo { display: flex; justify-content: center; align-items: flex-end; padding-top: 30px !important; font-size: 0 !important; line-height: 0; background: linear-gradient(transparent, rgba(10, 5, 3, 0.75) 55%) !important; }
+.cas-vignette-logo { display: block; width: 92%; max-height: 48%; height: auto; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.75)); }
+.ac-carte.carre .cas-vignette-nom.avec-logo { padding: 14px 4px 4px !important; }
+.ac-carte.carre .cas-vignette-logo { width: 88%; }
+.ac-carte:not(.carre) .cas-vignette-logo { width: 80%; }
+/* Les affiches qui portent déjà leur titre peint : pas de nom en texte par-dessus. */
+.cas-vignette.machine .cas-vignette-nom, .cas-vignette.bulles .cas-vignette-nom, .cas-vignette.toits .cas-vignette-nom { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); }

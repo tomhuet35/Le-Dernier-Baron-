@@ -1291,13 +1291,29 @@ function ChoixMachines({ vue, onMachine, onRetour }: { vue: VueCasino; onMachine
   );
 }
 
+/** Le logo dessiné posé en bas de l'affiche (pour les affiches qui n'ont pas déjà leur titre peint). */
+const LOGO_VIGNETTE: Partial<Record<(typeof JEUX)[number]['id'], string>> = {
+  blackjack: '/cartes/lg-bj.webp',
+  roulette: '/cartes/lg-rl.webp',
+  tickets: '/cartes/lg-tk.webp',
+  festin: '/cartes/lg-cf.webp',
+  chute: '/cartes/lg-cdc.webp',
+  couronne: '/cartes/lg-cv.webp',
+};
+
 function Vignette({ jeu, onOuvrir, ruban, affiche }: { jeu: (typeof JEUX)[number]; onOuvrir?: () => void; ruban?: string; affiche?: boolean }) {
   const [src, setSrc] = useState(jeu.image);
   const bientot = !onOuvrir;
   return (
     <button type="button" className={`cas-vignette ${jeu.id} ${bientot ? 'bientot' : ''} ${affiche ? 'a-l-affiche' : ''}`} onClick={onOuvrir} disabled={bientot}>
       <img src={src} alt="" draggable={false} onError={() => setSrc(jeu.repli)} />
-      <span className="cas-vignette-nom">{tr(...jeu.nom)}</span>
+      {LOGO_VIGNETTE[jeu.id] ? (
+        <span className="cas-vignette-nom avec-logo">
+          <img className="cas-vignette-logo" src={LOGO_VIGNETTE[jeu.id]} alt={tr(...jeu.nom)} draggable={false} />
+        </span>
+      ) : (
+        <span className="cas-vignette-nom">{tr(...jeu.nom)}</span>
+      )}
       {bientot && <span className="cas-bientot">{tr('Bientôt', 'Soon')}</span>}
       {!bientot && affiche && <span className="cas-bientot cas-ruban-affiche">{tr('À l’affiche', 'Featured')}</span>}
       {!bientot && !affiche && ruban && <span className="cas-bientot cas-nouveau">{ruban}</span>}
