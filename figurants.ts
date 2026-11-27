@@ -9,6 +9,7 @@
  */
 
 import type { JeuCasino } from '../shared/profilCasino';
+import { IDS_OBJETS, OBJETS, PRIX_DOLLARS, type Collection, type IdObjet } from '../shared/ventes';
 
 export const FIGURANTS_ACTIFS = process.env.FIGURANTS !== '0' && !process.env.VITEST && process.env.NODE_ENV !== 'test';
 
@@ -136,4 +137,40 @@ export function profilFigurant(f: Figurant, t: number) {
     defis: { gagnes: 0, perdus: 0, nuls: 0 },
     depuis: Date.UTC(2026, 10, 27) - Math.round((3 + g * 25) * JOUR),
   };
+}
+
+/** Les objets de départ d'un figurant (son Bureau) : ce que sa fortune lui a permis d'acheter, au prix des enchères. */
+export function collectionBaseFigurant(f: Figurant): Collection {
+  const c: Collection = {};
+  let budget = f.base * 0.5;
+  const ordre = [...IDS_OBJETS].sort((a, b) => graine(`${f.uid}-${a}`) - graine(`${f.uid}-${b}`));
+  for (const o of ordre) {
+    const prix = Math.round(PRIX_DOLLARS[OBJETS[o].rarete] * (1.1 + graine(`${f.uid}-prix-${o}`) * 1.4));
+    if (prix > budget || graine(`${f.uid}-veut-${o}`) < 0.3) continue;
+    c[o] = { n: 1, valeur: prix };
+    budget -= prix;
+  }
+  return c;
+}
+
+/** Ajoute une collection à une autre (objets gagnés aux enchères). */
+export function fusionnerCollections(a: Collection, b: Collection | undefined): Collection {
+  const c: Collection = { ...a };
+  for (const [o, x] of Object.entries(b ?? {}) as [IdObjet, { n: number; valeur: number }][]) {
+    const avant = c[o] ?? { n: 0, valeur: 0 };
+    c[o] = { n: avant.n + x.n, valeur: avant.valeur + x.valeur };
+  }
+  return c;
+}
+
+/**
+ * Une enchère de figurant sur un lot en dollars : le plafond qu'il s'accorde (selon sa fortune et le lot du jour), ou
+ * null s'il ne s'y intéresse pas. Ils ne misent jamais sur le lot en rubis, et laissent la dernière demi-heure aux
+ * joueurs.
+ */
+export function plafondFigurant(f: Figurant, prixDepart: number, jour: string, objet: string, t: number): number | null {
+  const g = graine(`${f.uid}-${jour}-${objet}`);
+  if (g < 0.45) return null;
+  const plafond = Math.min(prixDepart * (1.3 + g * 2.2), soldeFigurant(f, t) * 0.45);
+  return plafond >= prixDepart ? plafond : null;
 }

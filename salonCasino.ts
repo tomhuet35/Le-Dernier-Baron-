@@ -15,7 +15,7 @@
  *   niveaux et leurs bonus, statistiques par jeu, scores des défis). Amis du casino, envois d'argent entre amis, et
  *   défis 1 contre 1 (defisCasino.ts, gardés avec les réglages du serveur).
  */
-import { estFigurant, FIGURANTS, FIGURANTS_ACTIFS, figurantEnLigne, niveauFigurant, profilFigurant, soldeFigurant } from './figurants';
+import { collectionBaseFigurant, estFigurant, FIGURANTS, FIGURANTS_ACTIFS, figurantEnLigne, fusionnerCollections, niveauFigurant, plafondFigurant, profilFigurant, soldeFigurant } from './figurants';
 import { avancerMissions, avatarGagne, type MancheMission } from '../shared/missions';
 import { estMisePlinko, lacherBille, MULTI_MAX_PLINKO } from '../shared/plinko';
 import { randomInt } from 'node:crypto';
@@ -72,6 +72,7 @@ import {
   normaliserCollection,
   valeurCollection,
   type AnnonceVente,
+  type Collection,
   type CollectionneurSalon,
   type Lot,
   type Monnaie,
@@ -278,11 +279,15 @@ export function creerCasino(options: OptionsCasino) {
   let brutVentes: unknown = undefined;
   const collections = new Map<string, CollectionneurSalon>();
 
+  /** Les objets gagnés aux enchères par les joueurs d'ambiance (gardés avec les réglages du serveur). */
+  const gainsFigurants = new Map<string, Collection>();
   // Gros lot et plus riches, gardés avec les réglages du serveur.
   const chargement = comptes
     .lireParametre('casino')
     .then((brut) => {
-      const d = (brut ?? {}) as { grosLot?: unknown; riches?: unknown; ouvertures?: unknown; defis?: unknown; ventes?: unknown; collections?: unknown };
+      const d = (brut ?? {}) as { grosLot?: unknown; riches?: unknown; ouvertures?: unknown; defis?: unknown; ventes?: unknown; collections?: unknown; figurants?: unknown };
+      if (d.figurants && typeof d.figurants === 'object')
+        for (const [uid, c] of Object.entries(d.figurants as Record<string, unknown>)) if (estFigurant(uid)) gainsFigurants.set(uid, normaliserCollection(c));
       brutVentes = d.ventes;
       if (d.collections && typeof d.collections === 'object') {
         for (const [uid, r] of Object.entries(d.collections as Record<string, unknown>)) {
@@ -326,7 +331,7 @@ export function creerCasino(options: OptionsCasino) {
       void comptes.ecrireParametre('casino', reglagesSalon()).catch((e) => console.error('Casino : écriture impossible :', e));
     }, delaiEcriture);
   };
-  const reglagesSalon = () => ({ grosLot, riches: Object.fromEntries(riches), ouvertures, defis: defis.exporter(), ventes: ventes.exporter(), collections: Object.fromEntries(collections) });
+  const reglagesSalon = () => ({ grosLot, riches: Object.fromEntries(riches), ouvertures, defis: defis.exporter(), ventes: ventes.exporter(), collections: Object.fromEntries(collections), figurants: Object.fromEntries(gainsFigurants) });
 
   async function estCreateur(uid: string): Promise<boolean> {
     const c = createurs.get(uid);
@@ -799,13 +804,31 @@ export function creerCasino(options: OptionsCasino) {
     collections.set(uid, { uid, nom, avatar, valeur, objets: objetsDifferents(e.collection), cadre: cadreSpecial(e.cadres, e.cadreChoisi) });
     sauverSalon();
   }
-  const classementCollections = () => [...collections.values()].sort((a, b) => b.valeur - a.valeur).slice(0, 10);
+  /** Le Bureau d'un joueur d'ambiance : ses objets de départ, et ceux gagnés aux enchères. */
+  const collectionFigurant = (uid: string) => {
+    const f = FIGURANTS.find((x) => x.uid === uid);
+    return f ? fusionnerCollections(collectionBaseFigurant(f), gainsFigurants.get(uid)) : {};
+  };
+  const classementCollections = () =>
+    [
+      ...collections.values(),
+      ...(FIGURANTS_ACTIFS
+        ? FIGURANTS.map((f) => {
+            const c = collectionFigurant(f.uid);
+            return { uid: f.uid, nom: f.nom, avatar: f.avatar, valeur: valeurCollection(c), objets: objetsDifferents(c), cadre: null };
+          }).filter((x) => x.valeur > 0)
+        : []),
+    ]
+      .sort((a, b) => b.valeur - a.valeur)
+      .slice(0, 10);
 
   const ventes = creerVentes({
     horloge,
     jour: jourParis,
     fin: lendemainParis,
     debiter: (uid, monnaie, montant) => {
+      // Un joueur d'ambiance paie de sa fortune fabriquée (rien à débiter).
+      if (estFigurant(uid)) return monnaie === 'dollars';
       const p = portes.get(uid);
       if (!p || montant <= 0) return false;
       if (monnaie === 'dollars') {
@@ -820,6 +843,7 @@ export function creerCasino(options: OptionsCasino) {
       return true;
     },
     rendre: (uid, monnaie, montant, lot, par) => {
+      if (estFigurant(uid)) return;
       if (monnaie === 'dollars') verserHorsJeu(uid, montant);
       else {
         const p = portes.get(uid);
@@ -833,6 +857,11 @@ export function creerCasino(options: OptionsCasino) {
       notifier(uid, 'casino_vente', a);
     },
     attribuer: (uid, lot: Lot, valeur) => {
+      if (estFigurant(uid)) {
+        gainsFigurants.set(uid, fusionnerCollections(gainsFigurants.get(uid) ?? {}, { [lot.objet]: { n: 1, valeur } }));
+        sauverSalon();
+        return;
+      }
       const p = portes.get(uid);
       const montant = lot.meilleure?.montant ?? 0;
       if (p) {
@@ -851,6 +880,26 @@ export function creerCasino(options: OptionsCasino) {
     diffuser: (v) => io.to(SALLE).emit('casino_ventes', v),
     sauver: () => sauverSalon(),
   });
+
+  // Les joueurs d'ambiance enchérissent de temps en temps sur les lots en dollars (jamais sur le lot en rubis, et
+  // jamais dans la dernière demi-heure), jusqu'au plafond qu'ils s'accordent.
+  const minuterieEncheres = setInterval(() => {
+    if (!FIGURANTS_ACTIFS) return;
+    const t = horloge();
+    if (lendemainParis(t) - t < 30 * 60_000) return;
+    const v = ventes.vue();
+    v.lots.forEach((lot, index) => {
+      if (lot.monnaie !== 'dollars') return;
+      const enTete = lot.meilleure?.uid;
+      if (Math.random() > (enTete && estFigurant(enTete) ? 0.04 : 0.15)) return;
+      const candidats = FIGURANTS.filter((f) => f.uid !== enTete).map((f) => ({ f, plafond: plafondFigurant(f, lot.prixDepart, jourParis(t), lot.objet, t) }));
+      const ok = candidats.filter((c): c is { f: (typeof FIGURANTS)[number]; plafond: number } => c.plafond !== null && c.plafond >= lot.minimum);
+      if (!ok.length) return;
+      const { f } = ok[Math.floor(Math.random() * ok.length)];
+      ventes.encherir({ uid: f.uid, nom: f.nom, avatar: f.avatar }, index, lot.minimum);
+    });
+  }, 150_000);
+  minuterieEncheres.unref?.();
 
   // -------------------------------------------------------------------------------------------------------------
   // Les Cercles (shared/cercles.ts, server/cerclesCasino.ts) et la Bourse de 1929 (shared/bourse.ts, server/bourseCasino.ts)
@@ -1453,7 +1502,7 @@ export function creerCasino(options: OptionsCasino) {
       const fig = estFigurant(cible) ? FIGURANTS.find((x) => x.uid === cible) : undefined;
       if (fig) {
         const pf = profilFigurant(fig, horloge());
-        return repondre(rappel, { ok: true, bureau: { uid: cible, nom: fig.nom, avatar: fig.avatar, niveau: pf.niveau, collection: {}, valeur: 0, cadre: null, moi: false, trophees: [], classement: classementCollections() } satisfies VueBureau });
+        return repondre(rappel, { ok: true, bureau: { uid: cible, nom: fig.nom, avatar: fig.avatar, niveau: pf.niveau, collection: collectionFigurant(cible), valeur: valeurCollection(collectionFigurant(cible)), cadre: null, moi: false, trophees: [], classement: classementCollections() } satisfies VueBureau });
       }
       const q = portes.get(cible);
       let fiche: { nom: string; avatar: number; niveau: number; salon: EtatSalonJoueur } | null = null;
@@ -1783,6 +1832,7 @@ export function creerCasino(options: OptionsCasino) {
     tickets.fermer();
     defis.fermer();
     ventes.fermer();
+    clearInterval(minuterieEncheres);
     bourse.fermer();
     await cercles.fermer();
     await Promise.all([...portes.keys()].map((uid) => ecrire(uid)));
