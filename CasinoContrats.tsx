@@ -7,6 +7,7 @@ import { formatDollars, type VueCasino } from '../../shared/casino';
 import {
   dollarsContrat,
   dollarsPalier,
+  JEUX_PERMANENTS,
   PALIERS,
   palierSuivant,
   RUBIS_PALIERS,
@@ -186,7 +187,7 @@ const texteCoups = (j: JeuCasino, n: number) => {
 function MissionsPermanentes({ vue, niveau }: { vue: VueCasino; niveau: number }) {
   const gagnes = vue.contrats?.gagnes ?? {};
   const joues = vue.hotel?.joues ?? [];
-  const jeux = JEUX_CASINO.filter((j) => !JEUX_RETIRES.includes(j) && jeuOuvert(niveau, j, joues.includes(j)));
+  const jeux = JEUX_PERMANENTS.filter((j) => !JEUX_RETIRES.includes(j) && jeuOuvert(niveau, j, joues.includes(j)));
   return (
     <section className="ct-semaine ct-permanentes">
       <h2>{tr('Missions permanentes', 'Permanent missions')}</h2>
@@ -222,7 +223,7 @@ function MissionsPermanentes({ vue, niveau }: { vue: VueCasino; niveau: number }
           );
         })}
       </ul>
-      <p className="ct-fin">{tr('Elles ne s’arrêtent jamais : 5, 20, 50, 100… jusqu’à 10 000 coups gagnants par jeu.', 'They never end: 5, 20, 50, 100… up to 10,000 wins per game.')}</p>
+      <p className="ct-fin">{tr('Elles ne s’arrêtent jamais : 5, 20, 50, 100… jusqu’à 10 000 coups gagnants, au Blackjack et à la Roulette.', 'They never end: 5, 20, 50, 100… up to 10,000 wins, at Blackjack and Roulette.')}</p>
     </section>
   );
 }

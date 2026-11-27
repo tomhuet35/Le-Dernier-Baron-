@@ -249,6 +249,10 @@ describe('Missions permanentes', () => {
     expect(palierSuivant(10_000)).toBe(null);
   });
   it('relit le compte gardé', () => {
-    expect(normaliserEtatSalon({ gagnes: { roulette: 37.8, faux: 4, toits: -3 } }).gagnes).toEqual({ roulette: 37, toits: 0 });
+    expect(normaliserEtatSalon({ gagnes: { roulette: 37.8, faux: 4, toits: 3, blackjack: -2 } }).gagnes).toEqual({ roulette: 37, blackjack: 0 });
+    // Seuls le Blackjack et la Roulette comptent.
+    const e = etatSalonVide();
+    noterEvenement(e, { type: 'gain', jeu: 'machine', montant: 500, derniereMise: 100 }, 5);
+    expect(e.gagnes).toEqual({});
   });
 });
