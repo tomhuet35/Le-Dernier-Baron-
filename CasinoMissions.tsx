@@ -4,7 +4,8 @@
  */
 import type { CSSProperties } from 'react';
 import type { VueCasino } from '../../shared/casino';
-import { MISSIONS, TROPHEES, type IdTrophee, type JeuMission } from '../../shared/missions';
+import { AVATARS_MISSION, MISSIONS, TROPHEES, type IdTrophee, type JeuMission } from '../../shared/missions';
+import { tenue } from '../../shared/tailleur';
 import { tr } from './traduction';
 import './missions.css';
 
@@ -43,6 +44,19 @@ export function PanneauMissions({ jeu, vue }: { jeu: JeuMission; vue: VueCasino 
           );
         })}
       </ol>
+      {(() => {
+        const n = AVATARS_MISSION[jeu];
+        const a = (vue.contrats?.tenues ?? []).includes(n);
+        return (
+          <div className={`mi-avatar ${a ? 'gagne' : ''}`}>
+            <img src={`/cartes/avatar-${n}.webp`} alt="" />
+            <span>
+              <strong>{tr(...tenue(n)!.nom)}</strong>
+              <small>{a ? tr('Gagné : à porter chez le Tailleur', 'Won: wear it at the Tailor') : tr('Fais ×1 000 ou plus dans ce jeu pour gagner ce personnage', 'Hit ×1,000 or more in this game to win this character')}</small>
+            </span>
+          </div>
+        );
+      })()}
       {!gagne && <p className="mi-aide">{tr('Finis les missions : le trophée rejoint les vitrines de ton Bureau.', 'Finish the missions: the trophy joins the showcases of your Office.')}</p>}
     </details>
   );
@@ -72,7 +86,8 @@ export function VitrinesTrophees({ trophees, moi }: { trophees: IdTrophee[]; moi
 }
 
 /** Le texte du bandeau quand une mission se termine ou qu'un trophée est gagné. */
-export function texteMission(e: { finies: string[]; trophee: IdTrophee | null }): string {
+export function texteMission(e: { finies: string[]; trophee: IdTrophee | null; avatar?: number | null }): string {
+  if (e.avatar) return tr(`×1 000 ! Nouveau personnage : ${tr(...tenue(e.avatar)!.nom)}. Porte-le chez le Tailleur.`, `×1,000! New character: ${tr(...tenue(e.avatar)!.nom)}. Wear it at the Tailor.`);
   if (e.trophee) return tr(`Trophée gagné : ${tr(...TROPHEES[e.trophee].nom)} ! Il t’attend dans ton Bureau.`, `Trophy won: ${tr(...TROPHEES[e.trophee].nom)}! It awaits in your Office.`);
   const m = Object.values(MISSIONS)
     .flatMap((x) => x.missions)
