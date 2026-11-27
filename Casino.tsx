@@ -1573,22 +1573,22 @@ const RANGEE: { id: IdVignette; grand?: true }[] = [
   { id: 'tickets' },
   { id: 'festin' },
   { id: 'toits' },
-  { id: 'folleNuit' },
   { id: 'chute' },
-  { id: 'course' },
   { id: 'couronne' },
   { id: 'balWheel', grand: true },
+  { id: 'folleNuit' },
+  { id: 'course' },
   { id: 'poker' },
 ];
 /** Les rubriques : les jeux d'un même niveau, en blocs (une grande affiche, ou une colonne de deux carrés). */
 function rubriques(): { id: string; nom: [string, string]; blocs: (IdVignette | IdVignette[])[] }[] {
   const res: { id: string; nom: [string, string]; blocs: (IdVignette | IdVignette[])[] }[] = [];
   for (const x of RANGEE) {
-    const n = x.id === 'poker' ? -1 : niveauDuJeu(x.id);
-    const id = n < 0 ? 'bientot' : `n${n}`;
+    const n = x.id === 'poker' ? NIVEAUX_JEUX.bal : niveauDuJeu(x.id);
+    const id = `n${n}`;
     let r = res.find((y) => y.id === id);
     if (!r) {
-      r = { id, nom: n < 0 ? ['Bientôt', 'Coming soon'] : n <= 1 ? ['Dès le départ', 'From the start'] : [`Niveau ${n}`, `Level ${n}`], blocs: [] };
+      r = { id, nom: n <= 1 ? ['Dès le départ', 'From the start'] : [`Niveau ${n}`, `Level ${n}`], blocs: [] };
       res.push(r);
     }
     const dernier = r.blocs[r.blocs.length - 1];
