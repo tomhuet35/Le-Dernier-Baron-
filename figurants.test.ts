@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { casesFigurant, estFigurant, FIGURANTS, FIGURANTS_ACTIFS, miseFigurant, niveauFigurant, profilFigurant, soldeFigurant, spectateursAffiches } from '../server/figurants';
+import { collectionBaseFigurant, fusionnerCollections, plafondFigurant, casesFigurant, estFigurant, FIGURANTS, FIGURANTS_ACTIFS, miseFigurant, niveauFigurant, profilFigurant, soldeFigurant, spectateursAffiches } from '../server/figurants';
 import { progressionCasino } from '../shared/profilCasino';
 
 describe('Les figurants du salon', () => {
@@ -41,5 +41,24 @@ describe('Les figurants du salon', () => {
     const vus = new Set(Array.from({ length: 30 }, (_, k) => spectateursAffiches(0, t0 + k * 5000, 'bw')));
     if (FIGURANTS_ACTIFS) expect(vus.size).toBeGreaterThan(2);
     else expect([...vus]).toEqual([0]);
+  });
+  it('ont un Bureau à la mesure de leur fortune, et enchérissent raisonnablement', () => {
+    const t = Date.UTC(2026, 10, 27, 12);
+    let avecObjets = 0;
+    for (const f of FIGURANTS) {
+      const c = collectionBaseFigurant(f);
+      const valeur = Object.values(c).reduce((s, x) => s + (x?.valeur ?? 0), 0);
+      expect(valeur).toBeLessThanOrEqual(f.base * 0.5);
+      if (valeur > 0) avecObjets++;
+      for (const o of ['montre', 'piano', 'globe']) {
+        const p = plafondFigurant(f, 100_000_000, '2026-11-27', o, t);
+        if (p !== null) {
+          expect(p).toBeGreaterThanOrEqual(100_000_000);
+          expect(p).toBeLessThanOrEqual(350_000_000);
+        }
+      }
+    }
+    expect(avecObjets).toBeGreaterThan(5);
+    expect(fusionnerCollections({ globe: { n: 1, valeur: 10 } }, { globe: { n: 1, valeur: 5 }, piano: { n: 1, valeur: 7 } })).toEqual({ globe: { n: 2, valeur: 15 }, piano: { n: 1, valeur: 7 } });
   });
 });
